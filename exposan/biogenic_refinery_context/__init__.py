@@ -125,8 +125,8 @@ truck_fee = 6.21 # USD/m3
 # Should be changed based on location
 discount_rate = .05
 price_ratio = 1
-operator_daily_wage = 29
-const_daily_wage = 17
+operator_daily_wage = 23.83 * 3 # https://www.payscale.com/research/US/Job=WasteWater_Plant_Operator/Hourly_Rate
+const_daily_wage = 21*8 # https://www.payscale.com/research/US/Job=Construction_Worker/Hourly_Rate
 const_person_days = 100
 INCLUDED_RESOURCE_RECOVERY = True # including resource recovery
 

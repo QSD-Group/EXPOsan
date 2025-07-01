@@ -26,6 +26,6 @@ o2_sensor_lifetime_pcd		h	2000			constant	Pilot Study
 frequency_corrective_maintenance		y / occurance	3.5	0.5	5	uniform	*assumed
 pcd_auger_power		kW	0.065			constant	Pilot Study
 pcd_airlock_power		kW	0.065			constant	Pilot Study
-service_team_wages		usd per cap per hr	6.05	3.37	10.35	triangular	https://www.salaryexpert.com/salary/job/utility-serviceman/india
+service_team_wages		usd per cap per hr	32.645	24.21	41.08	triangular	https://www.salaryexpert.com/salary/job/utility-serviceman/india
 catalyst_temp		C	825.5833333	806.7867005	844.3799662	triangular	Pilot Study
 biosolids_generated		dry-tonnes/yr	500			constant	

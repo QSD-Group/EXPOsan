@@ -21,7 +21,7 @@ hhx_overflow_tank		USD	214.33	160.7475	267.9125	uniform	https://www.grainger.com
 steel_cost		USD/kg	7.485	3.81	11.16	uniform	Pilot Study	
 stainless_steel_cost		USD/kg	23.585	5.08	42.09	uniform	Pilot Study	
 frequency_corrective_maintenance		y / occurance	3.5	0.5	5	uniform	*assumed	
-service_team_wages		usd per cap per hr	6.05	3.37	10.35	triangular	https://www.salaryexpert.com/salary/job/utility-serviceman/india	"China 10.35, South Africa 4.3, India 3.37  "
+service_team_wages		usd per cap per hr	32.645	24.21	41.08	triangular	https://www.salaryexpert.com/salary/job/utility-serviceman/india	"China 10.35, South Africa 4.3, India 3.37  "
 service_team_adjustdoor_hhx		min / month	330	60	600	uniform	Pilot Study	
 service_team_replacewaterpump_hhx		min / corrective maintenance	165	30	300	uniform	Pilot Study	
 service_team_purgewaterloop_hhx		min / corrective maintenance	27.5	5	50	uniform	Pilot Study	

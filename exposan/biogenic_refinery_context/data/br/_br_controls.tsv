@@ -17,8 +17,8 @@ facility_manager_configurevariable_icp	min / corrective maintenance		50	10	100	u
 biomass_controls_replaceboard_icp	min / corrective maintenance		200	60	360	uniform	Pilot Study	
 biomass_controls_codemalfunctioning_icp	min / corrective maintenance		200	60	360	uniform	Pilot Study	
 frequency_corrective_maintenance		y / occurance	3.5	0.5	5	uniform	*assumed	
-service_team_wages		usd per cap per hr	6.05	3.37	10.35	triangular	https://www.salaryexpert.com/salary/job/utility-serviceman/	"China 10.35, South Africa 4.3, India 3.37  "
-certified_electrician_wages		usd per cap per hr	6.75	2.02	9.91	triangular	https://www.salaryexpert.com/salary http://www.salaryexplorer.com/salary-survey.php?loc=225&loctype=1&job=176&jobtype=3	"China 9.91, South Africa 8.32, Uganda 2.02"
-facility_manager_wages		usd per cap per hr	17.39	7.8	23.2	triangular	https://www.salaryexpert.com/salary/job/export-manager/china	"China 23.2, South Africa 21.18, India 7.8"
-biomass_controls_wages		usd per cap per hr	17.88	8.8	19.95	triangular	https://www.salaryexpert.com/	"China 19.95, South Africa 17.88, India 8.8"
+service_team_wages		usd per cap per hr	32.645	24.21	41.08	triangular	https://www.salaryexpert.com/salary/job/utility-serviceman/	
+certified_electrician_wages		usd per cap per hr	32.895	17.66	48.13	triangular	https://www.salaryexpert.com/salary http://www.salaryexplorer.com/salary-survey.php?loc=225&loctype=1&job=176&jobtype=3	
+facility_manager_wages		usd per cap per hr	27.27	16.53	38.01	triangular	https://www.salaryexpert.com/salary/job/export-manager/united-states	
+biomass_controls_wages		usd per cap per hr	18.46	12.89	24.03	triangular	https://www.salaryexpert.com/sanitation-worker/united-states	
 biosolids_generated		dry-tonnes/yr	500			constant		
