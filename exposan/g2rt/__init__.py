@@ -401,17 +401,17 @@ def get_TEA_metrics(system, ppl=None, include_breakdown=False):
     get_annual_electricity_cost = lambda system: system.power_utility.cost*system.operating_hours #USD/yr
     
     #TODO: check where to set 'operating_hours'
-    print(f"the current ppl is {ppl}, which is used for TEA calculation")
-    functions = [lambda: (get_scaled_capital(tea)-tea.net_earnings) / ppl] #net_earnings is bascially (sales-OPEX)
+    # print(f"the current ppl is {ppl}, which is used for TEA calculation")
+    functions = [lambda: (get_scaled_capital(tea)-tea.net_earnings) / get_dynamic_ppl()] #net_earnings is bascially (sales-OPEX)
     if not include_breakdown: return functions # net cost
     return [
         *functions,
         lambda: get_scaled_capital(tea)*tea.lifetime, # total CAPEX, $
-        lambda: get_daily_electricity(system)/ppl, #kWh/user/day
-        lambda: get_annual_electricity_cost(system)/ppl, # energy (electricity)
-        lambda: tea.annual_labor/ppl, # labor
-        lambda: (tea.AOC-get_annual_electricity(system)-tea.annual_labor)/ppl, # OPEX other than energy and labor
-        lambda: tea.sales / ppl, # sales
+        lambda: get_daily_electricity(system)/get_dynamic_ppl(), #kWh/user/day
+        lambda: get_annual_electricity_cost(system)/get_dynamic_ppl(), # energy (electricity)
+        lambda: tea.annual_labor/get_dynamic_ppl(), # labor
+        lambda: (tea.AOC-get_annual_electricity(system)-tea.annual_labor)/get_dynamic_ppl(), # OPEX other than energy and labor
+        lambda: tea.sales / get_dynamic_ppl(), # sales
         lambda: tea.AOC #total annual OPEX, $/yr
         ]
 
@@ -421,14 +421,14 @@ def get_normalized_CAPEX(unit, ppl=None):
     system = unit.system
     if ppl is None:
         ppl = get_dynamic_ppl()
-    return lambda: system.TEA.get_unit_annualized_equipment_cost(unit)/365/ppl
+    return lambda: system.TEA.get_unit_annualized_equipment_cost(unit)/365/get_dynamic_ppl()
 
 
 def get_normalized_electricity_cost(unit, ppl=None):
     '''Get the energy (electricity) cost of a unit normalized to per capita per day.'''
     if ppl is None:
         ppl = get_dynamic_ppl()
-    return lambda: unit.power_utility.cost /ppl*24
+    return lambda: unit.power_utility.cost /get_dynamic_ppl()*24
 
 def get_normalized_OPEX(unit, ppl=None):
     '''
@@ -449,7 +449,7 @@ def get_normalized_OPEX(unit, ppl=None):
     # return lambda: OPEX * 24 / ppl  # convert to per capita per day
     if ppl is None:
         ppl = get_dynamic_ppl()
-    return lambda: unit.OPEX/ ppl # convert to per capita per day
+    return lambda: unit.OPEX/ get_dynamic_ppl() # convert to per capita per day
 
 def get_normalized_labor_cost(unit, ppl=None):
     '''
@@ -457,7 +457,7 @@ def get_normalized_labor_cost(unit, ppl=None):
     '''
     if ppl is None:
         ppl = get_dynamic_ppl()
-    return lambda: unit.labor_expense / ppl # convert to per capita per day
+    return lambda: unit.labor_expense / get_dynamic_ppl() # convert to per capita per day
 
 def get_normalized_recovery_earning(unit, ppl=None):
     '''
@@ -471,24 +471,24 @@ def get_normalized_recovery_earning(unit, ppl=None):
     if ppl is None:
         ppl = get_dynamic_ppl()
     # Return a callable lambda that computes the normalized recovery earning
-    return lambda: sum(s.cost for s in streams) * 24 / ppl # convert to per capita per day
+    return lambda: sum(s.cost for s in streams) * 24 / get_dynamic_ppl() # convert to per capita per day
 
 # Define a function to compute the total cost directly
 def compute_unit_total_cost(u, ppl=None):
     system = u.system
     if ppl is None:
         ppl = get_dynamic_ppl()
-    return lambda: (system.TEA.get_unit_annualized_equipment_cost(u)/365/ppl+
-                    u.power_utility.cost/ppl+
-                    u.OPEX/ppl+
-                    u.labor_expense/ppl)
+    return lambda: (system.TEA.get_unit_annualized_equipment_cost(u)/365/get_dynamic_ppl()+
+                    u.power_utility.cost/get_dynamic_ppl()+
+                    u.OPEX/get_dynamic_ppl()+
+                    u.labor_expense/get_dynamic_ppl())
 
 def get_unit_contruction_GW_impact(unit, ppl=None, time =None, time_unit ='day'):
     system = unit.system
     lca = system.LCA
     if ppl is None:
         ppl = get_dynamic_ppl()
-    return  lambda: lca.get_construction_impacts(unit, annual=True)['GlobalWarming']/ppl
+    return  lambda: lca.get_construction_impacts(unit, annual=True)['GlobalWarming']/get_dynamic_ppl()
 # convert to per capita per year
 
 def get_unit_stream_GW_impact(unit, ppl=None):
@@ -500,7 +500,7 @@ def get_unit_stream_GW_impact(unit, ppl=None):
     # s = lca.get_stream_impacts(stream_items=stream_items, exclude=None,
     #                              kind='all', annual=True)
     return lambda: lca.get_stream_impacts(stream_items=stream_items, exclude=None,
-                                 kind='all', annual=True)['GlobalWarming']/ppl
+                                 kind='all', annual=True)['GlobalWarming']/get_dynamic_ppl()
 # convert to per capita per year
 
 def get_unit_electrcitiy_GW_impact(unit, ppl=None, time =None, time_unit ='day'):
@@ -508,7 +508,7 @@ def get_unit_electrcitiy_GW_impact(unit, ppl=None, time =None, time_unit ='day')
     lca = system.LCA
     if ppl is None:
         ppl = get_dynamic_ppl()
-    return lambda: lca.get_other_unit_impacts(unit, annual=True)['GlobalWarming']/ppl
+    return lambda: lca.get_other_unit_impacts(unit, annual=True)['GlobalWarming']/get_dynamic_ppl()
 
 # ['GlobalWarming']
 def get_unit_total_impact(unit,ppl=None, annual=True):
@@ -518,29 +518,31 @@ def get_unit_total_impact(unit,ppl=None, annual=True):
         ppl = get_dynamic_ppl()
     stream_items = {i for i in unit.ins + unit.outs if i.stream_impact_item}
     return lambda: (lca.get_stream_impacts(stream_items=stream_items, exclude=None,
-                                 kind='all', annual=True)['GlobalWarming']/ppl+
-                    lca.get_construction_impacts(unit, annual=True)['GlobalWarming']/ppl+
-                    lca.get_other_unit_impacts(unit, annual=True)['GlobalWarming']/ppl)
+                                 kind='all', annual=True)['GlobalWarming']/get_dynamic_ppl()+
+                    lca.get_construction_impacts(unit, annual=True)['GlobalWarming']/get_dynamic_ppl()+
+                    lca.get_other_unit_impacts(unit, annual=True)['GlobalWarming']/get_dynamic_ppl())
 
-def get_LCA_metrics(system, ppl=None, include_breakdown=False):
+def get_LCA_metrics(system, 
+                    ppl=None, 
+                    include_breakdown=False):
     lca = system.LCA
     if ppl is None:
         ppl = get_dynamic_ppl()
-    print(f"the current ppl is {ppl}, which is used for LCA calculation")
+    # print(f"the current ppl is {ppl}, which is used for LCA calculation")
     functions = [
-        lambda: lca.total_impacts['GlobalWarming']/lca.lifetime/ppl, # annual GWP
+        lambda: lca.total_impacts['GlobalWarming']/lca.lifetime/get_dynamic_ppl(), # annual GWP
         # ReCiPe LCA functions
-        lambda: lca.total_impacts['H_Ecosystems']/lca.lifetime/ppl,
-        lambda: lca.total_impacts['H_Health']/lca.lifetime/ppl,
-        lambda: lca.total_impacts['H_Resources']/lca.lifetime/ppl,
+        lambda: lca.total_impacts['H_Ecosystems']/lca.lifetime/get_dynamic_ppl(),
+        lambda: lca.total_impacts['H_Health']/lca.lifetime/get_dynamic_ppl(),
+        lambda: lca.total_impacts['H_Resources']/lca.lifetime/get_dynamic_ppl(),
         ]
     if not include_breakdown: return functions
     return [
         *functions,
         lambda: lca.total_construction_impacts['GlobalWarming'], # construction
-        lambda: lca.total_transportation_impacts['GlobalWarming']/lca.lifetime/ppl, # transportation
-        lambda: lca.total_stream_impacts['GlobalWarming']/lca.lifetime/ppl, # stream (including fugitive gases and offsets)
-        lambda: lca.total_other_impacts['GlobalWarming']/lca.lifetime/ppl, #electricity
+        lambda: lca.total_transportation_impacts['GlobalWarming']/lca.lifetime/get_dynamic_ppl(), # transportation
+        lambda: lca.total_stream_impacts['GlobalWarming']/lca.lifetime/get_dynamic_ppl(), # stream (including fugitive gases and offsets)
+        lambda: lca.total_other_impacts['GlobalWarming']/lca.lifetime/get_dynamic_ppl(), #electricity
         lambda: (lca.total_other_impacts['GlobalWarming']+
                  lca.total_stream_impacts['GlobalWarming'])/lca.lifetime, #Operating emissions 
         ]

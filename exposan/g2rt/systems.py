@@ -146,6 +146,7 @@ def create_systemA(flowsheet=None, ppl=None, lifetime=default_lifetime,
     streamA = flowsheet.stream
     if ppl is None:
         ppl = g2rt.dynamic_ppl
+    g2rt.set_dynamic_ppl(ppl) #update metrics getter calculation when ppl is given in arguments
     #### Human Inputs ####
     A1 = su.Excretion('A1', outs=('urine','feces'),)
     
@@ -170,6 +171,7 @@ def create_systemA(flowsheet=None, ppl=None, lifetime=default_lifetime,
     A2 = su.SURT('A2',
                   ins= (A1-0, A1-1, 'toilet_paper'),
                   outs = ('mixed_waste','A2_CH4','A2_N2O'),
+                  N_toilet=None,
                   N_user = 6, N_tot_user=ppl, lifetime = lifetime, 
                   if_include_front_end=True, if_toilet_paper=True,
                   if_flushing=True, if_cleansing=False,
@@ -358,6 +360,7 @@ def create_systemB(flowsheet=None, ppl=None, lifetime= default_lifetime, flush_w
     streamB = flowsheet.stream
     if ppl is None:
         ppl = g2rt.dynamic_ppl
+    g2rt.set_dynamic_ppl(ppl) #update metrics getter calculation
     #### Human Inputs ####
     B1 = su.Excretion('B1', outs=('urine','feces'),)
 
@@ -370,6 +373,7 @@ def create_systemB(flowsheet=None, ppl=None, lifetime= default_lifetime, flush_w
     B2 = su.SURT('B2',
                   ins= (B1-0, B1-1, 'toilet_paper'),
                   outs = ('mixed_waste','B2_CH4','B2_N2O'),
+                  N_toilet=None,
                   N_user = 6, N_tot_user=ppl, lifetime = lifetime, 
                   if_include_front_end=True, if_toilet_paper=True,
                   if_flushing=True, if_cleansing=False,

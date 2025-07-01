@@ -29,13 +29,16 @@ from exposan.g2rt.models import (
     run_uncertainty
     )
 __all__ = ('create_city_specific_model',
-           'run_city')
+           'run_city',
+           'run_multiple_cities')
 
 # Filter out warnings related to uptime ratio
 import warnings
 warnings.filterwarnings('ignore', message='uptime_ratio')
 
 from copy import copy
+import os, numpy as np, pandas as pd
+from datetime import datetime
 old_price_ratio = copy(g2rt.price_ratio)
 
 #%%
@@ -54,7 +57,6 @@ format_key = lambda key: (' '.join(key.split('_'))).capitalize()
 def create_city_specific_model(ID, city, model=None, city_data=None,
                                   include_non_contextual_params=True,**model_kwargs):
     city_data = city_data or general_city_specific_inputs[city]
-    # g2rt.set_dynamic_ppl(city_data['household_size'])
     model = create_model(model_ID=ID, city_specific=True, 
                          ppl =city_data['household_size'] ,
                          **model_kwargs)
@@ -170,7 +172,7 @@ def create_city_specific_model(ID, city, model=None, city_data=None,
            units='-',
            baseline=b, distribution=D)
     def set_household_size(i):
-        toilet_unit.ppl = i
+        toilet_unit.N_tot_user = i
         g2rt.set_dynamic_ppl(i)
         # print(f'current default number is {g2rt.get_default_ppl()},mixed waste flow rate is {sys.flowsheet.unit.A2.outs[0].F_mass} kg/hr')
 
@@ -281,6 +283,130 @@ def run_city(system_IDs, seed=None, N=1000, city=None, note='',**kwargs):
         note=note,
         **kwargs
     )
+
+#%%
+def run_multiple_cities(system_IDs,
+        *,                
+        create_city_specific_model_func=create_city_specific_model,
+        cities=None,             # list/tuple → only these; None → all in city_inputs
+        city_inputs=None,        # dict {city: input_dict}; default = general_city_specific_inputs
+        N=1000,
+        rule='L',
+        percentiles=(0, 0.05, 0.25, 0.5, 0.75, 0.95, 1),
+        seed=None,
+        note='',
+        include_raw=False,
+        results_folder=results_path,   # where to write the workbooks
+        **model_kwargs
+    ):
+    """
+    For every system in `system_IDs`:
+        • run an uncertainty analysis for each city
+        • compile FOUR summary sheets (plus optional raw data)
+        • write ONE Excel workbook named like  <sysID>_compiled_<date>_<note>_<N>.xlsx
+
+    Returns
+    -------
+    dict
+        {system_ID: full_path_to_workbook}
+    """
+
+    if city_inputs is None:
+        city_inputs = general_city_specific_inputs
+    if cities is not None:
+        unknown = set(cities) - set(city_inputs)
+        if unknown:
+            raise ValueError(f'Unknown cities: {unknown}')
+        city_inputs = {k: city_inputs[k] for k in cities}
+    if seed is not None:
+        np.random.seed(seed)
+
+    date_tag = datetime.now().strftime('%Y-%m-%d')
+    note_tag = f'_{note}' if note else ''
+    pct_cols = [
+    '0' if q == 0
+    else '1' if q == 1
+    else f'{q:.2g}'
+    for q in percentiles
+]
+
+    workbook_paths = {}
+
+    # -----------------------------------------------------------------
+    # LOOP over systems – each iteration produces ONE workbook
+    # -----------------------------------------------------------------
+    for sys_ID in system_IDs:
+
+        pct_rows_res, pct_rows_par = [], []
+        rho_dict, p_dict = {}, {}
+        raw_tables = {}
+
+        for city, c_inputs in city_inputs.items():
+
+            # 1) build & run model
+            model = create_city_specific_model_func(
+                ID=sys_ID,
+                city=city,
+                city_data=c_inputs,
+                **model_kwargs
+            )
+            samples = model.sample(N, rule)
+            model.load_samples(samples)
+            model.evaluate()
+
+            # 2) split parameter/result table
+            n_par = len(model.get_parameters())
+            par_tbl = model.table.iloc[:, :n_par]
+            res_tbl = model.table.iloc[:, n_par:]
+
+            # 3) percentiles
+            par_q = par_tbl.quantile(q=percentiles)
+            res_q = res_tbl.quantile(q=percentiles)
+
+            for prm in par_q.columns:
+                pct_rows_par.append([city, prm] + [par_q.at[q, prm] for q in percentiles])
+            for mtr in res_q.columns:
+                pct_rows_res.append([city, mtr] + [res_q.at[q, mtr] for q in percentiles])
+
+            # 4) Spearman
+            rho, p = model.spearman_r()
+            metric_names = [m.name_with_units for m in model.metrics]
+            rho.columns = p.columns = pd.Index(metric_names)
+
+            rho_dict[city] = rho
+            p_dict[city]   = p
+
+            # 5) optional raw data
+            if include_raw:
+                raw_tables[city] = model.table.copy()
+
+        # ===== Build the four sheets =====
+        result_pct_df = pd.DataFrame(
+            pct_rows_res, columns=['City', 'Metric', *pct_cols]
+        )
+        param_pct_df = pd.DataFrame(
+            pct_rows_par, columns=['City', 'Parameter', *pct_cols]
+        )
+        spearman_rho_df = pd.concat(rho_dict, axis=1)   # 2-row header City ▹ Metric
+        spearman_p_df   = pd.concat(p_dict,  axis=1)
+
+        # ===== Write one workbook for *this* system =====
+        fname = f'{sys_ID}_compiled_{len(city_inputs)}cities_{date_tag}{note_tag}_{N}.xlsx'
+        path  = os.path.join(results_folder, fname)
+
+        with pd.ExcelWriter(path) as writer:
+            result_pct_df.to_excel(writer, sheet_name='Result percentiles',   index=False)
+            param_pct_df.to_excel(writer, sheet_name='Parameter percentiles', index=False)
+            spearman_rho_df.to_excel(writer, sheet_name='Spearman_rho')
+            spearman_p_df.to_excel(writer,   sheet_name='Spearman_p')
+
+            if include_raw:
+                for city, tbl in raw_tables.items():   # city-specific raw sheet
+                    tbl.to_excel(writer, sheet_name=f'Raw_{city}')
+
+        workbook_paths[sys_ID] = path
+
+    return workbook_paths
 
 if __name__ == '__main__':
     results = run_city(

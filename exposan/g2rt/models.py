@@ -68,8 +68,8 @@ __all__ = ('create_model', 'run_uncertainty',)
 def add_metrics(model, ppl= None):
     g2rt._load_lca_data()
     system = model.system
-    if ppl is None:
-        ppl = g2rt.get_dynamic_ppl()
+    # if ppl is None:
+    #     ppl = g2rt.get_dynamic_ppl()
 
     # Recoveries
     funcs = get_recoveries(system, ppl)
