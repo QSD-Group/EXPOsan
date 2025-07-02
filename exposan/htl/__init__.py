@@ -54,9 +54,8 @@ from .systems import *
 from . import geospatial_systems
 from .geospatial_systems import *
 
-# TODO: remove this later
-from . import test_systems
-from .test_systems import *
+from . import landscape_systems
+from .landscape_systems import *
 
 _system_loaded = False
 def load(configuration='baseline'):
@@ -124,8 +123,7 @@ __all__ = (
     *_tea.__all__,
     *systems.__all__,
     *geospatial_systems.__all__,
-    # TODO: remove this later
-    *test_systems.__all__,
+    *landscape_systems.__all__,
     *models.__all__,
     *geospatial_models.__all__,
 )

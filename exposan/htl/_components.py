@@ -414,12 +414,29 @@ def create_components(set_thermo=True):
                      degradability='Undegradable', organic=False)
     
     UAN = Component('UAN', formula='CH6N4O4', phase='s', particle_size='Soluble',
-                     degradability='Slowly', organic=True)
+                    degradability='Slowly', organic=True)
     UAN.copy_models_from(Chemical('Urea'),('Cn',))
     # https://www.cfindustries.com/globalassets/cf-industries/media/documents/\
     # product-specification-sheets/uan---north-america/urea-ammonium-nitrate-solution-\
     # 28-30-32.pdf (accessed 2025-02-09)
     add_V_from_rho(UAN, 1300)
+    
+    # use the CAS number of acrylamide instead of polyacrylamide (not in database)
+    PAM = Component('PAM', search_ID='79-06-1', phase='s', particle_size='Soluble',
+                    degradability='Slowly', organic=True)
+    
+    # assume Sawdust have the same composition as Sludge_carbo (carbohydrate)
+    Sawdust = Component('Sawdust', phase='s',
+                        particle_size='Particulate',
+                        formula='C56H95O24N9P',
+                        degradability='Undegradable',
+                        organic=True)
+    add_V_from_rho(Sawdust, 1400)
+    Sawdust.HHV = 22.0*10**6*Sawdust.MW/1000
+    Sawdust.Cn.add_model(1.25*10**3*Sawdust.MW/1000)
+    Sawdust.mu.add_model(6000)
+    # made up value, so that HTL.ins[0].nu = 0.03 m2/s ~30000 cSt
+    # (NREL 2013 appendix B)
     
     cmps = Components([Sludge_lipid, Sludge_protein, Sludge_carbo, Sludge_ash,
                        Struvite, Hydrochar, Residual,
@@ -435,7 +452,7 @@ def create_components(set_thermo=True):
                        C17H36, C18H38, C19H40, C20H42, C21H44,
                        TRICOSANE, C24H38O4, C26H42O4, C30H62, Gasoline, Diesel,
                        CHG_catalyst, HT_catalyst, HC_catalyst, Membrane,
-                       DAP, MEA, Urea, HNO3, UAN])
+                       DAP, MEA, Urea, HNO3, UAN, PAM, Sawdust])
     
     for i in cmps:
         for attr in ('HHV', 'LHV', 'Hf'):

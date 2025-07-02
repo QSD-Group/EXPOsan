@@ -154,7 +154,7 @@ def create_test_system(size=10,
                                operating_hours=operation_hours)
     
     sys.simulate()
-        
+    
     GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
                                        method='TRACI',
                                        category='environmental impact',
