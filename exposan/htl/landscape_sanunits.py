@@ -88,7 +88,7 @@ __all__ = (
 
 class Storage(SanUnit):
     '''
-    Raw sludge storage in a lagoon, with the assumption that the solids mass and
+    Raw sludge long-term storage in a lagoon, with the assumption that the solids mass and
     moisture content does not change during this step.
     
     scope 1 emission: fugitive methane
@@ -103,10 +103,11 @@ class Storage(SanUnit):
         stored_sludge, fugitive_methane, vapor.
     BOD : float
         BOD of raw sludge, [mg/L].
-    SRT : float
-        solids retention time, [day].
+    HRT : float
+        hydraulic retention time, [day].
     aerated : bool
         aerated or anaerobic lagoon, [True, False].
+    # TODO: confirm unit_electricity is based on the volume of the lagoon
     unit_electricity : float
         electricity for aeration (if aerated), [kW/m3].
     percentage_above_15_C : float
@@ -118,12 +119,12 @@ class Storage(SanUnit):
     _N_outs = 3
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='WasteStream', BOD=15000, SRT=7,
+                 init_with='WasteStream', BOD=15000, HRT=100,
                  aerated=False, unit_electricity=0.0056,
                  percentage_above_15_C=0.5, lagoon_depth=3.5):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.BOD = BOD
-        self.SRT = SRT
+        self.HRT = HRT
         self.aerated = aerated
         self.unit_electricity = unit_electricity
         self.percentage_above_15_C = percentage_above_15_C
@@ -141,11 +142,6 @@ class Storage(SanUnit):
         
         if self.aerated:
             fugitive_methane.imass['CH4'] = 0
-            
-            # TODO: move this to _design
-            # TODO: need test since unit_electricity is assumed to be for m3 of lagoon, if the electricity usage is quite low compared to other units, then it is OK
-            # kW
-            self.add_power_utility(raw_sludge.F_vol*24*self.SRT*self.unit_electricity)
         else:
             if self.lagoon_depth <= 2:
                 # kg CH4/kg BOD
@@ -156,7 +152,12 @@ class Storage(SanUnit):
             fugitive_methane.imass['CH4'] = BOD_to_storage*self.CH4_EF*self.percentage_above_15_C/24
         
         stored_sludge.copy_like(raw_sludge)
-        
+    
+    def _design(self):
+        if self.aerated:
+            # kW
+            self.add_power_utility(self.ins[0].F_vol*24*self.HRT*self.unit_electricity)
+    
     @property
     def moisture(self):
         return self.outs[0].imass['H2O']/self.outs[0].F_mass
@@ -219,8 +220,6 @@ class Thickening(SanUnit):
         thickened_sludge.phase = 'l'
         reject.phase = 'l'
         
-        # breakpoint()
-        
         # dry tonne/h
         self.dry_solids = (input_sludge.F_mass - input_sludge.imass['H2O'])/1000
         
@@ -245,7 +244,7 @@ class Thickening(SanUnit):
         self.add_power_utility(self.dry_solids*self.unit_electricity)
     
     def _cost(self):
-        # this will add electricity consumption of pumps
+        # add electricity consumption of pumps
         for p in (self.effluent_pump, self.sludge_pump): p.simulate()
     
     @property
@@ -277,11 +276,14 @@ class AerobicDigestion(SanUnit):
         input_sludge.
     outs : iterable
         digested_sludge.
+    O2_requirement : float
+        O2 requirement for aerobic digestion, [kg O2/kg VS destroyed].
+        2.3 kg O2/kg VS destroyed, [1].
     VS_reduction : float
         volatile solids reduction after aerobic digestion, [-].
     HRT : float
         hydraulic retention time of aerbic digestion, [day].
-        14 days, [1].
+        14 days, [2].
     SRT : float
         solids retention time of aerobic digestion, [day].
     unit_electricity : float
@@ -297,7 +299,10 @@ class AerobicDigestion(SanUnit):
     
     References
     ----------
-    .. [1] Wang, Q.; Yuan, Z. Enhancing Aerobic Digestion of Full-Scale Waste
+    .. [1] Metcalf & Eddy, I. Wastewater Engineering : Treatment and Reuse;
+           Fifth edition / revised by George Tchobanoglous, Franklin L.
+           Burton, H. David Stensel. Boston : McGraw-Hill, 2014.
+    .. [2] Wang, Q.; Yuan, Z. Enhancing Aerobic Digestion of Full-Scale Waste
            Activated Sludge Using Free Nitrous Acid Pre-Treatment. RSC Adv.
            2015, 5 (25), 19128–19134. https://doi.org/10.1039/C4RA17215A.
     '''
@@ -354,12 +359,14 @@ class AerobicDigestion(SanUnit):
               'Pump stainless steel':'kg'}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='WasteStream', VS_reduction=0.475, HRT=14, SRT=40,
-                 # TODO: this includes aeration, but there is a separate blower
+                 init_with='WasteStream', O2_requirement=2.3,
+                 VS_reduction=0.475, HRT=14, SRT=40,
+                 # TODO: this includes aeration, but there is a separate blower (check electricity)
                  unit_electricity=0.03, depth=10, wall_concrete_unit_cost=24,
                  slab_concrete_unit_cost=13, excavation_unit_cost=0.3,
                  F_BM=default_F_BM, lifetime=default_equipment_lifetime):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        self.O2_requirement = O2_requirement
         self.VS_reduction = VS_reduction
         self.HRT = HRT
         self.SRT = SRT
@@ -392,8 +399,8 @@ class AerobicDigestion(SanUnit):
         # kg/h
         VS_destroyed = (input_sludge.F_mass - input_sludge.imass['H2O'])*self.VS_reduction
         
-        # TODO: write 2.3 as a parameter, the unit is kg O2/kg VSS
-        air.imass['O2'] = VS_destroyed*2.3
+        air.imass['O2'] = VS_destroyed*self.O2_requirement
+        # 23.2% O2 in air by weight, [1]
         air.imass['N2'] = air.imass['O2']/0.232*(1 - 0.232)
         
         digested_sludge.imass['H2O'] = input_sludge.imass['H2O']
@@ -407,7 +414,6 @@ class AerobicDigestion(SanUnit):
     
     def _design(self):
         D = self.design_results
-        sludge = self.ins[0]
         Q = self.ins[0].F_vol*24
         
         # dimensions
@@ -772,7 +778,6 @@ class AnaerobicDigestion(SanUnit):
     
     def _design(self):
         D = self.design_results
-        sludge = self.ins[0]
         Q = self.ins[0].F_vol*24
         
         # dimensions
@@ -787,11 +792,11 @@ class AnaerobicDigestion(SanUnit):
         T = self.T
         hx = self.heat_exchanger
         hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
-        hx_ins0.copy_flow(sludge)
-        hx_outs0.copy_flow(sludge)
-        hx_ins0.T = sludge.T
+        hx_ins0.copy_flow(self.ins[0])
+        hx_outs0.copy_flow(self.ins[0])
+        hx_ins0.T = self.ins[0].T
         hx_outs0.T = T
-        hx_ins0.P = hx_outs0.P = sludge.P
+        hx_ins0.P = hx_outs0.P = self.ins[0].P
         
         # heat loss
         coeff = self.heat_transfer_coefficient
