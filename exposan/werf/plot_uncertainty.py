@@ -209,7 +209,7 @@ def plot_opex_by_strength(stats=None, data=None, ID='F1'):
         spl = mis(x, y, k=k)
         return spl(_x)
     
-    fig, (tax, bax) = plt.subplots(2, 1, figsize=(6,12), sharex=True)
+    fig, (tax, bax) = plt.subplots(2, 1, figsize=(6,11), sharex=True)
     tax = sns.violinplot(
         data=data, x='Strength', y='OPEX', hue='HA', ax=tax,
         palette={0: o, 1: b}, bw_adjust=0.75, 
@@ -276,7 +276,7 @@ def plot_opex_by_strength(stats=None, data=None, ID='F1'):
                         fontname='Arial', fontsize=13, labelpad=0, linespacing=0.8)
         loc -= 0.25
 
-    fig.subplots_adjust(hspace=0, bottom=0.45, left=0.18)
+    fig.subplots_adjust(hspace=0, top=0.95, bottom=0.45, left=0.2)
     fig.savefig(ospath.join(figures_path, f'HA_{ID}_UA_by_strength.png'),
                 dpi=300, transparent=True)
     
