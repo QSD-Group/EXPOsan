@@ -103,7 +103,9 @@ def create_components(set_thermo=True):
 
     Hydrochar = Component('Hydrochar', phase='s', particle_size='Particulate',
                         degradability='Undegradable', organic=False)
-    add_V_from_rho(Hydrochar, 1500)  # assume 1500kg/m3
+    # TODO: check if this is correct
+    # assume a bulk density of 700 kg/m3; the density does not affect transportation (if any) which is based on weight
+    add_V_from_rho(Hydrochar, 700)
     Hydrochar.copy_models_from(Chemical('CaCO3'),('Cn',))
     
     Biocrude = Component('Biocrude', search_ID='629-54-9',
@@ -438,6 +440,13 @@ def create_components(set_thermo=True):
     # made up value, so that HTL.ins[0].nu = 0.03 m2/s ~30000 cSt
     # (NREL 2013 appendix B)
     
+    Biochar = Component('Biochar', phase='s', particle_size='Particulate',
+                        degradability='Undegradable', organic=False)
+    # TODO: check if this is correct
+    # assume a bulk density of 400 kg/m3; the density does not affect transportation (if any) which is based on weight
+    add_V_from_rho(Biochar, 400)
+    Biochar.copy_models_from(Chemical('CaCO3'),('Cn',))
+    
     cmps = Components([Sludge_lipid, Sludge_protein, Sludge_carbo, Sludge_ash,
                        Struvite, Hydrochar, Residual,
                        Biocrude, HTLaqueous, H2O, C, N, P,
@@ -452,7 +461,7 @@ def create_components(set_thermo=True):
                        C17H36, C18H38, C19H40, C20H42, C21H44,
                        TRICOSANE, C24H38O4, C26H42O4, C30H62, Gasoline, Diesel,
                        CHG_catalyst, HT_catalyst, HC_catalyst, Membrane,
-                       DAP, MEA, Urea, HNO3, UAN, PAM, Sawdust])
+                       DAP, MEA, Urea, HNO3, UAN, PAM, Sawdust, Biochar])
     
     for i in cmps:
         for attr in ('HHV', 'LHV', 'Hf'):
