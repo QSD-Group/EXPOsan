@@ -341,13 +341,85 @@ def compile_stats(ID='F1'):
         for k, v in quantiles.items():
             v.to_excel(writer, sheet_name=k)
     
+# %%
+def compile_stats_by_strength(ID='F1'):
+    q = [0, 0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 1]
+    sys, wws = load_system_with_upstream_uncertainty()
+    _low = wws['low'].copy('low_strength')
+    _high = wws['high'].copy('high_strength')
+    s = sys.flowsheet.stream
+    infs = []
+    for f in np.linspace(0,1,11):
+        _low.scale(1-f)
+        _high.scale(f)
+        s.RWW.mix_from([_low, _high])
+        infs.append([
+            f*100, s.RWW.COD, s.RWW.BOD, s.RWW.get_TSS(), 
+            s.RWW.TN, s.RWW.iconc['S_NH4'], 
+            s.RWW.TP, s.RWW.iconc['S_PO4']
+            ])
+        _low.copy_like(wws['low'])
+        _high.copy_like(wws['high'])
+    infs = pd.DataFrame(infs, columns=[
+        'Strength', 'COD', 'BOD', 'TSS', 'TN', 'NH4-N', 'TP', 'OP'
+        ])
+    infs.index = infs.Strength
+    infs.drop(columns='Strength', inplace=True)
     
+    bl_dfs = load_data(ospath.join(results_path, f'{ID}_UA.xlsx'), 
+                       header=[0,1], skiprows=[2,], sheet=None)
+    bl_opex = []
+    for f in np.linspace(0,1,11):
+        df = bl_dfs[f'{int(f*100)}']
+        bl_opex.append(df[('OPEX', 'Total OPEX [USD/d]')])
+    bl_opex = pd.DataFrame(bl_opex, index=infs.index).T
+    bl_qs = bl_opex.quantile(q=q).T
+    
+    qs = []
+    ms = []
+    dqs = []
+    dms = []
+    for f in np.linspace(0,1,11):
+        strength = f*100
+        dfs = load_data(ospath.join(results_path, f'HA_{ID}_UA-strength{int(strength)}.xlsx'), 
+                        header=[0,1], skiprows=[2,], sheet=None)
+        noha = bl_opex[strength].to_numpy()
+        means = []
+        dmeans = []
+        opex = []
+        dopex = []
+        for k, df in dfs.items():
+            col = df[('OPEX', 'Total OPEX [USD/d]')]
+            opex.append(col.to_numpy())
+            dopex.append((noha-col).to_numpy())
+            means.append(col.mean())
+            dmeans.append((noha-col).mean())
+        qs.append(np.quantile(opex, q))
+        dqs.append(np.quantile(dopex, q))
+        ms.append(means)
+        dms.append(dmeans)
+    
+    qs = pd.DataFrame(qs, columns=q, index=infs.index)
+    dqs = pd.DataFrame(dqs, columns=q, index=infs.index)
+    ms = pd.DataFrame(ms, columns=[float(k) for k in dfs.keys()], index=infs.index)
+    dms = pd.DataFrame(dms, columns=[float(k) for k in dfs.keys()], index=infs.index)
+
+    out = pd.concat(
+        [infs, bl_qs, qs, ms, dqs, dms], axis=1, keys=[
+            'Influent', 'OPEX_quantiles_noHA', 
+            'OPEX_quantiles', 'OPEX_mean_by_frmv', 
+            'dOPEX_quantiles', 'dOPEX_mean_by_frmv']
+        )
+    out.to_excel(ospath.join(results_path, f'HA_{ID}_UA_opex_stats_by_strength.xlsx'))
+    return out
+
 # %%
 
 if __name__ == '__main__':
-    smp = load_data(ospath.join(results_path, 'HA_F1_UA-low.xlsx'), header=[0,1], skiprows=[2,])
-    smp = smp.iloc[:,:5].to_numpy()
+    # smp = load_data(ospath.join(results_path, 'HA_F1_UA-low.xlsx'), header=[0,1], skiprows=[2,])
+    # smp = smp.iloc[:,:5].to_numpy()
     # smp = run_model(seed=104)
     # smp = run_model(samples=smp, interval=(0.1, 0.9), n_strength=9)
-    run_model_with_HA(samples=smp, interval=(0.1, 0.9), n_strength=9)
+    # run_model_with_HA(samples=smp, interval=(0.1, 0.9), n_strength=9)
     # compile_stats()
+    out = compile_stats_by_strength()
