@@ -136,7 +136,7 @@ def update_resource_recovery_settings():
     RR_factor = int(bool(INCLUDED_RESOURCE_RECOVERY)) # RR_factor = 1 if resource recovery is included
     
     price_dct = {
-        'Electricity': 0.13,
+        'Electricity': 0.162,   #$/kwh U.S. avg
         'Concrete': 194*price_ratio,
         'Steel': 2.665*price_ratio,
         'biochar': 0,  # 0.014*price_ratio,  # assuming value of biochar is 0 for TEA - HACL
