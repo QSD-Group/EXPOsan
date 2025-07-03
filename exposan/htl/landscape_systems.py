@@ -14,8 +14,10 @@ for license details.
 
 import qsdsan as qs, biosteam as bst
 from qsdsan import sanunits as qsu
+from biosteam import settings
 from qsdsan.utils import auom, clear_lca_registries
-from exposan.htl import _load_components, _sanunits as su, landscape_sanunits as lsu, create_tea
+from exposan.htl import _load_components, landscape_sanunits as lsu, create_tea
+from biosteam.units import IsenthalpicValve
 
 _mile_to_km = auom('mile').conversion_factor('km')
 _ton_to_tonne = auom('ton').conversion_factor('tonne')
@@ -41,9 +43,13 @@ GDPCTPI = {1978: 33.339,
            2021: 110.220,
            2022: 117.995,
            2023: 122.284}
+
+# TODO: no HXN in the system
+
 # TODO: different systems should have different labor costs (and others?)
 
-# TODO: address all warnings
+# TODO: address all warnings (especially in T pathways)
+
 __all__ = (
     'create_C1_system',
     'create_C2_system',
@@ -70,17 +76,17 @@ __all__ = (
     'create_C23_system',
     'create_C24_system',
     'create_C25_system',
-    # 'create_T1_system',
+    'create_T1_system',
     # 'create_T2_system',
     # 'create_T3_system',
     # 'create_T4_system',
     # 'create_T5_system',
-    # 'create_T6_system',
+    'create_T6_system',
     # 'create_T7_system',
     # 'create_T8_system',
     # 'create_T9_system',
     # 'create_T10_system',
-    # 'create_T11_system',
+    'create_T11_system',
     # 'create_T12_system',
     # 'create_T13_system',
     # 'create_T14_system',
@@ -109,7 +115,7 @@ def create_C1_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
     # raw wastewater into a WRRF, in MGD
     raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
 
-    WWTP = su.WWTP(ID='WWTP',
+    WRRF = lsu.WRRF(ID='WRRF',
                    ins=raw_wastewater,
                    outs=('sludge','treated_water'),
                    ww_2_dry_sludge=ww_2_dry_sludge_ratio,
@@ -120,7 +126,7 @@ def create_C1_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
                    sludge_wet_density=1040)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
-    Thickening = lsu.Thickening(ID='Thickening', ins=(WWTP-0, 'polymer_thickening'),
+    Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'))
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
@@ -161,7 +167,7 @@ def create_C2_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
     # raw wastewater into a WRRF, in MGD
     raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
 
-    WWTP = su.WWTP(ID='WWTP',
+    WRRF = lsu.WRRF(ID='WRRF',
                    ins=raw_wastewater,
                    outs=('sludge','treated_water'),
                    ww_2_dry_sludge=ww_2_dry_sludge_ratio,
@@ -172,7 +178,7 @@ def create_C2_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
                    sludge_wet_density=1040)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
-    Thickening = lsu.Thickening(ID='Thickening', ins=(WWTP-0, 'polymer_thickening'),
+    Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'))
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
@@ -218,7 +224,7 @@ def create_C3_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
     # raw wastewater into a WRRF, in MGD
     raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
 
-    WWTP = su.WWTP(ID='WWTP',
+    WRRF = lsu.WRRF(ID='WRRF',
                    ins=raw_wastewater,
                    outs=('sludge','treated_water'),
                    ww_2_dry_sludge=ww_2_dry_sludge_ratio,
@@ -229,7 +235,7 @@ def create_C3_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
                    sludge_wet_density=1040)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
-    Thickening = lsu.Thickening(ID='Thickening', ins=(WWTP-0, 'polymer_thickening'),
+    Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'))
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
@@ -274,7 +280,7 @@ def create_C4_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
     # raw wastewater into a WRRF, in MGD
     raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
 
-    WWTP = su.WWTP(ID='WWTP',
+    WRRF = lsu.WRRF(ID='WRRF',
                    ins=raw_wastewater,
                    outs=('sludge','treated_water'),
                    ww_2_dry_sludge=ww_2_dry_sludge_ratio,
@@ -285,7 +291,7 @@ def create_C4_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
                    sludge_wet_density=1040)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
-    Thickening = lsu.Thickening(ID='Thickening', ins=(WWTP-0, 'polymer_thickening'),
+    Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'))
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
@@ -326,7 +332,7 @@ def create_C5_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
     # raw wastewater into a WRRF, in MGD
     raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
 
-    WWTP = su.WWTP(ID='WWTP',
+    WRRF = lsu.WRRF(ID='WRRF',
                    ins=raw_wastewater,
                    outs=('sludge','treated_water'),
                    ww_2_dry_sludge=ww_2_dry_sludge_ratio,
@@ -337,7 +343,7 @@ def create_C5_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
                    sludge_wet_density=1040)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
-    Thickening = lsu.Thickening(ID='Thickening', ins=(WWTP-0, 'polymer_thickening'),
+    Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'))
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
@@ -381,7 +387,7 @@ def create_C6_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
     # raw wastewater into a WRRF, in MGD
     raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
 
-    WWTP = su.WWTP(ID='WWTP',
+    WRRF = lsu.WRRF(ID='WRRF',
                    ins=raw_wastewater,
                    outs=('sludge','treated_water'),
                    ww_2_dry_sludge=ww_2_dry_sludge_ratio,
@@ -392,7 +398,7 @@ def create_C6_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
                    sludge_wet_density=1040)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
-    Thickening = lsu.Thickening(ID='Thickening', ins=(WWTP-0, 'polymer_thickening'),
+    Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'))
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
@@ -436,7 +442,7 @@ def create_C7_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
     # raw wastewater into a WRRF, in MGD
     raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
 
-    WWTP = su.WWTP(ID='WWTP',
+    WRRF = lsu.WRRF(ID='WRRF',
                    ins=raw_wastewater,
                    outs=('sludge','treated_water'),
                    ww_2_dry_sludge=ww_2_dry_sludge_ratio,
@@ -447,7 +453,7 @@ def create_C7_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
                    sludge_wet_density=1040)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
-    Thickening = lsu.Thickening(ID='Thickening', ins=(WWTP-0, 'polymer_thickening'),
+    Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'))
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
@@ -491,7 +497,7 @@ def create_C8_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
     # raw wastewater into a WRRF, in MGD
     raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
 
-    WWTP = su.WWTP(ID='WWTP',
+    WRRF = lsu.WRRF(ID='WRRF',
                    ins=raw_wastewater,
                    outs=('sludge','treated_water'),
                    ww_2_dry_sludge=ww_2_dry_sludge_ratio,
@@ -502,7 +508,7 @@ def create_C8_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
                    sludge_wet_density=1040)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
-    Thickening = lsu.Thickening(ID='Thickening', ins=(WWTP-0, 'polymer_thickening'),
+    Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'))
     
     AerobicDigestion = lsu.AerobicDigestion(ID='AerobicDigestion', ins=(Thickening-0, 'air'),
@@ -546,7 +552,7 @@ def create_C9_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
     # raw wastewater into a WRRF, in MGD
     raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
 
-    WWTP = su.WWTP(ID='WWTP',
+    WRRF = lsu.WRRF(ID='WRRF',
                    ins=raw_wastewater,
                    outs=('sludge','treated_water'),
                    ww_2_dry_sludge=ww_2_dry_sludge_ratio,
@@ -557,7 +563,7 @@ def create_C9_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
                    sludge_wet_density=1040)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
-    Thickening = lsu.Thickening(ID='Thickening', ins=(WWTP-0, 'polymer_thickening'),
+    Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'))
     
     AerobicDigestion = lsu.AerobicDigestion(ID='AerobicDigestion', ins=(Thickening-0, 'air'),
@@ -601,7 +607,7 @@ def create_C10_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
     # raw wastewater into a WRRF, in MGD
     raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
 
-    WWTP = su.WWTP(ID='WWTP',
+    WRRF = lsu.WRRF(ID='WRRF',
                    ins=raw_wastewater,
                    outs=('sludge','treated_water'),
                    ww_2_dry_sludge=ww_2_dry_sludge_ratio,
@@ -612,7 +618,7 @@ def create_C10_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
                    sludge_wet_density=1040)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
-    Thickening = lsu.Thickening(ID='Thickening', ins=(WWTP-0, 'polymer_thickening'),
+    Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'))
     
     AerobicDigestion = lsu.AerobicDigestion(ID='AerobicDigestion', ins=(Thickening-0, 'air'),
@@ -656,7 +662,7 @@ def create_C11_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
     # raw wastewater into a WRRF, in MGD
     raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
 
-    WWTP = su.WWTP(ID='WWTP',
+    WRRF = lsu.WRRF(ID='WRRF',
                    ins=raw_wastewater,
                    outs=('sludge','treated_water'),
                    ww_2_dry_sludge=ww_2_dry_sludge_ratio,
@@ -667,7 +673,7 @@ def create_C11_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
                    sludge_wet_density=1040)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
-    Thickening = lsu.Thickening(ID='Thickening', ins=(WWTP-0, 'polymer_thickening'),
+    Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'))
     
     AerobicDigestion = lsu.AerobicDigestion(ID='AerobicDigestion', ins=(Thickening-0, 'air'),
@@ -714,7 +720,7 @@ def create_C12_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
     # raw wastewater into a WRRF, in MGD
     raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
 
-    WWTP = su.WWTP(ID='WWTP',
+    WRRF = lsu.WRRF(ID='WRRF',
                    ins=raw_wastewater,
                    outs=('sludge','treated_water'),
                    ww_2_dry_sludge=ww_2_dry_sludge_ratio,
@@ -725,7 +731,7 @@ def create_C12_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
                    sludge_wet_density=1040)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
-    Thickening = lsu.Thickening(ID='Thickening', ins=(WWTP-0, 'polymer_thickening'),
+    Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'))
     
     AerobicDigestion = lsu.AerobicDigestion(ID='AerobicDigestion', ins=(Thickening-0, 'air'),
@@ -772,7 +778,7 @@ def create_C13_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
     # raw wastewater into a WRRF, in MGD
     raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
 
-    WWTP = su.WWTP(ID='WWTP',
+    WRRF = lsu.WRRF(ID='WRRF',
                    ins=raw_wastewater,
                    outs=('sludge','treated_water'),
                    ww_2_dry_sludge=ww_2_dry_sludge_ratio,
@@ -783,7 +789,7 @@ def create_C13_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
                    sludge_wet_density=1040)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
-    Thickening = lsu.Thickening(ID='Thickening', ins=(WWTP-0, 'polymer_thickening'),
+    Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'))
     
     AerobicDigestion = lsu.AerobicDigestion(ID='AerobicDigestion', ins=(Thickening-0, 'air'),
@@ -830,7 +836,7 @@ def create_C14_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
     # raw wastewater into a WRRF, in MGD
     raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
 
-    WWTP = su.WWTP(ID='WWTP',
+    WRRF = lsu.WRRF(ID='WRRF',
                    ins=raw_wastewater,
                    outs=('sludge','treated_water'),
                    ww_2_dry_sludge=ww_2_dry_sludge_ratio,
@@ -841,7 +847,7 @@ def create_C14_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
                    sludge_wet_density=1040)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
-    Thickening = lsu.Thickening(ID='Thickening', ins=(WWTP-0, 'polymer_thickening'),
+    Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'))
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
@@ -885,7 +891,7 @@ def create_C15_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
     # raw wastewater into a WRRF, in MGD
     raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
 
-    WWTP = su.WWTP(ID='WWTP',
+    WRRF = lsu.WRRF(ID='WRRF',
                    ins=raw_wastewater,
                    outs=('sludge','treated_water'),
                    ww_2_dry_sludge=ww_2_dry_sludge_ratio,
@@ -896,7 +902,7 @@ def create_C15_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
                    sludge_wet_density=1040)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
-    Thickening = lsu.Thickening(ID='Thickening', ins=(WWTP-0, 'polymer_thickening'),
+    Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'))
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
@@ -940,7 +946,7 @@ def create_C16_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
     # raw wastewater into a WRRF, in MGD
     raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
 
-    WWTP = su.WWTP(ID='WWTP',
+    WRRF = lsu.WRRF(ID='WRRF',
                    ins=raw_wastewater,
                    outs=('sludge','treated_water'),
                    ww_2_dry_sludge=ww_2_dry_sludge_ratio,
@@ -951,7 +957,7 @@ def create_C16_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
                    sludge_wet_density=1040)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
-    Thickening = lsu.Thickening(ID='Thickening', ins=(WWTP-0, 'polymer_thickening'),
+    Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'))
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
@@ -995,7 +1001,7 @@ def create_C17_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
     # raw wastewater into a WRRF, in MGD
     raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
 
-    WWTP = su.WWTP(ID='WWTP',
+    WRRF = lsu.WRRF(ID='WRRF',
                    ins=raw_wastewater,
                    outs=('sludge','treated_water'),
                    ww_2_dry_sludge=ww_2_dry_sludge_ratio,
@@ -1006,7 +1012,7 @@ def create_C17_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
                    sludge_wet_density=1040)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
-    Thickening = lsu.Thickening(ID='Thickening', ins=(WWTP-0, 'polymer_thickening'),
+    Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'))
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
@@ -1053,7 +1059,7 @@ def create_C18_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
     # raw wastewater into a WRRF, in MGD
     raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
 
-    WWTP = su.WWTP(ID='WWTP',
+    WRRF = lsu.WRRF(ID='WRRF',
                    ins=raw_wastewater,
                    outs=('sludge','treated_water'),
                    ww_2_dry_sludge=ww_2_dry_sludge_ratio,
@@ -1064,7 +1070,7 @@ def create_C18_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
                    sludge_wet_density=1040)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
-    Thickening = lsu.Thickening(ID='Thickening', ins=(WWTP-0, 'polymer_thickening'),
+    Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'))
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
@@ -1111,7 +1117,7 @@ def create_C19_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
     # raw wastewater into a WRRF, in MGD
     raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
 
-    WWTP = su.WWTP(ID='WWTP',
+    WRRF = lsu.WRRF(ID='WRRF',
                    ins=raw_wastewater,
                    outs=('sludge','treated_water'),
                    ww_2_dry_sludge=ww_2_dry_sludge_ratio,
@@ -1122,7 +1128,7 @@ def create_C19_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
                    sludge_wet_density=1040)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
-    Thickening = lsu.Thickening(ID='Thickening', ins=(WWTP-0, 'polymer_thickening'),
+    Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'))
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
@@ -1169,7 +1175,7 @@ def create_C20_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
     # raw wastewater into a WRRF, in MGD
     raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
 
-    WWTP = su.WWTP(ID='WWTP',
+    WRRF = lsu.WRRF(ID='WRRF',
                    ins=raw_wastewater,
                    outs=('sludge','treated_water'),
                    ww_2_dry_sludge=ww_2_dry_sludge_ratio,
@@ -1180,7 +1186,7 @@ def create_C20_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
                    sludge_wet_density=1040)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
-    Thickening = lsu.Thickening(ID='Thickening', ins=(WWTP-0, 'polymer_thickening'),
+    Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'))
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
@@ -1228,7 +1234,7 @@ def create_C21_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
     # raw wastewater into a WRRF, in MGD
     raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
 
-    WWTP = su.WWTP(ID='WWTP',
+    WRRF = lsu.WRRF(ID='WRRF',
                    ins=raw_wastewater,
                    outs=('sludge','treated_water'),
                    ww_2_dry_sludge=ww_2_dry_sludge_ratio,
@@ -1239,7 +1245,7 @@ def create_C21_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
                    sludge_wet_density=1040)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
-    Thickening = lsu.Thickening(ID='Thickening', ins=(WWTP-0, 'polymer_thickening'),
+    Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'))
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
@@ -1288,7 +1294,7 @@ def create_C22_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
     # raw wastewater into a WRRF, in MGD
     raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
 
-    WWTP = su.WWTP(ID='WWTP',
+    WRRF = lsu.WRRF(ID='WRRF',
                    ins=raw_wastewater,
                    outs=('sludge','treated_water'),
                    ww_2_dry_sludge=ww_2_dry_sludge_ratio,
@@ -1299,7 +1305,7 @@ def create_C22_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
                    sludge_wet_density=1040)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
-    Thickening = lsu.Thickening(ID='Thickening', ins=(WWTP-0, 'polymer_thickening'),
+    Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'))
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
@@ -1348,7 +1354,7 @@ def create_C23_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
     # raw wastewater into a WRRF, in MGD
     raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
 
-    WWTP = su.WWTP(ID='WWTP',
+    WRRF = lsu.WRRF(ID='WRRF',
                    ins=raw_wastewater,
                    outs=('sludge','treated_water'),
                    ww_2_dry_sludge=ww_2_dry_sludge_ratio,
@@ -1359,7 +1365,7 @@ def create_C23_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
                    sludge_wet_density=1040)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
-    Thickening = lsu.Thickening(ID='Thickening', ins=(WWTP-0, 'polymer_thickening'),
+    Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'))
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
@@ -1411,7 +1417,7 @@ def create_C24_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
     # raw wastewater into a WRRF, in MGD
     raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
 
-    WWTP = su.WWTP(ID='WWTP',
+    WRRF = lsu.WRRF(ID='WRRF',
                    ins=raw_wastewater,
                    outs=('sludge','treated_water'),
                    ww_2_dry_sludge=ww_2_dry_sludge_ratio,
@@ -1422,7 +1428,7 @@ def create_C24_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
                    sludge_wet_density=1040)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
-    Thickening = lsu.Thickening(ID='Thickening', ins=(WWTP-0, 'polymer_thickening'),
+    Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'))
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
@@ -1474,7 +1480,7 @@ def create_C25_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
     # raw wastewater into a WRRF, in MGD
     raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
 
-    WWTP = su.WWTP(ID='WWTP',
+    WRRF = lsu.WRRF(ID='WRRF',
                    ins=raw_wastewater,
                    outs=('sludge','treated_water'),
                    ww_2_dry_sludge=ww_2_dry_sludge_ratio,
@@ -1485,7 +1491,7 @@ def create_C25_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
                    sludge_wet_density=1040)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
-    Thickening = lsu.Thickening(ID='Thickening', ins=(WWTP-0, 'polymer_thickening'),
+    Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'))
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
@@ -1506,6 +1512,306 @@ def create_C25_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
                                 ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air'),
                                 outs=('emission','solid_ash'), init_with='WasteStream',
                                 supplement_power_utility=False)
+    
+    sys = qs.System.from_units(ID='sys_test',
+                               units=list(flowsheet.unit),
+                               operating_hours=operation_hours)
+    
+    sys.simulate()
+    
+    return sys
+
+#%% system T1
+
+def create_T1_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
+                     solids_distance=100):
+    flowsheet_ID = 'T1'
+    
+    # clear flowsheet and registry for reloading
+    if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
+        getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
+        clear_lca_registries()
+    
+    bst.CE = qs.CEPCI_by_year[2022]
+    
+    flowsheet = qs.Flowsheet(flowsheet_ID)
+    stream = flowsheet.stream
+    qs.main_flowsheet.set_flowsheet(flowsheet)
+    
+    _load_components()
+    
+    # raw wastewater into a WRRF, in MGD
+    raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
+
+    WRRF = lsu.WRRF(ID='WRRF',
+                   ins=raw_wastewater,
+                   outs=('sludge','treated_water'),
+                   ww_2_dry_sludge=ww_2_dry_sludge_ratio,
+                   sludge_moisture=0.99,
+                   sludge_dw_ash=0.436,
+                   sludge_afdw_lipid=0.193,
+                   sludge_afdw_protein=0.510,
+                   sludge_wet_density=1040)
+    
+    # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
+    Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
+                                outs=('thickened_sludge','reject_thickening'))
+    
+    # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
+    Dewatering = lsu.Dewatering(ID='Dewatering', ins=(Thickening-0, 'polymer_dewatering'),
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+    
+    HTL = lsu.HydrothermalLiquefaction(ID='HTL', ins=Dewatering-0,
+                                       outs=('hydrochar','HTLaqueous','biocrude','offgas'))
+    
+    H2SO4_Tank = qsu.StorageTank(ID='H2SO4_Tank', ins='H2SO4', outs=('H2SO4_out'),
+                                 init_with='WasteStream', tau=24, vessel_material='Stainless steel')
+    # 0.5 M H2SO4: ~5%
+    H2SO4_Tank.ins[0].price = 0.00658 # based on 93% H2SO4 and fresh water (dilute to 5%) price found in Davis 2020$/kg
+    
+
+    SP1 = qsu.ReversedSplitter(ID='SP1', ins=H2SO4_Tank-0, outs=('H2SO4_P','H2SO4_N'),
+                               init_with='Stream')
+    # must put after AcidEx and MemDis in path during simulation to ensure input
+    # not empty
+    
+    AcidEx = lsu.AcidExtraction(ID='AcidEx', ins=(HTL-0, SP1-0),
+                               outs=('residual','extracted'))
+    # AcidEx.outs[0].price = -0.055 # SS 2021 SOT PNNL report page 24 Table 9
+    # not include residual for TEA and LCA for now
+    
+    M1_outs1 = AcidEx.outs[1]
+    M1 = lsu.HTLmixer(ID='M1', ins=(HTL-1, M1_outs1), outs=('mixture',))
+    
+    StruPre = lsu.StruvitePrecipitation(ID='StruPre', ins=(M1-0,'MgCl2','NH4Cl','MgO'),
+                                        outs=('struvite','CHG_feed'))
+    StruPre.ins[1].price = 0.5452
+    StruPre.ins[2].price = 0.13
+    StruPre.ins[3].price = 0.2
+    StruPre.outs[0].price = 0.661
+    
+    CHG = qsu.CatalyticHydrothermalGasification(ID='CHG', ins=(StruPre-1, '7.8%_Ru/C'),
+                                                outs=('CHG_out','7.8%_Ru/C_out'))
+    CHG.ins[1].price = 134.53
+    
+    V1 = IsenthalpicValve(ID='V1', ins=CHG-0, outs='depressed_cooled_CHG', P=50*6894.76, vle=True)
+    
+    F1 = qsu.Flash(ID='F1', ins=V1-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
+                   T=60+273.15, P=50*6894.76, thermo=settings.thermo.ideal())
+    F1.include_construction = True
+    
+    MemDis = qsu.MembraneDistillation(ID='MemDis', ins=(F1-1, SP1-1, 'NaOH', 'Membrane_in'),
+                                      outs=('ammonium_sulfate','MemDis_ww','Membrane_out','solution'))
+    MemDis.ins[2].price = 0.5256
+    # from Al-Obaidani et al. Potential of Membrane Distillation in Seawater Desalination:
+    # Thermal Efficiency, Sensitivity Study and Cost Estimation.
+    # Journal of Membrane Science 2008, 323 (1), 85–98.
+    # https://doi.org/10.1016/j.memsci.2008.06.006: $90/m2 (likely 2008$)
+    MemDis.ins[3].price = 90/GDPCTPI[2008]*GDPCTPI[2020]
+    MemDis.outs[0].price = 0.3236
+    MemDis.include_construction = True
+    
+    sys = qs.System.from_units(ID='sys_test',
+                               units=list(flowsheet.unit),
+                               operating_hours=operation_hours)
+    
+    sys.simulate()
+    
+    return sys
+
+#%% system T6
+
+def create_T6_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
+                     solids_distance=100):
+    flowsheet_ID = 'T6'
+    
+    # clear flowsheet and registry for reloading
+    if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
+        getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
+        clear_lca_registries()
+    
+    bst.CE = qs.CEPCI_by_year[2022]
+    
+    flowsheet = qs.Flowsheet(flowsheet_ID)
+    stream = flowsheet.stream
+    qs.main_flowsheet.set_flowsheet(flowsheet)
+    
+    _load_components()
+    
+    # raw wastewater into a WRRF, in MGD
+    raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
+
+    WRRF = lsu.WRRF(ID='WRRF',
+                   ins=raw_wastewater,
+                   outs=('sludge','treated_water'),
+                   ww_2_dry_sludge=ww_2_dry_sludge_ratio,
+                   sludge_moisture=0.99,
+                   sludge_dw_ash=0.436,
+                   sludge_afdw_lipid=0.193,
+                   sludge_afdw_protein=0.510,
+                   sludge_wet_density=1040)
+    
+    # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
+    Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
+                                outs=('thickened_sludge','reject_thickening'))
+    
+    AerobicDigestion = lsu.AerobicDigestion(ID='AerobicDigestion', ins=(Thickening-0, 'air'),
+                                            outs=('digested_sludge','offgas'))
+    
+    # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
+    Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AerobicDigestion-0, 'polymer_dewatering'),
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+    
+    HTL = lsu.HydrothermalLiquefaction(ID='HTL', ins=Dewatering-0,
+                                       outs=('hydrochar','HTLaqueous','biocrude','offgas'))
+    
+    H2SO4_Tank = qsu.StorageTank(ID='H2SO4_Tank', ins='H2SO4', outs=('H2SO4_out'),
+                                 init_with='WasteStream', tau=24, vessel_material='Stainless steel')
+    # 0.5 M H2SO4: ~5%
+    H2SO4_Tank.ins[0].price = 0.00658 # based on 93% H2SO4 and fresh water (dilute to 5%) price found in Davis 2020$/kg
+    
+
+    SP1 = qsu.ReversedSplitter(ID='SP1', ins=H2SO4_Tank-0, outs=('H2SO4_P','H2SO4_N'),
+                               init_with='Stream')
+    # must put after AcidEx and MemDis in path during simulation to ensure input
+    # not empty
+    
+    AcidEx = lsu.AcidExtraction(ID='AcidEx', ins=(HTL-0, SP1-0),
+                               outs=('residual','extracted'))
+    # AcidEx.outs[0].price = -0.055 # SS 2021 SOT PNNL report page 24 Table 9
+    # not include residual for TEA and LCA for now
+    
+    M1_outs1 = AcidEx.outs[1]
+    M1 = lsu.HTLmixer(ID='M1', ins=(HTL-1, M1_outs1), outs=('mixture',))
+    
+    StruPre = lsu.StruvitePrecipitation(ID='StruPre', ins=(M1-0,'MgCl2','NH4Cl','MgO'),
+                                        outs=('struvite','CHG_feed'))
+    StruPre.ins[1].price = 0.5452
+    StruPre.ins[2].price = 0.13
+    StruPre.ins[3].price = 0.2
+    StruPre.outs[0].price = 0.661
+    
+    CHG = qsu.CatalyticHydrothermalGasification(ID='CHG', ins=(StruPre-1, '7.8%_Ru/C'),
+                                                outs=('CHG_out','7.8%_Ru/C_out'))
+    CHG.ins[1].price = 134.53
+    
+    V1 = IsenthalpicValve(ID='V1', ins=CHG-0, outs='depressed_cooled_CHG', P=50*6894.76, vle=True)
+    
+    F1 = qsu.Flash(ID='F1', ins=V1-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
+                   T=60+273.15, P=50*6894.76, thermo=settings.thermo.ideal())
+    F1.include_construction = True
+    
+    MemDis = qsu.MembraneDistillation(ID='MemDis', ins=(F1-1, SP1-1, 'NaOH', 'Membrane_in'),
+                                      outs=('ammonium_sulfate','MemDis_ww','Membrane_out','solution'))
+    MemDis.ins[2].price = 0.5256
+    # from Al-Obaidani et al. Potential of Membrane Distillation in Seawater Desalination:
+    # Thermal Efficiency, Sensitivity Study and Cost Estimation.
+    # Journal of Membrane Science 2008, 323 (1), 85–98.
+    # https://doi.org/10.1016/j.memsci.2008.06.006: $90/m2 (likely 2008$)
+    MemDis.ins[3].price = 90/GDPCTPI[2008]*GDPCTPI[2020]
+    MemDis.outs[0].price = 0.3236
+    MemDis.include_construction = True
+    
+    sys = qs.System.from_units(ID='sys_test',
+                               units=list(flowsheet.unit),
+                               operating_hours=operation_hours)
+    
+    sys.simulate()
+    
+    return sys
+
+#%% system T11
+
+def create_T11_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
+                      solids_distance=100):
+    flowsheet_ID = 'T11'
+    
+    # clear flowsheet and registry for reloading
+    if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
+        getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
+        clear_lca_registries()
+    
+    bst.CE = qs.CEPCI_by_year[2022]
+    
+    flowsheet = qs.Flowsheet(flowsheet_ID)
+    stream = flowsheet.stream
+    qs.main_flowsheet.set_flowsheet(flowsheet)
+    
+    _load_components()
+    
+    # raw wastewater into a WRRF, in MGD
+    raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
+
+    WRRF = lsu.WRRF(ID='WRRF',
+                   ins=raw_wastewater,
+                   outs=('sludge','treated_water'),
+                   ww_2_dry_sludge=ww_2_dry_sludge_ratio,
+                   sludge_moisture=0.99,
+                   sludge_dw_ash=0.436,
+                   sludge_afdw_lipid=0.193,
+                   sludge_afdw_protein=0.510,
+                   sludge_wet_density=1040)
+    
+    # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
+    Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
+                                outs=('thickened_sludge','reject_thickening'))
+    
+    AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
+                                                outs=('digested_sludge','natural_gas','fugitive_methane_AD'))
+    
+    # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
+    Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AnaerobicDigestion-0, 'polymer_dewatering'),
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+    
+    HTL = lsu.HydrothermalLiquefaction(ID='HTL', ins=Dewatering-0,
+                                       outs=('hydrochar','HTLaqueous','biocrude','offgas'))
+    
+    H2SO4_Tank = qsu.StorageTank(ID='H2SO4_Tank', ins='H2SO4', outs=('H2SO4_out'),
+                                 init_with='WasteStream', tau=24, vessel_material='Stainless steel')
+    # 0.5 M H2SO4: ~5%
+    H2SO4_Tank.ins[0].price = 0.00658 # based on 93% H2SO4 and fresh water (dilute to 5%) price found in Davis 2020$/kg
+    
+
+    SP1 = qsu.ReversedSplitter(ID='SP1', ins=H2SO4_Tank-0, outs=('H2SO4_P','H2SO4_N'),
+                               init_with='Stream')
+    # must put after AcidEx and MemDis in path during simulation to ensure input
+    # not empty
+    
+    AcidEx = lsu.AcidExtraction(ID='AcidEx', ins=(HTL-0, SP1-0),
+                               outs=('residual','extracted'))
+    # AcidEx.outs[0].price = -0.055 # SS 2021 SOT PNNL report page 24 Table 9
+    # not include residual for TEA and LCA for now
+    
+    M1_outs1 = AcidEx.outs[1]
+    M1 = lsu.HTLmixer(ID='M1', ins=(HTL-1, M1_outs1), outs=('mixture',))
+    
+    StruPre = lsu.StruvitePrecipitation(ID='StruPre', ins=(M1-0,'MgCl2','NH4Cl','MgO'),
+                                        outs=('struvite','CHG_feed'))
+    StruPre.ins[1].price = 0.5452
+    StruPre.ins[2].price = 0.13
+    StruPre.ins[3].price = 0.2
+    StruPre.outs[0].price = 0.661
+    
+    CHG = qsu.CatalyticHydrothermalGasification(ID='CHG', ins=(StruPre-1, '7.8%_Ru/C'),
+                                                outs=('CHG_out','7.8%_Ru/C_out'))
+    CHG.ins[1].price = 134.53
+    
+    V1 = IsenthalpicValve(ID='V1', ins=CHG-0, outs='depressed_cooled_CHG', P=50*6894.76, vle=True)
+    
+    F1 = qsu.Flash(ID='F1', ins=V1-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
+                   T=60+273.15, P=50*6894.76, thermo=settings.thermo.ideal())
+    F1.include_construction = True
+    
+    MemDis = qsu.MembraneDistillation(ID='MemDis', ins=(F1-1, SP1-1, 'NaOH', 'Membrane_in'),
+                                      outs=('ammonium_sulfate','MemDis_ww','Membrane_out','solution'))
+    MemDis.ins[2].price = 0.5256
+    # from Al-Obaidani et al. Potential of Membrane Distillation in Seawater Desalination:
+    # Thermal Efficiency, Sensitivity Study and Cost Estimation.
+    # Journal of Membrane Science 2008, 323 (1), 85–98.
+    # https://doi.org/10.1016/j.memsci.2008.06.006: $90/m2 (likely 2008$)
+    MemDis.ins[3].price = 90/GDPCTPI[2008]*GDPCTPI[2020]
+    MemDis.outs[0].price = 0.3236
+    MemDis.include_construction = True
     
     sys = qs.System.from_units(ID='sys_test',
                                units=list(flowsheet.unit),
