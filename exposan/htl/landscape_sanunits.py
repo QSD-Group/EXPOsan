@@ -2309,21 +2309,21 @@ __all__ = (
 # HydrothermalLiquefaction
 # =============================================================================
 
-# TODO: use @cost, delete use_decorated_cost since it will be True, and add @cost for CHG
-# TODO: then, Reactor and F_M are not be meaning since no actual design is needed
-# TODO: do not need KnockOutDrum either
-
-# original [4] is 1339 dry-ash free ton per day (tpd), ash content is 13%,
-# which is 58176 wet lb/h, scaling basis in the equipment table in [4]
+# TODO: check this note
+# original [1] is 1339 dry-ash free ton per day (tpd), ash content is 13%,
+# which is 58176 wet lb/h, scaling basis in the equipment table in [1]
 # (flow for S100) does not seem right
+# TODO: check data with [1]
+# TODO: try to add N=2 for the HTL system, based on [1]
+# based on [1]
 @cost(basis='Wet mass flowrate', ID='HTL system', units='lb/h',
-      cost=37486757, S=574476,
+      cost=18743378, S=306198,
       CE=CEPCI_by_year[2011], n=0.77, BM=2.1)
 @cost(basis='Wet mass flowrate', ID='Solids filter oil/water separator', units='lb/h',
-      cost=3945523, S=574476,
+      cost=3945523, S=1219765,
       CE=CEPCI_by_year[2011], n=0.68, BM=1.9)
 @cost(basis='Wet mass flowrate', ID='Hot oil system', units='lb/h',
-      cost=4670532, S=574476,
+      cost=4670532, S=306198,
       CE=CEPCI_by_year[2011], n=0.6, BM=1.4)
 class HydrothermalLiquefaction(SanUnit):
     '''
@@ -2355,8 +2355,6 @@ class HydrothermalLiquefaction(SanUnit):
         P to N ratio, [-].
     eff_P: float
         HTL effluent pressure, [Pa].
-    F_M : dict
-        Material factors used to adjust cost (only used `use_decorated_cost` is False).
     
     See Also
     --------
@@ -2368,41 +2366,17 @@ class HydrothermalLiquefaction(SanUnit):
     
     References
     ----------
-    [1] Leow, S.; Witter, J. R.; Vardon, D. R.; Sharma, B. K.;
-        Guest, J. S.; Strathmann, T. J. Prediction of Microalgae Hydrothermal
-        Liquefaction Products from Feedstock Biochemical Composition.
-        Green Chem. 2015, 17 (6), 3584–3599. https://doi.org/10.1039/C5GC00574D.
-    [2] Li, Y.; Leow, S.; Fedders, A. C.; Sharma, B. K.; Guest, J. S.;
-        Strathmann, T. J. Quantitative Multiphase Model for Hydrothermal
-        Liquefaction of Algal Biomass. Green Chem. 2017, 19 (4), 1163–1174.
-        https://doi.org/10.1039/C6GC03294J.
-    [3] Li, Y.; Tarpeh, W. A.; Nelson, K. L.; Strathmann, T. J.
-        Quantitative Evaluation of an Integrated System for Valorization of
-        Wastewater Algae as Bio-Oil, Fuel Gas, and Fertilizer Products.
-        Environ. Sci. Technol. 2018, 52 (21), 12717–12727.
-        https://doi.org/10.1021/acs.est.8b04035.
-    [4] Jones, S. B.; Zhu, Y.; Anderson, D. B.; Hallen, R. T.; Elliott, D. C.; 
+    [1] Jones, S. B.; Zhu, Y.; Anderson, D. B.; Hallen, R. T.; Elliott, D. C.; 
         Schmidt, A. J.; Albrecht, K. O.; Hart, T. R.; Butcher, M. G.; Drennan, C.; 
         Snowden-Swan, L. J.; Davis, R.; Kinchin, C. 
         Process Design and Economics for the Conversion of Algal Biomass to
         Hydrocarbons: Whole Algae Hydrothermal Liquefaction and Upgrading;
         PNNL--23227, 1126336; 2014; https://doi.org/10.2172/1126336.
-    [5] Matayeva, A.; Rasmussen, S. R.; Biller, P. Distribution of Nutrients and
-        Phosphorus Recovery in Hydrothermal Liquefaction of Waste Streams.
-        BiomassBioenergy 2022, 156, 106323.
-        https://doi.org/10.1016/j.biombioe.2021.106323.
-    [6] Knorr, D.; Lukas, J.; Schoen, P. Production of Advanced Biofuels
-        via Liquefaction - Hydrothermal Liquefaction Reactor Design:
-        April 5, 2013; NREL/SR-5100-60462, 1111191; 2013; p NREL/SR-5100-60462,
-        1111191. https://doi.org/10.2172/1111191.
     '''
     _N_ins = 1
     _N_outs = 4
     
     _units= {'Wet mass flowrate': 'lb/h'}
-    
-    _F_BM_default = {**Reactor._F_BM_default,
-                     'Heat exchanger': 3.17}
     
     auxiliary_unit_names = ('pump','hx','inf_hx','eff_hx','kodrum')
     
@@ -2421,15 +2395,7 @@ class HydrothermalLiquefaction(SanUnit):
                  # TODO: count CH4 as a fugitive GHG emission, assume the offgas is flared (send or not send it to the CHP unit) and use the fugitive ratio the same as other units
                  gas_composition={'CH4':0.050, 'C2H6':0.032, 'CO2':0.918},
                  internal_heat_exchanging=True, T=350 + _C_to_K,
-                 P=3049.7*_psi_to_Pa, eff_T=60 + _C_to_K, eff_P=30*_psi_to_Pa,
-                 tau=15/60, V_wf=0.45, length_to_diameter=None,
-                 diameter=6.875/_m_to_in, N=4, V=None, auxiliary=False,
-                 mixing_intensity=None, kW_per_m3=0, wall_thickness_factor=1,
-                 vessel_material='Stainless steel 316', vessel_type='Horizontal',
-                 # TODO: default F_M is 2.1, the orginal code is 2.7 times 2.1 
-                 # use material factors so that the calculated reactor cost matches [6]
-                 F_M={'Horizontal pressure vessel': 2.7,
-                      'Vertical pressure vessel': 2.7}):
+                 P=3049.7*_psi_to_Pa, eff_T=60 + _C_to_K, eff_P=30*_psi_to_Pa):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.lipid_2_C = lipid_2_C
         self.protein_2_C = protein_2_C
@@ -2460,19 +2426,6 @@ class HydrothermalLiquefaction(SanUnit):
         self.P = P
         self.eff_T = eff_T
         self.eff_P = eff_P
-        self.tau = tau
-        self.V_wf = V_wf
-        self.length_to_diameter = length_to_diameter
-        self.diameter = diameter
-        self.N = N
-        self.V = V
-        self.auxiliary = auxiliary
-        self.mixing_intensity = mixing_intensity
-        self.kW_per_m3 = kW_per_m3
-        self.wall_thickness_factor = wall_thickness_factor
-        self.vessel_material = vessel_material
-        self.vessel_type = vessel_type
-        self.F_M = F_M
         pump_in = Stream(f'{ID}_pump_in')
         pump_out = Stream(f'{ID}_pump_out')
         self.pump = Pump(ID=f'.{ID}_pump', ins=pump_in, outs=pump_out, P=P)
@@ -2523,7 +2476,7 @@ class HydrothermalLiquefaction(SanUnit):
                                 self.biocrude_moisture_content) -\
                                 biocrude.imass['Biocrude']
         
-        # assume ash (all soluble based on [4]) goes to water
+        # assume ash (all soluble based on [1]) goes to water
         HTLaqueous.imass['H2O'] = dewatered_solids.F_mass - hydrochar.F_mass -\
                                   biocrude.F_mass - gas_mass - HTLaqueous.imass['HTLaqueous']
         
@@ -2561,6 +2514,11 @@ class HydrothermalLiquefaction(SanUnit):
                      self.solids_H/1.00784)/(self.solids_C/12.011)
     
     def _design(self):
+        
+        D = self.design_results
+        
+        D['Wet mass flowrate'] = self.ins[0].F_mass*_kg_to_lb
+        
         pump = self.pump
         pump.ins[0].copy_like(self.ins[0])
         pump.simulate()
@@ -2607,10 +2565,7 @@ class HydrothermalLiquefaction(SanUnit):
         # eff_hx.simulate_as_auxiliary_exchanger(ins=eff_hx.ins, outs=eff_hx.outs, duty=duty)
     
     def _cost(self):
-        D = self.design_results
         self.baseline_purchase_costs.clear()
-        
-        D['Wet mass flowrate'] = self.ins[0].F_mass*_kg_to_lb
         self._decorated_cost()
     
     @property
@@ -2633,11 +2588,11 @@ class HydrothermalLiquefaction(SanUnit):
     
     @property
     def biocrude_C_ratio(self):
-        return (self.AOSc*self.biocrude_C_slope + self.biocrude_C_intercept)/100 # [2]
+        return (self.AOSc*self.biocrude_C_slope + self.biocrude_C_intercept)/100
     
     @property
     def biocrude_H_ratio(self):
-        return (self.AOSc*self.biocrude_H_slope + self.biocrude_H_intercept)/100 # [2]
+        return (self.AOSc*self.biocrude_H_slope + self.biocrude_H_intercept)/100
     
     @property
     def biocrude_N_ratio(self):
@@ -2664,7 +2619,7 @@ class HydrothermalLiquefaction(SanUnit):
     @property
     def biocrude_HHV(self):
         return 30.74 - 8.52*self.AOSc +\
-               0.024*self.solids_dw_protein # [2]
+               0.024*self.solids_dw_protein
     
     @property
     def offgas_C(self):
@@ -2674,7 +2629,7 @@ class HydrothermalLiquefaction(SanUnit):
     
     @property
     def hydrochar_C_ratio(self):
-        return min(self.hydrochar_C_slope*self.solids_dw_carbo, 0.65) # [2]
+        return min(self.hydrochar_C_slope*self.solids_dw_carbo, 0.65)
     
     @property
     def hydrochar_C(self):
@@ -2708,14 +2663,6 @@ class HTLmixer(SanUnit):
         HTLaqueous, extracted.
     outs : iterable
         mixture.
-        
-    References
-    ----------
-    .. [1] Li, Y.; Tarpeh, W. A.; Nelson, K. L.; Strathmann, T. J. 
-        Quantitative Evaluation of an Integrated System for Valorization of
-        Wastewater Algae as Bio-Oil, Fuel Gas, and Fertilizer Products. 
-        Environ. Sci. Technol. 2018, 52 (21), 12717–12727. 
-        https://doi.org/10.1021/acs.est.8b04035.
     '''
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='Stream'):
@@ -2768,11 +2715,17 @@ class HTLmixer(SanUnit):
 # CatalyticHydrothermalGasification
 # =============================================================================
 
-# TODO: may need to update costs
+# TODO: check data with [1]
+# TODO: try to add N=6 for the CHG reactor, based on [1]
+# TODO: check Guard bed
+# based on [1]
 @cost(basis='Wet mass flowrate', ID='Hydrocyclone', units='lb/h',
       cost=5000000, S=968859,
       CE=CEPCI_by_year[2009], n=0.65, BM=2.1)
-class CatalyticHydrothermalGasification(Reactor):
+@cost(basis='Wet mass flowrate', ID='Guard bed and CHG reactor', units='lb/h',
+      cost=2041875*1.1, S=76235,
+      CE=CEPCI_by_year[2011], n=0.65, BM=2)
+class CatalyticHydrothermalGasification(SanUnit):
     '''
     CHG serves to reduce the COD content in the aqueous phase and produce fuel
     gas under elevated temperature (350°C) and pressure. The outlet will be
@@ -2797,28 +2750,12 @@ class CatalyticHydrothermalGasification(Reactor):
         Process Design and Economics for the Conversion of Algal Biomass to
         Hydrocarbons: Whole Algae Hydrothermal Liquefaction and Upgrading;
         PNNL--23227, 1126336; 2014; https://doi.org/10.2172/1126336.
-    [2] Davis, R. E.; Grundl, N. J.; Tao, L.; Biddy, M. J.; Tan, E. C.;
-        Beckham, G. T.; Humbird, D.; Thompson, D. N.; Roni, M. S. Process
-        Design and Economics for the Conversion of Lignocellulosic Biomass
-        to Hydrocarbon Fuels and Coproducts: 2018 Biochemical Design Case
-        Update; Biochemical Deconstruction and Conversion of Biomass to Fuels
-        and Products via Integrated Biorefinery Pathways; NREL/TP--5100-71949,
-        1483234; 2018; p NREL/TP--5100-71949, 1483234.
-        https://doi.org/10.2172/1483234.
-    [3] Elliott, D. C.; Neuenschwander, G. G.; Hart, T. R.; Rotness, L. J.;
-        Zacher, A. H.; Santosa, D. M.; Valkenburg, C.; Jones, S. B.;
-        Rahardjo, S. A. T. Catalytic Hydrothermal Gasification of Lignin-Rich
-        Biorefinery Residues and Algae Final Report. 87.
     '''
     _N_ins = 2
     _N_outs = 2
     
     _units= {'Wet mass flowrate': 'lb/h',
               'Hydrocyclone weight': 'lb'}
-    
-    _F_BM_default = {**Reactor._F_BM_default,
-                     'Heat exchanger': 3.17,
-                     'Sulfur guard': 2.0}
     
     auxiliary_unit_names=('pump','hx','inf_hx','eff_hx')
     
@@ -2829,11 +2766,7 @@ class CatalyticHydrothermalGasification(Reactor):
                  WHSV=3.562, catalyst_lifetime=7920,
                  internal_heat_exchanging=True, T=350 + _C_to_K,
                  P=3089.7*_psi_to_Pa, eff_T=60 + _C_to_K,
-                 eff_P=3089.7*_psi_to_Pa, tau=20/60, V_wf=0.5,
-                 length_to_diameter=2, diameter=None, N=6, V=None,
-                 auxiliary=False, mixing_intensity=None, kW_per_m3=0,
-                 wall_thickness_factor=1, vessel_material='Stainless steel 316',
-                 vessel_type='Vertical'):
+                 eff_P=3089.7*_psi_to_Pa):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.gas_C_2_total_C = gas_C_2_total_C
         self.gas_composition = gas_composition
@@ -2844,18 +2777,6 @@ class CatalyticHydrothermalGasification(Reactor):
         self.P = P
         self.eff_T = eff_T
         self.eff_P = eff_P
-        self.tau = tau
-        self.V_wf = V_wf
-        self.length_to_diameter = length_to_diameter
-        self.diameter = diameter
-        self.N = N
-        self.V = V
-        self.auxiliary = auxiliary
-        self.mixing_intensity = mixing_intensity
-        self.kW_per_m3 = kW_per_m3
-        self.wall_thickness_factor = wall_thickness_factor
-        self.vessel_material = vessel_material
-        self.vessel_type = vessel_type
         pump_in = Stream(f'{ID}_pump_in')
         pump_out = Stream(f'{ID}_pump_out')
         self.pump = Pump(ID=f'.{ID}_pump', ins=pump_in, outs=pump_out, P=P)
@@ -2952,23 +2873,9 @@ class CatalyticHydrothermalGasification(Reactor):
         
         for i in self.outs:
             i.T = self.eff_T
-        
-        Reactor._design(self)
-        
-        # the purchase price of hydrocyclone to that of CHG reactor is around 0.3, [1], page 54
-        # assume the weight of hydrocyclone is 0.3*single CHG weight*number of CHG reactors
-        # assume stainless steel
-        D['Hydrocyclone weight'] = 0.3*D['Weight']*D['Number of reactors']
-        self.construction[0].quantity += D['Hydrocyclone weight']/_kg_to_lb
     
     def _cost(self):
-        Reactor._cost(self)
-        purchase_costs = self.baseline_purchase_costs
-        # cost w/o sulfur guard
-        current_cost = 0
-        for item in purchase_costs.keys():
-            current_cost += purchase_costs[item]
-        purchase_costs['Sulfur guard'] = current_cost*0.05
+        self.baseline_purchase_costs.clear()
         self._decorated_cost()
     
     @property
