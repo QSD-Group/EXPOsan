@@ -451,7 +451,7 @@ class Thickening(SanUnit):
         self.add_power_utility(self.dry_solids*self.unit_electricity)
     
     def _cost(self):
-        # add electricity consumption of pumps
+        # add pump power utility and costs
         for p in (self.effluent_pump, self.sludge_pump): p.simulate()
     
     @property
@@ -1220,7 +1220,7 @@ class Dewatering(SanUnit):
         self.power_utility(self.ins[0].F_vol*self.unit_electricity)
     
     def _cost(self):
-        # TODO: does this add the electricity from pumps
+        # add pump power utility and costs
         for p in (self.effluent_pump, self.sludge_pump): p.simulate()
     
     @property
@@ -1585,8 +1585,7 @@ class HeatDrying(SanUnit):
         vapor.imass['H2O'] = input_sludge.F_mass - dried_solids.F_mass
         
     def _design(self):
-        # TODO: does this work, this might not be natural gas, but need to add GWP
-        # TODO: if this does not work, can calculate NG amount manually based on the heating value of NG (and T_in will not be needed)
+        # TODO: add cost and CI
         self.add_heat_utility(unit_duty=self.outs[1].imass['H2O']/1000*self.unit_heat*1000000,
                               T_in=self.T_in, hxn_ok=True)
         
@@ -1853,13 +1852,11 @@ class Pyrolysis(SanUnit):
         # dry tonne/h
         self.dry_solids = (dried_solids.F_mass - dried_solids.imass['H2O'])/1000
         
-        # TODO: add biochar or a representative chemical (if not already) as a component
         biochar.imass['Biochar'] = self.dry_solids*(1 - self.mass_loss)
         biochar.imass['H2O'] = biochar.imass['Biochar']/(1 - self.biochar_moisture_content)*self.biochar_moisture_content
         
         fugitive_methane.imass['CH4'] = self.dry_solids*self.unit_fugitive_methane/1000
         
-        # TODO: check if N2O is already a component
         fugitive_nitrous_oxide.imass['N2O'] = self.dry_solids*self.unit_fugitive_nitrous_oxide/1000
         
         # kW
@@ -2289,22 +2286,13 @@ class LandApplication(SanUnit):
     def unit_process(self):
         return 'land application'
 
+# =============================================================================
+# thermochemical units
+# =============================================================================
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# TODO: add notes - KnockOutDrum and HydrothermalLiquefaction are based on exposan.saf._units and the original HTL model
 # TODO: see if the Transportation unit can be used
+# TODO: to be removed
 __all__ = (
     'HydrothermalLiquefaction',
     'Hydroprocessing',
@@ -2316,11 +2304,6 @@ __all__ = (
     'Conditioning',
     'Transportation',
     )
-
-
-
-
-
 
 # =============================================================================
 #  KnockOutDrum
@@ -2393,11 +2376,12 @@ class KnockOutDrum(Reactor):
 # HydrothermalLiquefaction
 # =============================================================================
 
-# TODO: the current utility usage of CHG is much higher than HTL, add a HXprocess for CHG (no HXN in the system)
-# TODO: need to decide whether to use Reactor._cost() or use @cost, it is better to be consistent with other thermochemical units
+# TODO: use @cost, delete use_decorated_cost since it will be True, and add @cost for CHG
+# TODO: then, Reactor and F_M are not be meaning since no actual design is needed
+# TODO: do not need KnockOutDrum either
 
-# original [1] is 1339 dry-ash free ton per day (tpd), ash content is 13%,
-# which is 58176 wet lb/h, scaling basis in the equipment table in [1]
+# original [4] is 1339 dry-ash free ton per day (tpd), ash content is 13%,
+# which is 58176 wet lb/h, scaling basis in the equipment table in [4]
 # (flow for S100) does not seem right
 @cost(basis='Wet mass flowrate', ID='HTL system', units='lb/h',
       cost=37486757, S=574476,
@@ -2415,9 +2399,9 @@ class HydrothermalLiquefaction(Reactor):
     
     Parameters
     ----------
-    ins : Iterable(stream)
+    ins : iterable
         dewatered_solids.
-    outs : Iterable(stream)
+    outs : iterable
         hydrochar, HTLaqueous, biocrude, offgas.
     lipid_2_C : float
         lipid to C ratio, [-].
@@ -2436,48 +2420,8 @@ class HydrothermalLiquefaction(Reactor):
         N to protein ratio, [-].
     N_2_P, float
         P to N ratio, [-].
-    lipid_2_biocrude: float
-        Lipid to biocrude factor.
-    protein_2_biocrude: float
-        Protein to biocrude factor.
-    carbo_2_biocrude: float
-        Carbohydrate to biocrude factor.
-    protein_2_gas: float
-        Protein to gas factor.
-    carbo_2_gas: float
-        Carbohydrate to gas factor.
-    biocrude_C_slope: float
-        Biocrude carbon content slope.
-    biocrude_C_intercept: float
-        Biocrude carbon content intercept.
-    biocrude_N_slope: float
-        Biocrude nitrogen content slope.
-    biocrude_H_slope: float
-        Biocrude hydrogen content slope.
-    biocrude_H_intercept: float
-        Biocrude hydrogen content intercept.
-    HTLaqueous_C_slope: float
-        HTLaqueous carbon content slope.
-    TOC_TC: float   
-        HTL TOC/TC.
-    hydrochar_C_slope: float
-        Hydrochar carbon content slope.
-    biocrude_moisture_content: float
-        Biocrude moisture content.
-    hydrochar_P_recovery_ratio: float
-        Hydrochar phosphorus to total phosphorus ratio.
-    gas_composition: dict
-        HTL offgas compositions.
-    hydrochar_pre: float
-        Hydrochar pressure, [Pa].
-    HTLaqueous_pre: float
-        HTL aqueous phase pressure, [Pa].
-    biocrude_pre: float
-        Biocrude pressure, [Pa].
-    offgas_pre: float
-        Offgas pressure, [Pa].
-    eff_T: float
-        HTL effluent temperature, [K].
+    eff_P: float
+        HTL effluent pressure, [Pa].
     use_decorated_cost : bool
         Whether use cost decorators to calculate cost, [True, False]
     F_M : dict
@@ -2523,60 +2467,41 @@ class HydrothermalLiquefaction(Reactor):
     '''
     _N_ins = 1
     _N_outs = 4
+    
     _units= {'Wet mass flowrate': 'lb/h',
              'Solid filter and separator weight': 'lb'}
     
-    auxiliary_unit_names = ('hx','inf_hx','eff_hx','kodrum')
-
     _F_BM_default = {**Reactor._F_BM_default,
                      'Heat exchanger': 3.17}
-
+    
+    auxiliary_unit_names = ('pump','hx','inf_hx','eff_hx','kodrum')
+    
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='WasteStream',
-                 lipid_2_C=0.750, protein_2_C=0.545,
-                 carbo_2_C=0.400,                  lipid_2_H=0.125,
-                                  protein_2_H=0.068,
-                                  carbo_2_H=0.067, protein_2_N=0.159, N_2_P=0.3927,
-                 lipid_2_biocrude=0.846, # [1]
-                 protein_2_biocrude=0.445, # [1]
-                 carbo_2_biocrude=0.205, # [1]
-                 protein_2_gas=0.074, # [1]
-                 carbo_2_gas=0.418, # [1]
-                 biocrude_C_slope=-8.37, # [2]
-                 biocrude_C_intercept=68.55, # [2]
-                 biocrude_N_slope=0.133, # [2]
-                 biocrude_H_slope=-2.61, # [2]
-                 biocrude_H_intercept=8.20, # [2]
-                 HTLaqueous_C_slope=478, # [2]
-                 TOC_TC=0.764, # [3]
-                 hydrochar_C_slope=1.75, # [2]
-                 biocrude_moisture_content=0.063, # [4]
-                 hydrochar_P_recovery_ratio=0.86, # [5]
-                 # TODO: count CH4 as a fugitive GHG emission, assume the offgas is flared (not send it to the CHP unit) and use the fugitive ratio the same as other units
-                 gas_composition={'CH4':0.050, 'C2H6':0.032,
-                                  'CO2':0.918}, # [4]
-                 hydrochar_pre=3029.7*_psi_to_Pa, # [4]
-                 HTLaqueous_pre=30*_psi_to_Pa, # [4]
-                 biocrude_pre=30*_psi_to_Pa, # [4]
-                 offgas_pre=30*_psi_to_Pa, # [4]
-                 internal_heat_exchanging=True,
-                 # TODO: add this as a parameter
-                 T=350+_C_to_K,
-                 eff_T=60+_C_to_K, # 140.7°F
-                 eff_P=30*_psi_to_Pa,
-                 P=3049.7*_psi_to_Pa, tau=15/60, V_wf=0.45,
-                 length_to_diameter=None, diameter=6.875/_m_to_in,
-                 N=4, V=None, auxiliary=False,
-                 mixing_intensity=None, kW_per_m3=0,
-                 wall_thickness_factor=1,
-                 vessel_material='Stainless steel 316',
-                 vessel_type='Horizontal',
-                 # TODO: use_decorated_cost results in much higher cost than not using it and probably more realistic
+                 init_with='WasteStream', lipid_2_C=0.750, protein_2_C=0.545,
+                 carbo_2_C=0.400, lipid_2_H=0.125, protein_2_H=0.068,
+                 carbo_2_H=0.067, protein_2_N=0.159, N_2_P=0.3927,
+                 lipid_2_biocrude=0.846, protein_2_biocrude=0.445,
+                 carbo_2_biocrude=0.205, protein_2_gas=0.074, carbo_2_gas=0.418,
+                 biocrude_C_slope=-8.37, biocrude_C_intercept=68.55,
+                 biocrude_N_slope=0.133, biocrude_H_slope=-2.61,
+                 biocrude_H_intercept=8.20, HTLaqueous_C_slope=478,
+                 TOC_TC=0.764, hydrochar_C_slope=1.75,
+                 biocrude_moisture_content=0.063,
+                 hydrochar_P_recovery_ratio=0.86,
+                 # TODO: count CH4 as a fugitive GHG emission, assume the offgas is flared (send or not send it to the CHP unit) and use the fugitive ratio the same as other units
+                 gas_composition={'CH4':0.050, 'C2H6':0.032, 'CO2':0.918},
+                 internal_heat_exchanging=True, T=350 + _C_to_K,
+                 P=3049.7*_psi_to_Pa, eff_T=60 + _C_to_K, eff_P=30*_psi_to_Pa,
+                 tau=15/60, V_wf=0.45, length_to_diameter=None,
+                 diameter=6.875/_m_to_in, N=4, V=None, auxiliary=False,
+                 mixing_intensity=None, kW_per_m3=0, wall_thickness_factor=1,
+                 vessel_material='Stainless steel 316', vessel_type='Horizontal',
+                 # TODO: use_decorated_cost results in much higher cost than not using it and probably more realistic, try to make CHG and other thermochemical units consistent with this
                  use_decorated_cost=True,
+                 # TODO: default F_M is 2.1, the orginal code is 2.7 times 2.1 
                  # use material factors so that the calculated reactor cost matches [6]
                  F_M={'Horizontal pressure vessel': 2.7,
                       'Vertical pressure vessel': 2.7}):
-        
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.lipid_2_C = lipid_2_C
         self.protein_2_C = protein_2_C
@@ -2602,29 +2527,11 @@ class HydrothermalLiquefaction(Reactor):
         self.biocrude_moisture_content = biocrude_moisture_content
         self.hydrochar_P_recovery_ratio = hydrochar_P_recovery_ratio
         self.gas_composition = gas_composition
-        self.hydrochar_pre = hydrochar_pre
-        self.HTLaqueous_pre = HTLaqueous_pre
-        self.biocrude_pre = biocrude_pre
-        self.offgas_pre = offgas_pre
         self.internal_heat_exchanging = internal_heat_exchanging
         self.T = T
-        inf_pre_hx = Stream(f'{ID}_inf_pre_hx')
-        eff_pre_hx = Stream(f'{ID}_eff_pre_hx')
-        inf_after_hx = Stream(f'{ID}_inf_after_hx')
-        eff_after_hx = Stream(f'{ID}_eff_after_hx')
-        self.hx = HXprocess(ID=f'.{ID}_hx',
-                            ins=(inf_pre_hx, eff_pre_hx),
-                            outs=(inf_after_hx, eff_after_hx))
-        inf_hx_out = Stream(f'{ID}_inf_hx_out')
-        self.inf_hx = HXutility(ID=f'.{ID}_inf_hx', ins=inf_after_hx, outs=inf_hx_out, T=T, rigorous=True)
-        self._inf_at_temp = Stream(f'{ID}_inf_at_temp')
-        self._eff_at_temp = Stream(f'{ID}_eff_at_temp')
-        eff_hx_out = Stream(f'{ID}_eff_hx_out')
+        self.P = P
         self.eff_T = eff_T
         self.eff_P = eff_P
-        self.eff_hx = HXutility(ID=f'.{ID}_eff_hx', ins=eff_after_hx, outs=eff_hx_out, T=eff_T, rigorous=True)
-        self.kodrum = KnockOutDrum(ID=f'.{ID}_KOdrum')
-        self.P = P
         self.tau = tau
         self.V_wf = V_wf
         self.length_to_diameter = length_to_diameter
@@ -2639,6 +2546,21 @@ class HydrothermalLiquefaction(Reactor):
         self.vessel_type = vessel_type
         self.use_decorated_cost = use_decorated_cost
         self.F_M = F_M
+        pump_in = Stream(f'{ID}_pump_in')
+        pump_out = Stream(f'{ID}_pump_out')
+        self.pump = Pump(ID=f'.{ID}_pump', ins=pump_in, outs=pump_out, P=P)
+        inf_pre_hx = Stream(f'{ID}_inf_pre_hx')
+        eff_pre_hx = Stream(f'{ID}_eff_pre_hx')
+        inf_after_hx = Stream(f'{ID}_inf_after_hx')
+        eff_after_hx = Stream(f'{ID}_eff_after_hx')
+        self.hx = HXprocess(ID=f'.{ID}_hx', ins=(inf_pre_hx, eff_pre_hx), outs=(inf_after_hx, eff_after_hx))
+        inf_hx_out = Stream(f'{ID}_inf_hx_out')
+        self.inf_hx = HXutility(ID=f'.{ID}_inf_hx', ins=inf_after_hx, outs=inf_hx_out, T=T, rigorous=True)
+        self._inf_at_temp = Stream(f'{ID}_inf_at_temp')
+        self._eff_at_temp = Stream(f'{ID}_eff_at_temp')
+        eff_hx_out = Stream(f'{ID}_eff_hx_out')
+        self.eff_hx = HXutility(ID=f'.{ID}_eff_hx', ins=eff_after_hx, outs=eff_hx_out, T=eff_T, rigorous=True)
+        self.kodrum = KnockOutDrum(ID=f'.{ID}_KOdrum')
     
     def _run(self):
         dewatered_solids = self.ins[0]
@@ -2653,20 +2575,20 @@ class HydrothermalLiquefaction(Reactor):
         self.afdw_carbo_ratio = 1 - self.afdw_lipid_ratio - self.afdw_protein_ratio
         
         # the following calculations are based on revised MCA model
+        # HTLaqueous is TDS in aqueous phase
+        # 0.377, 0.481, and 0.154 don't have uncertainties because they are calculated values
         hydrochar.imass['Hydrochar'] = 0.377*self.afdw_carbo_ratio*dewatered_solids_afdw
         
         HTLaqueous.imass['HTLaqueous'] = (0.481*self.afdw_protein_ratio +\
                                           0.154*self.afdw_lipid_ratio)*\
                                           dewatered_solids_afdw
-        # HTLaqueous is TDS in aqueous phase
-        # 0.377, 0.481, and 0.154 don't have uncertainties because they are calculated values
-         
+        
         gas_mass = (self.protein_2_gas*self.afdw_protein_ratio + self.carbo_2_gas*self.afdw_carbo_ratio)*\
-                       dewatered_solids_afdw
-                       
+                    dewatered_solids_afdw
+        
         for name, ratio in self.gas_composition.items():
             offgas.imass[name] = gas_mass*ratio
-            
+        
         biocrude.imass['Biocrude'] = (self.protein_2_biocrude*self.afdw_protein_ratio +\
                                       self.lipid_2_biocrude*self.afdw_lipid_ratio +\
                                       self.carbo_2_biocrude*self.afdw_carbo_ratio)*\
@@ -2674,10 +2596,10 @@ class HydrothermalLiquefaction(Reactor):
         biocrude.imass['H2O'] = biocrude.imass['Biocrude']/(1 -\
                                 self.biocrude_moisture_content) -\
                                 biocrude.imass['Biocrude']
-                                
+        
+        # assume ash (all soluble based on [4]) goes to water
         HTLaqueous.imass['H2O'] = dewatered_solids.F_mass - hydrochar.F_mass -\
                                   biocrude.F_mass - gas_mass - HTLaqueous.imass['HTLaqueous']
-        # assume ash (all soluble based on Jones) goes to water
         
         for i in self.outs:
             i.T = self.T
@@ -2689,11 +2611,15 @@ class HydrothermalLiquefaction(Reactor):
         offgas.phase = 'g'
         HTLaqueous.phase = biocrude.phase = 'l'
         
-        for stream in self.outs : stream.T = self.eff_T
+        for attr, val in zip(('T','P'), (self.eff_T, self.eff_P)):
+            if val:
+                for i in self.outs: setattr(i, attr, val)
         
         # for properties
-        self.solids_dw_protein = dewatered_solids.imass['Sludge_protein']/(dewatered_solids.F_mass - dewatered_solids.imass['H2O'])
-        self.solids_dw_carbo = dewatered_solids.imass['Sludge_carbo']/(dewatered_solids.F_mass - dewatered_solids.imass['H2O'])
+        self.solids_dw_protein = dewatered_solids.imass['Sludge_protein']/(dewatered_solids.F_mass -\
+                                                                           dewatered_solids.imass['H2O'])
+        self.solids_dw_carbo = dewatered_solids.imass['Sludge_carbo']/(dewatered_solids.F_mass -\
+                                                                       dewatered_solids.imass['H2O'])
         self.solids_C = dewatered_solids.imass['Sludge_lipid']*self.lipid_2_C +\
                         dewatered_solids.imass['Sludge_protein']*self.protein_2_C +\
                         dewatered_solids.imass['Sludge_carbo']*self.carbo_2_C
@@ -2709,6 +2635,10 @@ class HydrothermalLiquefaction(Reactor):
                      self.solids_H/1.00784)/(self.solids_C/12.011)
     
     def _design(self):
+        pump = self.pump
+        pump.ins[0].copy_like(self.ins[0])
+        pump.simulate()
+        
         hx = self.hx
         inf_hx = self.inf_hx
         inf_hx_in, inf_hx_out = inf_hx.ins[0], inf_hx.outs[0]
@@ -2729,8 +2659,6 @@ class HydrothermalLiquefaction(Reactor):
             inf_after_hx.copy_like(inf_pre_hx)
             eff_after_hx.copy_like(eff_pre_hx)
         
-        # TODO: no heat exchanger before HTL in systems
-        # TODO: also, the pressure in HTL is autogeneous, no pump is needed before in systems
         # additional inf HX
         inf_hx_in.copy_like(inf_after_hx)
         inf_hx_out.copy_flow(inf_hx_in)
@@ -2743,12 +2671,12 @@ class HydrothermalLiquefaction(Reactor):
         eff_hx_in.copy_like(eff_after_hx)
         eff_hx_out.mix_from(self.outs)
         eff_hx_out.T = self.eff_T
-        
         eff_hx.simulate_as_auxiliary_exchanger(ins=eff_hx.ins, outs=eff_hx.outs)
         
-        # TODO: original code from exposan.saf._units, cooling duty very high
-        # # Hnet = Unit.H_out-Unit.H_in + Unit.Hf_out-Unit.Hf_in
-        # # H is enthalpy; Hf is the enthalpy of formation, all in kJ/h
+        for i in self.outs:
+            i.T = self.eff_T
+        
+        # original code from exposan.saf._units, cooling duty very high
         # duty = self.Hnet + eff_hx.Hnet
         # eff_hx.simulate_as_auxiliary_exchanger(ins=eff_hx.ins, outs=eff_hx.outs, duty=duty)
         
@@ -2766,10 +2694,8 @@ class HydrothermalLiquefaction(Reactor):
         if self.use_decorated_cost is True:
             kodrum.empty()
         else:
+            # knockout drum influent 1225236 lb/h ~ single knockout drum volume 4230 galin, [6]
             kodrum.V = self.F_mass_out*_kg_to_lb/1225236*4230/_m3_to_gal
-            # in [6], when knockout drum influent is 1225236 lb/h, single knockout
-            # drum volume is 4230 gal
-            
             kodrum.simulate()
     
     def _cost(self):
@@ -2779,7 +2705,7 @@ class HydrothermalLiquefaction(Reactor):
             D['Wet mass flowrate'] = self.ins[0].F_mass*_kg_to_lb
             self._decorated_cost()
         else: Reactor._cost(self)
-
+    
     @property
     def biocrude_yield(self):
         return self.protein_2_biocrude*self.afdw_protein_ratio +\
@@ -2935,9 +2861,8 @@ class HTLmixer(SanUnit):
 # CatalyticHydrothermalGasification
 # =============================================================================
 
-# TODO: the current utility usage of CHG is much higher than HTL, add a HXprocess for CHG (no HXN in the system)
 # TODO: may need to update costs
-@cost(basis='Treatment capacity', ID='Hydrocyclone', units='lb/h',
+@cost(basis='Wet mass flowrate', ID='Hydrocyclone', units='lb/h',
       cost=5000000, S=968859,
       CE=CEPCI_by_year[2009], n=0.65, BM=2.1)
 class CatalyticHydrothermalGasification(Reactor):
@@ -2948,27 +2873,15 @@ class CatalyticHydrothermalGasification(Reactor):
     
     Parameters
     ----------
-    ins : Iterable(stream)
+    ins : iterable
         chg_in, catalyst_in.
-    outs : Iterable(stream)
+    outs : iterable
         chg_out, catalyst_out.
-    pump_pressure: float
-        CHG influent pressure, [Pa].
-    heat_temp: float
-        CHG influent temperature, [K].
-    cool_temp: float
-        CHG effluent temperature, [K].
-    WHSV: float
-        Weight Hourly Space velocity, [kg feed/hr/kg catalyst].
-    catalyst_lifetime: float
-        CHG catalyst lifetime, [hr].
-    gas_composition: dict
-        CHG gas composition.
-    gas_C_2_total_C: dict
-        CHG gas carbon content to feed carbon content.
-    CAPEX_factor: float
-        Factor used to adjust CAPEX.
-        
+    eff_T: float
+        HTL effluent temperature, [K].
+    eff_P: float
+        HTL effluent pressure, [Pa].
+    
     References
     ----------
     [1] Jones, S. B.; Zhu, Y.; Anderson, D. B.; Hallen, R. T.; Elliott, D. C.; 
@@ -2993,59 +2906,39 @@ class CatalyticHydrothermalGasification(Reactor):
     _N_ins = 2
     _N_outs = 2
     
-    _F_BM_default = {**Reactor._F_BM_default,
-                      'Heat exchanger': 3.17,
-                      'Sulfur guard': 2.0}
-    _units= {'Treatment capacity': 'lb/h', # hydrocyclone
+    _units= {'Wet mass flowrate': 'lb/h',
               'Hydrocyclone weight': 'lb'}
     
-    auxiliary_unit_names=('pump','heat_ex_heating','heat_ex_cooling')
+    _F_BM_default = {**Reactor._F_BM_default,
+                     'Heat exchanger': 3.17,
+                     'Sulfur guard': 2.0}
+    
+    auxiliary_unit_names=('pump','hx','inf_hx','eff_hx')
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                  init_with='Stream',
-                  pump_pressure=3089.7*_psi_to_Pa,
-                  heat_temp=350+_C_to_K,
-                  cool_temp=60+_C_to_K,
-                  WHSV=3.562,
-                  catalyst_lifetime=7920, # 1 year [1]
-                  gas_composition={'CH4':0.527,
-                                   'CO2':0.432,
-                                   'C2H6':0.011,
-                                   'C3H8':0.030,
-                                   'H2':0.0001}, # [1]
-                  gas_C_2_total_C=0.5981, # [1]
-                  P=None, tau=20/60, void_fraction=0.5, # [2, 3]
-                  length_to_diameter=2, diameter=None,
-                  N=6, V=None, auxiliary=False,
-                  mixing_intensity=None, kW_per_m3=0,
-                  wall_thickness_factor=1,
-                  vessel_material='Stainless steel 316',
-                  vessel_type='Vertical',
-                  CAPEX_factor=1):
-        
+                 init_with='WasteStream', gas_C_2_total_C=0.5981,
+                 gas_composition={'CH4':0.527, 'CO2':0.432, 'C2H6':0.011,
+                                  'C3H8':0.030, 'H2':0.0001},
+                 WHSV=3.562, catalyst_lifetime=7920,
+                 internal_heat_exchanging=True, T=350 + _C_to_K,
+                 P=3089.7*_psi_to_Pa, eff_T=60 + _C_to_K,
+                 eff_P=3089.7*_psi_to_Pa, tau=20/60, V_wf=0.5,
+                 length_to_diameter=2, diameter=None, N=6, V=None,
+                 auxiliary=False, mixing_intensity=None, kW_per_m3=0,
+                 wall_thickness_factor=1, vessel_material='Stainless steel 316',
+                 vessel_type='Vertical'):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
-        
-        self.pump_pressure = pump_pressure
-        self.heat_temp = heat_temp
-        self.cool_temp = cool_temp
+        self.gas_C_2_total_C = gas_C_2_total_C
+        self.gas_composition = gas_composition
         self.WHSV = WHSV
         self.catalyst_lifetime = catalyst_lifetime
-        self.gas_composition = gas_composition
-        self.gas_C_2_total_C = gas_C_2_total_C
-        # TODO: add pumps to HTL (and other units)
-        pump_in = Stream(f'{ID}_pump_in')
-        pump_out = Stream(f'{ID}_pump_out')
-        self.pump = Pump(ID=f'.{ID}_pump', ins=pump_in, outs=pump_out, P=pump_pressure)
-        hx_ht_in = Stream(f'{ID}_hx_ht_in')
-        hx_ht_out = Stream(f'{ID}_hx_ht_out')
-        self.heat_ex_heating = HXutility(ID=f'.{ID}_hx_ht', ins=hx_ht_in, outs=hx_ht_out, T=heat_temp, rigorous=True)
-        hx_cl_in = Stream(f'{ID}_hx_cl_in')
-        hx_cl_out = Stream(f'{ID}_hx_cl_out')
-        self.heat_ex_cooling = HXutility(ID=f'.{ID}_hx_cl', ins=hx_cl_in, outs=hx_cl_out, T=cool_temp, rigorous=True)
+        self.internal_heat_exchanging = internal_heat_exchanging
+        self.T = T
         self.P = P
+        self.eff_T = eff_T
+        self.eff_P = eff_P
         self.tau = tau
-        self.V_wf = void_fraction
-        # no headspace, gases produced will be vented, so V_wf = void fraction [2, 3]
+        self.V_wf = V_wf
         self.length_to_diameter = length_to_diameter
         self.diameter = diameter
         self.N = N
@@ -3056,42 +2949,124 @@ class CatalyticHydrothermalGasification(Reactor):
         self.wall_thickness_factor = wall_thickness_factor
         self.vessel_material = vessel_material
         self.vessel_type = vessel_type
-        self.CAPEX_factor = CAPEX_factor
-        
+        pump_in = Stream(f'{ID}_pump_in')
+        pump_out = Stream(f'{ID}_pump_out')
+        self.pump = Pump(ID=f'.{ID}_pump', ins=pump_in, outs=pump_out, P=P)
+        inf_pre_hx = Stream(f'{ID}_inf_pre_hx')
+        eff_pre_hx = Stream(f'{ID}_eff_pre_hx')
+        inf_after_hx = Stream(f'{ID}_inf_after_hx')
+        eff_after_hx = Stream(f'{ID}_eff_after_hx')
+        self.hx = HXprocess(ID=f'.{ID}_hx', ins=(inf_pre_hx, eff_pre_hx), outs=(inf_after_hx, eff_after_hx))
+        inf_hx_out = Stream(f'{ID}_inf_hx_out')
+        self.inf_hx = HXutility(ID=f'.{ID}_inf_hx', ins=inf_after_hx, outs=inf_hx_out, T=T, rigorous=True)
+        self._inf_at_temp = Stream(f'{ID}_inf_at_temp')
+        self._eff_at_temp = Stream(f'{ID}_eff_at_temp')
+        eff_hx_out = Stream(f'{ID}_eff_hx_out')
+        self.eff_hx = HXutility(ID=f'.{ID}_eff_hx', ins=eff_after_hx, outs=eff_hx_out, T=eff_T, rigorous=True)
+    
     def _run(self):
-        
         chg_in, catalyst_in = self.ins
         chg_out, catalyst_out = self.outs
         
+        # catalysts amount is quite low compared to the main stream, therefore do not consider
+        # heating/cooling of catalysts
         catalyst_in.imass['CHG_catalyst'] = chg_in.F_mass/self.WHSV/self.catalyst_lifetime
         catalyst_in.phase = 's'
         catalyst_out.copy_like(catalyst_in)
-        # catalysts amount is quite low compared to the main stream, therefore do not consider
-        # heating/cooling of catalysts
-        
-        # chg_out.phase='g'
         
         cmps = self.components
         gas_C_ratio = 0
         for name, ratio in self.gas_composition.items():
             gas_C_ratio += ratio*cmps[name].i_C
-            
+        
         gas_mass = chg_in.imass['C']*self.gas_C_2_total_C/gas_C_ratio
         
         for name,ratio in self.gas_composition.items():
             chg_out.imass[name] = gas_mass*ratio
-                
-        chg_out.imass['H2O'] = chg_in.F_mass - gas_mass
-        # all C, N, and P are accounted in H2O here, but will be calculated as properties.
         
-        chg_out.T = self.cool_temp
-        chg_out.P = self.pump_pressure
-
-        # chg_out.vle(T=chg_out.T, P=chg_out.P)
-
+        # all C, N, and P are accounted in H2O here, but will be calculated as properties
+        chg_out.imass['H2O'] = chg_in.F_mass - gas_mass
+        
+        for i in self.outs:
+            i.T = self.T
+            i.P = self.P
+        
+        self._eff_at_temp.mix_from(self.outs)
+        
+        for attr, val in zip(('T','P'), (self.eff_T, self.eff_P)):
+            if val:
+                for i in self.outs: setattr(i, attr, val)
+    
+    def _design(self):
+        D = self.design_results
+        D['Wet mass flowrate'] = self.ins[0].F_mass*_kg_to_lb
+        
+        pump = self.pump
+        pump.ins[0].copy_like(self.ins[0])
+        pump.simulate()
+        
+        hx = self.hx
+        inf_hx = self.inf_hx
+        inf_hx_in, inf_hx_out = inf_hx.ins[0], inf_hx.outs[0]
+        inf_pre_hx, eff_pre_hx = hx.ins
+        inf_after_hx, eff_after_hx = hx.outs
+        inf_pre_hx.copy_like(self.ins[0])
+        eff_pre_hx.copy_like(self._eff_at_temp)
+        
+        # use product to heat up influent
+        if self.internal_heat_exchanging:
+            hx.phase0 = hx.phase1 = 'l'
+            hx.T_lim1 = self.eff_T
+            hx.simulate()
+            for i in self.outs:
+                i.T = eff_after_hx.T
+        else:
+            hx.empty()
+            inf_after_hx.copy_like(inf_pre_hx)
+            eff_after_hx.copy_like(eff_pre_hx)
+        
+        # additional inf HX
+        inf_hx_in.copy_like(inf_after_hx)
+        inf_hx_out.copy_flow(inf_hx_in)
+        inf_hx_out.T = self.T
+        inf_hx.simulate_as_auxiliary_exchanger(ins=inf_hx.ins, outs=inf_hx.outs)
+        
+        # additional eff HX
+        eff_hx = self.eff_hx
+        eff_hx_in, eff_hx_out = eff_hx.ins[0], eff_hx.outs[0]
+        eff_hx_in.copy_like(eff_after_hx)
+        eff_hx_out.mix_from(self.outs)
+        eff_hx_out.T = self.eff_T
+        eff_hx.simulate_as_auxiliary_exchanger(ins=eff_hx.ins, outs=eff_hx.outs)
+        
+        # original code from exposan.saf._units, cooling duty very high
+        # duty = self.Hnet + eff_hx.Hnet
+        # eff_hx.simulate_as_auxiliary_exchanger(ins=eff_hx.ins, outs=eff_hx.outs, duty=duty)
+        
+        for i in self.outs:
+            i.T = self.eff_T
+        
+        Reactor._design(self)
+        
+        # the purchase price of hydrocyclone to that of CHG reactor is around 0.3, [1], page 54
+        # assume the weight of hydrocyclone is 0.3*single CHG weight*number of CHG reactors
+        # assume stainless steel
+        D['Hydrocyclone weight'] = 0.3*D['Weight']*D['Number of reactors']
+        self.construction[0].quantity += D['Hydrocyclone weight']/_kg_to_lb
+    
+    def _cost(self):
+        Reactor._cost(self)
+        purchase_costs = self.baseline_purchase_costs
+        # cost w/o sulfur guard
+        current_cost = 0
+        for item in purchase_costs.keys():
+            current_cost += purchase_costs[item]
+        purchase_costs['Sulfur guard'] = current_cost*0.05
+        self._decorated_cost()
+    
     @property
     def CHGout_C(self):
-        # not include carbon in gas phase
+        # not include carbon in the gas phase
         return self.ins[0].imass['C']*(1 - self.gas_C_2_total_C)
     
     @property
@@ -3101,60 +3076,6 @@ class CatalyticHydrothermalGasification(Reactor):
     @property
     def CHGout_P(self):
         return self.ins[0].imass['P']
-        
-    def _design(self):
-        D = self.design_results
-        D['Treatment capacity'] = self.ins[0].F_mass*_kg_to_lb
-        
-        pump = self.pump
-        pump.ins[0].copy_like(self.ins[0])
-        pump.simulate()
-        
-        hx_ht = self.heat_ex_heating
-        hx_ht_ins0, hx_ht_outs0 = hx_ht.ins[0], hx_ht.outs[0]
-        hx_ht_ins0.copy_like(self.ins[0])
-        hx_ht_outs0.copy_like(hx_ht_ins0)
-        hx_ht_ins0.T = self.ins[0].T
-        hx_ht_outs0.T = hx_ht.T
-        hx_ht_ins0.P = hx_ht_outs0.P = pump.P
-        
-        hx_ht_ins0.vle(T=hx_ht_ins0.T, P=hx_ht_ins0.P)
-        hx_ht_outs0.vle(T=hx_ht_outs0.T, P=hx_ht_outs0.P)
-        
-        hx_ht.simulate_as_auxiliary_exchanger(ins=hx_ht.ins, outs=hx_ht.outs)
-            
-        hx_cl = self.heat_ex_cooling
-        hx_cl_ins0, hx_cl_outs0 = hx_cl.ins[0], hx_cl.outs[0]
-        hx_cl_ins0.copy_like(self.outs[0])
-        hx_cl_outs0.copy_like(hx_cl_ins0)
-        hx_cl_ins0.T = hx_ht.T
-        hx_cl_outs0.T = hx_cl.T
-        hx_cl_ins0.P = hx_cl_outs0.P = self.outs[0].P
-
-        hx_cl_ins0.vle(T=hx_cl_ins0.T, P=hx_cl_ins0.P)
-        hx_cl_outs0.vle(T=hx_cl_outs0.T, P=hx_cl_outs0.P)        
-        
-        hx_cl.simulate_as_auxiliary_exchanger(ins=hx_cl.ins, outs=hx_cl.outs)
-
-        self.P = self.pump_pressure
-        Reactor._design(self)
-        D['Hydrocyclone weight'] = 0.3*D['Weight']*D['Number of reactors'] # assume stainless steel
-        # based on [1], page 54, the purchase price of hydrocyclone to the purchase price of CHG
-        # reactor is around 0.3, therefore, assume the weight of hydrocyclone is 0.3*single CHG weight*number of CHG reactors
-        self.construction[0].quantity += D['Hydrocyclone weight']/_kg_to_lb
-    
-    def _cost(self):
-        Reactor._cost(self)
-        purchase_costs = self.baseline_purchase_costs
-        current_cost = 0 # cost w/o sulfur guard
-        for item in purchase_costs.keys():
-            current_cost += purchase_costs[item]
-        purchase_costs['Sulfur guard'] = current_cost*0.05
-        self._decorated_cost()
-        
-        purchase_costs = self.baseline_purchase_costs
-        for item in purchase_costs.keys():
-            purchase_costs[item] *= self.CAPEX_factor
 
 # =============================================================================
 # Acid Extraction

@@ -44,7 +44,7 @@ GDPCTPI = {1978: 33.339,
            2022: 117.995,
            2023: 122.284}
 
-# TODO: no HXN in the system
+# TODO: no HXN in all systems
 
 # TODO: different systems should have different labor costs (and others?)
 
@@ -1568,7 +1568,6 @@ def create_T1_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
                                  init_with='WasteStream', tau=24, vessel_material='Stainless steel')
     # 0.5 M H2SO4: ~5%
     H2SO4_Tank.ins[0].price = 0.00658 # based on 93% H2SO4 and fresh water (dilute to 5%) price found in Davis 2020$/kg
-    
 
     SP1 = qsu.ReversedSplitter(ID='SP1', ins=H2SO4_Tank-0, outs=('H2SO4_P','H2SO4_N'),
                                init_with='Stream')
@@ -1590,7 +1589,7 @@ def create_T1_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
     StruPre.ins[3].price = 0.2
     StruPre.outs[0].price = 0.661
     
-    CHG = qsu.CatalyticHydrothermalGasification(ID='CHG', ins=(StruPre-1, '7.8%_Ru/C'),
+    CHG = lsu.CatalyticHydrothermalGasification(ID='CHG', ins=(StruPre-1, '7.8%_Ru/C'),
                                                 outs=('CHG_out','7.8%_Ru/C_out'))
     CHG.ins[1].price = 134.53
     
@@ -1669,7 +1668,6 @@ def create_T6_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
                                  init_with='WasteStream', tau=24, vessel_material='Stainless steel')
     # 0.5 M H2SO4: ~5%
     H2SO4_Tank.ins[0].price = 0.00658 # based on 93% H2SO4 and fresh water (dilute to 5%) price found in Davis 2020$/kg
-    
 
     SP1 = qsu.ReversedSplitter(ID='SP1', ins=H2SO4_Tank-0, outs=('H2SO4_P','H2SO4_N'),
                                init_with='Stream')
@@ -1691,7 +1689,7 @@ def create_T6_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
     StruPre.ins[3].price = 0.2
     StruPre.outs[0].price = 0.661
     
-    CHG = qsu.CatalyticHydrothermalGasification(ID='CHG', ins=(StruPre-1, '7.8%_Ru/C'),
+    CHG = lsu.CatalyticHydrothermalGasification(ID='CHG', ins=(StruPre-1, '7.8%_Ru/C'),
                                                 outs=('CHG_out','7.8%_Ru/C_out'))
     CHG.ins[1].price = 134.53
     
@@ -1770,7 +1768,6 @@ def create_T11_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
                                  init_with='WasteStream', tau=24, vessel_material='Stainless steel')
     # 0.5 M H2SO4: ~5%
     H2SO4_Tank.ins[0].price = 0.00658 # based on 93% H2SO4 and fresh water (dilute to 5%) price found in Davis 2020$/kg
-    
 
     SP1 = qsu.ReversedSplitter(ID='SP1', ins=H2SO4_Tank-0, outs=('H2SO4_P','H2SO4_N'),
                                init_with='Stream')
@@ -1792,7 +1789,7 @@ def create_T11_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
     StruPre.ins[3].price = 0.2
     StruPre.outs[0].price = 0.661
     
-    CHG = qsu.CatalyticHydrothermalGasification(ID='CHG', ins=(StruPre-1, '7.8%_Ru/C'),
+    CHG = lsu.CatalyticHydrothermalGasification(ID='CHG', ins=(StruPre-1, '7.8%_Ru/C'),
                                                 outs=('CHG_out','7.8%_Ru/C_out'))
     CHG.ins[1].price = 134.53
     
