@@ -3,13 +3,13 @@ catwalk		USD	634	570.6	697.4	uniform	BOM
 control_room_frame		USD	1006	905.4	1106.6	uniform	BOM
 control_room_board		USD	4952.73	4457.457	5448.003	uniform	BOM
 misc_electronics		USD	950	855	1045	uniform	BOM
-steel_weight		kg	100	90	110	uniform	assumption
-LLDPE_weight		kg	50	45	55	uniform	assumption
-steel_framework_weight	Housing framework steel weight	kg	1.5	1.35	1.65	uniform	assumption
-steel_fittings_weight	Housing fittings steel weight	kg	1	0.8	1.2	uniform	assumption
+steel_weight		kg	100	85	115	uniform	assumption
+LLDPE_weight		kg	50	42.5	57.5	uniform	assumption
+steel_framework_weight	Housing framework steel weight	kg	1.5	1.275	1.725	uniform	assumption
+steel_fittings_weight	Housing fittings steel weight	kg	1	0.85	1.15	uniform	assumption
 frontend_1000_ppl_cost		USD	10000	8500	11500	uniform	assumption for cost of stone structure + toilets (or 20 toilets at $500/toilet)
-catwalk_lifetime		yr	30			constant	assumption
-control_room_frame_lifetime		yr	20			constant	assumption
-control_room_board_lifetime		yr	10			constant	assumption
-misc_electronics_lifetime		yr	10			constant	assumption
-frontend_lifetime		yr	20			constant	assumption
+catwalk_lifetime		yr	30	21	39	uniform	assumption
+control_room_frame_lifetime		yr	20	14	26	uniform	assumption
+control_room_board_lifetime		yr	10	7	13	uniform	assumption
+misc_electronics_lifetime		yr	10	7	13	uniform	assumption
+frontend_lifetime		yr	20	14	26	uniform	assumption

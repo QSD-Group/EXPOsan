@@ -1,6 +1,6 @@
 parameter	name (if diff)	unit	expected	low	high	distribution	references
 N2O_EF_decay		gN2O-N/g TN load	0.002958061	0.000891375	0.008612755	triangular	https://www.nature.com/articles/s41893-024-01420-9
-tank_steel_weight	estimated total weight of primary clarifier tank	kg	85			constant	"BOM, assuming 4000L tank weights 85kg"
+tank_steel_weight	estimated total weight of primary clarifier tank	kg	85	72.25	97.75	uniform	"BOM, assuming 4000L tank weights 85kg"
 steel_density	density of steel	kg/m3	7850			constant	BOM
 membrane_material_weight		kg	300	270	330	uniform	BOM
 MBR_tank_cost		USD	169.35	152.415	186.285	uniform	BOM
@@ -8,15 +8,15 @@ weld_female_adapter_fittings		USD	6.87	6.183	7.557	uniform	https://thedrainageso
 pipeline_connectors		USD	13.16	11.844	14.476	uniform	https://www.eco-filtration.co.uk/product/110mm-4-pond-threaded-tank-connector/?srsltid=AfmBOoqFzwEcDdzmztkcvuSYA_anY1hoj5U5rOQz0Q8s1FUBhTeQpdX2
 membrane_material_price		USD	210	189	231	uniform	assumption
 membrane_cleaning_fee		USD	100	90	110	uniform	assumption
-MBR_tank_lifetime		yr	8	7.2	8.8	uniform	assumption
-weld_female_adapter_fittings_lifetime		yr	5	4.5	5.5	uniform	assumption
-pipeline_connectors_lifetime		yr	5	4.5	5.5	uniform	assumption
-membrane_material_lifetime		yr	2	1.8	2.2	uniform	assumption
+MBR_tank_lifetime		yr	8	5.6	10.4	uniform	assumption
+weld_female_adapter_fittings_lifetime		yr	5	3.5	6.5	uniform	assumption
+pipeline_connectors_lifetime		yr	5	3.5	6.5	uniform	assumption
+membrane_material_lifetime		yr	2	1.4	2.6	uniform	assumption
 power_demand_MBR	energy consumption for membrane tank	KWh/day	1.2	1.08	1.32	uniform	assumption
 self_priming_pump_cast_iron		kg	9	7.65	10.35	uniform	data sheet
 self_priming_pump_power		kW	0.6	0.51	0.69	uniform	data sheet
 self_priming_pump_cost		USD	85.02	76.518	93.522	uniform	https://www.alibaba.com/product-detail/LEO-QDX-Series-Cast-Iron-Submersible_60671071414.html?spm=a2700.galleryofferlist.normal_offer.d_title.3be013a0BMhyxn
-pump_lifetime		yr	5	4.25	5.75	uniform	assumption
+pump_lifetime		yr	5	3.5	6.5	uniform	assumption
 nitrate_return_pump_stainless_steel		kg	9.1	7.735	10.465	uniform	data sheet
 nitrate_return_pump_cast_iron		kg	9.1	7.735	10.465	uniform	data sheet
 nitrate_return_pump_power		kW	0.45	0.3825	0.5175	uniform	data sheet

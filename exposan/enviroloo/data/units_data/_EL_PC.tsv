@@ -5,12 +5,12 @@ tank_steel_weight	estimated total weight of primary clarifier tank	kg	85			const
 steel_density	density of steel	kg/m3	7850			constant	BOM
 weld_female_adapter_fittings		USD	6.87	6.183	7.557	uniform	https://thedrainagesource.com/4-pvc-sdr35-solvent-weld-female-adapter-s-x-fpt/?srsltid=AfmBOorc5xzjQmxhmGZ2dstlABtaDC0az8KOrbJaDaI1zrV2U6IJzc1r
 pipeline_connectors		USD	13.16	11.844	14.476	uniform	https://www.eco-filtration.co.uk/product/110mm-4-pond-threaded-tank-connector/?srsltid=AfmBOoqFzwEcDdzmztkcvuSYA_anY1hoj5U5rOQz0Q8s1FUBhTeQpdX2
-PC_tank_lifetime		yr	5	4.5	5.5	uniform	assumption
-weld_female_adapter_fittings_lifetime		yr	5	4.5	5.5	uniform	"assu,ption"
-pipeline_connectors_lifetime		yr	5	4.5	5.5	uniform	assumption
+PC_tank_lifetime		yr	5	3.5	6.5	uniform	assumption
+weld_female_adapter_fittings_lifetime		yr	5	3.5	6.5	uniform	"assu,ption"
+pipeline_connectors_lifetime		yr	5	3.5	6.5	uniform	assumption
 power_demand_PC	energy consumption for primary clarifier tank	KWh/day	0.3	0.27	0.33	uniform	assumption
 solids_moisture_content		%	0.95	0.93	0.97	uniform	assumption
-pump_lifetime		yr	5	4.25	5.75	uniform	assumption
+pump_lifetime		yr	5	3.5	6.5	uniform	assumption
 primary_return_pump_stainless_steel		kg	9.1	7.735	10.465	uniform	data sheet
 primary_return_pump_cast_iron		kg	9.1	7.735	10.465	uniform	data sheet
 primary_return_pump_power		kW	0.45	0.3825	0.5175	uniform	data sheet

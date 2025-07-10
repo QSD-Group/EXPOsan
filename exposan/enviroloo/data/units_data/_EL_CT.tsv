@@ -1,16 +1,16 @@
 parameter	name (if diff)	unit	expected	low	high	distribution	references
 N2O_EF_decay		gN2O-N/g TN load	0.002958061	0.000891375	0.008612755	triangular	https://www.nature.com/articles/s41893-024-01420-9
-tank_steel_weight		kg	330			constant	"BOM, assuming 8000 L tank weights 135 kg"
+tank_steel_weight		kg	330	280.5	379.5	uniform	"BOM, assuming 8000 L tank weights 135 kg"
 steel_density		kg/m3	7850			constant	BOM
 collection_tank_cost		USD	2101.57	1891.413	2311.727	uniform	BOM
 weld_female_adapter_fittings		USD	6.87	6.183	7.557	uniform	https://thedrainagesource.com/4-pvc-sdr35-solvent-weld-female-adapter-s-x-fpt/?srsltid=AfmBOorc5xzjQmxhmGZ2dstlABtaDC0az8KOrbJaDaI1zrV2U6IJzc1r
 pipeline_connectors		USD	13.16	11.844	14.476	uniform	https://www.eco-filtration.co.uk/product/110mm-4-pond-threaded-tank-connector/?srsltid=AfmBOoqFzwEcDdzmztkcvuSYA_anY1hoj5U5rOQz0Q8s1FUBhTeQpdX2
-collection_tank_lifetime		yr	8	7.2	8.8	uniform	assumption
-weld_female_adapter_fittings_lifetime		yr	5	4.5	5.5	uniform	assumption
-pipeline_connectors_lifetime		yr	5	4.5	5.5	uniform	assumption
+collection_tank_lifetime		yr	8	5.6	10.4	uniform	assumption
+weld_female_adapter_fittings_lifetime		yr	5	3.5	6.5	uniform	assumption
+pipeline_connectors_lifetime		yr	5	3.5	6.5	uniform	assumption
 power_demand_CT	energy consumption for primary clarifier tank	KWh/day	1	0.9	1.1	uniform	assumption
 lift_pump_cast_iron		kg	12	10.2	13.8	uniform	data sheet
 lift_pump_power		kW	1.1	0.935	1.265	uniform	data sheet
 lift_pump_cost		USD	324	291.6	356.4	uniform	https://www.alibaba.com/product-detail/Jinmu-brand-professional-1-1kw-submersible_1600929097854.html?spm=a2700.details.you_may_like.3.44e35ef2MlxhPU
-pump_lifetime		yr	5	4.25	5.75	uniform	assumption
+pump_lifetime		yr	5	3.5	6.5	uniform	assumption
 EL_CT_methane_yield	methane yield based on COD degraded at 25 degrees C	g CH4/m3 of treated wastewater	0.8	0.2	1.7	triangular	https://doi.org/10.1021/acs.est.2c04388

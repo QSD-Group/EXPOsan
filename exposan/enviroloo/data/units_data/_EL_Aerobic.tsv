@@ -1,23 +1,23 @@
 parameter	name (if diff)	unit	expected	low	high	distribution	references
 N2O_EF_decay		gN2O-N/g TN load	0.002958061	0.000891375	0.008612755	triangular	https://www.nature.com/articles/s41893-024-01420-9
-tank_steel_weight	estimated total weight of primary clarifier tank	kg	135			constant	"BOM, assuming 8000L tank weights 135kg"
+tank_steel_weight	estimated total weight of primary clarifier tank	kg	135	114.75	155.25	constant	"BOM, assuming 8000L tank weights 135kg"
 steel_density	density of steel	kg/m3	7850			constant	BOM
 aerobic_tank_cost		USD	845	760.5	929.5	uniform	BOM
 weld_female_adapter_fittings		USD	6.87	6.183	7.557	uniform	https://thedrainagesource.com/4-pvc-sdr35-solvent-weld-female-adapter-s-x-fpt/?srsltid=AfmBOorc5xzjQmxhmGZ2dstlABtaDC0az8KOrbJaDaI1zrV2U6IJzc1r
 pipeline_connectors		USD	13.16	11.844	14.476	uniform	https://www.eco-filtration.co.uk/product/110mm-4-pond-threaded-tank-connector/?srsltid=AfmBOoqFzwEcDdzmztkcvuSYA_anY1hoj5U5rOQz0Q8s1FUBhTeQpdX2
 chemical_PAC_mixing_ratio		kg/L	0.035			constant	BOM
 chemical_PAC_price		USD/kg	0.55	0.495	0.605	uniform	https://www.alibaba.com/product-detail/Bulk-Food-Grade-glucose-Powder-99_1600987002678.html?spm=a2700.galleryofferlist.p_offer.d_title.48b513a084WF5B&s=p
-aerobic_tank_lifetime		yr	8	7.2	8.8	uniform	assumption
-weld_female_adapter_fittings_lifetime		yr	5	4.5	5.5	uniform	assumption
-pipeline_connectors_lifetime		yr	5	4.5	5.5	uniform	assumption
+aerobic_tank_lifetime		yr	8	5.6	10.4	uniform	assumption
+weld_female_adapter_fittings_lifetime		yr	5	3.5	6.5	uniform	assumption
+pipeline_connectors_lifetime		yr	5	3.5	6.5	uniform	assumption
 power_demand_AerobicTank	energy consumption for anoxic tank	KWh/day	0.8	0.72	0.88	uniform	assumption
-blower_steel_weight		kg	24	21.6	26.4	uniform	BOM
+blower_steel_weight		kg	24	20.6	27.4	uniform	BOM
 blower_cost		USD	500	450	550	uniform	BOM
-blower_lifetime		yr	8	7.2	8.8	uniform	assumption
+blower_lifetime		yr	8	6.6	10.4	uniform	assumption
 power_demand_blower	energy consumption for blower	KWh/day	2	1.8	2.2	uniform	assumption
 PAC_mixer_cast_iron		kg	9	8.1	9.9	uniform	data sheet by EnviroLoo
 PAC_mixer_cost		USD	167	150.3	183.7	uniform	Bill of materials
 dosing_pump_PVC		kg	2.5	2.125	2.875	uniform	data sheet
 dosing_pump_cost		USD	150	135	165	uniform	https://www.aliexpress.us/item/3256804645639765.html?src=google&gatewayAdapt=glo2usa
-pump_lifetime		yr	5	4.25	5.75	uniform	assumption
-PAC_mixer_lifetime		yr	10	8.5	11.5	uniform	assumption
+pump_lifetime		yr	5	3.5	6.5	uniform	assumption
+PAC_mixer_lifetime		yr	10	7	13	uniform	assumption
