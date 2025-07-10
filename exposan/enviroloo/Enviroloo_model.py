@@ -4,6 +4,8 @@
 '''
 
 This module is developed by:
+    Aaron Marszewski <aaronpm3@illinois.edu>
+    Rishabh Puri <rp34@illinois.edu>
     Siqi Tang <siqit@outlook.com>
     Yuyao Huang <yuyaoh2@illinois.edu>
     
@@ -111,21 +113,7 @@ def add_metrics(model):
     system = model.system
     # Recoveries TODO: add recoveries to system?
     # funcs = get_recoveries(system)
-    # metrics = []
-    #     Metric('Total N', funcs[0], '% N', 'N recovery'), #here the order of funcs in line with the function get_recoveries in _init_.py
-    #     Metric('Total P', funcs[1], '% P', 'P recovery'),
-    #     Metric('Total K', funcs[2], '% K', 'K recovery'),
-    # ]
-    # Net cost of the EL system in TEA
-    # metrics = ([
-    #     Metric('Annualized CAPEX', get_TEA_metrics(system)[1], f'{qs.currency}/cap/yr', 'TEA results'),
-    #     Metric('Annual electricity consumption', get_TEA_metrics(system)[2], 'kWh/cap/yr', 'TEA results'),
-    #     Metric('Annual labor cost', get_TEA_metrics(system)[3], f'{qs.currency}/cap/yr', 'TEA results'),
-    #     Metric('OPEX excluding labor/energy', get_TEA_metrics(system)[4], f'{qs.currency}/cap/yr', 'TEA results'),
-    #     Metric('Revenue', get_TEA_metrics(system)[5], f'{qs.currency}/cap/yr', 'TEA results')
-        
-    #     #Metric('Annual net cost', get_TEA_metrics_breakdown(system), f'{qs.currency}/cap/yr', 'TEA results'),
-    #     ])
+   
     # Net emissions of the EL system in LCA
     funcs = get_LCA_metrics(system, include_breakdown=True)  # extract LCA metrics from the EL system's LCA results
     cat = 'LCA results'  # assign the same index to all LCA metrics

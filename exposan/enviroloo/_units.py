@@ -4,6 +4,8 @@
 '''
 
 This module is developed by:
+    Aaron Marszewski <aaronpm3@illinois.edu>
+    Rishabh Puri <rp34@illinois.edu>
     Yuyao Huang <yuyaoh20@gmail.com>
     Siqi Tang <siqit@outlook.com>
 for Enviroloo (EL) Clear Toilet system

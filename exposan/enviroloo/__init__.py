@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 '''
 Created by Yuyao Huang and Siqi Tang for Enviroloo Clear Toilet system
-
+    Aaron Marszewski <aaronpm3@illinois.edu>
+    Rishabh Puri <rp34@illinois.edu>
     Siqi Tang <siqit@outlook.com>
     Yuyao Huang <yuyaoh20@gmail.com>
 
