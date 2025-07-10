@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 '''
-Created by Yuyao Huang and Siqi Tang for Enviroloo Clear Toilet system
+This module is developed by:
     Aaron Marszewski <aaronpm3@illinois.edu>
     Rishabh Puri <rp34@illinois.edu>
     Siqi Tang <siqit@outlook.com>
@@ -214,7 +214,6 @@ def _load_lca_data(reload=False):
                              H_Health = H_Health_dct[dct_key],
                              H_Resources = H_Resources_dct[dct_key],
                              )
-        #TODO: stream impact items not properly initiated because 
         # lca.total_stream_impacts['GlobalWarming'] outputs 0.                
         create_stream_impact_item(item_ID='CH4_item') # link when generated in each unit
         create_stream_impact_item(item_ID='N2O_item')
@@ -317,42 +316,6 @@ def get_recoveries(system, include_breakdown=False):
     MembraneTank = u_reg.B1
     # ClearWaterTank = u_reg.CWT
     
-    # # In the Toilet unit
-    # #C_dct['urine'] = get_C(toilet.ins[0]) * ppl
-    # #C_dct['feces'] = get_C(toilet.ins[1]) * ppl
-    # #C_dct['input'] = C_dct['urine'] + C_dct['feces']
-    # N_dct['urine'] = get_N(toilet.ins[0]) * ppl
-    # N_dct['feces'] = get_N(toilet.ins[1]) * ppl
-    # N_dct['input'] = N_dct['urine'] + N_dct['feces']
-    # P_dct['urine'] = get_P(toilet.ins[0]) * ppl
-    # P_dct['feces'] = get_P(toilet.ins[1]) * ppl
-    # P_dct['input'] = P_dct['urine'] + P_dct['feces']
-    # K_dct['urine'] = get_K(toilet.ins[0]) * ppl
-    # K_dct['feces'] = get_K(toilet.ins[1]) * ppl
-    # K_dct['input'] = K_dct['urine'] + K_dct['feces']
-
-    #C_dct['toilet_gas'] = get_C_gas(toilet.outs[-1])  # CH4 in the second order of toilet outs
-    #N_dct['toilet_gas'] = get_N_gas(toilet.outs[-2])  # N2O in the third order of toilet outs
-    
-    # consider sludge in membrane tank and aerobic tank
-    # N_dct['treated_sludge'] = get_N(MembraneTank.outs[0]) + get_N(AerobicTank.outs[0]) + get_N(AnoxicTank.outs[0])
-    # P_dct['treated_sludge'] = get_P(MembraneTank.outs[0]) + get_P(AerobicTank.outs[0]) + get_P(AnoxicTank.outs[0])
-    # K_dct['treated_sludge'] = get_K(MembraneTank.outs[0]) + get_K(AerobicTank.outs[0]) + get_K(AnoxicTank.outs[0])
-
-    # the code in the following domain is a sample, which will be updated later
-    # functions = [
-    #     lambda: N_dct['treated_sludge'] / N_dct['input'] * 100, # total N recovery percentage
-    #     lambda: P_dct['treated_sludge'] / P_dct['input'] * 100, # total P recovery percentage
-    #     lambda: K_dct['treated_sludge'] / K_dct['input'] * 100, # total K recovery percentage
-    #     ]
-    # if not include_breakdown: return functions
-    
-    # return [
-    #     *functions,
-    #     lambda: N_dct['treated_sludge'] / N_dct['input'] * 100, # N recovery percentage
-    #     lambda: P_dct['treated_sludge'] / P_dct['input'] * 100, # P recovery percentage
-    #     lambda: K_dct['treated_sludge'] / K_dct['input'] * 100, # K recovery percentage
-    #     ]
         
 ######################################################## Financial and Cost parameters ##############################################################
 ## 
@@ -537,9 +500,6 @@ def print_summaries(systems):
 from . import Enviroloo_model
 from .Enviroloo_model import *
 
-# This country_specific file will be done after the LCA, TEA, and uncertainty and sensitivity analysis of the EL system are all conducted.
-#from exposan.enviroloo import country_specific
-#from .country_specific import *
 
 __all__ = (
     'el_path',
