@@ -23,17 +23,35 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-import os, biosteam as bst
+import os, qsdsan as qs, biosteam as bst
 from qsdsan import SanUnit
 from qsdsan.sanunits import SludgePump, WWTpump, HXutility, Reactor, HXprocess, Pump
 from qsdsan.utils import auom, calculate_excavation_volume
 from qsdsan.equipments import Blower, GasPiping
+from thermosteam import indexer, equilibrium
 from biosteam import Stream
 from biosteam.units.decorators import cost
-from biosteam.units.design_tools import CEPCI_by_year
-from math import ceil, pi, log
+from math import ceil, pi, log, exp
 
-# TODO: check the lifetime of each unit / equipment
+GDPCTPI = {2007: 86.352,
+           2008: 87.977,
+           2009: 88.557,
+           2010: 89.619,
+           2011: 91.466,
+           2012: 93.176,
+           2013: 94.786,
+           2014: 96.436,
+           2015: 97.277,
+           2016: 98.208,
+           2017: 100.000,
+           2018: 102.290,
+           2019: 104.008,
+           2020: 105.407,
+           2021: 110.220,
+           2022: 117.995,
+           2023: 122.284}
+
+# TODO: check the lifetime of each unit / equipment: see Table S1
 
 # TODO: check natural gas CI, whether including upstream
 
@@ -67,14 +85,10 @@ folder = os.path.dirname(__file__)
 
 # TODO: add pump for effluents of appropriate units
 
-# TODO: add models
-# TODO: HTL-based system
 # TODO: HALT-based system
 # TODO: SCWO
+# TODO: sludge gasification TEA: https://www.sciencedirect.com/science/article/pii/S0960852414003459
 # TODO: gasification
-
-# TODO: add CHG, etc. for HTL-based systems
-# TODO: update
 __all__ = (
     'WRRF',
     'Storage',
@@ -87,13 +101,15 @@ __all__ = (
     'HeatDrying',
     'Incineration',
     'Pyrolysis',
+    'Gasification',
     'Landfilling',
     'LandApplication',
     'HydrothermalLiquefaction',
-    'HTLmixer,'
+    'HTLmixer',
     'CatalyticHydrothermalGasification',
     'AcidExtraction',
-    'StruvitePrecipitation'
+    'StruvitePrecipitation',
+    'MembraneDistillation'
     )
 
 # =============================================================================
@@ -160,17 +176,9 @@ class WRRF(SanUnit):
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', 
-                 ww_2_dry_sludge=0.94, # [1]
+                 ww_2_dry_sludge=1, # [1]
                  sludge_moisture=0.99, sludge_dw_ash=0.257, 
                  sludge_afdw_lipid=0.204, sludge_afdw_protein=0.463, 
-                 lipid_2_C=0.750,
-                 protein_2_C=0.545,
-                 carbo_2_C=0.400, 
-                 lipid_2_H=0.125,
-                 protein_2_H=0.068,
-                 carbo_2_H=0.067, 
-                 protein_2_N=0.159,
-                 N_2_P=0.3927,
                  operation_hours=None,
                  sludge_wet_density=1040, # [2]
                  sludge_distance=100,
@@ -182,14 +190,6 @@ class WRRF(SanUnit):
         self.sludge_dw_ash = sludge_dw_ash
         self.sludge_afdw_lipid = sludge_afdw_lipid
         self.sludge_afdw_protein = sludge_afdw_protein
-        self.lipid_2_C = lipid_2_C
-        self.protein_2_C = protein_2_C
-        self.carbo_2_C = carbo_2_C
-        self.lipid_2_H = lipid_2_H
-        self.protein_2_H = protein_2_H
-        self.carbo_2_H = carbo_2_H
-        self.protein_2_N = protein_2_N
-        self.N_2_P = N_2_P
         self.operation_hours = operation_hours
         self.sludge_wet_density = sludge_wet_density
         self.sludge_distance = sludge_distance
@@ -230,64 +230,6 @@ class WRRF(SanUnit):
     @property
     def sludge_dw_carbo(self):
         return self.sludge_afdw_carbo*(1-self.sludge_dw_ash)
-    
-    @property
-    def sludge_C_ratio(self):
-       return self.sludge_dw_protein*self.protein_2_C + self.sludge_dw_lipid*self.lipid_2_C +\
-           self.sludge_dw_carbo*self.carbo_2_C
-    
-    @property
-    def sludge_H_ratio(self):
-       return self.sludge_dw_protein*self.protein_2_H + self.sludge_dw_lipid*self.lipid_2_H +\
-           self.sludge_dw_carbo*self.carbo_2_H
-    
-    @property
-    def sludge_N_ratio(self):
-       return self.sludge_dw_protein*self.protein_2_N
-    
-    @property
-    def sludge_P_ratio(self):
-       return self.sludge_N_ratio*self.N_2_P
-    
-    @property
-    def sludge_O_ratio(self):
-       return 1 - self.sludge_C_ratio - self.sludge_H_ratio -\
-           self.sludge_N_ratio - self.sludge_dw_ash
-    
-    @property
-    def sludge_C(self):
-       return self.sludge_C_ratio*self.sludge_dw
-    
-    @property
-    def sludge_H(self):
-       return self.sludge_H_ratio*self.sludge_dw
-    
-    @property
-    def sludge_N(self):
-       return self.sludge_N_ratio*self.sludge_dw
-    
-    @property
-    def sludge_P(self):
-       return self.sludge_P_ratio*self.sludge_dw
-    
-    @property
-    def sludge_O(self):
-       return self.sludge_O_ratio*self.sludge_dw
-    
-    @property
-    def AOSc(self):
-       return (3*self.sludge_N_ratio/14.0067 + 2*self.sludge_O_ratio/15.999 -\
-               self.sludge_H_ratio/1.00784)/(self.sludge_C_ratio/12.011)
-    
-    @property
-    def sludge_HHV(self):
-       return 100*(0.338*self.sludge_C_ratio + 1.428*(self.sludge_H_ratio -\
-              self.sludge_O_ratio/8)) # [3]
-    
-    @property
-    def H_C_eff(self):
-        return (self.sludge_H/1.00784-2*self.sludge_O/15.999)/self.sludge_C*12.011
-
 
 # =============================================================================
 # Storage
@@ -407,9 +349,9 @@ class Thickening(SanUnit):
     auxiliary_unit_names = ('effluent_pump','sludge_pump')
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='WasteStream', target_moisture=0.97,
+                 init_with='WasteStream', lifetime=25, target_moisture=0.97,
                  polymer_addition=5, unit_electricity=4.9, max_capacity=100):
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
         self.target_moisture = target_moisture
         self.polymer_addition = polymer_addition
         self.unit_electricity = unit_electricity
@@ -562,13 +504,13 @@ class AerobicDigestion(SanUnit):
               'Pump stainless steel':'kg'}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='WasteStream', O2_requirement=2.3,
+                 init_with='WasteStream', lifetime=30, O2_requirement=2.3,
                  VS_reduction=0.475, HRT=14, SRT=40,
                  # TODO: this includes aeration, but there is a separate blower (check electricity)
                  unit_electricity=0.03, depth=10, wall_concrete_unit_cost=24,
                  slab_concrete_unit_cost=13, excavation_unit_cost=0.3,
                  F_BM=default_F_BM):
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
         self.O2_requirement = O2_requirement
         # TODO: use different reduction ratios for lipid, protein, and carbohydrate
         self.VS_reduction = VS_reduction
@@ -883,9 +825,9 @@ class AnaerobicDigestion(SanUnit):
               'Pump stainless steel':'kg'}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='WasteStream', VS_reduction=0.425, biogas_yield=0.9,
-                 methane_biogas=0.65, biogas_CHP_ratio=0.55, biogas_RNG_ratio=0.35,
-                 biogas_flare_ratio=0.09,
+                 init_with='WasteStream', lifetime=30, VS_reduction=0.425,
+                 biogas_yield=0.9, methane_biogas=0.65, biogas_CHP_ratio=0.55,
+                 biogas_RNG_ratio=0.35, biogas_flare_ratio=0.09,
                  flare_fugitive_ratio=0.01, RNG_parasitic=0.169,
                  net_capacity_factor=0.85, HRT=22, SRT=22, unit_electricity=0.0065,
                  depth=10, T=35+_C_to_K,
@@ -897,7 +839,7 @@ class AnaerobicDigestion(SanUnit):
                  # TODO: check if vertical_mixer_unit_price include installation 
                  vertical_mixer_unit_power=3.7, vertical_mixer_unit_price=10200,
                  F_BM=default_F_BM):
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
         # TODO: use different reduction ratios for lipid, protein, and carbohydrate
         self.VS_reduction = VS_reduction
         self.biogas_yield = biogas_yield
@@ -1163,10 +1105,10 @@ class Dewatering(SanUnit):
     solids_loading_range = (2, 40)
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='WasteStream', target_moisture=0.8,
-                 polymer_addition=5, methane_concentration=6,
-                 mathane_loss=0.9, unit_electricity=1.40):
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+                 init_with='WasteStream', lifetime=20, target_moisture=0.8,
+                 polymer_addition=5, methane_concentration=6, mathane_loss=0.9,
+                 unit_electricity=1.40):
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
         self.target_moisture = target_moisture
         self.polymer_addition = polymer_addition
         self.methane_concentration = methane_concentration
@@ -1236,7 +1178,7 @@ class Dewatering(SanUnit):
 # =============================================================================
 
 @cost(ID='Lime stabilization', basis='Dry solids flow',
-      units='tonne/day', cost=311386, S=1, CE=CEPCI_by_year[2004], n=0.5623, BM=1)
+      units='tonne/day', cost=311386, S=1, CE=qs.CEPCI_by_year[2004], n=0.5623, BM=1)
 class AlkalineStabilization(SanUnit):
     '''
     Alkaline stabilization of dewatered sludge, with the assumption
@@ -1293,9 +1235,9 @@ class AlkalineStabilization(SanUnit):
     _units = {'Dry solids flow':'tonne/day'}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='WasteStream', lime_dose=0.3,
+                 init_with='WasteStream', lifetime=25, lime_dose=0.3,
                  natural_gas_emission=15.6, unit_electricity=3.7):
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
         self.lime_dose = lime_dose
         self.natural_gas_emission = natural_gas_emission
         self.unit_electricity = unit_electricity
@@ -1416,7 +1358,7 @@ class Composting(SanUnit):
     _N_outs = 3
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='WasteStream', lipid_2_C=0.750,
+                 init_with='WasteStream', lifetime=25, lipid_2_C=0.750,
                  protein_2_C=0.545, carbo_2_C=0.400, protein_2_N=0.159,
                  N_2_P=0.3927, bulking_agent_solids=3, bulking_agent_density=0.25,
                  bulking_agent_solids_ratio=0.61, bulking_agent_OC_ratio=0.518,
@@ -1426,7 +1368,7 @@ class Composting(SanUnit):
                  tractor_fuel=25, methane_fugitive_ratio=0.0001,
                  nitrous_oxide_fugitive_ratio=0.00076, unit_carbon_sequestration=0.4475,
                  unit_electricity=0):
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
         self.lipid_2_C = lipid_2_C
         self.protein_2_C = protein_2_C
         self.carbo_2_C = carbo_2_C
@@ -1531,6 +1473,9 @@ class Composting(SanUnit):
 # HeatDrying
 # =============================================================================
 
+# TODO: note the capital cost for pyrolysis already include HeatDrying, so do not need a capital cost here
+# TODO: it is likely the capital cost for gasification will include HeatDrying as well
+# TODO: if this is not true, add capital cost, may refer to HX
 class HeatDrying(SanUnit):
     '''
     Heat drying of sludge or biosolids.
@@ -1547,10 +1492,10 @@ class HeatDrying(SanUnit):
         dried_solids, vapor.
     target_moisture : float
         targeted moisture content, [-].
+    T_out : float
+        outlet solids temperature, [K].
     unit_heat : float
         energy for removing unit water from solids, [GJ/tonne water].
-    T_in : float
-        inlet process stream temperature, [K].
     unit_electricity : float
         electricity for heat drying, [kWh/dry tonne solids].
     '''
@@ -1558,12 +1503,12 @@ class HeatDrying(SanUnit):
     _N_outs = 2
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='WasteStream', target_moisture=0.2,
-                 unit_heat=4.5, T_in=650, unit_electricity=214):
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+                 init_with='WasteStream', lifetime=25, target_moisture=0.2,
+                 T_out=90 + _C_to_K, unit_heat=4.5, unit_electricity=214):
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
         self.target_moisture = target_moisture
+        self.T_out = T_out
         self.unit_heat = unit_heat
-        self.T_in = T_in
         self.unit_electricity = unit_electricity
     
     def _run(self):
@@ -1584,10 +1529,12 @@ class HeatDrying(SanUnit):
        
         vapor.imass['H2O'] = input_sludge.F_mass - dried_solids.F_mass
         
+        dried_solids.T = vapor.T = self.T_out
+        
     def _design(self):
         # TODO: add cost and CI
         self.add_heat_utility(unit_duty=self.outs[1].imass['H2O']/1000*self.unit_heat*1000000,
-                              T_in=self.T_in, hxn_ok=True)
+                              T_in=self.ins[0].T, T_out=self.outs[0].T, hxn_ok=True)
         
         # kW
         self.add_power_utility(self.dry_solids*self.unit_electricity)
@@ -1667,17 +1614,18 @@ class Incineration(SanUnit):
     _N_outs = 4
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='WasteStream', incineration_temperature=850,
-                 ash_moisture_content=0.01, heat_water_removal=4.5,
-                 fugitive_methane_incineration=0.0000097, protein_2_N=0.159,
-                 N_2_P=0.3927, suzuki_constant_1=161.3, suzuki_constant_2=0.14,
-                 suzuki_lowest_temperature=750, urea_catalyst=True,
-                 N2O_adjustment_factor_urea=0.2, heat_solids_incineration=12000,
-                 additional_fuel_ratio=0, heat_recovery_ratio=0.5,
-                 heat_recovery_efficiency=0.8, electricity_recovery_ratio=0,
-                 BTU_to_kWh_with_efficiency=0.0000854, net_capacity_factor=0.85,
-                 unit_electricity=200):
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+                 init_with='WasteStream', lifetime=20,
+                 incineration_temperature=850, ash_moisture_content=0.01,
+                 heat_water_removal=4.5, fugitive_methane_incineration=0.0000097,
+                 protein_2_N=0.159, N_2_P=0.3927, suzuki_constant_1=161.3,
+                 suzuki_constant_2=0.14, suzuki_lowest_temperature=750,
+                 urea_catalyst=True, N2O_adjustment_factor_urea=0.2,
+                 heat_solids_incineration=12000, additional_fuel_ratio=0,
+                 heat_recovery_ratio=0.5, heat_recovery_efficiency=0.8,
+                 electricity_recovery_ratio=0,
+                 BTU_to_kWh_with_efficiency=0.0000854,
+                 net_capacity_factor=0.85, unit_electricity=200):
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
         self.incineration_temperature = incineration_temperature
         self.ash_moisture_content = ash_moisture_content
         self.heat_water_removal = heat_water_removal
@@ -1801,13 +1749,28 @@ class Incineration(SanUnit):
     def unit_process(self):
         return 'incineration'
 
+# TODO: thermochemical units
+# TODO: a brief comparison: Table 2 in https://pubs.rsc.org/en/content/articlelanding/2024/ew/d4ew00278d/unauth
+# TODO: pyrolysis, 3 HX (done), redo purchase cost (current values are likely capital costs and including heat drying), add yield (see data_collection.xlsx, use data from experiment with temperature with 600 ± 200 °C)
+# TODO: gasification, 3 HX, if not cost data is available, may slightly higher than pyrolysis, electricity may also higher, add yield
+# TODO: HALT: same as HTL, adjust yields, different lifetime, add 2 streams - NaOH and HCl
+# TODO: SCWO: produce CO2 and H2O, HX, pump, reaction time can be less than 1 min
 # =============================================================================
 # Pyrolysis
 # =============================================================================
 
+# TODO: yield: https://pubs.rsc.org/en/content/articlelanding/2024/ew/d4ew00278d/unauth
+# TODO: need heating, cooling, and heat exchanger
+
+# TODO: carbon sequestration: see Table SI-12 in the page S17 of the SI of https://pubs.acs.org/doi/full/10.1021/acs.est.2c06083
+
+# the capital cost here include heat drying
+# n=0.7 and BM=2 to be similar to HTL-based systems
+@cost(basis='Wet mass flowrate', ID='Heat drying and pyrolysis system', units='tonne/day',
+      cost=4011180, S=100, CE=qs.CEPCI_by_year[2021], n=0.7, BM=2)
 class Pyrolysis(SanUnit):
     '''
-    Pyrolysis of dried sludge, with the assumption that pyrolysis is autothermal.
+    Pyrolysis of dried sludge or biosolids.
     
     scope 1 emission: fugitive methane, fugitive nitrous oxide
     scope 2 emission: electricity
@@ -1818,11 +1781,13 @@ class Pyrolysis(SanUnit):
     ins : iterable
         dried_solids.
     outs : iterable
-        stabilized_solids, fugitive_methane, fugitive_nitrous_oxide.
-    mass_loss : float
-        solids mass loss ratio during pyrolysis, [-].
-    biochar_moisture_content : float
-        moisture content of biochar, [-].
+        biooil, biochar, pyrogas, fugitive_methane, fugitive_nitrous_oxide.
+    biooil_yield : float
+        biooil yield on a dry weight basis, [-].
+    pyrogas_yield : float
+        pyrogas yield on a dry weight basis, [-].
+    pyrogas_composition : dict
+        pyrogas composition, [-].
     unit_fugitive_methane : float
         fugitive methane during pyrolysis, [g CH4/dry tonne solids].
     unit_fugitive_nitrous_oxide : float
@@ -1831,37 +1796,126 @@ class Pyrolysis(SanUnit):
         electricity for pyrolysis, [kWh/dry tonne solids].
     '''
     _N_ins = 1
-    _N_outs = 3
+    _N_outs = 5
+    
+    _units= {'Wet mass flowrate':'tonne/day'}
+    
+    auxiliary_unit_names = ('hx','inf_hx','eff_hx')
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='WasteStream', mass_loss=0.5,
-                 biochar_moisture_content=0.01, unit_fugitive_methane=2.65,
-                 unit_fugitive_nitrous_oxide=5.23, unit_electricity=123.424):
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
-        self.mass_loss = mass_loss
-        self.biochar_moisture_content = biochar_moisture_content
+                 init_with='WasteStream', lifetime=20, biooil_yield=0.37,
+                 pyrogas_yield=0.2,
+                 pyrogas_composition={'H2': 0.019, 'CH4': 0.073, 'C2H6': 0.049,
+                                      'C3H8': 0.072, 'CO': 0.238, 'CO2': 0.549},
+                 unit_fugitive_methane=2.65, unit_fugitive_nitrous_oxide=5.23,
+                 unit_electricity=123.424,
+                 T=600 + _C_to_K, eff_T=60 + _C_to_K):
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
+        self.biooil_yield = biooil_yield
+        self.pyrogas_yield = pyrogas_yield
+        self.pyrogas_composition = pyrogas_composition
+        self.unit_fugitive_methane = unit_fugitive_methane
+        self.unit_fugitive_nitrous_oxide = unit_fugitive_nitrous_oxide
+        self.unit_electricity = unit_electricity
+        self.T = T
+        self.eff_T = eff_T
+        inf_pre_hx = Stream(f'{ID}_inf_pre_hx')
+        eff_pre_hx = Stream(f'{ID}_eff_pre_hx')
+        inf_after_hx = Stream(f'{ID}_inf_after_hx')
+        eff_after_hx = Stream(f'{ID}_eff_after_hx')
+        self.hx = HXprocess(ID=f'.{ID}_hx', ins=(inf_pre_hx, eff_pre_hx), outs=(inf_after_hx, eff_after_hx))
+        inf_hx_out = Stream(f'{ID}_inf_hx_out')
+        self.inf_hx = HXutility(ID=f'.{ID}_inf_hx', ins=inf_after_hx, outs=inf_hx_out, T=T, rigorous=True)
+        self._inf_at_temp = Stream(f'{ID}_inf_at_temp')
+        self._eff_at_temp = Stream(f'{ID}_eff_at_temp')
+        eff_hx_out = Stream(f'{ID}_eff_hx_out')
+        self.eff_hx = HXutility(ID=f'.{ID}_eff_hx', ins=eff_after_hx, outs=eff_hx_out, T=eff_T, rigorous=True)
     
     def _run(self):
         dried_solids = self.ins[0]
-        biochar, fugitive_methane, fugitive_nitrous_oxide = self.outs
+        # TODO: for other units with fugitive emissions and streams to be combusted, considering writing fugitive emissions like this
+        # TODO: or just assume 1% of produced CH4 is fugitive
+        biooil, biochar, pyrogas, fugitive_methane, fugitive_nitrous_oxide = self.outs
         
+        biooil.phase = 'l'
         biochar.phase = 's'
+        pyrogas.phase = 'g'
         fugitive_methane.phase = 'g'
         fugitive_nitrous_oxide.phase = 'g'
         
         # dry tonne/h
         self.dry_solids = (dried_solids.F_mass - dried_solids.imass['H2O'])/1000
         
-        biochar.imass['Biochar'] = self.dry_solids*(1 - self.mass_loss)
-        biochar.imass['H2O'] = biochar.imass['Biochar']/(1 - self.biochar_moisture_content)*self.biochar_moisture_content
+        biooil.imass['Biooil'] = self.dry_solids*1000*self.biooil_yield
+        
+        gas_mass_flow = self.dry_solids*1000*self.pyrogas_yield
         
         fugitive_methane.imass['CH4'] = self.dry_solids*self.unit_fugitive_methane/1000
-        
         fugitive_nitrous_oxide.imass['N2O'] = self.dry_solids*self.unit_fugitive_nitrous_oxide/1000
+        
+        gas_mass_flow -= fugitive_methane.F_mass
+        gas_mass_flow -= fugitive_nitrous_oxide.F_mass
+        
+        pyrogas.imass['H2O'] = dried_solids.imass['H2O']
+        
+        for name, ratio in self.pyrogas_composition.items():
+            pyrogas.imass[name] = gas_mass_flow*ratio
+        
+        biochar.imass['Biochar'] = self.dry_solids*1000*(1 - self.biooil_yield - self.pyrogas_yield)
+        
+        for i in self.outs:
+            i.T = self.T
+        
+        self._eff_at_temp.mix_from(self.outs)
+        
+        for i in self.outs:
+            i.T = self.eff_T
+    
+    def _design(self):
+        D = self.design_results
+        D['Wet mass flowrate'] = self.ins[0].F_mass/1000*24
+        
+        hx = self.hx
+        inf_hx = self.inf_hx
+        inf_hx_in, inf_hx_out = inf_hx.ins[0], inf_hx.outs[0]
+        inf_pre_hx, eff_pre_hx = hx.ins
+        inf_after_hx, eff_after_hx = hx.outs
+        inf_pre_hx.copy_like(self.ins[0])
+        eff_pre_hx.copy_like(self._eff_at_temp)
+        
+        # use product to heat up influent
+        hx.phase0 = hx.phase1 = 'l'
+        hx.T_lim1 = self.eff_T
+        hx.simulate()
+        for i in self.outs:
+            i.T = eff_after_hx.T
+        
+        # additional inf HX
+        inf_hx_in.copy_like(inf_after_hx)
+        inf_hx_out.copy_flow(inf_hx_in)
+        inf_hx_out.T = self.T
+        inf_hx.simulate_as_auxiliary_exchanger(ins=inf_hx.ins, outs=inf_hx.outs)
+        
+        # additional eff HX
+        eff_hx = self.eff_hx
+        eff_hx_in, eff_hx_out = eff_hx.ins[0], eff_hx.outs[0]
+        eff_hx_in.copy_like(eff_after_hx)
+        eff_hx_out.mix_from(self.outs)
+        eff_hx_out.T = self.eff_T
+        eff_hx.simulate_as_auxiliary_exchanger(ins=eff_hx.ins, outs=eff_hx.outs)
+        
+        for i in self.outs:
+            i.T = self.eff_T
         
         # kW
         self.add_power_utility(self.dry_solids*self.unit_electricity)
-        
+    
+    def _cost(self):
+        self.hx.baseline_purchase_costs.clear()
+        self.inf_hx.baseline_purchase_costs.clear()
+        self.eff_hx.baseline_purchase_costs.clear()
+        self._decorated_cost()
+    
     @property
     def moisture(self):
         return self.biochar_moisture_content
@@ -1869,6 +1923,178 @@ class Pyrolysis(SanUnit):
     @property
     def unit_process(self):
         return 'pyrolysis'
+
+# =============================================================================
+# Gasification
+# =============================================================================
+
+# TODO: need heating, cooling, and heat exchanger
+
+# TODO: carbon sequestration: see Table SI-12 in the page S17 of the SI of https://pubs.acs.org/doi/full/10.1021/acs.est.2c06083
+
+# TODO: this cost will be higher than the HTL it self, and will be lower than the entire HTL system, so this may be reasonable
+# the capital cost here include heat drying
+# n=0.7 and BM=2 to be similar to HTL-based systems
+@cost(basis='Dry mass flowrate', ID='Heat drying and pyrolysis system', units='tonne/day',
+      cost=942500, S=5, CE=qs.CEPCI_by_year[2010], n=0.7, BM=2)
+class Gasification(SanUnit):
+    '''
+    Gasification of dried sludge or biosolids with air as the process flow.
+    
+    scope 1 emission: fugitive methane, fugitive nitrous oxide
+    scope 2 emission: electricity
+    scope 3 emission: N/A
+    
+    Parameters
+    ----------
+    ins : iterable
+        dried_solids.
+    outs : iterable
+        biooil, biochar, pyrogas, fugitive_methane, fugitive_nitrous_oxide.
+    VS_to_tar : float
+        tar yield from volatile solids, [-].
+    syngas_composition : dict
+        syngas composition, [-].
+    unit_fugitive_methane : float
+        fugitive methane during pyrolysis, [g CH4/dry tonne solids].
+    unit_fugitive_nitrous_oxide : float
+        fugitive nitrous oxide during pyrolysis, [g N2O/dry tonne solids].
+    unit_electricity : float
+        electricity for pyrolysis, [kWh/dry tonne solids].
+    '''
+    _N_ins = 1
+    _N_outs = 5
+    
+    _units= {'Dry mass flowrate':'tonne/day'}
+    
+    auxiliary_unit_names = ('hx','inf_hx','eff_hx')
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                 init_with='WasteStream', lifetime=20,
+                 # TODO: if there is data, replace 0.1 with citations
+                 VS_to_tar=0.1,
+                 syngas_composition={'H2': 0.04, 'CH4': 0.02, 'CO': 0.58, 'CO2': 0.36},
+                 # TODO: this is for pyrolysis, gasification may have a higher value, use this data only if there is no other data available
+                 unit_fugitive_methane=2.65,
+                 # TODO: this is for pyrolysis, gasification may have a higher value, use this data only if there is no other data available
+                 unit_fugitive_nitrous_oxide=5.23,
+                 # TODO: this is for pyrolysis, gasification may have a higher value
+                 unit_electricity=123.424,
+                 T=900 + _C_to_K, eff_T=60 + _C_to_K):
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
+        self.VS_to_tar = VS_to_tar
+        self.syngas_composition = syngas_composition
+        self.unit_fugitive_methane = unit_fugitive_methane
+        self.unit_fugitive_nitrous_oxide = unit_fugitive_nitrous_oxide
+        self.unit_electricity = unit_electricity
+        self.T = T
+        self.eff_T = eff_T
+        inf_pre_hx = Stream(f'{ID}_inf_pre_hx')
+        eff_pre_hx = Stream(f'{ID}_eff_pre_hx')
+        inf_after_hx = Stream(f'{ID}_inf_after_hx')
+        eff_after_hx = Stream(f'{ID}_eff_after_hx')
+        self.hx = HXprocess(ID=f'.{ID}_hx', ins=(inf_pre_hx, eff_pre_hx), outs=(inf_after_hx, eff_after_hx))
+        inf_hx_out = Stream(f'{ID}_inf_hx_out')
+        self.inf_hx = HXutility(ID=f'.{ID}_inf_hx', ins=inf_after_hx, outs=inf_hx_out, T=T, rigorous=True)
+        self._inf_at_temp = Stream(f'{ID}_inf_at_temp')
+        self._eff_at_temp = Stream(f'{ID}_eff_at_temp')
+        eff_hx_out = Stream(f'{ID}_eff_hx_out')
+        self.eff_hx = HXutility(ID=f'.{ID}_eff_hx', ins=eff_after_hx, outs=eff_hx_out, T=eff_T, rigorous=True)
+    
+    def _run(self):
+        # TODO: add an air stream (is using free air, may not need this stream)
+        dried_solids = self.ins[0]
+        # TODO: for other units with fugitive emissions and streams to be combusted, considering writing fugitive emissions like this
+        tar, biochar, syngas, fugitive_methane, fugitive_nitrous_oxide = self.outs
+        
+        tar.phase = 'l'
+        biochar.phase = 's'
+        syngas.phase = 'g'
+        fugitive_methane.phase = 'g'
+        fugitive_nitrous_oxide.phase = 'g'
+        
+        # dry tonne/h
+        self.dry_solids = (dried_solids.F_mass - dried_solids.imass['H2O'])/1000
+        
+        biochar.imass['Biochar'] = dried_solids.imass['Sludge_ash']
+        
+        VS = dried_solids.F_mass - dried_solids.imass['H2O'] - dried_solids.imass['Sludge_ash']
+        # TODO: add Tar as a Component
+        tar.imass['Tar'] = VS*self.VS_to_tar
+        
+        gas_mass_flow = VS*(1 - self.VS_to_tar)
+        
+        fugitive_methane.imass['CH4'] = self.dry_solids*self.unit_fugitive_methane/1000
+        fugitive_nitrous_oxide.imass['N2O'] = self.dry_solids*self.unit_fugitive_nitrous_oxide/1000
+        
+        gas_mass_flow -= fugitive_methane.F_mass
+        gas_mass_flow -= fugitive_nitrous_oxide.F_mass
+        
+        syngas.imass['H2O'] = dried_solids.imass['H2O']
+        
+        for name, ratio in self.syngas_composition.items():
+            syngas.imass[name] = gas_mass_flow*ratio
+        
+        for i in self.outs:
+            i.T = self.T
+        
+        self._eff_at_temp.mix_from(self.outs)
+        
+        for i in self.outs:
+            i.T = self.eff_T
+    
+    def _design(self):
+        D = self.design_results
+        D['Dry mass flowrate'] = (self.ins[0].F_mass - self.ins[0].imass['H2O'])/1000*24
+        
+        hx = self.hx
+        inf_hx = self.inf_hx
+        inf_hx_in, inf_hx_out = inf_hx.ins[0], inf_hx.outs[0]
+        inf_pre_hx, eff_pre_hx = hx.ins
+        inf_after_hx, eff_after_hx = hx.outs
+        inf_pre_hx.copy_like(self.ins[0])
+        eff_pre_hx.copy_like(self._eff_at_temp)
+        
+        # use product to heat up influent
+        hx.phase0 = hx.phase1 = 'l'
+        hx.T_lim1 = self.eff_T
+        hx.simulate()
+        for i in self.outs:
+            i.T = eff_after_hx.T
+        
+        # additional inf HX
+        inf_hx_in.copy_like(inf_after_hx)
+        inf_hx_out.copy_flow(inf_hx_in)
+        inf_hx_out.T = self.T
+        inf_hx.simulate_as_auxiliary_exchanger(ins=inf_hx.ins, outs=inf_hx.outs)
+        
+        # additional eff HX
+        eff_hx = self.eff_hx
+        eff_hx_in, eff_hx_out = eff_hx.ins[0], eff_hx.outs[0]
+        eff_hx_in.copy_like(eff_after_hx)
+        eff_hx_out.mix_from(self.outs)
+        eff_hx_out.T = self.eff_T
+        eff_hx.simulate_as_auxiliary_exchanger(ins=eff_hx.ins, outs=eff_hx.outs)
+        
+        for i in self.outs:
+            i.T = self.eff_T
+        
+        # kW
+        self.add_power_utility(self.dry_solids*self.unit_electricity)
+    
+    def _cost(self):
+        self.hx.baseline_purchase_costs.clear()
+        self.inf_hx.baseline_purchase_costs.clear()
+        self.eff_hx.baseline_purchase_costs.clear()
+        self._decorated_cost()
+    
+    @property
+    def moisture(self):
+        return self.biochar_moisture_content
+    
+    @property
+    def unit_process(self):
+        return 'gasification'
 
 # =============================================================================
 # Landfilling
@@ -1889,7 +2115,7 @@ class Landfilling(SanUnit):
     ins : iterable
         input_solids.
     outs : iterable
-        sequestered_carbon_dioxide, fugitive_methane, fugitive_nitrous_oxide.
+        landfilled_solids, fugitive_methane, fugitive_nitrous_oxide, sequestered_carbon_dioxide.
     lipid_2_C : float
         lipid to C ratio, [-].
     protein_2_C : float
@@ -1931,9 +2157,13 @@ class Landfilling(SanUnit):
         convert BTU to kWh but considering loss, [kWh/BTU].
     net_capacity_factor : float
         actual electricity generated to the theoretical maximum, [-].
+    tipping_fee : float
+        tipping fee, [$·wet tonne-1].
+        see exposan/htl/data/landfilling_tipping_fee.xlsx.
+        U.S. average: 56.8 $·wet ton-1 ~ 62.6 $·wet tonne-1.
     '''
     _N_ins = 1
-    _N_outs = 3
+    _N_outs = 4
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', lipid_2_C=0.750,
@@ -1941,7 +2171,8 @@ class Landfilling(SanUnit):
                  methane_landfilling_gas=0.5, MCF=1, OC_decomposition_ratio=0.5,
                  k_decay=0.06, flare_fugitive_ratio=0.01, C_N_cutoff=30,
                  N2O_N_landfilling=0.015, methane_electricity=0.5,
-                 BTU_to_kWh_with_efficiency=0.0000854, net_capacity_factor=0.85):
+                 BTU_to_kWh_with_efficiency=0.0000854, net_capacity_factor=0.85,
+                 tipping_fee=62.6):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.lipid_2_C = lipid_2_C
         self.protein_2_C = protein_2_C
@@ -1957,16 +2188,17 @@ class Landfilling(SanUnit):
         self.methane_electricity = methane_electricity
         self.BTU_to_kWh_with_efficiency = BTU_to_kWh_with_efficiency
         self.net_capacity_factor = net_capacity_factor
+        self.tipping_fee = tipping_fee
     
     def _run(self):
         input_solids = self.ins[0]
-        fugitive_methane, fugitive_nitrous_oxide, sequestered_carbon_dioxide = self.outs
+        landfilled_solids, fugitive_methane, fugitive_nitrous_oxide, sequestered_carbon_dioxide = self.outs
         
         fugitive_methane.phase = 'g'
-        fugitive_nitrous_oxide.phase = 'l'
+        fugitive_nitrous_oxide.phase = 'g'
+        sequestered_carbon_dioxide.phase = 'g'
         
-        # dry tonne/h
-        self.dry_solids = (input_solids.F_mass - input_solids.imass['H2O'])/1000
+        landfilled_solids.copy_like(input_solids)
         
         # kg OC/h
         OC_mass_flow = input_solids.imass['Sludge_lipid']*self.lipid_2_C +\
@@ -2045,13 +2277,16 @@ class Landfilling(SanUnit):
         
         # TODO: add CI; any price?
         sequestered_carbon_dioxide.imass['CO2'] = -OC_mass_flow*(1 - self.OC_decomposition_ratio)*_C_to_CO2
-        
-        
+    
     def _design(self):
         # TODO: confirm no methane is combusted to produce heat
         # kW
         self.add_power_utility(-self.methane_combustion*self.methane_electricity/methane_density*methane_heat*self.BTU_to_kWh_with_efficiency*self.net_capacity_factor)
-        
+    
+    def _cost(self):
+        landfilled_solids = self.outs[0]
+        landfilled_solids.price = -self.tipping_fee/1000
+    
     @property
     def unit_process(self):
         return 'landfilling'
@@ -2309,6 +2544,14 @@ __all__ = (
 # HydrothermalLiquefaction
 # =============================================================================
 
+# TODO: the cost here is based on the nth plant assumption, change to the 1st plant and use the learning curve, same for other thermochemical units / systems
+
+# TODO: update costs based on Snowden-Swan, L.; Schmidt, A.; Fuller, C.; Anderson, D.
+# Hydrothermal Processing of Wastewater Solids (HYPOWERs) Project Preliminary Techno-Economic Analysis; PNNL-36528; 2024.
+
+# TODO: need to update HTL system costs in HTL-PFAS models
+# TODO: need yields of HALT from HTL-PFAS models
+
 # TODO: check this note
 # original [1] is 1339 dry-ash free ton per day (tpd), ash content is 13%,
 # which is 58176 wet lb/h, scaling basis in the equipment table in [1]
@@ -2317,14 +2560,11 @@ __all__ = (
 # TODO: try to add N=2 for the HTL system, based on [1]
 # based on [1]
 @cost(basis='Wet mass flowrate', ID='HTL system', units='lb/h',
-      cost=18743378, S=306198,
-      CE=CEPCI_by_year[2011], n=0.77, BM=2.1)
+      cost=18743378, S=306198, CE=qs.CEPCI_by_year[2011], n=0.77, BM=2.1)
 @cost(basis='Wet mass flowrate', ID='Solids filter oil/water separator', units='lb/h',
-      cost=3945523, S=1219765,
-      CE=CEPCI_by_year[2011], n=0.68, BM=1.9)
+      cost=3945523, S=1219765, CE=qs.CEPCI_by_year[2011], n=0.68, BM=1.9)
 @cost(basis='Wet mass flowrate', ID='Hot oil system', units='lb/h',
-      cost=4670532, S=306198,
-      CE=CEPCI_by_year[2011], n=0.6, BM=1.4)
+      cost=4670532, S=306198, CE=qs.CEPCI_by_year[2011], n=0.6, BM=1.4)
 class HydrothermalLiquefaction(SanUnit):
     '''
     HTL converts feedstock to gas, aqueous, biocrude, (hydro)char
@@ -2358,11 +2598,9 @@ class HydrothermalLiquefaction(SanUnit):
     
     See Also
     --------
-    :class:`qsdsan.sanunits.KnockOutDrum`
+    :class:`qsdsan.sanunits.HydrothermalLiquefaction`
     
-    :class:`qsdsan.sanunits.Reactor`
-    
-    :class:`biosteam.units.design_tools.PressureVessel`
+    :class:`exposan.saf._units.HydrothermalLiquefaction`
     
     References
     ----------
@@ -2376,15 +2614,15 @@ class HydrothermalLiquefaction(SanUnit):
     _N_ins = 1
     _N_outs = 4
     
-    _units= {'Wet mass flowrate': 'lb/h'}
+    _units= {'Wet mass flowrate':'lb/h'}
     
     auxiliary_unit_names = ('pump','hx','inf_hx','eff_hx','kodrum')
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='WasteStream', lipid_2_C=0.750, protein_2_C=0.545,
-                 carbo_2_C=0.400, lipid_2_H=0.125, protein_2_H=0.068,
-                 carbo_2_H=0.067, protein_2_N=0.159, N_2_P=0.3927,
-                 lipid_2_biocrude=0.846, protein_2_biocrude=0.445,
+                 init_with='WasteStream', lifetime=20, lipid_2_C=0.750,
+                 protein_2_C=0.545, carbo_2_C=0.400, lipid_2_H=0.125,
+                 protein_2_H=0.068, carbo_2_H=0.067, protein_2_N=0.159,
+                 N_2_P=0.3927, lipid_2_biocrude=0.846, protein_2_biocrude=0.445,
                  carbo_2_biocrude=0.205, protein_2_gas=0.074, carbo_2_gas=0.418,
                  biocrude_C_slope=-8.37, biocrude_C_intercept=68.55,
                  biocrude_N_slope=0.133, biocrude_H_slope=-2.61,
@@ -2393,10 +2631,10 @@ class HydrothermalLiquefaction(SanUnit):
                  biocrude_moisture_content=0.063,
                  hydrochar_P_recovery_ratio=0.86,
                  # TODO: count CH4 as a fugitive GHG emission, assume the offgas is flared (send or not send it to the CHP unit) and use the fugitive ratio the same as other units
-                 gas_composition={'CH4':0.050, 'C2H6':0.032, 'CO2':0.918},
-                 internal_heat_exchanging=True, T=350 + _C_to_K,
-                 P=3049.7*_psi_to_Pa, eff_T=60 + _C_to_K, eff_P=30*_psi_to_Pa):
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+                 gas_composition={'CH4': 0.050, 'C2H6': 0.032, 'CO2': 0.918},
+                 T=350 + _C_to_K, P=3049.7*_psi_to_Pa, eff_T=60 + _C_to_K,
+                 eff_P=30*_psi_to_Pa):
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
         self.lipid_2_C = lipid_2_C
         self.protein_2_C = protein_2_C
         self.carbo_2_C = carbo_2_C
@@ -2421,7 +2659,6 @@ class HydrothermalLiquefaction(SanUnit):
         self.biocrude_moisture_content = biocrude_moisture_content
         self.hydrochar_P_recovery_ratio = hydrochar_P_recovery_ratio
         self.gas_composition = gas_composition
-        self.internal_heat_exchanging = internal_heat_exchanging
         self.T = T
         self.P = P
         self.eff_T = eff_T
@@ -2445,6 +2682,10 @@ class HydrothermalLiquefaction(SanUnit):
         dewatered_solids = self.ins[0]
         hydrochar, HTLaqueous, biocrude, offgas = self.outs
         
+        hydrochar.phase = 's'
+        offgas.phase = 'g'
+        HTLaqueous.phase = biocrude.phase = 'l'
+        
         dewatered_solids_afdw = dewatered_solids.imass['Sludge_lipid'] +\
                                 dewatered_solids.imass['Sludge_protein'] +\
                                 dewatered_solids.imass['Sludge_carbo']
@@ -2462,11 +2703,11 @@ class HydrothermalLiquefaction(SanUnit):
                                           0.154*self.afdw_lipid_ratio)*\
                                           dewatered_solids_afdw
         
-        gas_mass = (self.protein_2_gas*self.afdw_protein_ratio + self.carbo_2_gas*self.afdw_carbo_ratio)*\
-                    dewatered_solids_afdw
+        gas_mass_flow = (self.protein_2_gas*self.afdw_protein_ratio + self.carbo_2_gas*self.afdw_carbo_ratio)*\
+                        dewatered_solids_afdw
         
         for name, ratio in self.gas_composition.items():
-            offgas.imass[name] = gas_mass*ratio
+            offgas.imass[name] = gas_mass_flow*ratio
         
         biocrude.imass['Biocrude'] = (self.protein_2_biocrude*self.afdw_protein_ratio +\
                                       self.lipid_2_biocrude*self.afdw_lipid_ratio +\
@@ -2478,17 +2719,13 @@ class HydrothermalLiquefaction(SanUnit):
         
         # assume ash (all soluble based on [1]) goes to water
         HTLaqueous.imass['H2O'] = dewatered_solids.F_mass - hydrochar.F_mass -\
-                                  biocrude.F_mass - gas_mass - HTLaqueous.imass['HTLaqueous']
+                                  biocrude.F_mass - gas_mass_flow - HTLaqueous.imass['HTLaqueous']
         
         for i in self.outs:
             i.T = self.T
             i.P = self.P
         
         self._eff_at_temp.mix_from(self.outs)
-        
-        hydrochar.phase = 's'
-        offgas.phase = 'g'
-        HTLaqueous.phase = biocrude.phase = 'l'
         
         for attr, val in zip(('T','P'), (self.eff_T, self.eff_P)):
             if val:
@@ -2514,9 +2751,7 @@ class HydrothermalLiquefaction(SanUnit):
                      self.solids_H/1.00784)/(self.solids_C/12.011)
     
     def _design(self):
-        
         D = self.design_results
-        
         D['Wet mass flowrate'] = self.ins[0].F_mass*_kg_to_lb
         
         pump = self.pump
@@ -2532,16 +2767,11 @@ class HydrothermalLiquefaction(SanUnit):
         eff_pre_hx.copy_like(self._eff_at_temp)
         
         # use product to heat up influent
-        if self.internal_heat_exchanging:
-            hx.phase0 = hx.phase1 = 'l'
-            hx.T_lim1 = self.eff_T
-            hx.simulate()
-            for i in self.outs:
-                i.T = eff_after_hx.T
-        else:
-            hx.empty()
-            inf_after_hx.copy_like(inf_pre_hx)
-            eff_after_hx.copy_like(eff_pre_hx)
+        hx.phase0 = hx.phase1 = 'l'
+        hx.T_lim1 = self.eff_T
+        hx.simulate()
+        for i in self.outs:
+            i.T = eff_after_hx.T
         
         # additional inf HX
         inf_hx_in.copy_like(inf_after_hx)
@@ -2565,7 +2795,6 @@ class HydrothermalLiquefaction(SanUnit):
         # eff_hx.simulate_as_auxiliary_exchanger(ins=eff_hx.ins, outs=eff_hx.outs, duty=duty)
     
     def _cost(self):
-        self.baseline_purchase_costs.clear()
         self._decorated_cost()
     
     @property
@@ -2665,9 +2894,9 @@ class HTLmixer(SanUnit):
         mixture.
     '''
     
-    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='Stream'):
-        
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                 init_with='WasteStream', lifetime=20):
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
 
     _N_ins = 2
     _N_outs = 1
@@ -2715,16 +2944,21 @@ class HTLmixer(SanUnit):
 # CatalyticHydrothermalGasification
 # =============================================================================
 
+# TODO: the cost here is based on the nth plant assumption, change to the 1st plant and use the learning curve, same for other thermochemical units / systems
+
+# TODO: update costs based on Snowden-Swan, L.; Schmidt, A.; Fuller, C.; Anderson, D.
+# Hydrothermal Processing of Wastewater Solids (HYPOWERs) Project Preliminary Techno-Economic Analysis; PNNL-36528; 2024.
+
+# TODO: any fugitive GHG emissions?
+
 # TODO: check data with [1]
 # TODO: try to add N=6 for the CHG reactor, based on [1]
 # TODO: check Guard bed
 # based on [1]
 @cost(basis='Wet mass flowrate', ID='Hydrocyclone', units='lb/h',
-      cost=5000000, S=968859,
-      CE=CEPCI_by_year[2009], n=0.65, BM=2.1)
+      cost=5000000, S=968859, CE=qs.CEPCI_by_year[2009], n=0.65, BM=2.1)
 @cost(basis='Wet mass flowrate', ID='Guard bed and CHG reactor', units='lb/h',
-      cost=2041875*1.1, S=76235,
-      CE=CEPCI_by_year[2011], n=0.65, BM=2)
+      cost=2041875*1.1, S=76235, CE=qs.CEPCI_by_year[2011], n=0.65, BM=2)
 class CatalyticHydrothermalGasification(SanUnit):
     '''
     CHG serves to reduce the COD content in the aqueous phase and produce fuel
@@ -2742,6 +2976,10 @@ class CatalyticHydrothermalGasification(SanUnit):
     eff_P: float
         HTL effluent pressure, [Pa].
     
+    See Also
+    --------
+    :class:`qsdsan.sanunits.CatalyticHydrothermalGasification`
+    
     References
     ----------
     [1] Jones, S. B.; Zhu, Y.; Anderson, D. B.; Hallen, R. T.; Elliott, D. C.; 
@@ -2754,25 +2992,23 @@ class CatalyticHydrothermalGasification(SanUnit):
     _N_ins = 2
     _N_outs = 2
     
-    _units= {'Wet mass flowrate': 'lb/h',
-              'Hydrocyclone weight': 'lb'}
+    _units= {'Wet mass flowrate':'lb/h',
+              'Hydrocyclone weight':'lb'}
     
     auxiliary_unit_names=('pump','hx','inf_hx','eff_hx')
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='WasteStream', gas_C_2_total_C=0.5981,
-                 gas_composition={'CH4':0.527, 'CO2':0.432, 'C2H6':0.011,
-                                  'C3H8':0.030, 'H2':0.0001},
-                 WHSV=3.562, catalyst_lifetime=7920,
-                 internal_heat_exchanging=True, T=350 + _C_to_K,
+                 init_with='WasteStream', lifetime=20, gas_C_2_total_C=0.5981,
+                 gas_composition={'CH4': 0.527, 'CO2': 0.432, 'C2H6': 0.011,
+                                  'C3H8': 0.030, 'H2': 0.0001},
+                 WHSV=3.562, catalyst_lifetime=7920, T=350 + _C_to_K,
                  P=3089.7*_psi_to_Pa, eff_T=60 + _C_to_K,
                  eff_P=3089.7*_psi_to_Pa):
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
         self.gas_C_2_total_C = gas_C_2_total_C
         self.gas_composition = gas_composition
         self.WHSV = WHSV
         self.catalyst_lifetime = catalyst_lifetime
-        self.internal_heat_exchanging = internal_heat_exchanging
         self.T = T
         self.P = P
         self.eff_T = eff_T
@@ -2807,13 +3043,13 @@ class CatalyticHydrothermalGasification(SanUnit):
         for name, ratio in self.gas_composition.items():
             gas_C_ratio += ratio*cmps[name].i_C
         
-        gas_mass = chg_in.imass['C']*self.gas_C_2_total_C/gas_C_ratio
+        gas_mass_flow = chg_in.imass['C']*self.gas_C_2_total_C/gas_C_ratio
         
         for name,ratio in self.gas_composition.items():
-            chg_out.imass[name] = gas_mass*ratio
+            chg_out.imass[name] = gas_mass_flow*ratio
         
         # all C, N, and P are accounted in H2O here, but will be calculated as properties
-        chg_out.imass['H2O'] = chg_in.F_mass - gas_mass
+        chg_out.imass['H2O'] = chg_in.F_mass - gas_mass_flow
         
         for i in self.outs:
             i.T = self.T
@@ -2842,16 +3078,11 @@ class CatalyticHydrothermalGasification(SanUnit):
         eff_pre_hx.copy_like(self._eff_at_temp)
         
         # use product to heat up influent
-        if self.internal_heat_exchanging:
-            hx.phase0 = hx.phase1 = 'l'
-            hx.T_lim1 = self.eff_T
-            hx.simulate()
-            for i in self.outs:
-                i.T = eff_after_hx.T
-        else:
-            hx.empty()
-            inf_after_hx.copy_like(inf_pre_hx)
-            eff_after_hx.copy_like(eff_pre_hx)
+        hx.phase0 = hx.phase1 = 'l'
+        hx.T_lim1 = self.eff_T
+        hx.simulate()
+        for i in self.outs:
+            i.T = eff_after_hx.T
         
         # additional inf HX
         inf_hx_in.copy_like(inf_after_hx)
@@ -2875,7 +3106,6 @@ class CatalyticHydrothermalGasification(SanUnit):
             i.T = self.eff_T
     
     def _cost(self):
-        self.baseline_purchase_costs.clear()
         self._decorated_cost()
     
     @property
@@ -2905,10 +3135,10 @@ class AcidExtraction(Reactor):
         hydrochar, acid.
     outs : iterable
         residual, extracted.
-    acid_vol : float
-        0.5 M H2SO4 to hydrochar ratio: mL/g.
-    P_acid_recovery_ratio : float
-        The ratio of phosphorus that can be extracted.
+    
+    See Also
+    --------
+    :class:`exposan.htl._sanunits.AcidExtraction`
     
     References
     ----------
@@ -2922,15 +3152,14 @@ class AcidExtraction(Reactor):
     _F_BM_default = {**Reactor._F_BM_default}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='WasteStream', acid_vol=7, P_acid_recovery_ratio=0.8,
-                 P=None, tau=2, V_wf=0.8, # tau: [1]
+                 init_with='WasteStream', lifetime=20, acid_vol=7,
+                 P_acid_recovery_ratio=0.8, P=None, tau=2, V_wf=0.8, # tau: [1]
                  length_to_diameter=2, N=1, V=10, auxiliary=False,
                  mixing_intensity=None, kW_per_m3=0, # use MixTank default value
                  wall_thickness_factor=1,
                  vessel_material='Stainless steel 304', # acid condition
                  vessel_type='Vertical'):
-        
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
         self.acid_vol = acid_vol
         self.P_acid_recovery_ratio = P_acid_recovery_ratio
         self.P = P
@@ -3008,14 +3237,10 @@ class StruvitePrecipitation(Reactor):
         mixture, supply_MgCl2, supply_NH4Cl, base.
     outs : iterable
         struvite, effluent.
-    target_pH : float
-        Target pH for struvite precipitation.
-    Mg_P_ratio : float
-        mol(Mg) to mol(P) ratio.   
-    P_pre_recovery_ratio : float
-        Ratio of phosphorus that can be precipitated out.
-    HTLaqueous_NH3_N_2_total_N : float
-        Ratio of NH3-N to TN in HTL aqueous phase.
+    
+    See Also
+    --------
+    :class:`exposan.htl._sanunits.StruvitePrecipitation`
     
     References
     ----------
@@ -3035,20 +3260,15 @@ class StruvitePrecipitation(Reactor):
     _F_BM_default = {**Reactor._F_BM_default}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                  init_with='WasteStream', 
-                  target_pH = 9,
-                  Mg_P_ratio=1,
-                  P_pre_recovery_ratio=0.828, # [1]
+                  init_with='WasteStream', lifetime=20, target_pH = 9,
+                  Mg_P_ratio=1, P_pre_recovery_ratio=0.828, # [1]
                   HTLaqueous_NH3_N_2_total_N = 0.853, # [2]
                   P=None, tau=1, # [1]
-                  V_wf=0.8, length_to_diameter=2, N=1, V=20,
-                  auxiliary=False, mixing_intensity=None,
-                  kW_per_m3=0, # use MixTank default value
-                  wall_thickness_factor=1,
-                  vessel_material='Carbon steel', # basic condition
+                  V_wf=0.8, length_to_diameter=2, N=1, V=20, auxiliary=False,
+                  mixing_intensity=None, kW_per_m3=0, # use MixTank default value
+                  wall_thickness_factor=1, vessel_material='Carbon steel', # basic condition
                   vessel_type='Vertical'):
-        
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
         self.target_pH = target_pH
         self.Mg_P_ratio = Mg_P_ratio
         self.P_pre_recovery_ratio = P_pre_recovery_ratio
@@ -3127,3 +3347,206 @@ class StruvitePrecipitation(Reactor):
         self.N = ceil(self.ins[0].F_vol/10)
         self.P = self.ins[0].P
         Reactor._design(self)
+
+# =============================================================================
+# MembraneDistillation
+# =============================================================================
+
+class MembraneDistillation(SanUnit):
+    '''
+    Membrane distillation recovers nitrogen as ammonia sulfate based on vapor
+    pressure difference across the hydrophobic membrane. Water flux across
+    membrane is ignored.
+    
+    Parameters
+    ----------
+    ins : Iterable(stream)
+        influent, acid, base, mem_in.
+    outs : Iterable(stream)
+        ammonium sulfate, ww, mem_out.
+    
+    See Also
+    --------
+    :class:`qsdsan.sanunits.MembraneDistillation`
+        
+    References
+    ----------
+    [1] Li, Y.; Tarpeh, W. A.; Nelson, K. L.; Strathmann, T. J. 
+        Quantitative Evaluation of an Integrated System for Valorization of
+        Wastewater Algae as Bio-Oil, Fuel Gas, and Fertilizer Products. 
+        Environ. Sci. Technol. 2018, 52 (21), 12717–12727. 
+        https://doi.org/10.1021/acs.est.8b04035.
+    [2] Doran, P. M. Chapter 11 - Unit Operations. In Bioprocess Engineering
+        Principles (Second Edition); Doran, P. M., Ed.; Academic Press: London,
+        2013; pp 445–595. https://doi.org/10.1016/B978-0-12-220851-5.00011-3.
+    [3] Spiller, L. L. Determination of Ammonia/Air Diffusion Coefficient Using
+        Nafion Lined Tube. Analytical Letters 1989, 22 (11–12), 2561–2573.
+        https://doi.org/10.1080/00032718908052375.
+    [4] Scheepers, D. M.; Tahir, A. J.; Brunner, C.; Guillen-Burrieza, E.
+        Vacuum Membrane Distillation Multi-Component Numerical Model for Ammonia
+        Recovery from Liquid Streams. Journal of Membrane Science
+        2020, 614, 118399. https://doi.org/10.1016/j.memsci.2020.118399.
+    [5] Ding, Z.; Liu, L.; Li, Z.; Ma, R.; Yang, Z. Experimental Study of Ammonia
+        Removal from Water by Membrane Distillation (MD): The Comparison of Three
+        Configurations. Journal of Membrane Science 2006, 286 (1), 93–103.
+        https://doi.org/10.1016/j.memsci.2006.09.015.
+    [6] Al-Obaidani, S.; Curcio, E.; Macedonio, F.; Di Profio, G.; Al-Hinai, H.;
+        Drioli, E. Potential of Membrane Distillation in Seawater Desalination:
+        Thermal Efficiency, Sensitivity Study and Cost Estimation.
+        Journal of Membrane Science 2008, 323 (1), 85–98.
+        https://doi.org/10.1016/j.memsci.2008.06.006.
+    [7] Kogler, A.; Farmer, M.; Simon, J. A.; Tilmans, S.; Wells, G. F.;
+        Tarpeh, W. A. Systematic Evaluation of Emerging Wastewater Nutrient Removal
+        and Recovery Technologies to Inform Practice and Advance Resource
+        Efficiency. ACS EST Eng. 2021, 1 (4), 662–684.
+        https://doi.org/10.1021/acsestengg.0c00253.
+    [8] Pikaar, I.; Guest, J.; Ganigue, R.; Jensen, P.; Rabaey, K.; Seviour, T.;
+        Trimmer, J.; van der Kolk, O.; Vaneeckhaute, C.; Verstraete, W.; Resource
+        Recovery from Water: Principles and Applicaiton. IWA 2022.
+    '''
+    _N_ins = 3
+    _N_outs = 3
+    _F_BM_default = {'Membrane': 1}
+    
+    _units = {'Area':'m2',
+              'Total volume':'m3'}
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                 init_with='WasteStream', lifetime=5,
+                 influent_pH=8.16, # CHG effluent pH: 8.16 ± 0.25 [1]
+                 target_pH=10,
+                 N_S_ratio=2,
+                 # S is excess since not all N can be transferred to form ammonia sulfate
+                 # for now, assume N_S_ratio = 2 is ok
+                 m2_2_m3=1/1200, # specific surface area, for hollow fiber membrane [2]
+                 Dm=2.28*10**(-5), # (2.28 ± 0.12)*10^-5 m^2/s NH3 molecular diffusivity in air [3]
+                 # (underestimate, this value may be at 15 or 25 C, our feed is 60 C, should be higher)
+                 porosity=0.9, # [4]
+                 thickness=7*10**(-5), # m [4]
+                 tortuosity=1.2, # [4]
+                 Henry=1.61*10**(-5), # atm*m3/mol
+                 # https://webwiser.nlm.nih.gov/substance?substanceId=315&identifier=\
+                 # Ammonia&identifierType=name&menuItemId=81&catId=120#:~:text=The%20\
+                 # Henry's%20Law%20constant%20for,m%2Fmole(2). (accessed 2022-11-11)
+                 Ka=1.75*10**(-5), # overall mass transfer coefficient 1.2~2.3*10^-5 m/s [5]
+                 capacity=6.01, # kg/m2/h [6]
+                 # permeate flux, similar values can be found in many other papers ([176], [222] ,[223] in [7])
+                 # [177], [223] in [7] show high nitrogen recovery ratio (>85% under optimal conditions)
+                 membrane_price=90/GDPCTPI[2008]*GDPCTPI[2022]): #[6]
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
+        self.influent_pH = influent_pH
+        self.target_pH = target_pH
+        self.N_S_ratio = N_S_ratio
+        self.m2_2_m3 = m2_2_m3
+        self.Dm = Dm
+        self.porosity = porosity
+        self.thickness = thickness
+        self.tortuosity = tortuosity
+        self.Henry = Henry
+        self.Ka = Ka
+        self.capacity = capacity
+        self.membrane_price = membrane_price
+    
+    def _run(self):
+        influent, acid, base = self.ins
+        ammoniumsulfate, ww, ammoniumsulfatesolution = self.outs
+        
+        self.CHG = self.ins[0]._source.ins[0]._source.ins[0]._source
+        
+        if self.CHG.CHGout_N == 0:
+            ww.copy_like(influent)
+            self.membrane_area = self.F_vol_in*1000/self.capacity
+        else:
+            NaOH_conc = 10**(self.target_pH - 14) - 10**(self.influent_pH - 14)
+            NaOH_mol = NaOH_conc*self.ins[0].F_mass
+            base.imass['NaOH'] = NaOH_mol*39.997/1000
+            
+            # 0.5 M H2SO4 solution, density: 1.03 g/mL (https://www.fishersci.se/shop/products/sulfuric-acid-0-5m-4/11943303, accessed 2024-08-03)
+            acid.imass['H2SO4'] = self.CHG.CHGout_N/14.0067/self.N_S_ratio*98.079
+            acid.imass['H2O'] = acid.imass['H2SO4']*1000/98.079/0.5*1.03 -\
+                                acid.imass['H2SO4']
+            
+            # calculation of pKa under different T follows van't Hoff relationship [8] page 292
+            self.pKa = pKa = -log(exp(52.22/8.3145*1000*(1/298 - 1/self.ins[0].T))*10**(-9.252), 10)
+
+            ammonia_to_ammonium = 10**(-pKa)/10**(-self.target_pH)
+            ammonia = self.CHG.CHGout_N*ammonia_to_ammonium/(1 +\
+                       ammonia_to_ammonium)*17.031/14.0067
+            others = influent.F_mass - ammonia
+            
+            self.membrane_area = self.F_vol_in*1000/self.capacity
+            # N2:O2 = 0.79:0.21 in the air, air density is 1.204 kg/m3
+            # https://en.wikipedia.org/wiki/Density_of_air#:~:text=It%20also%20\
+            # changes%20with%20variation,International%20Standard%20Atmosphere%2\
+            # 0(ISA). (accessed 2022-11-14)
+            N2_in_air = self.membrane_area*self.m2_2_m3*self.porosity*0.79*1.204
+            O2_in_air = self.membrane_area*self.m2_2_m3*self.porosity*0.21*1.204
+            
+            # N2 amount will be changed based on design, maybe also add O2 (N2:O2 = 4:1)
+            imass = indexer.MassFlowIndexer(l=[('H2O', others),
+                                               ('NH3', ammonia),
+                                               ('N2', 0),
+                                               ('O2', 0)],
+                                            g=[('H2O', 0),
+                                               ('NH3', 0), 
+                                               ('N2', N2_in_air),
+                                               ('O2', O2_in_air)])
+            
+            vle = equilibrium.VLE(imass)
+            vle(T=influent.T, P=influent.P)
+            X_NH3_f_m = vle.imol['g','NH3']/(vle.imol['g','H2O'] + vle.imol['g','NH3'])
+            X_NH3_f = vle.imol['l','NH3']/(vle.imol['l','H2O'] + vle.imol['l','NH3'])
+    
+            km = self.Dm*self.porosity/self.tortuosity/self.thickness
+            
+            # https://www.sciencedirect.com/topics/chemistry/henrys-law#:~:text=\
+            # Values%20for%20Henry's%20law%20constants,gas%20constant%20(8.20575%\
+            # 20%C3%97%2010 (accessed 2022-11-11)
+            dimensionless_Henry = self.Henry/8.20575/(10**(-5))/influent.T # H' = H/RT
+            
+            kf = 1/(1/self.Ka - 1/dimensionless_Henry/km*(1 + (10**-14/10**(-pKa))*10**\
+                  (-self.target_pH)/(10**(-14))))
+            
+            J = kf*ammonia/influent.F_mass*1000*log(X_NH3_f_m/X_NH3_f)*3600 # in kg/m2/h
+            
+            NH3_mass_flow = J*self.membrane_area
+            
+            ammonia_transfer_ratio = min(1, NH3_mass_flow/ammonia)
+            
+            ammoniumsulfate.imass['NH42SO4'] = ammonia*ammonia_transfer_ratio/34.062*132.14
+            ammoniumsulfatesolution.imass['H2O'] = acid.imass['H2O']
+            ammoniumsulfatesolution.imass['H2SO4'] = acid.imass['H2SO4'] -\
+                                             ammoniumsulfate.imass['NH42SO4']/\
+                                             132.14*98.079
+            
+            # ww has the same T and P as influent          
+            ww.copy_like(influent)
+            
+            ww.imass['N'] = self.CHG.CHGout_N*(1 - ammonia_to_ammonium/(1 +\
+                             ammonia_to_ammonium)*ammonia_transfer_ratio)
+                                                              
+            ww.imass['C'] = self.CHG.CHGout_C
+                             
+            ww.imass['P'] = self.CHG.CHGout_P
+                       
+            ww.imass['H2O'] -= (ww.imass['C'] + ww.imass['N'] + ww.imass['P'])
+            
+            ww.imass['H2O'] += self.ins[2].F_mass
+            
+            # ammonium sulfate has the same T and P as acid
+            ammoniumsulfate.T = ammoniumsulfatesolution.T = acid.T
+            ammoniumsulfate.P = ammoniumsulfatesolution.P = acid.P
+    
+    @property
+    def N_recovery_ratio(self):
+        return 1 - self.outs[1].imass['N']/self.CHG.CHGout_N
+    
+    def _design(self):
+        Design = self.design_results
+        Design['Area'] = self.membrane_area
+        Design['Total volume'] = Design['Area']*self.m2_2_m3
+    
+    def _cost(self):
+        Design = self.design_results
+        purchase_costs = self.baseline_purchase_costs
+        purchase_costs['Membrane'] = Design['Area']*self.membrane_price

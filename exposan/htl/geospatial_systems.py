@@ -330,7 +330,7 @@ def create_geospatial_system(test_run=False,
     
     V1 = IsenthalpicValve(ID='V1',
                           ins=CHG-0,
-                          outs='depressed_cooled_CHG',
+                          outs='depressurized_cooled_CHG',
                           P=50*6894.76,
                           vle=True)
     
@@ -636,7 +636,7 @@ def create_geospatial_system(test_run=False,
     # variable cost (proportional to the sludge amount, the following is for a
     # plant of 110 dry ton [100 dry metric tonne] sludge per day):
     # 3 shift supervisors (0.14 MM$/year)
-    # 1 lab technican (0.04 MM$/year)
+    # 1 lab technician (0.04 MM$/year)
     # 1 maintenance technician (0.04 MM$/year)
     # 4 shift operators (0.19 MM$/year)
     # 1 yard employee (0.03 MM$/year)

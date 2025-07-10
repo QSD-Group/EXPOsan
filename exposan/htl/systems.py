@@ -202,7 +202,7 @@ def create_system(configuration='baseline', capacity=100,
     CHG.ins[1].price = 134.53
     CHG.register_alias('CHG')
     
-    V1 = IsenthalpicValve('A240', ins=CHG-0, outs='depressed_cooled_CHG', P=50*6894.76, vle=True)
+    V1 = IsenthalpicValve('A240', ins=CHG-0, outs='depressurized_cooled_CHG', P=50*6894.76, vle=True)
     V1.register_alias('V1')
     
     F1 = qsu.Flash('A250', ins=V1-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
@@ -250,7 +250,7 @@ def create_system(configuration='baseline', capacity=100,
     HT.ins[2].price = 38.79
     HT.register_alias('HT')
     
-    V2 = IsenthalpicValve('A320', ins=HT-0, outs='depressed_HT', P=717.4*6894.76, vle=True)
+    V2 = IsenthalpicValve('A320', ins=HT-0, outs='depressurized_HT', P=717.4*6894.76, vle=True)
     V2.register_alias('V2')
     
     H2 = qsu.HXutility('A330', ins=V2-0, outs='cooled_HT', T=60+273.15,
@@ -263,7 +263,7 @@ def create_system(configuration='baseline', capacity=100,
     F2.register_alias('F2')
     F2.include_construction = True
     
-    V3 = IsenthalpicValve('A350', ins=F2-1, outs='depressed_flash_effluent', P=55*6894.76, vle=True)
+    V3 = IsenthalpicValve('A350', ins=F2-1, outs='depressurized_flash_effluent', P=55*6894.76, vle=True)
     V3.register_alias('V3')
     
     SP2 = qsu.Splitter('S310', ins=V3-0, outs=('HT_ww','HT_oil'),
@@ -323,7 +323,7 @@ def create_system(configuration='baseline', capacity=100,
     H4.register_alias('H4')
     H4.include_construction = True
     
-    V4 = IsenthalpicValve('A430', ins=H4-0, outs='cooled_depressed_HC', P=30*6894.76, vle=True)
+    V4 = IsenthalpicValve('A430', ins=H4-0, outs='cooled_depressurized_HC', P=30*6894.76, vle=True)
     V4.register_alias('V4')
     
     F3 = qsu.Flash('A440', ins=V4-0, outs=('HC_fuel_gas','HC_aqueous'), T=60.2+273,
@@ -389,7 +389,7 @@ def create_system(configuration='baseline', capacity=100,
     DieselTank.outs[0].price = 0.9722
     
     GasMixer = qsu.Mixer('S580', ins=(HTL-3, F1-0, F2-0, D1-0, F3-0),
-                          outs=('fuel_gas'), init_with='Stream')
+                         outs=('fuel_gas'), init_with='Stream')
     GasMixer.register_alias('GasMixer')
     
     try:
@@ -660,7 +660,7 @@ def create_system(configuration='baseline', capacity=100,
     # variable cost (proportional to the sludge amount, the following is for a plant of 100 dry metric tonne per day)
     # added people to some positions compared to Snowden-Swan et al. 2017 as we also have HT, HC, CHG, N/P recovery, and CHP
     # 5 shift supervisors
-    # 3 lab technican
+    # 3 lab technician
     # 3 maintenance technician
     # 12 shift operators
     # 2 yard employee
