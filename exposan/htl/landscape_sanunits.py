@@ -86,9 +86,7 @@ folder = os.path.dirname(__file__)
 # TODO: add pump for effluents of appropriate units
 
 # TODO: HALT-based system
-# TODO: SCWO
-# TODO: sludge gasification TEA: https://www.sciencedirect.com/science/article/pii/S0960852414003459
-# TODO: gasification
+
 __all__ = (
     'WRRF',
     'Storage',
@@ -109,7 +107,8 @@ __all__ = (
     'CatalyticHydrothermalGasification',
     'AcidExtraction',
     'StruvitePrecipitation',
-    'MembraneDistillation'
+    'MembraneDistillation',
+    'SupercriticalWaterOxidation'
     )
 
 # =============================================================================
@@ -161,15 +160,15 @@ class WRRF(SanUnit):
     References
     ----------
     .. [1] Metcalf and Eddy, Incorporated. 1991. Wastewater Engineering:
-        Treatment Disposal and Reuse. New York: McGraw-Hill.
+           Treatment Disposal and Reuse. New York: McGraw-Hill.
     .. [2] Cai, L.; Gao, D.; Chen, T.-B.; Liu, H.-T.; Zheng, G.-D.; Yang, Q.-W.
-        Moisture Variation Associated with Water Input and Evaporation during
-        Sewage Sludge Bio-Drying. Bioresource Technology 2012, 117, 13–19.
-        https://doi.org/10.1016/j.biortech.2012.03.092.
+           Moisture Variation Associated with Water Input and Evaporation during
+           Sewage Sludge Bio-Drying. Bioresource Technology 2012, 117, 13–19.
+           https://doi.org/10.1016/j.biortech.2012.03.092.
     .. [3] Li, Y.; Leow, S.; Fedders, A. C.; Sharma, B. K.; Guest, J. S.;
-        Strathmann, T. J. Quantitative Multiphase Model for Hydrothermal
-        Liquefaction of Algal Biomass. Green Chem. 2017, 19 (4), 1163–1174.
-        https://doi.org/10.1039/C6GC03294J.
+           Strathmann, T. J. Quantitative Multiphase Model for Hydrothermal
+           Liquefaction of Algal Biomass. Green Chem. 2017, 19 (4), 1163–1174.
+           https://doi.org/10.1039/C6GC03294J.
     '''
     _N_ins = 1
     _N_outs = 2
@@ -1226,9 +1225,9 @@ class AlkalineStabilization(SanUnit):
     References
     ----------
     .. [1] Williford, C.; Chen, W.-Y.; Shamas, N. K.; Wang, L. K. Lime
-        Stabilization. In Biosolids Treatment Processes; Wang, L. K.,
-        Shammas, N. K., Hung, Y.-T., Eds.; Humana Press: Totowa, NJ,
-        2007; pp 207–241. https://doi.org/10.1007/978-1-59259-996-7_7.
+           Stabilization. In Biosolids Treatment Processes; Wang, L. K.,
+           Shammas, N. K., Hung, Y.-T., Eds.; Humana Press: Totowa, NJ,
+           2007; pp 207–241. https://doi.org/10.1007/978-1-59259-996-7_7.
     '''
     _N_ins = 2
     _N_outs = 2
@@ -1764,7 +1763,8 @@ class Incineration(SanUnit):
 
 # TODO: carbon sequestration: see Table SI-12 in the page S17 of the SI of https://pubs.acs.org/doi/full/10.1021/acs.est.2c06083
 
-# the capital cost here include heat drying
+# TODO: add citations
+# the cost here include heat drying, HX, and other auxiliary units
 # n=0.7 and BM=2 to be similar to HTL-based systems
 @cost(basis='Wet mass flowrate', ID='Heat drying and pyrolysis system', units='tonne/day',
       cost=4011180, S=100, CE=qs.CEPCI_by_year[2021], n=0.7, BM=2)
@@ -1932,8 +1932,9 @@ class Pyrolysis(SanUnit):
 
 # TODO: carbon sequestration: see Table SI-12 in the page S17 of the SI of https://pubs.acs.org/doi/full/10.1021/acs.est.2c06083
 
+# TODO: add citations
 # TODO: this cost will be higher than the HTL it self, and will be lower than the entire HTL system, so this may be reasonable
-# the capital cost here include heat drying
+# the cost here include heat drying, HX, and other auxiliary units
 # n=0.7 and BM=2 to be similar to HTL-based systems
 @cost(basis='Dry mass flowrate', ID='Heat drying and pyrolysis system', units='tonne/day',
       cost=942500, S=5, CE=qs.CEPCI_by_year[2010], n=0.7, BM=2)
@@ -2589,11 +2590,11 @@ class HydrothermalLiquefaction(SanUnit):
     carbo_2_H : float
         carbohydrate to H ratio, [-].
     # TODO: what if there is N loss before composting, is protein_2_N here still accurate?
-    protein_2_N, float
+    protein_2_N : float
         N to protein ratio, [-].
     N_2_P, float
         P to N ratio, [-].
-    eff_P: float
+    eff_P : float
         HTL effluent pressure, [Pa].
     
     See Also
@@ -2971,9 +2972,9 @@ class CatalyticHydrothermalGasification(SanUnit):
         chg_in, catalyst_in.
     outs : iterable
         chg_out, catalyst_out.
-    eff_T: float
+    eff_T : float
         HTL effluent temperature, [K].
-    eff_P: float
+    eff_P : float
         HTL effluent pressure, [Pa].
     
     See Also
@@ -3143,9 +3144,9 @@ class AcidExtraction(Reactor):
     References
     ----------
     .. [1] Zhu, Y.; Schmidt, A.; Valdez, P.; Snowden-Swan, L.; Edmundson, S.
-        Hydrothermal Liquefaction and Upgrading of Wastewater-Grown Microalgae:
-        2021 State of Technology; PNNL-32695, 1855835; 2022; p PNNL-32695, 1855835.
-        https://doi.org/10.2172/1855835.
+           Hydrothermal Liquefaction and Upgrading of Wastewater-Grown Microalgae:
+           2021 State of Technology; PNNL-32695, 1855835; 2022; p PNNL-32695, 1855835.
+           https://doi.org/10.2172/1855835.
     '''
     _N_ins = 2
     _N_outs = 2
@@ -3245,15 +3246,15 @@ class StruvitePrecipitation(Reactor):
     References
     ----------
     .. [1] Zhu, Y.; Schmidt, A.; Valdez, P.; Snowden-Swan, L.; Edmundson, S.
-        Hydrothermal Liquefaction and Upgrading of Wastewater-Grown Microalgae:
-        2021 State of Technology; PNNL-32695, 1855835; 2022; p PNNL-32695, 1855835.
-        https://doi.org/10.2172/1855835.
+           Hydrothermal Liquefaction and Upgrading of Wastewater-Grown Microalgae:
+           2021 State of Technology; PNNL-32695, 1855835; 2022; p PNNL-32695, 1855835.
+           https://doi.org/10.2172/1855835.
     .. [2] Jones, S. B.; Zhu, Y.; Anderson, D. B.; Hallen, R. T.; Elliott, D. C.; 
-        Schmidt, A. J.; Albrecht, K. O.; Hart, T. R.; Butcher, M. G.; Drennan, C.; 
-        Snowden-Swan, L. J.; Davis, R.; Kinchin, C. 
-        Process Design and Economics for the Conversion of Algal Biomass to
-        Hydrocarbons: Whole Algae Hydrothermal Liquefaction and Upgrading;
-        PNNL--23227, 1126336; 2014; https://doi.org/10.2172/1126336.
+           Schmidt, A. J.; Albrecht, K. O.; Hart, T. R.; Butcher, M. G.; Drennan, C.; 
+           Snowden-Swan, L. J.; Davis, R.; Kinchin, C. 
+           Process Design and Economics for the Conversion of Algal Biomass to
+           Hydrocarbons: Whole Algae Hydrothermal Liquefaction and Upgrading;
+           PNNL--23227, 1126336; 2014; https://doi.org/10.2172/1126336.
     '''
     _N_ins = 4
     _N_outs = 2
@@ -3550,3 +3551,160 @@ class MembraneDistillation(SanUnit):
         Design = self.design_results
         purchase_costs = self.baseline_purchase_costs
         purchase_costs['Membrane'] = Design['Area']*self.membrane_price
+
+# =============================================================================
+# SupercriticalWaterOxidation
+# =============================================================================
+
+# TODO: add citations
+# the cost here include HX and other auxiliary units
+# n=0.7 and BM=2 to be similar to HTL-based systems
+@cost(basis='Wet mass flowrate', ID='Heat drying and pyrolysis system', units='tonne/day',
+      cost=1993701, S=24, CE=qs.CEPCI_by_year[2023], n=0.7, BM=2)
+class SupercriticalWaterOxidation(SanUnit):
+    '''
+    SCWO converts feedstock to ash miniral and gas (CO2 + H2O) under elevated
+    temperature and pressure.
+    
+    Parameters
+    ----------
+    ins : iterable
+        dewatered_solids.
+    outs : iterable
+        ash, offgas.
+    lipid_2_C : float
+        lipid to C ratio, [-].
+    protein_2_C : float
+        protein to C ratio, [-].
+    carbo_2_C : float
+        carbohydrate to C ratio, [-].
+    T : float
+        SCWO reactor termperature, [K].
+    P : float
+        SCWO reactor pressure, [Pa].
+    eff_T : float
+        SCWO effluent temperature, [K].
+    eff_P : float
+        SCWO effluent pressure, [Pa].
+        
+    References
+    ----------
+    .. [1] Feng, S.; Guanghua, L. Chapter 4 - Hydrothermal and Solvothermal
+           Syntheses. In Modern Inorganic Synthetic Chemistry; Xu, R., Pang, W.,
+           Huo, Q., Eds.; Elsevier: Amsterdam, 2011; pp 63–95.
+           https://doi.org/10.1016/B978-0-444-53599-3.10004-6.
+    '''
+    _N_ins = 1
+    _N_outs = 2
+    
+    _units= {'Wet mass flowrate':'tonne/day'}
+    
+    auxiliary_unit_names = ('pump','hx','inf_hx','eff_hx','kodrum')
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                 init_with='WasteStream', lifetime=15, lipid_2_C=0.750,
+                 protein_2_C=0.545, carbo_2_C=0.400,
+                 # T and P, [1]
+                 T=550 + _C_to_K, P=3e7,
+                 # assume to be the same as HTL
+                 eff_T=60 + _C_to_K, eff_P=30*_psi_to_Pa):
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
+        self.lipid_2_C = lipid_2_C
+        self.protein_2_C = protein_2_C
+        self.carbo_2_C = carbo_2_C
+        self.T = T
+        self.P = P
+        self.eff_T = eff_T
+        self.eff_P = eff_P
+        pump_in = Stream(f'{ID}_pump_in')
+        pump_out = Stream(f'{ID}_pump_out')
+        self.pump = Pump(ID=f'.{ID}_pump', ins=pump_in, outs=pump_out, P=P)
+        inf_pre_hx = Stream(f'{ID}_inf_pre_hx')
+        eff_pre_hx = Stream(f'{ID}_eff_pre_hx')
+        inf_after_hx = Stream(f'{ID}_inf_after_hx')
+        eff_after_hx = Stream(f'{ID}_eff_after_hx')
+        self.hx = HXprocess(ID=f'.{ID}_hx', ins=(inf_pre_hx, eff_pre_hx), outs=(inf_after_hx, eff_after_hx))
+        inf_hx_out = Stream(f'{ID}_inf_hx_out')
+        self.inf_hx = HXutility(ID=f'.{ID}_inf_hx', ins=inf_after_hx, outs=inf_hx_out, T=T, rigorous=True)
+        self._inf_at_temp = Stream(f'{ID}_inf_at_temp')
+        self._eff_at_temp = Stream(f'{ID}_eff_at_temp')
+        eff_hx_out = Stream(f'{ID}_eff_hx_out')
+        self.eff_hx = HXutility(ID=f'.{ID}_eff_hx', ins=eff_after_hx, outs=eff_hx_out, T=eff_T, rigorous=True)
+    
+    def _run(self):
+        dewatered_solids = self.ins[0]
+        ash, offgas = self.outs
+        
+        ash.phase = 's'
+        offgas.phase = 'g'
+        
+        ash.imass['Sludge_ash'] = dewatered_solids.imass['Sludge_ash']
+        
+        # kg OC/h
+        input_solids_OC_mass_flow = dewatered_solids.imass['Sludge_lipid']*self.lipid_2_C +\
+                                    dewatered_solids.imass['Sludge_protein']*self.protein_2_C +\
+                                    dewatered_solids.imass['Sludge_carbo']*self.carbo_2_C
+        
+        offgas.imass['CO2'] = input_solids_OC_mass_flow*_C_to_CO2
+        
+        offgas.imass['H2O'] = dewatered_solids.F_mass - ash.imass['Sludge_ash'] - offgas.imass['CO2']
+        
+        for i in self.outs:
+            i.T = self.T
+            i.P = self.P
+        
+        self._eff_at_temp.mix_from(self.outs)
+        
+        for attr, val in zip(('T','P'), (self.eff_T, self.eff_P)):
+            if val:
+                for i in self.outs: setattr(i, attr, val)
+    
+    def _design(self):
+        D = self.design_results
+        D['Wet mass flowrate'] = self.ins[0].F_mass/1000*24
+        
+        pump = self.pump
+        pump.ins[0].copy_like(self.ins[0])
+        pump.simulate()
+        
+        hx = self.hx
+        inf_hx = self.inf_hx
+        inf_hx_in, inf_hx_out = inf_hx.ins[0], inf_hx.outs[0]
+        inf_pre_hx, eff_pre_hx = hx.ins
+        inf_after_hx, eff_after_hx = hx.outs
+        inf_pre_hx.copy_like(self.ins[0])
+        eff_pre_hx.copy_like(self._eff_at_temp)
+        
+        # use product to heat up influent
+        hx.phase0 = hx.phase1 = 'l'
+        hx.T_lim1 = self.eff_T
+        hx.simulate()
+        for i in self.outs:
+            i.T = eff_after_hx.T
+        
+        # additional inf HX
+        inf_hx_in.copy_like(inf_after_hx)
+        inf_hx_out.copy_flow(inf_hx_in)
+        inf_hx_out.T = self.T
+        inf_hx.simulate_as_auxiliary_exchanger(ins=inf_hx.ins, outs=inf_hx.outs)
+        
+        # additional eff HX
+        eff_hx = self.eff_hx
+        eff_hx_in, eff_hx_out = eff_hx.ins[0], eff_hx.outs[0]
+        eff_hx_in.copy_like(eff_after_hx)
+        eff_hx_out.mix_from(self.outs)
+        eff_hx_out.T = self.eff_T
+        eff_hx.simulate_as_auxiliary_exchanger(ins=eff_hx.ins, outs=eff_hx.outs)
+        
+        for i in self.outs:
+            i.T = self.eff_T
+        
+        # original code from exposan.saf._units, cooling duty very high
+        # duty = self.Hnet + eff_hx.Hnet
+        # eff_hx.simulate_as_auxiliary_exchanger(ins=eff_hx.ins, outs=eff_hx.outs, duty=duty)
+    
+    def _cost(self):
+        self.hx.baseline_purchase_costs.clear()
+        self.inf_hx.baseline_purchase_costs.clear()
+        self.eff_hx.baseline_purchase_costs.clear()
+        self._decorated_cost()

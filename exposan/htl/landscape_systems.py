@@ -81,17 +81,17 @@ __all__ = (
     'create_C25_system',
     'create_T1_system',
     # 'create_T2_system',
-    # 'create_T3_system',
+    'create_T3_system',
     'create_T4_system',
     'create_T5_system',
     'create_T6_system',
     # 'create_T7_system',
-    # 'create_T8_system',
+    'create_T8_system',
     'create_T9_system',
     'create_T10_system',
     'create_T11_system',
     # 'create_T12_system',
-    # 'create_T13_system',
+    'create_T13_system',
     'create_T14_system',
     'create_T15_system'
     )
@@ -1656,6 +1656,56 @@ def create_T1_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
     
     return sys
 
+#%% system T3
+
+def create_T3_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
+                     solids_distance=100, FTE=0.4):
+    flowsheet_ID = 'T3'
+    
+    # clear flowsheet and registry for reloading
+    if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
+        getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
+        clear_lca_registries()
+    
+    bst.CE = qs.CEPCI_by_year[2023]
+    
+    flowsheet = qs.Flowsheet(flowsheet_ID)
+    stream = flowsheet.stream
+    qs.main_flowsheet.set_flowsheet(flowsheet)
+    
+    _load_components()
+    
+    # raw wastewater into a WRRF, in MGD
+    raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
+
+    WRRF = lsu.WRRF(ID='WRRF',
+                   ins=raw_wastewater,
+                   outs=('sludge','treated_water'),
+                   ww_2_dry_sludge=ww_2_dry_sludge_ratio,
+                   sludge_moisture=0.99,
+                   sludge_dw_ash=0.436,
+                   sludge_afdw_lipid=0.193,
+                   sludge_afdw_protein=0.510,
+                   sludge_wet_density=1040)
+    
+    # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
+    Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
+                                outs=('thickened_sludge','reject_thickening'))
+    
+    # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
+    Dewatering = lsu.Dewatering(ID='Dewatering', ins=(Thickening-0, 'polymer_dewatering'),
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+    
+    SCWO = lsu.SupercriticalWaterOxidation(ID='SCWO', ins=Dewatering-0, outs=('ash','offgas_SCWO'))
+    
+    sys = qs.System.from_units(ID='sys_test',
+                               units=list(flowsheet.unit),
+                               operating_hours=operation_hours)
+    
+    sys.simulate()
+    
+    return sys
+
 #%% system T4
 
 def create_T4_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
@@ -1866,6 +1916,59 @@ def create_T6_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
                                 outs=('emission','solid_ash'), init_with='WasteStream',
                                 supplement_power_utility=False)
     CHP.lifetime = 20
+    
+    sys = qs.System.from_units(ID='sys_test',
+                               units=list(flowsheet.unit),
+                               operating_hours=operation_hours)
+    
+    sys.simulate()
+    
+    return sys
+
+#%% system T8
+
+def create_T8_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
+                     solids_distance=100, FTE=0.55):
+    flowsheet_ID = 'T8'
+    
+    # clear flowsheet and registry for reloading
+    if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
+        getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
+        clear_lca_registries()
+    
+    bst.CE = qs.CEPCI_by_year[2023]
+    
+    flowsheet = qs.Flowsheet(flowsheet_ID)
+    stream = flowsheet.stream
+    qs.main_flowsheet.set_flowsheet(flowsheet)
+    
+    _load_components()
+    
+    # raw wastewater into a WRRF, in MGD
+    raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
+
+    WRRF = lsu.WRRF(ID='WRRF',
+                   ins=raw_wastewater,
+                   outs=('sludge','treated_water'),
+                   ww_2_dry_sludge=ww_2_dry_sludge_ratio,
+                   sludge_moisture=0.99,
+                   sludge_dw_ash=0.436,
+                   sludge_afdw_lipid=0.193,
+                   sludge_afdw_protein=0.510,
+                   sludge_wet_density=1040)
+    
+    # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
+    Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
+                                outs=('thickened_sludge','reject_thickening'))
+    
+    AerobicDigestion = lsu.AerobicDigestion(ID='AerobicDigestion', ins=(Thickening-0, 'air'),
+                                            outs=('digested_sludge','offgas_AeD'))
+    
+    # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
+    Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AerobicDigestion-0, 'polymer_dewatering'),
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+    
+    SCWO = lsu.SupercriticalWaterOxidation(ID='SCWO', ins=Dewatering-0, outs=('ash','offgas_SCWO'))
     
     sys = qs.System.from_units(ID='sys_test',
                                units=list(flowsheet.unit),
@@ -2094,6 +2197,59 @@ def create_T11_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
                                 outs=('emission','solid_ash'), init_with='WasteStream',
                                 supplement_power_utility=False)
     CHP.lifetime = 20
+    
+    sys = qs.System.from_units(ID='sys_test',
+                               units=list(flowsheet.unit),
+                               operating_hours=operation_hours)
+    
+    sys.simulate()
+    
+    return sys
+
+#%% system T13
+
+def create_T13_system(size=10, ww_2_dry_sludge_ratio=1, operation_hours=8760,
+                      solids_distance=100, FTE=0.55):
+    flowsheet_ID = 'T13'
+    
+    # clear flowsheet and registry for reloading
+    if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
+        getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
+        clear_lca_registries()
+    
+    bst.CE = qs.CEPCI_by_year[2023]
+    
+    flowsheet = qs.Flowsheet(flowsheet_ID)
+    stream = flowsheet.stream
+    qs.main_flowsheet.set_flowsheet(flowsheet)
+    
+    _load_components()
+    
+    # raw wastewater into a WRRF, in MGD
+    raw_wastewater = qs.WasteStream('raw_wastewater', H2O=size, units='MGD', T=25+273.15)
+
+    WRRF = lsu.WRRF(ID='WRRF',
+                   ins=raw_wastewater,
+                   outs=('sludge','treated_water'),
+                   ww_2_dry_sludge=ww_2_dry_sludge_ratio,
+                   sludge_moisture=0.99,
+                   sludge_dw_ash=0.436,
+                   sludge_afdw_lipid=0.193,
+                   sludge_afdw_protein=0.510,
+                   sludge_wet_density=1040)
+    
+    # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
+    Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
+                                outs=('thickened_sludge','reject_thickening'))
+    
+    AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
+                                                outs=('digested_sludge','natural_gas','fugitive_methane_AD'))
+    
+    # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
+    Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AnaerobicDigestion-0, 'polymer_dewatering'),
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+    
+    SCWO = lsu.SupercriticalWaterOxidation(ID='SCWO', ins=Dewatering-0, outs=('ash','offgas_SCWO'))
     
     sys = qs.System.from_units(ID='sys_test',
                                units=list(flowsheet.unit),
