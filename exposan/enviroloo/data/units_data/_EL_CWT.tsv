@@ -2,10 +2,10 @@ parameter	name (if diff)	unit	expected	low	high	distribution	references
 tau		days	1			constant	CIDI
 tank_steel_weight	estimated total weight of primary clarifier tank	kg	250	212.5	287.5	uniform	"BOM, assuming 8000L tank weights 135 kg"
 steel_density	density of steel	kg/m3	7850			constant	BOM
-clear_water_tank_cost		USD	1364	1227.6	1500.4	uniform	BOM
-weld_female_adapter_fittings		USD	6.87	6.183	7.557	uniform	https://thedrainagesource.com/4-pvc-sdr35-solvent-weld-female-adapter-s-x-fpt/?srsltid=AfmBOorc5xzjQmxhmGZ2dstlABtaDC0az8KOrbJaDaI1zrV2U6IJzc1r
-pipeline_connectors		USD	13.16	11.844	14.476	uniform	https://www.eco-filtration.co.uk/product/110mm-4-pond-threaded-tank-connector/?srsltid=AfmBOoqFzwEcDdzmztkcvuSYA_anY1hoj5U5rOQz0Q8s1FUBhTeQpdX2
-O3_generation_machine_cost		USD	527	474.3	579.7	uniform	BOM
+clear_water_tank_cost		USD	1364	1091.2	1636.8	uniform	BOM
+weld_female_adapter_fittings		USD	6.87	5.496	8.244	uniform	https://thedrainagesource.com/4-pvc-sdr35-solvent-weld-female-adapter-s-x-fpt/?srsltid=AfmBOorc5xzjQmxhmGZ2dstlABtaDC0az8KOrbJaDaI1zrV2U6IJzc1r
+pipeline_connectors		USD	13.16	10.528	15.792	uniform	https://www.eco-filtration.co.uk/product/110mm-4-pond-threaded-tank-connector/?srsltid=AfmBOoqFzwEcDdzmztkcvuSYA_anY1hoj5U5rOQz0Q8s1FUBhTeQpdX2
+O3_generation_machine_cost		USD	527	421.6	632.4	uniform	BOM
 clear_water_tank_lifetime		yr	8	5.6	10.4	uniform	assumption
 weld_female_adapter_fittings_lifetime		yr	5	3.5	6.5	uniform	assumption
 pipeline_connectors_lifetime		yr	5	3.5	6.5	uniform	assumption
@@ -13,8 +13,8 @@ O3_generation_machine_lifetime		yr	10	7	13	uniform	assumption
 power_demand_CWT	energy consumption for clear water tank	KWh/day	0.8	0.72	0.88	uniform	assumption
 clear_water_pump_cast_iron		kg	9	7.65	10.35	uniform	data sheet
 clear_water_pump_power		kW	0.75	0.6375	0.8625	uniform	data sheet
-clear_water_pump_cost		USD	127	114.3	139.7	uniform	BOM
+clear_water_pump_cost		USD	127	101.6	152.4	uniform	BOM
 pump_lifetime		yr	5	3.5	6.5	uniform	assumption
 clear_water_air_dissolved_pump_cast_iron		kg	6.8	5.78	7.82	uniform	data sheet
 clear_water_air_dissolved_pump_power		kW	0.55	0.4675	0.6325	uniform	data sheet
-clear_water_air_dissolved_pump_cost		USD	1098.72	988.848	1208.592	uniform	BOM
+clear_water_air_dissolved_pump_cost		USD	1098.72	878.976	1318.464	uniform	BOM

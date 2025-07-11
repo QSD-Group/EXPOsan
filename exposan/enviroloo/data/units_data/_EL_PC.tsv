@@ -1,10 +1,10 @@
 parameter	name (if diff)	unit	expected	low	high	distribution	references
 N2O_EF_decay		fraction of of degraded N emitted as N2O	0.005	0.0005	0.006	triangular	"IPCC, 2006; Leeds"
-PC_tank_cost	estimated cost of three tanks	USD	169.35	152.415	186.285	uniform	BOM
-tank_steel_weight	estimated total weight of primary clarifier tank	kg	85			constant	BOM
+PC_tank_cost	estimated cost of three tanks	USD	169.35	135.48	203.22	uniform	BOM
+tank_steel_weight	estimated total weight of primary clarifier tank	kg	85	72.25	97.75	uniform	BOM
 steel_density	density of steel	kg/m3	7850			constant	BOM
-weld_female_adapter_fittings		USD	6.87	6.183	7.557	uniform	https://thedrainagesource.com/4-pvc-sdr35-solvent-weld-female-adapter-s-x-fpt/?srsltid=AfmBOorc5xzjQmxhmGZ2dstlABtaDC0az8KOrbJaDaI1zrV2U6IJzc1r
-pipeline_connectors		USD	13.16	11.844	14.476	uniform	https://www.eco-filtration.co.uk/product/110mm-4-pond-threaded-tank-connector/?srsltid=AfmBOoqFzwEcDdzmztkcvuSYA_anY1hoj5U5rOQz0Q8s1FUBhTeQpdX2
+weld_female_adapter_fittings		USD	6.87	5.496	8.244	uniform	https://thedrainagesource.com/4-pvc-sdr35-solvent-weld-female-adapter-s-x-fpt/?srsltid=AfmBOorc5xzjQmxhmGZ2dstlABtaDC0az8KOrbJaDaI1zrV2U6IJzc1r
+pipeline_connectors		USD	13.16	10.528	15.792	uniform	https://www.eco-filtration.co.uk/product/110mm-4-pond-threaded-tank-connector/?srsltid=AfmBOoqFzwEcDdzmztkcvuSYA_anY1hoj5U5rOQz0Q8s1FUBhTeQpdX2
 PC_tank_lifetime		yr	5	3.5	6.5	uniform	assumption
 weld_female_adapter_fittings_lifetime		yr	5	3.5	6.5	uniform	"assu,ption"
 pipeline_connectors_lifetime		yr	5	3.5	6.5	uniform	assumption
@@ -14,4 +14,4 @@ pump_lifetime		yr	5	3.5	6.5	uniform	assumption
 primary_return_pump_stainless_steel		kg	9.1	7.735	10.465	uniform	data sheet
 primary_return_pump_cast_iron		kg	9.1	7.735	10.465	uniform	data sheet
 primary_return_pump_power		kW	0.45	0.3825	0.5175	uniform	data sheet
-primary_return_pump_cost		USD	123.76	105.196	142.324	uniform	https://www.alibaba.com/product-detail/0-4kw-cast-iron-motor-housing_1600934836942.html?spm=a2700.galleryofferlist.normal_offer.d_title.3be013a0L7StzT
+primary_return_pump_cost		USD	123.76	99.008	148.512	uniform	https://www.alibaba.com/product-detail/0-4kw-cast-iron-motor-housing_1600934836942.html?spm=a2700.galleryofferlist.normal_offer.d_title.3be013a0L7StzT

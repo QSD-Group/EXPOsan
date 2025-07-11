@@ -1,17 +1,17 @@
 parameter	name (if diff)	unit	expected	low	high	distribution	references		# of units (smaller components inc. with main costs)
-el_panels		 USD 	4442.19	3997.971	4886.409	uniform	EnviroLoo Invoice		24
-el_carport		 USD 	3630.24	3267.216	3993.264	uniform	EnviroLoo Invoice		1
-el_installation		 USD 	2416.93	2175.237	2658.623	uniform	EnviroLoo Invoice		1
-el_inverter		 USD 	2501.08	2250.972	2751.188	uniform	EnviroLoo Invoice		1
-el_charger		 USD 	1992.04	1792.836	2191.244	uniform	EnviroLoo Invoice		1
-el_backplate		 USD 	1106.31	995.679	1216.941	uniform	EnviroLoo Invoice		1
-el_controller		 USD 	562.63	506.367	618.893	uniform	EnviroLoo Invoice		1
-el_battery		 USD 	8468.08	7621.272	9314.888	uniform	EnviroLoo Invoice		3
-el_meter		 USD 	226.91	204.219	249.601	uniform	EnviroLoo Invoice		1
-el_wind_turbine		 USD 	8244.95	7420.455	9069.445	uniform	EnviroLoo Invoice		1
-el_template		 USD 	563.4	507.06	619.74	uniform	EnviroLoo Invoice		1
-el_certificate		 USD 	77.63	69.867	85.393	uniform	EnviroLoo Invoice		1
-el_consulting		 USD 	307.4	276.66	338.14	uniform	EnviroLoo Invoice		1
+el_panels		 USD 	4442.19	3553.752	5330.628	uniform	EnviroLoo Invoice		24
+el_carport		 USD 	3630.24	2904.192	4356.288	uniform	EnviroLoo Invoice		1
+el_installation		 USD 	2416.93	1933.544	2900.316	uniform	EnviroLoo Invoice		1
+el_inverter		 USD 	2501.08	2000.864	3001.296	uniform	EnviroLoo Invoice		1
+el_charger		 USD 	1992.04	1593.632	2390.448	uniform	EnviroLoo Invoice		1
+el_backplate		 USD 	1106.31	885.048	1327.572	uniform	EnviroLoo Invoice		1
+el_controller		 USD 	562.63	450.104	675.156	uniform	EnviroLoo Invoice		1
+el_battery		 USD 	8468.08	6774.464	10161.696	uniform	EnviroLoo Invoice		3
+el_meter		 USD 	226.91	181.528	272.292	uniform	EnviroLoo Invoice		1
+el_wind_turbine		 USD 	8244.95	6595.96	9893.94	uniform	EnviroLoo Invoice		1
+el_template		 USD 	563.4	450.72	676.08	uniform	EnviroLoo Invoice		1
+el_certificate		 USD 	77.63	62.104	93.156	uniform	EnviroLoo Invoice		1
+el_consulting		 USD 	307.4	245.92	368.88	uniform	EnviroLoo Invoice		1
 el_battery_weight		kg	98	83.3	112.7	constant	https://www.chlithiumbattery.com/products/power-saver-51-2v200ah-10kwh-lifepo4.html		
 el_wind_galvanized_steel_weight		kg	267	226.95	307.05	constant	scaled linearly plus top turbine weight assumption from https://www.metalutilitypole.com/sale-39102336-octagonal-galvanized-silver-steel-pole-with-160kg-weight-3-0mm-thickness.html		
 pv_carport_weight_galvanized_metal		kg	800	680	920	constant	https://www.tmgindustrial.com/products/20-x-30-metal-shed-carport-with-10-enclosed-sidewalls-tmg-msc2030f?srsltid=AfmBOoqqo7eGTeZbyZSNC8lNmGgmIz6ag7AEbkKVHOBEipyZQsJXHxGF		

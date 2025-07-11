@@ -1,8 +1,8 @@
 parameter	name (if diff)	unit	expected	low	high	distribution	references
 blower_steel_weight		kg	24	20.4	27.6	uniform	BOM
-blower_cost	density of steel	USD	40	36	44	uniform	BOM
-weld_female_adapter_fittings		USD	6.87	6.183	7.557	uniform	https://thedrainagesource.com/4-pvc-sdr35-solvent-weld-female-adapter-s-x-fpt/?srsltid=AfmBOorc5xzjQmxhmGZ2dstlABtaDC0az8KOrbJaDaI1zrV2U6IJzc1r
-pipeline_connectors		USD	13.16	11.844	14.476	uniform	https://www.eco-filtration.co.uk/product/110mm-4-pond-threaded-tank-connector/?srsltid=AfmBOoqFzwEcDdzmztkcvuSYA_anY1hoj5U5rOQz0Q8s1FUBhTeQpdX2
+blower_cost	density of steel	USD	40	32	48	uniform	BOM
+weld_female_adapter_fittings		USD	6.87	5.496	8.244	uniform	https://thedrainagesource.com/4-pvc-sdr35-solvent-weld-female-adapter-s-x-fpt/?srsltid=AfmBOorc5xzjQmxhmGZ2dstlABtaDC0az8KOrbJaDaI1zrV2U6IJzc1r
+pipeline_connectors		USD	13.16	10.528	15.792	uniform	https://www.eco-filtration.co.uk/product/110mm-4-pond-threaded-tank-connector/?srsltid=AfmBOoqFzwEcDdzmztkcvuSYA_anY1hoj5U5rOQz0Q8s1FUBhTeQpdX2
 blower_lifetime		yr	8	5.6	10.4	uniform	assumption
 weld_female_adapter_fittings_lifetime		yr	5	3.5	6.5	uniform	assumption
 pipeline_connectors_lifetime		yr	5	3.5	6.5	uniform	assumption
