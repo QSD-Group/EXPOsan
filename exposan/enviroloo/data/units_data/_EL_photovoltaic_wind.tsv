@@ -1,28 +1,28 @@
 parameter	name (if diff)	unit	expected	low	high	distribution	references		# of units (smaller components inc. with main costs)
-el_panels		 USD 	4442.19	3553.752	5330.628	uniform	EnviroLoo Invoice		24
-el_carport		 USD 	3630.24	2904.192	4356.288	uniform	EnviroLoo Invoice		1
-el_installation		 USD 	2416.93	1933.544	2900.316	uniform	EnviroLoo Invoice		1
-el_inverter		 USD 	2501.08	2000.864	3001.296	uniform	EnviroLoo Invoice		1
-el_charger		 USD 	1992.04	1593.632	2390.448	uniform	EnviroLoo Invoice		1
-el_backplate		 USD 	1106.31	885.048	1327.572	uniform	EnviroLoo Invoice		1
-el_controller		 USD 	562.63	450.104	675.156	uniform	EnviroLoo Invoice		1
-el_battery		 USD 	8468.08	6774.464	10161.696	uniform	EnviroLoo Invoice		3
-el_meter		 USD 	226.91	181.528	272.292	uniform	EnviroLoo Invoice		1
-el_wind_turbine		 USD 	8244.95	6595.96	9893.94	uniform	EnviroLoo Invoice		1
-el_template		 USD 	563.4	450.72	676.08	uniform	EnviroLoo Invoice		1
-el_certificate		 USD 	77.63	62.104	93.156	uniform	EnviroLoo Invoice		1
-el_consulting		 USD 	307.4	245.92	368.88	uniform	EnviroLoo Invoice		1
-el_battery_weight		kg	98	83.3	112.7	constant	https://www.chlithiumbattery.com/products/power-saver-51-2v200ah-10kwh-lifepo4.html		
-el_wind_galvanized_steel_weight		kg	267	226.95	307.05	constant	scaled linearly plus top turbine weight assumption from https://www.metalutilitypole.com/sale-39102336-octagonal-galvanized-silver-steel-pole-with-160kg-weight-3-0mm-thickness.html		
-pv_carport_weight_galvanized_metal		kg	800	680	920	constant	https://www.tmgindustrial.com/products/20-x-30-metal-shed-carport-with-10-enclosed-sidewalls-tmg-msc2030f?srsltid=AfmBOoqqo7eGTeZbyZSNC8lNmGgmIz6ag7AEbkKVHOBEipyZQsJXHxGF		
-pv_inverter_weight_steel		kg	19	16.15	21.85	constant	https://www.invertersupply.com/index.php?main_page=product_info&products_id=202097&srsltid=AfmBOoraAtEPxP7PKMFSq89oj5vnV7FMJgpjqUDtgHULc6TkJqYZ0gUi		
-pv_charger_weight_steel		kg	8	6.8	9.2	constant	https://www.victronenergy.com/solar-charge-controllers/smartsolar-mppt-rs-450-tr#downloads		
-el_battery_lifetime		y	11	7.7	14.3	constant	Orig 11. Key component replacement (v.4)		
-el_inverter_lifetime		y	10	7	13	constant	assumption		
-pv_lithium_photovoltaic_battery_lifetime		y	20	14	26	constant	assumption		
-pv_photovoltaic_panel_area		m2	62			constant	Estimated from Bill of Materials EnviroLoo - For LCA Work		
-pv_cable_length		m	531	451.35	610.65	uniform	Estimated from Bill of Materials EnviroLoo - For LCA Work		
-wind_turbine_lifetime		y	25	17.5	32.5	constant	assumption		
-el_panel_lifetime		y	20	14	26	constant	assumption		
+el_panels		 USD 	4442.19	3109.533	5774.847	uniform	EnviroLoo Invoice		24
+el_carport		 USD 	3630.24	2541.168	4719.312	uniform	EnviroLoo Invoice		1
+el_installation		 USD 	2416.93	1691.851	3142.009	uniform	EnviroLoo Invoice		1
+el_inverter		 USD 	2501.08	1750.756	3251.404	uniform	EnviroLoo Invoice		1
+el_charger		 USD 	1992.04	1394.428	2589.652	uniform	EnviroLoo Invoice		1
+el_backplate		 USD 	1106.31	774.417	1438.203	uniform	EnviroLoo Invoice		1
+el_controller		 USD 	562.63	393.841	731.419	uniform	EnviroLoo Invoice		1
+el_battery		 USD 	8468.08	5927.656	11008.504	uniform	EnviroLoo Invoice		3
+el_meter		 USD 	226.91	158.837	294.983	uniform	EnviroLoo Invoice		1
+el_wind_turbine		 USD 	8244.95	5771.465	10718.435	uniform	EnviroLoo Invoice		1
+el_template		 USD 	563.4	394.38	732.42	uniform	EnviroLoo Invoice		1
+el_certificate		 USD 	77.63	54.341	100.919	uniform	EnviroLoo Invoice		1
+el_consulting		 USD 	307.4	215.18	399.62	uniform	EnviroLoo Invoice		1
+el_battery_weight		kg	98	68.6	127.4	uniform	https://www.chlithiumbattery.com/products/power-saver-51-2v200ah-10kwh-lifepo4.html		
+el_wind_galvanized_steel_weight		kg	267	186.9	347.1	uniform	scaled linearly plus top turbine weight assumption from https://www.metalutilitypole.com/sale-39102336-octagonal-galvanized-silver-steel-pole-with-160kg-weight-3-0mm-thickness.html		
+pv_carport_weight_galvanized_metal		kg	800	560	1040	uniform	https://www.tmgindustrial.com/products/20-x-30-metal-shed-carport-with-10-enclosed-sidewalls-tmg-msc2030f?srsltid=AfmBOoqqo7eGTeZbyZSNC8lNmGgmIz6ag7AEbkKVHOBEipyZQsJXHxGF		
+pv_inverter_weight_steel		kg	19	13.3	24.7	uniform	https://www.invertersupply.com/index.php?main_page=product_info&products_id=202097&srsltid=AfmBOoraAtEPxP7PKMFSq89oj5vnV7FMJgpjqUDtgHULc6TkJqYZ0gUi		
+pv_charger_weight_steel		kg	8	5.6	10.4	uniform	https://www.victronenergy.com/solar-charge-controllers/smartsolar-mppt-rs-450-tr#downloads		
+el_battery_lifetime		y	11	7.7	14.3	uniform	Orig 11. Key component replacement (v.4)		
+el_inverter_lifetime		y	10	7	13	uniform	assumption		
+pv_lithium_photovoltaic_battery_lifetime		y	20	14	26	uniform	assumption		
+pv_photovoltaic_panel_area		m2	62	43.4	80.6	uniform	Estimated from Bill of Materials EnviroLoo - For LCA Work		
+pv_cable_length		m	531	371.7	690.3	uniform	Estimated from Bill of Materials EnviroLoo - For LCA Work		
+wind_turbine_lifetime		y	25	17.5	32.5	uniform	assumption		
+el_panel_lifetime		y	20	14	26	uniform	assumption		
 pv_labor_replacement_misc_repairs		hr/y	20			constant	assumption		
 wages		USD/hr	5			constant	assumption		

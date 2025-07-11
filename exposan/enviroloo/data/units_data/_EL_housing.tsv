@@ -1,13 +1,13 @@
 parameter	name	unit	expected	low	high	distribution	reference
-catwalk		USD	634	507.2	760.8	uniform	BOM
-control_room_frame		USD	1006	804.8	1207.2	uniform	BOM
-control_room_board		USD	4952.73	3962.184	5943.276	uniform	BOM
-misc_electronics		USD	950	760	1140	uniform	BOM
-steel_weight		kg	100	85	115	uniform	assumption
-LLDPE_weight		kg	50	42.5	57.5	uniform	assumption
-steel_framework_weight	Housing framework steel weight	kg	1.5	1.275	1.725	uniform	assumption
-steel_fittings_weight	Housing fittings steel weight	kg	1	0.85	1.15	uniform	assumption
-frontend_1000_ppl_cost		USD	10000	8000	12000	uniform	assumption for cost of stone structure + toilets (or 20 toilets at $500/toilet)
+catwalk		USD	634	443.8	824.2	uniform	BOM
+control_room_frame		USD	1006	704.2	1307.8	uniform	BOM
+control_room_board		USD	4952.73	3466.911	6438.549	uniform	BOM
+misc_electronics		USD	950	665	1235	uniform	BOM
+steel_weight		kg	100	70	130	uniform	assumption
+LLDPE_weight		kg	50	35	65	uniform	assumption
+steel_framework_weight	Housing framework steel weight	kg	1.5	1.05	1.95	uniform	assumption
+steel_fittings_weight	Housing fittings steel weight	kg	1	0.7	1.3	uniform	assumption
+frontend_1000_ppl_cost		USD	10000	7000	13000	uniform	assumption for cost of stone structure + toilets (or 20 toilets at $500/toilet)
 catwalk_lifetime		yr	30	21	39	uniform	assumption
 control_room_frame_lifetime		yr	20	14	26	uniform	assumption
 control_room_board_lifetime		yr	10	7	13	uniform	assumption

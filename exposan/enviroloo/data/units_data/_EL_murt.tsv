@@ -4,12 +4,12 @@ sludge_accum_rate	sludge_accumulation_rate	L/cap/yr	270	100	900	triangular	"Stra
 N_volatilization	N_pit_volatilization	fraction of N input	0.005	0	0.01	uniform	"Jacks et al., 1999; Orner and Mihelcic, 2017; Nyenje et al., 2013 minor due to neutral pH)"
 MCF_decay	MCF_vault	fraction of anaerobic conversion of degraded COD	0.1	0.05	0.15	triangular	"IPCC, 2019"
 N2O_EF_decay	N2O_EF_vault	fraction of N emitted as N2O	0	0	0.001	uniform	"IPCC, 2019"
-squatting_pan_cost		USD	151	120.8	181.2	triangular	Eco-San BOM
-urinal_cost		USD	115	92	138	triangular	Eco-San BOM
-led_cost		USD	15	12	18	triangular	Eco-San BOM
-anticor_floor_cost		USD	150	120	180	triangular	Eco-San BOM
-fan_cost		USD	15	12	18	triangular	Eco-San BOM
-circuit_change_cost		USD	2	1.6	2.4	triangular	Eco-San BOM
-pipe_cost		USD	57.5	46	69	triangular	Eco-San BOM
-squatting_pan_weight		kg	15	11.25	18.75	triangular	https://www.rakceramics.com/us/en/bathroom-kitchen/category/water-closets/squatting-pan-squatting-pan-wcistern-18cm/
-urinal_weight		kg	12	9	15	triangular	https://www.rakceramics.com/us/en/bathroom-kitchen/category/urinals-and-partitions/rak-phoenix--urinal-bowl-wtop-inlet-35cm/
+squatting_pan_cost		USD	151	105.7	196.3	triangular	Eco-San BOM
+urinal_cost		USD	115	80.5	149.5	triangular	Eco-San BOM
+led_cost		USD	15	10.5	19.5	triangular	Eco-San BOM
+anticor_floor_cost		USD	150	105	195	triangular	Eco-San BOM
+fan_cost		USD	15	10.5	19.5	triangular	Eco-San BOM
+circuit_change_cost		USD	2	1.4	2.6	triangular	Eco-San BOM
+pipe_cost		USD	57.5	40.25	74.75	triangular	Eco-San BOM
+squatting_pan_weight		kg	15	10.5	19.5	triangular	https://www.rakceramics.com/us/en/bathroom-kitchen/category/water-closets/squatting-pan-squatting-pan-wcistern-18cm/
+urinal_weight		kg	12	8.4	15.6	triangular	https://www.rakceramics.com/us/en/bathroom-kitchen/category/urinals-and-partitions/rak-phoenix--urinal-bowl-wtop-inlet-35cm/

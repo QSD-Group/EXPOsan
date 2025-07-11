@@ -1,24 +1,24 @@
 parameter	name (if diff)	unit	expected	low	high	distribution	references
-tank_steel_weight	estimated total weight of primary clarifier tank	kg	135	114.75	155.25	uniform	"BOM, assuming 8000 L tank weights 135 kg"
+tank_steel_weight	estimated total weight of primary clarifier tank	kg	135	94.5	175.5	uniform	"BOM, assuming 8000 L tank weights 135 kg"
 steel_density	density of steel	kg/m3	7850			constant	BOM
-anoxic_tank_cost		USD	855	684	1026	uniform	BOM
-weld_female_adapter_fittings		USD	6.87	5.496	8.244	uniform	https://thedrainagesource.com/4-pvc-sdr35-solvent-weld-female-adapter-s-x-fpt/?srsltid=AfmBOorc5xzjQmxhmGZ2dstlABtaDC0az8KOrbJaDaI1zrV2U6IJzc1r
-pipeline_connectors		USD	13.16	10.528	15.792	uniform	https://www.eco-filtration.co.uk/product/110mm-4-pond-threaded-tank-connector/?srsltid=AfmBOoqFzwEcDdzmztkcvuSYA_anY1hoj5U5rOQz0Q8s1FUBhTeQpdX2
+anoxic_tank_cost		USD	855	598.5	1111.5	uniform	BOM
+weld_female_adapter_fittings		USD	6.87	4.809	8.931	uniform	https://thedrainagesource.com/4-pvc-sdr35-solvent-weld-female-adapter-s-x-fpt/?srsltid=AfmBOorc5xzjQmxhmGZ2dstlABtaDC0az8KOrbJaDaI1zrV2U6IJzc1r
+pipeline_connectors		USD	13.16	9.212	17.108	uniform	https://www.eco-filtration.co.uk/product/110mm-4-pond-threaded-tank-connector/?srsltid=AfmBOoqFzwEcDdzmztkcvuSYA_anY1hoj5U5rOQz0Q8s1FUBhTeQpdX2
 chemical_glucose_mixing_ratio		kg/L	0.035			constant	BOM
-chemical_glucose_price		USD/kg	0.75	0.7	0.8	uniform	https://www.alibaba.com/product-detail/Bulk-Food-Grade-glucose-Powder-99_1600987002678.html?spm=a2700.galleryofferlist.p_offer.d_title.48b513a084WF5B&s=p
+chemical_glucose_price		USD/kg	0.75	0.525	0.975	uniform	https://www.alibaba.com/product-detail/Bulk-Food-Grade-glucose-Powder-99_1600987002678.html?spm=a2700.galleryofferlist.p_offer.d_title.48b513a084WF5B&s=p
 anoxic_tank_lifetime		yr	8	5.6	10.4	uniform	assumption
 weld_female_adapter_fittings_lifetime		yr	5	3.5	6.5	uniform	assumption
 pipeline_connectors_lifetime		yr	5	3.5	6.5	uniform	assumption
-power_demand_AnoxicTank	energy consumption for anoxic tank	KWh/day	1.1	0.99	1.21	uniform	assumption
+power_demand_AnoxicTank	energy consumption for anoxic tank	KWh/day	1.1	0.77	1.43	uniform	assumption
 EL_anoT_methane_yield	methane yield based on COD degraded at 25 degrees C	g CH4/m3 of treated wastewater	0.9	0.1	1.7	triangular	https://doi.org/10.1021/acs.est.2c04388
-anoxic_mixer_power		kW	0.18	0.153	0.207	uniform	data sheet by EnviroLoo
-anoxic_mixer_cast_iron		kg	9	7.65	10.35	uniform	data sheet by EnviroLoo
-anoxic_mixer_cost		USD	167	133.6	200.4	uniform	Bill of materials
-glucose_mixer_power		kW	0.18	0.153	0.207	uniform	data sheet by EnviroLoo
-glucose_mixer_cast_iron		kg	9	7.65	10.35	uniform	data sheet by EnviroLoo
-glucose_mixer_cost		USD	167	133.6	200.4	uniform	Bill of materials
+anoxic_mixer_power		kW	0.18	0.126	0.234	uniform	data sheet by EnviroLoo
+anoxic_mixer_cast_iron		kg	9	6.3	11.7	uniform	data sheet by EnviroLoo
+anoxic_mixer_cost		USD	167	116.9	217.1	uniform	Bill of materials
+glucose_mixer_power		kW	0.18	0.126	0.234	uniform	data sheet by EnviroLoo
+glucose_mixer_cast_iron		kg	9	6.3	11.7	uniform	data sheet by EnviroLoo
+glucose_mixer_cost		USD	167	116.9	217.1	uniform	Bill of materials
 anoxic_mixer_lifetime		yr	10	7	13	uniform	assumption
 glucose_mixer_lifetime		yr	10	7	13	uniform	assumption
-dosing_pump_PVC		kg	2.5	2.125	2.875	uniform	data sheet
-dosing_pump_cost		USD	150	120	180	uniform	https://www.aliexpress.us/item/3256804645639765.html?src=google&gatewayAdapt=glo2usa
+dosing_pump_PVC		kg	2.5	1.75	3.25	uniform	data sheet
+dosing_pump_cost		USD	150	105	195	uniform	https://www.aliexpress.us/item/3256804645639765.html?src=google&gatewayAdapt=glo2usa
 pump_lifetime		yr	5	3.5	6.5	uniform	assumption
