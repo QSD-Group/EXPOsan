@@ -440,6 +440,9 @@ def create_components(set_thermo=True):
     # made up value, so that HTL.ins[0].nu = 0.03 m2/s ~30000 cSt
     # (NREL 2013 appendix B)
     
+    HCl = Component('HCl', phase='l', particle_size='Soluble',
+                    degradability='Undegradable', organic=False)
+    
     # TODO: when calculating price using HHV, use a separate HHV value but not directly from this Componenet
     # assume Biooil is the same as Biocrude, use palmitamide to represent both
     Biooil = Component('Biooil', search_ID='629-54-9',
@@ -472,7 +475,7 @@ def create_components(set_thermo=True):
                        C18H38, C19H40, C20H42, C21H44, TRICOSANE, C24H38O4,
                        C26H42O4, C30H62, Gasoline, Diesel, CHG_catalyst,
                        HT_catalyst, HC_catalyst, Membrane, DAP, MEA, Urea, HNO3,
-                       UAN, PAM, Sawdust, Biooil, Tar, Biochar])
+                       UAN, PAM, Sawdust, HCl, Biooil, Tar, Biochar])
     
     for i in cmps:
         for attr in ('HHV', 'LHV', 'Hf'):

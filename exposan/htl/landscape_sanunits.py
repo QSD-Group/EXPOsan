@@ -103,6 +103,7 @@ __all__ = (
     'Landfilling',
     'LandApplication',
     'HydrothermalLiquefaction',
+    'HydrothermalAlkalineTreatment',
     'HTLmixer',
     'CatalyticHydrothermalGasification',
     'AcidExtraction',
@@ -2529,17 +2530,17 @@ class LandApplication(SanUnit):
 # TODO: add notes - KnockOutDrum and HydrothermalLiquefaction are based on exposan.saf._units and the original HTL model
 # TODO: see if the Transportation unit can be used
 # TODO: to be removed
-__all__ = (
-    'HydrothermalLiquefaction',
-    'Hydroprocessing',
-    'PressureSwingAdsorption',
-    'Electrochemical',
-    'HydrogenCenter',
-    'ProcessWaterCenter',
-    'BiocrudeSplitter',
-    'Conditioning',
-    'Transportation',
-    )
+# __all__ = (
+#     'HydrothermalLiquefaction',
+#     'Hydroprocessing',
+#     'PressureSwingAdsorption',
+#     'Electrochemical',
+#     'HydrogenCenter',
+#     'ProcessWaterCenter',
+#     'BiocrudeSplitter',
+#     'Conditioning',
+#     'Transportation',
+#     )
 
 # =============================================================================
 # HydrothermalLiquefaction
@@ -2720,6 +2721,319 @@ class HydrothermalLiquefaction(SanUnit):
         
         # assume ash (all soluble based on [1]) goes to water
         HTLaqueous.imass['H2O'] = dewatered_solids.F_mass - hydrochar.F_mass -\
+                                  biocrude.F_mass - gas_mass_flow - HTLaqueous.imass['HTLaqueous']
+        
+        for i in self.outs:
+            i.T = self.T
+            i.P = self.P
+        
+        self._eff_at_temp.mix_from(self.outs)
+        
+        for attr, val in zip(('T','P'), (self.eff_T, self.eff_P)):
+            if val:
+                for i in self.outs: setattr(i, attr, val)
+        
+        # for properties
+        self.solids_dw_protein = dewatered_solids.imass['Sludge_protein']/(dewatered_solids.F_mass -\
+                                                                           dewatered_solids.imass['H2O'])
+        self.solids_dw_carbo = dewatered_solids.imass['Sludge_carbo']/(dewatered_solids.F_mass -\
+                                                                       dewatered_solids.imass['H2O'])
+        self.solids_C = dewatered_solids.imass['Sludge_lipid']*self.lipid_2_C +\
+                        dewatered_solids.imass['Sludge_protein']*self.protein_2_C +\
+                        dewatered_solids.imass['Sludge_carbo']*self.carbo_2_C
+        self.solids_H = dewatered_solids.imass['Sludge_lipid']*self.lipid_2_H +\
+                        dewatered_solids.imass['Sludge_protein']*self.protein_2_H +\
+                        dewatered_solids.imass['Sludge_carbo']*self.carbo_2_H
+        self.solids_N = dewatered_solids.imass['Sludge_protein']*self.protein_2_N
+        self.solids_P = self.solids_N*self.N_2_P
+        self.solids_O = dewatered_solids.F_mass - dewatered_solids.imass['H2O'] -\
+                        dewatered_solids.imass['Sludge_ash'] - self.solids_C -\
+                        self.solids_H - self.solids_N
+        self.AOSc = (3*self.solids_N/14.0067 + 2*self.solids_O/15.999 -\
+                     self.solids_H/1.00784)/(self.solids_C/12.011)
+    
+    def _design(self):
+        D = self.design_results
+        D['Wet mass flowrate'] = self.ins[0].F_mass*_kg_to_lb
+        
+        pump = self.pump
+        pump.ins[0].copy_like(self.ins[0])
+        pump.simulate()
+        
+        hx = self.hx
+        inf_hx = self.inf_hx
+        inf_hx_in, inf_hx_out = inf_hx.ins[0], inf_hx.outs[0]
+        inf_pre_hx, eff_pre_hx = hx.ins
+        inf_after_hx, eff_after_hx = hx.outs
+        inf_pre_hx.copy_like(self.ins[0])
+        eff_pre_hx.copy_like(self._eff_at_temp)
+        
+        # use product to heat up influent
+        hx.phase0 = hx.phase1 = 'l'
+        hx.T_lim1 = self.eff_T
+        hx.simulate()
+        for i in self.outs:
+            i.T = eff_after_hx.T
+        
+        # additional inf HX
+        inf_hx_in.copy_like(inf_after_hx)
+        inf_hx_out.copy_flow(inf_hx_in)
+        inf_hx_out.T = self.T
+        inf_hx.simulate_as_auxiliary_exchanger(ins=inf_hx.ins, outs=inf_hx.outs)
+        
+        # additional eff HX
+        eff_hx = self.eff_hx
+        eff_hx_in, eff_hx_out = eff_hx.ins[0], eff_hx.outs[0]
+        eff_hx_in.copy_like(eff_after_hx)
+        eff_hx_out.mix_from(self.outs)
+        eff_hx_out.T = self.eff_T
+        eff_hx.simulate_as_auxiliary_exchanger(ins=eff_hx.ins, outs=eff_hx.outs)
+        
+        for i in self.outs:
+            i.T = self.eff_T
+        
+        # original code from exposan.saf._units, cooling duty very high
+        # duty = self.Hnet + eff_hx.Hnet
+        # eff_hx.simulate_as_auxiliary_exchanger(ins=eff_hx.ins, outs=eff_hx.outs, duty=duty)
+    
+    def _cost(self):
+        self._decorated_cost()
+    
+    @property
+    def biocrude_yield(self):
+        return self.protein_2_biocrude*self.afdw_protein_ratio +\
+               self.lipid_2_biocrude*self.afdw_lipid_ratio +\
+               self.carbo_2_biocrude*self.afdw_carbo_ratio
+    
+    @property
+    def aqueous_yield(self):
+        return 0.481*self.afdw_protein_ratio + 0.154*self.afdw_lipid_ratio
+    
+    @property
+    def hydrochar_yield(self):
+        return 0.377*self.afdw_carbo_ratio
+    
+    @property
+    def gas_yield(self):
+        return self.protein_2_gas*self.afdw_protein_ratio + self.carbo_2_gas*self.afdw_carbo_ratio
+    
+    @property
+    def biocrude_C_ratio(self):
+        return (self.AOSc*self.biocrude_C_slope + self.biocrude_C_intercept)/100
+    
+    @property
+    def biocrude_H_ratio(self):
+        return (self.AOSc*self.biocrude_H_slope + self.biocrude_H_intercept)/100
+    
+    @property
+    def biocrude_N_ratio(self):
+        return self.biocrude_N_slope*self.solids_dw_protein
+    
+    @property
+    def biocrude_C(self):
+        return min(self.outs[2].F_mass*self.biocrude_C_ratio, self.solids_C)
+    
+    @property
+    def HTLaqueous_C(self):
+        return min(self.outs[1].F_vol*1000*self.HTLaqueous_C_slope*\
+                   self.solids_dw_protein*100/1000000/self.TOC_TC,
+                   self.solids_C - self.biocrude_C)
+    
+    @property
+    def biocrude_H(self):
+        return self.outs[2].F_mass*self.biocrude_H_ratio
+    
+    @property
+    def biocrude_N(self):
+        return min(self.outs[2].F_mass*self.biocrude_N_ratio, self.solids_N)
+    
+    @property
+    def biocrude_HHV(self):
+        return 30.74 - 8.52*self.AOSc +\
+               0.024*self.solids_dw_protein
+    
+    @property
+    def offgas_C(self):
+        carbon = sum(self.outs[3].imass[self.gas_composition]*
+                     [cmp.i_C for cmp in self.components[self.gas_composition]])
+        return min(carbon, self.solids_C - self.biocrude_C - self.HTLaqueous_C)
+    
+    @property
+    def hydrochar_C_ratio(self):
+        return min(self.hydrochar_C_slope*self.solids_dw_carbo, 0.65)
+    
+    @property
+    def hydrochar_C(self):
+        return min(self.outs[0].F_mass*self.hydrochar_C_ratio, self.solids_C -\
+                   self.biocrude_C - self.HTLaqueous_C - self.offgas_C)
+    
+    @property
+    def hydrochar_P(self):
+        return min(self.solids_P*self.hydrochar_P_recovery_ratio, self.outs[0].F_mass)
+    
+    @property
+    def HTLaqueous_N(self):
+        return self.solids_N - self.biocrude_N
+    
+    @property
+    def HTLaqueous_P(self):
+        return self.solids_P*(1 - self.hydrochar_P_recovery_ratio)
+
+# =============================================================================
+# HydrothermalAlkalineTreatment
+# =============================================================================
+
+# TODO: same as HTL for now (HTL itself may get updated)
+@cost(basis='Wet mass flowrate', ID='HTL system', units='lb/h',
+      cost=18743378, S=306198, CE=qs.CEPCI_by_year[2011], n=0.77, BM=2.1)
+@cost(basis='Wet mass flowrate', ID='Solids filter oil/water separator', units='lb/h',
+      cost=3945523, S=1219765, CE=qs.CEPCI_by_year[2011], n=0.68, BM=1.9)
+@cost(basis='Wet mass flowrate', ID='Hot oil system', units='lb/h',
+      cost=4670532, S=306198, CE=qs.CEPCI_by_year[2011], n=0.6, BM=1.4)
+class HydrothermalAlkalineTreatment(SanUnit):
+    '''
+    HTL converts feedstock to gas, aqueous, biocrude, (hydro)char
+    under elevated temperature and pressure.
+    
+    Parameters
+    ----------
+    ins : iterable
+        dewatered_solids, sodium_hydroxide, hydrochloric_acid.
+    outs : iterable
+        hydrochar, HTLaqueous, biocrude, offgas.
+    NaOH_conc : float
+        the concentration of NaOH, [M].
+    
+    See Also
+    --------
+    :class:`exposan.landscape_sanunits.HydrothermalLiquefaction`
+    '''
+    _N_ins = 3
+    _N_outs = 4
+    
+    _units= {'Wet mass flowrate':'lb/h'}
+    
+    auxiliary_unit_names = ('pump','hx','inf_hx','eff_hx','kodrum')
+    
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                 init_with='WasteStream', lifetime=15, NaOH_conc=2,
+                 lipid_2_C=0.750, protein_2_C=0.545, carbo_2_C=0.400,
+                 lipid_2_H=0.125, protein_2_H=0.068, carbo_2_H=0.067,
+                 protein_2_N=0.159, N_2_P=0.3927, lipid_2_biocrude=0.846,
+                 protein_2_biocrude=0.445, carbo_2_biocrude=0.205,
+                 protein_2_gas=0.074, carbo_2_gas=0.418, biocrude_C_slope=-8.37,
+                 biocrude_C_intercept=68.55, biocrude_N_slope=0.133,
+                 biocrude_H_slope=-2.61, biocrude_H_intercept=8.20,
+                 HTLaqueous_C_slope=478, TOC_TC=0.764, hydrochar_C_slope=1.75,
+                 biocrude_moisture_content=0.063,
+                 hydrochar_P_recovery_ratio=0.86,
+                 # TODO: count CH4 as a fugitive GHG emission, assume the offgas is flared (send or not send it to the CHP unit) and use the fugitive ratio the same as other units
+                 # TODO: may need update
+                 gas_composition={'CH4': 0.050, 'C2H6': 0.032, 'CO2': 0.918},
+                 T=350 + _C_to_K, P=3049.7*_psi_to_Pa, eff_T=60 + _C_to_K,
+                 eff_P=30*_psi_to_Pa):
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
+        self.NaOH_conc = NaOH_conc
+        self.lipid_2_C = lipid_2_C
+        self.protein_2_C = protein_2_C
+        self.carbo_2_C = carbo_2_C
+        self.lipid_2_H = lipid_2_H
+        self.protein_2_H = protein_2_H
+        self.carbo_2_H = carbo_2_H
+        self.protein_2_N = protein_2_N
+        self.N_2_P = N_2_P
+        self.lipid_2_biocrude = lipid_2_biocrude
+        self.protein_2_biocrude = protein_2_biocrude
+        self.carbo_2_biocrude = carbo_2_biocrude
+        self.protein_2_gas = protein_2_gas
+        self.carbo_2_gas = carbo_2_gas
+        self.biocrude_C_slope = biocrude_C_slope
+        self.biocrude_C_intercept = biocrude_C_intercept
+        self.biocrude_N_slope = biocrude_N_slope
+        self.biocrude_H_slope = biocrude_H_slope
+        self.biocrude_H_intercept = biocrude_H_intercept
+        self.HTLaqueous_C_slope = HTLaqueous_C_slope
+        self.TOC_TC = TOC_TC
+        self.hydrochar_C_slope = hydrochar_C_slope
+        self.biocrude_moisture_content = biocrude_moisture_content
+        self.hydrochar_P_recovery_ratio = hydrochar_P_recovery_ratio
+        self.gas_composition = gas_composition
+        self.T = T
+        self.P = P
+        self.eff_T = eff_T
+        self.eff_P = eff_P
+        pump_in = Stream(f'{ID}_pump_in')
+        pump_out = Stream(f'{ID}_pump_out')
+        self.pump = Pump(ID=f'.{ID}_pump', ins=pump_in, outs=pump_out, P=P)
+        inf_pre_hx = Stream(f'{ID}_inf_pre_hx')
+        eff_pre_hx = Stream(f'{ID}_eff_pre_hx')
+        inf_after_hx = Stream(f'{ID}_inf_after_hx')
+        eff_after_hx = Stream(f'{ID}_eff_after_hx')
+        self.hx = HXprocess(ID=f'.{ID}_hx', ins=(inf_pre_hx, eff_pre_hx), outs=(inf_after_hx, eff_after_hx))
+        inf_hx_out = Stream(f'{ID}_inf_hx_out')
+        self.inf_hx = HXutility(ID=f'.{ID}_inf_hx', ins=inf_after_hx, outs=inf_hx_out, T=T, rigorous=True)
+        self._inf_at_temp = Stream(f'{ID}_inf_at_temp')
+        self._eff_at_temp = Stream(f'{ID}_eff_at_temp')
+        eff_hx_out = Stream(f'{ID}_eff_hx_out')
+        self.eff_hx = HXutility(ID=f'.{ID}_eff_hx', ins=eff_after_hx, outs=eff_hx_out, T=eff_T, rigorous=True)
+    
+    # TODO: is it reasonable HTL and HALT have the same yield, just the gas composition changes
+    def _run(self):
+        dewatered_solids, sodium_hydroxide, hydrochloric_acid = self.ins
+        hydrochar, HTLaqueous, biocrude, offgas = self.outs
+        
+        hydrochar.phase = 's'
+        offgas.phase = 'g'
+        HTLaqueous.phase = biocrude.phase = 'l'
+        
+        dewatered_solids_afdw = dewatered_solids.imass['Sludge_lipid'] +\
+                                dewatered_solids.imass['Sludge_protein'] +\
+                                dewatered_solids.imass['Sludge_carbo']
+        
+        self.afdw_lipid_ratio = dewatered_solids.imass['Sludge_lipid']/dewatered_solids_afdw
+        self.afdw_protein_ratio = dewatered_solids.imass['Sludge_lipid']/dewatered_solids_afdw
+        self.afdw_carbo_ratio = 1 - self.afdw_lipid_ratio - self.afdw_protein_ratio
+        
+        sodium_hydroxide.imass['NaOH'] = dewatered_solids.ivol['H2O']*1000*self.NaOH_conc*40/1000
+        hydrochloric_acid.imass['HCl'] = sodium_hydroxide.imass['NaOH']*36.5/40
+        
+        # change in gas composition with NaOH concentration
+        # at NaOH 1.67 M and higher, all gases are H2; below, assumed proportional amounts of HTL mixture and H2
+        if self.NaOH_conc <= 1.67:
+            NaOH_factor = self.NaOH_conc/1.67
+            self.gas_composition['CH4'] = self.gas_composition['CH4'] * (1 - NaOH_factor)
+            self.gas_composition['C2H6'] = self.gas_composition['C2H6'] * (1 - NaOH_factor)
+            self.gas_composition['CO2'] = self.gas_composition['CO2'] * (1 - NaOH_factor)
+            self.gas_composition['H2'] = NaOH_factor
+        else:
+            # TODO: in the HTL PFAS code, update 'H2':100.00 to 'H2':1
+            self.gas_composition={'CH4': 0, 'C2H6': 0,'CO2': 0, 'H2': 1}
+        
+        # the following calculations are based on revised MCA model
+        # HTLaqueous is TDS in aqueous phase
+        # 0.377, 0.481, and 0.154 don't have uncertainties because they are calculated values
+        hydrochar.imass['Hydrochar'] = 0.377*self.afdw_carbo_ratio*dewatered_solids_afdw
+        
+        HTLaqueous.imass['HTLaqueous'] = (0.481*self.afdw_protein_ratio +\
+                                          0.154*self.afdw_lipid_ratio)*\
+                                          dewatered_solids_afdw
+        
+        gas_mass_flow = (self.protein_2_gas*self.afdw_protein_ratio + self.carbo_2_gas*self.afdw_carbo_ratio)*\
+                        dewatered_solids_afdw
+        
+        for name, ratio in self.gas_composition.items():
+            offgas.imass[name] = gas_mass_flow*ratio
+        
+        biocrude.imass['Biocrude'] = (self.protein_2_biocrude*self.afdw_protein_ratio +\
+                                      self.lipid_2_biocrude*self.afdw_lipid_ratio +\
+                                      self.carbo_2_biocrude*self.afdw_carbo_ratio)*\
+                                      dewatered_solids_afdw
+        biocrude.imass['H2O'] = biocrude.imass['Biocrude']/(1 -\
+                                self.biocrude_moisture_content) -\
+                                biocrude.imass['Biocrude']
+        
+        # assume ash (all soluble based on [1]) goes to water
+        HTLaqueous.imass['H2O'] = dewatered_solids.F_mass + sodium_hydroxide.F_mass + hydrochloric_acid.F_mass - hydrochar.F_mass -\
                                   biocrude.F_mass - gas_mass_flow - HTLaqueous.imass['HTLaqueous']
         
         for i in self.outs:
