@@ -74,19 +74,18 @@ _m3perh_to_MGD = auom('m3/h').conversion_factor('MGD')
 _MMgal_to_L = auom('gal').conversion_factor('L')*1000000
 _oil_barrel_to_L = auom('oil_barrel').conversion_factor('L')
 
-WRRF = pd.read_excel(folder + 'HTL_geospatial_input_2025-02-10.xlsx')
+WRRF = pd.read_excel(folder + 'HTL_geospatial_input_2025-07-14.xlsx')
 
 assert WRRF.duplicated(subset='CWNS_NUM').sum() == 0
 
 WRRF['total_sludge_amount_kg_per_year'] = WRRF[['landfill','land_application',
                                                 'incineration']].sum(axis=1)
 
-WRRF['biosolids_emission'] = WRRF[['LF_CH4','LA_N2O']].sum(axis=1)
-
 # all emission data in kg CO2 eq/day
-WRRF['total_emission'] = WRRF[['LF_CH4','LA_N2O','electricity_emission',
-                               'onsite_NG_emission','upstream_NG_emission',
-                               'CH4_emission','N2O_emission','CO2_emission']].sum(axis=1)
+WRRF['biosolids_emission'] = WRRF[['solids_landfilling_CH4_median',
+                                   'solids_land_application_N2O_median']].sum(axis=1)
+
+WRRF['total_emission'] = WRRF['total_median']
 
 treatment_trains = np.array(['LAGOON_AER','LAGOON_ANAER','LAGOON_FAC',
                              'LAGOON_UNCATEGORIZED','C1','C1E','C2','C3',
@@ -104,9 +103,8 @@ WRRF['treatment_train'] = TT_indentifier.apply(lambda x: list(treatment_trains[x
 WRRF = WRRF[['FACILITY','CITY','STATE','CWNS_NUM','LATITUDE','LONGITUDE',
              'FLOW_2022_MGD_FINAL','balancing_area','treatment_train',
              'landfill','land_application','incineration',
-             'total_sludge_amount_kg_per_year','CH4_emission','N2O_emission',
-             'CO2_emission','electricity_emission','onsite_NG_emission',
-             'upstream_NG_emission','biosolids_emission','total_emission']]
+             'total_sludge_amount_kg_per_year','biosolids_emission',
+             'total_emission']]
 
 # assume LAGOON_FAC and LAGOON_UNCATEGORIZED has AeD (resulting in higher ash content than AD) to be conservative
 TT_w_AeD = ['B2','C2','D2','E2','E2P','G2','I2','N2','O2','LAGOON_AER','LAGOON_FAC','LAGOON_UNCATEGORIZED']
@@ -149,6 +147,15 @@ refinery = gpd.GeoDataFrame(refinery, crs='EPSG:4269',
                             geometry=gpd.points_from_xy(x=refinery.Longitude,
                                                         y=refinery.Latitude))
 
+# TODO: make sure the capacity of coal-based power plant allows blending coal with hydrochar
+# coal-based power plant
+coal_pp = pd.read_csv(folder + 'Power_Plants.csv')
+coal_pp = coal_pp[coal_pp['PrimSource'] == 'coal']
+coal_pp = coal_pp[coal_pp['Coal_MW'] > 0]
+coal_pp = gpd.GeoDataFrame(coal_pp, crs='EPSG:4269',
+                           geometry=gpd.points_from_xy(x=coal_pp.Longitude,
+                                                       y=coal_pp.Latitude))
+
 # confirmed from the wesbite (next line): there is no change in US map since June 1, 1995. So, using 2018 US map data is OK.
 # https://en.wikipedia.org/wiki/Territorial_evolution_of_the_United_States#1946%E2%80%93present_(Decolonization)
 US = gpd.read_file(folder + 'US/cb_2018_us_state_500k.shp')
@@ -161,7 +168,8 @@ for excluded in ('Alaska',
                  'Hawaii',
                  'Puerto Rico',
                  'United States Virgin Islands'):
-    US = US.loc[US['NAME'] != excluded]
+    US = US[US['NAME'] != excluded]
+    coal_pp = coal_pp[coal_pp['State'] != excluded]
 
 US_county = gpd.read_file('/Users/jiananfeng/Desktop/PhD_CEE/ARPA-E_proposal/preliminary_analysis/cb_2018_us_county_500k/cb_2018_us_county_500k.shp')
 
@@ -228,6 +236,7 @@ balnc_area = gpd.read_file(folder + 'lpreg2/lpreg2.shp')
 
 WRRF = WRRF.to_crs(crs='EPSG:3857')
 refinery = refinery.to_crs(crs='EPSG:3857')
+coal_pp = coal_pp.to_crs(crs='EPSG:3857')
 US = US.to_crs(crs='EPSG:3857')
 US_county = US_county.to_crs(crs='EPSG:3857')
 balnc_area = balnc_area.to_crs(crs='EPSG:3857')
@@ -677,7 +686,19 @@ ax.set_aspect(1)
 
 ax.set_axis_off()
 
-#%% WRRFs+oil refineries visualization (all)
+#%% coal-based power plant visualization
+
+fig, ax = plt.subplots(figsize=(30, 30))
+
+US.plot(ax=ax, color='w', edgecolor='k', linewidth=3)
+
+coal_pp.plot(ax=ax, color=da, markersize=1000, edgecolor='w', linewidth=1.5, alpha=1)
+
+ax.set_aspect(1)
+
+ax.set_axis_off()
+
+#%% WRRFs + oil refineries visualization (all)
 
 fig, ax = plt.subplots(figsize=(30, 30))
 
@@ -899,13 +920,18 @@ ax.set_aspect(1)
 
 ax.set_axis_off()
 
-#%% transporation distance calculation
+#%% biocrude and hydrochar transporation distance calculation
 
-# no need to set a max distance since the transportation of biocrude was not a key/limiting driver
-WRRF_input = WRRF.sjoin_nearest(refinery, max_distance=None, distance_col='distance')
+# no need to set a max distance since the transportation of biocrude is not a key/limiting factor
+WRRF_input = WRRF.sjoin_nearest(refinery, max_distance=None, distance_col='WRRF_refinery_distance')
+WRRF_input.drop(columns='index_right', inplace=True)
+# TODO: decide if the transportation of hydrochar is a key/limiting factor
+WRRF_input = WRRF_input.sjoin_nearest(coal_pp, max_distance=None, distance_col='WRRF_coal_pp_distance')
+WRRF_input.drop(columns='index_right', inplace=True)
 
 WRRF_input['WRRF_location'] = list(zip(WRRF_input.latitude, WRRF_input.longitude))
-WRRF_input['refinery_location'] = list(zip(WRRF_input.Latitude, WRRF_input.Longitude))
+WRRF_input['refinery_location'] = list(zip(WRRF_input.Latitude_left, WRRF_input.Longitude_left))
+WRRF_input['coal_pp_location'] = list(zip(WRRF_input.Latitude_right, WRRF_input.Longitude_right))
 
 # =============================================================================
 # # code to generate the inventory
@@ -914,81 +940,132 @@ WRRF_input['refinery_location'] = list(zip(WRRF_input.Latitude, WRRF_input.Longi
 # # !!! do not upload to GitHub
 # gmaps = googlemaps.Client(key='XXX')
 # 
-# linear_distance = []
-# real_distance = []
+# WRRF_refinery_linear_distance = []
+# WRRF_refinery_real_distance = []
+# WRRF_coal_pp_linear_distance = []
+# WRRF_coal_pp_real_distance = []
 # 
 # for i in range(len(WRRF_input)):
-#     linear_distance.append(geopy.distance.geodesic(WRRF_input['WRRF_location'].iloc[i], WRRF_input['refinery_location'].iloc[i]).km)
+#     WRRF_refinery_linear_distance.append(geopy.distance.geodesic(WRRF_input['WRRF_location'].iloc[i], WRRF_input['refinery_location'].iloc[i]).km)
+#     WRRF_coal_pp_linear_distance.append(geopy.distance.geodesic(WRRF_input['WRRF_location'].iloc[i], WRRF_input['coal_pp_location'].iloc[i]).km)
 #     
 #     try:
 #         print(i)
-#         real_distance.append(gmaps.distance_matrix(WRRF_input['WRRF_location'].iloc[i], WRRF_input['refinery_location'].iloc[i],
-#                                                    mode='driving')['rows'][0]['elements'][0]['distance']['value']/1000)
+#         WRRF_refinery_real_distance.append(gmaps.distance_matrix(WRRF_input['WRRF_location'].iloc[i], WRRF_input['refinery_location'].iloc[i],
+#                                                                  mode='driving')['rows'][0]['elements'][0]['distance']['value']/1000)
 #     except KeyError:
 #         print('--------------------------------')
-#         real_distance.append(np.nan)
+#         WRRF_refinery_real_distance.append(np.nan)
+#     
+#     try:
+#         print(i)
+#         WRRF_coal_pp_real_distance.append(gmaps.distance_matrix(WRRF_input['WRRF_location'].iloc[i], WRRF_input['coal_pp_location'].iloc[i],
+#                                                                    mode='driving')['rows'][0]['elements'][0]['distance']['value']/1000)
+#     except KeyError:
+#         print('--------------------------------')
+#         WRRF_coal_pp_real_distance.append(np.nan)
 # 
-# WRRF_input['linear_distance_km'] = linear_distance
-# WRRF_input['real_distance_km'] = real_distance
+# WRRF_input['WRRF_refinery_linear_distance_km'] = WRRF_refinery_linear_distance
+# WRRF_input['WRRF_refinery_real_distance_km'] = WRRF_refinery_real_distance
+# WRRF_input['WRRF_coal_pp_linear_distance_km'] = WRRF_coal_pp_linear_distance
+# WRRF_input['WRRF_coal_pp_real_distance_km'] = WRRF_coal_pp_real_distance
 # 
-# distance_inventory = WRRF_input[['CWNS','Site ID','linear_distance_km','real_distance_km']]
+# distance_inventory = WRRF_input[['CWNS','Site ID','WRRF_refinery_linear_distance_km','WRRF_refinery_real_distance_km',
+#                                  'Plant_Code','WRRF_coal_pp_linear_distance_km','WRRF_coal_pp_real_distance_km']]
 # 
 # distance_inventory.to_excel(folder + f'distance_inventory_{date.today()}.xlsx')
 # =============================================================================
 
-distance_inventory = pd.read_excel(folder + 'distance_inventory_2025-02-10.xlsx')
+distance_inventory = pd.read_excel(folder + 'distance_inventory_2025-07-14.xlsx')
 
 # match using WRRF ID ('CWNS') and oil refinery ID ('Site ID')
-WRRF_input = WRRF_input.merge(distance_inventory, how='left', on=['CWNS','Site ID'])
+WRRF_input = WRRF_input.merge(distance_inventory, how='left', on=['CWNS','Site ID','Plant_Code'])
 
-missing_distance = []
+WRRF_refinery_missing_distance = []
 for i in WRRF_input.index:
-    if pd.isna(WRRF_input.loc[i,'linear_distance_km']):
-        missing_distance.append(i)
+    if pd.isna(WRRF_input.loc[i,'WRRF_refinery_linear_distance_km']):
+        WRRF_refinery_missing_distance.append(i)
 
-if len(missing_distance) == 0:
-    WRRF_input.to_excel(folder + f'HTL_geospatial_model_input_{date.today()}.xlsx')
+WRRF_coal_pp_missing_distance = []
+for i in WRRF_input.index:
+    if pd.isna(WRRF_input.loc[i,'WRRF_coal_pp_linear_distance_km']):
+        WRRF_coal_pp_missing_distance.append(i)
+
+if len(WRRF_refinery_missing_distance) == 0 & len(WRRF_coal_pp_missing_distance) == 0:
+    WRRF_input.to_excel(folder + f'HTL_geospatial_model_input_including_inaccessible_WRRFs_{date.today()}.xlsx')
 else:
     # !!! get a google API key
     # !!! do not upload to GitHub
     gmaps = googlemaps.Client(key='XXX')
     
-    for i in missing_distance:
-        WRRF_input.loc[i,'linear_distance_km'] = geopy.distance.geodesic(WRRF_input.loc[i,'WRRF_location'],
-                                                                         WRRF_input.loc[i,'refinery_location']).km
+    for i in WRRF_refinery_missing_distance:
+        WRRF_input.loc[i,'WRRF_refinery_linear_distance_km'] = geopy.distance.geodesic(WRRF_input['WRRF_location'].iloc[i],
+                                                                                       WRRF_input['refinery_location'].iloc[i]).km
         
         try:
             print(i)
-            WRRF_input.loc[i,'real_distance_km'] = gmaps.distance_matrix(WRRF_input.loc[i,'WRRF_location'],
-                                                                         WRRF_input.loc[i,'refinery_location'],
-                                                                         mode='driving')['rows'][0]['elements'][0]['distance']['value']/1000
+            WRRF_input.loc[i,'WRRF_refinery_real_distance_km'] = gmaps.distance_matrix(WRRF_input.loc[i,'WRRF_location'],
+                                                                                       WRRF_input.loc[i,'refinery_location'],
+                                                                                       mode='driving')['rows'][0]['elements'][0]['distance']['value']/1000
         except KeyError:
             print('--------------------------------')
-            WRRF_input.loc[i,'real_distance_km'] = np.nan
+            WRRF_input.loc[i,'WRRF_refinery_real_distance_km'] = np.nan
+            
+            
+    for i in WRRF_coal_pp_missing_distance:
+        WRRF_input.loc[i,'WRRF_coal_pp_linear_distance_km'] = geopy.distance.geodesic(WRRF_input['WRRF_location'].iloc[i],
+                                                                                      WRRF_input['coal_pp_location'].iloc[i]).km
+        
+        try:
+            print(i)
+            WRRF_input.loc[i,'WRRF_coal_pp_real_distance_km'] = gmaps.distance_matrix(WRRF_input.loc[i,'WRRF_location'],
+                                                                                      WRRF_input.loc[i,'coal_pp_location'],
+                                                                                      mode='driving')['rows'][0]['elements'][0]['distance']['value']/1000
+        except KeyError:
+            print('--------------------------------')
+            WRRF_input.loc[i,'WRRF_coal_pp_real_distance_km'] = np.nan
     
-    distance_inventory = WRRF_input[['CWNS','Site ID','linear_distance_km','real_distance_km']]
+    distance_inventory = WRRF_input[['CWNS','Site ID','WRRF_refinery_linear_distance_km','WRRF_refinery_real_distance_km',
+                                     'Plant_Code','WRRF_coal_pp_linear_distance_km','WRRF_coal_pp_real_distance_km']]
     
     distance_inventory.to_excel(folder + f'distance_inventory_{date.today()}.xlsx')
     
     # input for following analyses
-    WRRF_input.to_excel(folder + f'HTL_geospatial_model_input_{date.today()}.xlsx')
+    WRRF_input.to_excel(folder + f'HTL_geospatial_model_input_including_inaccessible_WRRFs_{date.today()}.xlsx')
 
-#%% travel distance box plot
+#%% input data refinement
 
 # !!! update the input file if necessary
-WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-02-10.xlsx')
-print(f"{WRRF_input['real_distance_km'].notna().sum()} WRRFs included")
-print(f"{WRRF_input['real_distance_km'].isna().sum()} WRRFs excluded")
-print(WRRF_input[WRRF_input['real_distance_km'].isna()])
-print(WRRF_input[WRRF_input['real_distance_km'].isna()]['flow_2022_MGD_final'])
-# removal WRRFs with no real_distance_km
-WRRF_input = WRRF_input.dropna(subset='real_distance_km')
+WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_including_inaccessible_WRRFs_2025-07-14.xlsx')
+
+# WRRFs cannot reach an oil refinery or a coal-based power plant are the same
+assert (WRRF_input['WRRF_refinery_real_distance_km'].isna() != WRRF_input['WRRF_coal_pp_real_distance_km'].isna()).sum() == 0
+
+WRRF_input.loc[WRRF_input['WRRF_refinery_real_distance_km'].isna(), 'inaccessible'] = 1
+WRRF_input.loc[WRRF_input['WRRF_refinery_real_distance_km'].notna(), 'inaccessible'] = 0
+
+print(f"{(WRRF_input['inaccessible'] == 0).sum()} WRRFs included")
+print(f"{(WRRF_input['inaccessible'] == 1).sum()} WRRFs excluded")
+print(WRRF_input[WRRF_input['inaccessible'] == 1])
+print(WRRF_input[WRRF_input['inaccessible'] == 1]['flow_2022_MGD_final'])
+
+# removal inaccessible WRRFs
+WRRF_input = WRRF_input[WRRF_input['inaccessible'] == 0]
+
 print(f"{((WRRF_input.sludge_anaerobic_digestion == 1) & (WRRF_input.sludge_aerobic_digestion == 0)).sum()} WRRFs just have AD")
 print(f"{((WRRF_input.sludge_anaerobic_digestion == 0) & (WRRF_input.sludge_aerobic_digestion == 1)).sum()} WRRFs just have AeD")
 print(f"{((WRRF_input.sludge_anaerobic_digestion == 1) & (WRRF_input.sludge_aerobic_digestion == 1)).sum()} WRRFs have both AD and AeD")
 print(f"{((WRRF_input.sludge_anaerobic_digestion == 0) & (WRRF_input.sludge_aerobic_digestion == 0)).sum()} WRRFs have neither AD nor AeD")
 
+WRRF_input.to_excel(folder + f'HTL_geospatial_model_input_{date.today()}.xlsx')
+
+#%% biocrude and hydrochar transporation distance box plot
+
+# !!! update the input file if necessary
+WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
+
 plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 30
 plt.rcParams['ytick.labelsize'] = 30
 
@@ -1011,22 +1088,34 @@ ax_right = ax.twinx()
 ax_right.set_ylim(ax.get_ylim())
 ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=True, labelcolor='none')
 
-bp = plt.boxplot(WRRF_input['real_distance_km'], whis=[5, 95], showfliers=False, widths=0.5, patch_artist=True)
+bp = ax.boxplot(WRRF_input[['WRRF_refinery_real_distance_km','WRRF_coal_pp_real_distance_km']], whis=[5, 95], showfliers=False, widths=0.5, patch_artist=True)
 
-for box in bp['boxes']:
-    box.set(color='k', facecolor=b, linewidth=3)
+bp['boxes'][0].set(color='k', facecolor=b, linewidth=3)
+bp['boxes'][1].set(color='k', facecolor=b, linewidth=3, hatch='//',  edgecolor='w')
 
 for whisker in bp['whiskers']:
     whisker.set(color='k', linewidth=3)
 
 for median in bp['medians']:
     median.set(color='k', linewidth=3)
-    
+
 for cap in bp['caps']:
     cap.set(color='k', linewidth=3)
-    
+
+# uncomment for outliers
+# for flier in bp['fliers']:
+#     flier.set(marker='o', markersize=7, markerfacecolor=b, markeredgewidth=1.5)
+
+bp_2 = ax.boxplot(WRRF_input[['WRRF_refinery_real_distance_km','WRRF_coal_pp_real_distance_km']], whis=[5, 95], showfliers=False, widths=0.5, patch_artist=True)
+
+bp_2['boxes'][0].set(color='k', facecolor='none', linewidth=3)
+bp_2['boxes'][1].set(color='k', facecolor='none', linewidth=3)
+
+for median in bp_2['medians']:
+    median.set(color='k', linewidth=3)
+
 ax_right.scatter(x=1,
-                 y=WRRF_input['real_distance_km'].mean(),
+                 y=WRRF_input['WRRF_refinery_real_distance_km'].mean(),
                  marker='D',
                  s=300,
                  c='w',
@@ -1034,19 +1123,23 @@ ax_right.scatter(x=1,
                  alpha=1,
                  edgecolor='k',
                  zorder=2)
-
-# uncomment for outliers
-# for flier in bp['fliers']:
-#     flier.set(marker='o', markersize=7, markerfacecolor='k', markeredgewidth=1.5)
+    
+ax_right.scatter(x=2,
+                 y=WRRF_input['WRRF_coal_pp_real_distance_km'].mean(),
+                 marker='D',
+                 s=300,
+                 c='w',
+                 linewidths=3,
+                 alpha=1,
+                 edgecolor='k',
+                 zorder=2)
     
 # fig.savefig('/Users/jiananfeng/Desktop/distance.png', transparent=True, bbox_inches='tight')
 
-#%% travel distance box plot (per region)
+#%% biocrude and hydrochar transporation distance box plot (per region)
 
 # !!! update the input file if necessary
-WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-02-10.xlsx')
-# removal WRRFs with no real_distance_km
-WRRF_input = WRRF_input.dropna(subset='real_distance_km')
+WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
 
 # results grouped by different regions (not by PADD regions, just they are the same as PADD regions)
 WRRF_input.loc[WRRF_input['state'].isin(['CT','DC','DE','FL','GA','MA','MD','ME','NC','NH','NJ','NY','PA','RI','SC','VA','VT','WV']),'WRRF_PADD'] = 1
@@ -1063,6 +1156,7 @@ def add_region(position, region, color):
     ax = fig.add_subplot(gs[0, position])
     
     plt.rcParams['axes.linewidth'] = 3
+    plt.rcParams['hatch.linewidth'] = 3
     plt.rcParams['xtick.labelsize'] = 30
     plt.rcParams['ytick.labelsize'] = 30
     
@@ -1091,23 +1185,35 @@ def add_region(position, region, color):
     else:
         ax.tick_params(direction='inout', labelbottom=False, bottom=False, top=False, left=False, right=False, labelcolor='none')
     
-    bp = ax.boxplot(WRRF_input[WRRF_input['WRRF_PADD'] == position+1]['real_distance_km'],
+    bp = ax.boxplot(WRRF_input[WRRF_input['WRRF_PADD'] == position+1][['WRRF_refinery_real_distance_km','WRRF_coal_pp_real_distance_km']],
                     whis=[5, 95], showfliers=False, widths=0.5, patch_artist=True)
     
-    for box in bp['boxes']:
-        box.set(color='k', facecolor=color, linewidth=3)
-
+    bp['boxes'][0].set(color='k', facecolor=color, linewidth=3)
+    bp['boxes'][1].set(color='k', facecolor=color, linewidth=3, hatch='//',  edgecolor='w')
+    
     for whisker in bp['whiskers']:
         whisker.set(color='k', linewidth=3)
-
+    
     for median in bp['medians']:
         median.set(color='k', linewidth=3)
-        
+    
     for cap in bp['caps']:
         cap.set(color='k', linewidth=3)
-        
+    
+    # for flier in bp['fliers']:
+    #     flier.set(marker='o', markersize=7, markerfacecolor=color, markeredgewidth=1.5)
+    
+    bp_2 = ax.boxplot(WRRF_input[WRRF_input['WRRF_PADD'] == position+1][['WRRF_refinery_real_distance_km','WRRF_coal_pp_real_distance_km']],
+                      whis=[5, 95], showfliers=False, widths=0.5, patch_artist=True)
+    
+    bp_2['boxes'][0].set(color='k', facecolor='none', linewidth=3)
+    bp_2['boxes'][1].set(color='k', facecolor='none', linewidth=3)
+
+    for median in bp_2['medians']:
+        median.set(color='k', linewidth=3)
+    
     ax.scatter(x=1,
-               y=WRRF_input[WRRF_input['WRRF_PADD'] == position+1]['real_distance_km'].mean(),
+               y=WRRF_input[WRRF_input['WRRF_PADD'] == position+1]['WRRF_refinery_real_distance_km'].mean(),
                marker='D',
                s=300,
                c='w',
@@ -1115,9 +1221,16 @@ def add_region(position, region, color):
                alpha=1,
                edgecolor='k',
                zorder=3)
-        
-    # for flier in bp['fliers']:
-    #     flier.set(marker='o', markersize=7, markerfacecolor=color, markeredgewidth=1.5)
+    
+    ax.scatter(x=2,
+               y=WRRF_input[WRRF_input['WRRF_PADD'] == position+1]['WRRF_coal_pp_real_distance_km'].mean(),
+               marker='D',
+               s=300,
+               c='w',
+               linewidths=3,
+               alpha=1,
+               edgecolor='k',
+               zorder=3)
 
 add_region(0, 'East Coast', b)
 add_region(1, 'Midwest', g)
@@ -1128,9 +1241,7 @@ add_region(4, 'West Coast', y)
 #%% WRRFs GHG map
 
 # !!! update the input file if necessary
-WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-02-10.xlsx')
-# removal WRRFs with no real_distance_km
-WRRF_input = WRRF_input.dropna(subset='real_distance_km')
+WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
 
 WRRF_input = WRRF_input.sort_values(by='total_emission', ascending=False)
 
@@ -1163,9 +1274,7 @@ ax.set_axis_off()
 #%% WRRFs sludge management GHG map
 
 # !!! update the input file if necessary
-WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-02-10.xlsx')
-# removal WRRFs with no real_distance_km
-WRRF_input = WRRF_input.dropna(subset='real_distance_km')
+WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
 
 WRRF_input = WRRF_input.sort_values(by='biosolids_emission', ascending=False)
 
@@ -1195,20 +1304,18 @@ ax.set_aspect(1)
 
 ax.set_axis_off()
 
-#%% cumulative WRRFs capacity vs distances (data processing)
+#%% cumulative WRRFs capacity vs WRRF and oil refinery distances (data processing)
 
 # !!! update the input file if necessary
-WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-02-10.xlsx')
-# removal WRRFs with no real_distance_km
-WRRF_input = WRRF_input.dropna(subset='real_distance_km')
+WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
 
 result = WRRF_input[['Site ID']].drop_duplicates()
 
 max_distance = 1500
-assert max_distance > WRRF_input.real_distance_km.max(), 'update max_distance'
+assert max_distance > WRRF_input.WRRF_refinery_real_distance_km.max(), 'update max_distance'
 
 for distance in np.linspace(0, max_distance, max_distance+1):
-    WRRF_input_distance = WRRF_input[WRRF_input['real_distance_km'] <= distance]
+    WRRF_input_distance = WRRF_input[WRRF_input['WRRF_refinery_real_distance_km'] <= distance]
     WRRF_input_distance = WRRF_input_distance.groupby('Site ID').sum('flow_2022_MGD_final')
     WRRF_input_distance = WRRF_input_distance[['flow_2022_MGD_final']]
     WRRF_input_distance = WRRF_input_distance.rename(columns={'flow_2022_MGD_final': int(distance)})
@@ -1229,17 +1336,17 @@ for item in refineries_left_id:
 
 result = result.merge(refinery, how='left', on='Site ID')
 
-result.to_excel(folder + f'results/distance/MGD_vs_real_distance_{max_distance}_km.xlsx')
+result.to_excel(folder + f'results/distance/MGD_vs_WRRF_refinery_real_distance_{max_distance}_km.xlsx')
 
-#%% make the plot of cumulative WRRFs capacity vs distances (data preparation)
+#%% make the plot of cumulative WRRFs capacity vs WRRF and oil refinery distances (data preparation)
 
 # !!! update the file if necessary
-CF_input = pd.read_excel(folder + 'results/distance/MGD_vs_real_distance_1500_km.xlsx')
+CF_input = pd.read_excel(folder + 'results/distance/MGD_vs_WRRF_refinery_real_distance_1500_km.xlsx')
 
 CF_input[0] = 0
 
 max_distance_plot = 1500
-assert max_distance_plot > WRRF_input.real_distance_km.max(), 'update max_distance'
+assert max_distance_plot > WRRF_input.WRRF_refinery_real_distance_km.max(), 'update max_distance'
 
 CF_input = CF_input[['PADD', 'State', *list(range(0, max_distance_plot+1, 1))]]
 
@@ -1247,7 +1354,7 @@ CF_input.sort_values(by='PADD', inplace=True)
 
 CF_input = CF_input.transpose()
 
-#%% make the plot of cumulative WRRFs capacity vs distances (separated oil refinery)
+#%% make the plot of cumulative WRRFs capacity vs WRRF and oil refinery distances (separated oil refinery)
 
 PADD_1 = (CF_input.loc['PADD',:].isin([1,])).sum()
 PADD_2 = (CF_input.loc['PADD',:].isin([1,2])).sum()
@@ -1310,7 +1417,7 @@ add_region(2, PADD_2, PADD_3, r)
 add_region(3, PADD_3, PADD_4, o)
 add_region(4, PADD_4, PADD_5, y)
 
-#%% make the plot of cumulative WRRFs capacity vs distances (regional total)
+#%% make the plot of cumulative WRRFs capacity vs WRRF and oil refinery distances (regional total)
 
 PADD_1 = (CF_input.loc['PADD',:].isin([1,])).sum()
 PADD_2 = (CF_input.loc['PADD',:].isin([1,2])).sum()
@@ -1355,14 +1462,174 @@ ax_top.set_xlim(ax.get_xlim())
 plt.xticks(np.arange(0, max_distance_plot*1.2, max_distance_plot*0.2), fontname='Arial')
 ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
+#%% cumulative WRRFs capacity vs WRRF and coal-based power plant distances (data processing)
+
+# !!! update the input file if necessary
+WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
+
+result = WRRF_input[['Plant_Code']].drop_duplicates()
+
+max_distance = 900
+assert max_distance > WRRF_input.WRRF_coal_pp_real_distance_km.max(), 'update max_distance'
+
+for distance in np.linspace(0, max_distance, max_distance+1):
+    WRRF_input_distance = WRRF_input[WRRF_input['WRRF_coal_pp_real_distance_km'] <= distance]
+    WRRF_input_distance = WRRF_input_distance.groupby('Plant_Code').sum('flow_2022_MGD_final')
+    WRRF_input_distance = WRRF_input_distance[['flow_2022_MGD_final']]
+    WRRF_input_distance = WRRF_input_distance.rename(columns={'flow_2022_MGD_final': int(distance)})
+    WRRF_input_distance.reset_index(inplace=True)
+    if len(WRRF_input_distance) > 0:
+        result = result.merge(WRRF_input_distance, how='left', on='Plant_Code')
+
+result = result.fillna(0)
+
+if len(result) < len(coal_pp):
+    result_index = pd.Index(result['Plant_Code'])
+    coal_pp_index = pd.Index(coal_pp['Plant_Code'])
+    refineries_left_id = coal_pp_index.difference(result_index).values
+
+result = result.set_index('Plant_Code')
+for item in refineries_left_id:
+    result.loc[item] = [0]*len(result.columns)
+
+result = result.merge(coal_pp, how='left', on='Plant_Code')
+
+result['PADD'] = result['State'].apply(lambda x: state_PADD[x])
+
+result.to_excel(folder + f'results/distance/MGD_vs_WRRF_coal_pp_real_distance_{max_distance}_km.xlsx')
+
+#%% make the plot of cumulative WRRFs capacity vs WRRF and coal-based power plant distances (data preparation)
+
+# !!! update the file if necessary
+CF_input = pd.read_excel(folder + 'results/distance/MGD_vs_WRRF_coal_pp_real_distance_900_km.xlsx')
+
+CF_input[0] = 0
+
+max_distance_plot = 900
+assert max_distance_plot > WRRF_input.WRRF_coal_pp_real_distance_km.max(), 'update max_distance'
+
+CF_input = CF_input[['PADD', 'State', *list(range(0, max_distance_plot+1, 1))]]
+
+CF_input.sort_values(by='PADD', inplace=True)
+
+CF_input = CF_input.transpose()
+
+#%% make the plot of cumulative WRRFs capacity vs WRRF and coal-based power plant distances (separated oil coal-based power plant)
+
+PADD_1 = (CF_input.loc['PADD',:].isin([1,])).sum()
+PADD_2 = (CF_input.loc['PADD',:].isin([1,2])).sum()
+PADD_3 = (CF_input.loc['PADD',:].isin([1,2,3])).sum()
+PADD_4 = (CF_input.loc['PADD',:].isin([1,2,3,4])).sum()
+PADD_5 = (CF_input.loc['PADD',:].isin([1,2,3,4,5])).sum()
+
+fig = plt.figure(figsize=(20, 10))
+
+gs = fig.add_gridspec(1, 5, hspace=0, wspace=0)
+
+def add_region(position, start_region, end_region, color):
+    ax = fig.add_subplot(gs[0, position])
+    
+    plt.rcParams['axes.linewidth'] = 3
+    plt.rcParams['xtick.labelsize'] = 30
+    plt.rcParams['ytick.labelsize'] = 30
+    
+    plt.rcParams.update({'mathtext.fontset': 'custom'})
+    plt.rcParams.update({'mathtext.default': 'regular'})
+    plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+    
+    ax.set_xlim(0, max_distance_plot)
+    ax.set_ylim(0, 7000)
+    
+    plt.xticks(np.arange(0, max_distance_plot*1.2, max_distance_plot*0.2), fontname='Arial')
+    plt.yticks(np.arange(0, 8000, 1000), fontname='Arial')
+    
+    for i in range(start_region, end_region):
+        CF_input.iloc[2:, i].plot(ax=ax, color=color, linewidth=3)
+    
+    if position == 4:
+        ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=False, right=False, labelleft=False, labelbottom=True, pad=0)
+        
+        ax_right = ax.twinx()
+        ax_right.set_ylim(ax.get_ylim())
+        
+        ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
+        
+    if position == 0:
+        ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False, labelleft=True, labelbottom=True, pad=0)
+        ax.set_ylabel(r'$\mathbf{Cumulative\ WRRFs\ capacity}$ [MGD]', fontname='Arial', fontsize=35)
+    else:
+        if position == 2:
+            ax.set_xlabel(r'$\mathbf{Travel\ distance}$ [km]', fontname='Arial', fontsize=35)
+        ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=False, right=False, labelleft=False, labelbottom=True, pad=0)
+        plt.xticks(np.arange(max_distance_plot*0.2, max_distance_plot*1.2, max_distance_plot*0.2), fontname='Arial')
+    
+    for label in ax.get_xticklabels():
+        label.set_rotation(45)
+    
+    ax_top = ax.twiny()
+    ax_top.set_xlim(ax.get_xlim())
+    plt.xticks(np.arange(max_distance_plot*0.2, max_distance_plot*1.2, max_distance_plot*0.2), fontname='Arial')
+    ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
+
+add_region(0, 0, PADD_1, b)
+add_region(1, PADD_1, PADD_2, g)
+add_region(2, PADD_2, PADD_3, r)
+add_region(3, PADD_3, PADD_4, o)
+add_region(4, PADD_4, PADD_5, y)
+
+#%% make the plot of cumulative WRRFs capacity vs WRRF and coal-based power plant distances (regional total)
+
+PADD_1 = (CF_input.loc['PADD',:].isin([1,])).sum()
+PADD_2 = (CF_input.loc['PADD',:].isin([1,2])).sum()
+PADD_3 = (CF_input.loc['PADD',:].isin([1,2,3])).sum()
+PADD_4 = (CF_input.loc['PADD',:].isin([1,2,3,4])).sum()
+PADD_5 = (CF_input.loc['PADD',:].isin([1,2,3,4,5])).sum()
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 30
+plt.rcParams['ytick.labelsize'] = 30
+
+plt.rcParams.update({'mathtext.fontset': 'custom'})
+plt.rcParams.update({'mathtext.default': 'regular'})
+plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+
+fig, ax = plt.subplots(figsize=(11, 10))
+
+ax.set_xlim(0, max_distance_plot)
+ax.set_ylim(0, 20000)
+
+plt.xticks(np.arange(0, max_distance_plot*1.2, max_distance_plot*0.2), fontname='Arial')
+plt.yticks(np.arange(0, 24000, 4000), fontname='Arial')
+
+CF_input.iloc[2:, 0:PADD_1].sum(axis=1).plot(ax=ax, color=b, linewidth=3)
+CF_input.iloc[2:, PADD_1:PADD_2].sum(axis=1).plot(ax=ax, color=g, linewidth=3)
+CF_input.iloc[2:, PADD_2:PADD_3].sum(axis=1).plot(ax=ax, color=r, linewidth=3)
+CF_input.iloc[2:, PADD_3:PADD_4].sum(axis=1).plot(ax=ax, color=o, linewidth=3)
+CF_input.iloc[2:, PADD_4:PADD_5].sum(axis=1).plot(ax=ax, color=y, linewidth=3)
+
+ax.set_xlabel(r'$\mathbf{Travel\ distance}$ [km]', fontname='Arial', fontsize=35)
+ax.set_ylabel(r'$\mathbf{Cumulative\ WRRFs\ capacity}$ [MGD]', fontname='Arial', fontsize=35)
+
+ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False)
+
+ax_right = ax.twinx()
+ax_right.set_ylim(ax.get_ylim())
+plt.yticks(np.arange(0, 24000, 4000), fontname='Arial')
+ax_right.tick_params(direction='in', length=10, width=3, bottom=True, top=False, left=False, right=True, labelcolor='none')
+
+ax_top = ax.twiny()
+ax_top.set_xlim(ax.get_xlim())
+plt.xticks(np.arange(0, max_distance_plot*1.2, max_distance_plot*0.2), fontname='Arial')
+ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
+
+# TODO: continue from here
+
 #%% CO2 abatement cost analysis
 
 filterwarnings('ignore')
 
 # !!! update the input file if necessary
-WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-02-10.xlsx')
-# removal WRRFs with no real_distance_km
-WRRF_input = WRRF_input.dropna(subset='real_distance_km')
+WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
 
 # if just want to see the two plants in Urbana-Champaign:
 # WRRF_input = WRRF_input[WRRF_input['CWNS'].isin([17000112001, 17000112002])]
@@ -1485,7 +1752,7 @@ result.to_excel(folder + f'results/baseline/baseline_{date.today()}_{i}.xlsx')
 #%% merge the results and the input
 
 # !!! update the input file if necessary
-input_data = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-02-10.xlsx')
+input_data = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
 # removal WRRFs with no real_distance_km
 input_data = input_data.dropna(subset='real_distance_km')
 
@@ -2683,7 +2950,7 @@ biocrude_transportation['95th'] = biocrude_transportation[0:999].quantile(q=0.95
 biocrude_transportation.reset_index(names='CWNS', inplace=True)
 biocrude_transportation = biocrude_transportation[['CWNS','5th','50th','95th']]
 
-WRRF_all = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-02-10.xlsx')
+WRRF_all = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
 
 biocrude_transportation = biocrude_transportation.merge(WRRF_all, how='left', on='CWNS')
 
@@ -2836,7 +3103,7 @@ def add_region(position, color):
         
     if position == 1 or position == 3:
         for box in bp['boxes']:
-            box.set(color='k', facecolor=color, linewidth=3, hatch = '//',  edgecolor='w')
+            box.set(color='k', facecolor=color, linewidth=3, hatch='//',  edgecolor='w')
 
     for whisker in bp['whiskers']:
         whisker.set(color='k', linewidth=3)
@@ -3384,9 +3651,7 @@ print(key_CI_drivers_only)
 filterwarnings('ignore')
 
 # !!! update the input file if necessary
-WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-02-10.xlsx')
-# removal WRRFs with no real_distance_km
-WRRF_input = WRRF_input.dropna(subset='real_distance_km')
+WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
 
 print(len(WRRF_input))
 
@@ -3674,9 +3939,7 @@ np.quantile(national_GHG_reduction, 0.95)/1000
 filterwarnings('ignore')
 
 # !!! update the input file if necessary
-WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-02-10.xlsx')
-# removal WRRFs with no real_distance_km
-WRRF_input = WRRF_input.dropna(subset='real_distance_km')
+WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
 
 print(len(WRRF_input))
 
@@ -4259,9 +4522,7 @@ qualified_facility_biocrude_max.reset_index(names='CWNS', inplace=True)
 qualified_facility_biocrude_max.rename(columns={0:'BPD'}, inplace=True)
 
 # !!! update the input file if necessary
-WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-02-10.xlsx')
-# removal WRRFs with no real_distance_km
-WRRF_input = WRRF_input.dropna(subset='real_distance_km')
+WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
 WRRF_input = WRRF_input[['CWNS','Site ID','capacity']]
 
 BPD_capacity = qualified_facility_biocrude_max.merge(WRRF_input, how='left', on='CWNS')
@@ -4544,9 +4805,7 @@ print(f'The highest blending ratio in the near-term scenario is {BPD_capacity["r
 # filterwarnings('ignore')
 
 # # !!! update the input file if necessary
-# WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-02-10.xlsx')
-# # removal WRRFs with no real_distance_km
-# WRRF_input = WRRF_input.dropna(subset='real_distance_km')
+# WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
 
 # # $/tonne
 # WRRF_input['waste_cost'] = sum(WRRF_input[i]*sludge_disposal_cost[i] for i in sludge_disposal_cost.keys())/WRRF_input['total_sludge_amount_kg_per_year']*1000
@@ -4830,9 +5089,7 @@ print(f'The highest blending ratio in the near-term scenario is {BPD_capacity["r
 # center_WRRF_data_preparation = satellite_data_preparation[satellite_data_preparation['facility']=='MWRDGC, Stickney Treatment Plant']
 
 # # !!! update the input file if necessary
-# WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-02-10.xlsx')
-# # removal WRRFs with no real_distance_km
-# WRRF_input = WRRF_input.dropna(subset='real_distance_km')
+# WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
 
 # # select WRRFs that are within 200 km (linear distance) from the center WRRF
 # linear_distance = []

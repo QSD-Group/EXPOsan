@@ -79,6 +79,8 @@ def create_geospatial_system(test_run=False,
                              sludge_distance=100,
                              # km
                              biocrude_distance=100,
+                             # km
+                             hydrochar_distance=100,
                              # average values below are for sludge aggregation analyses
                              average_sludge_dw_ash=None,
                              average_sludge_afdw_lipid=None,
