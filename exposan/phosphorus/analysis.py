@@ -230,7 +230,7 @@ def simulate_system(f_dct, t_step=1, t=25, export=False):
         
         inf = f.stream.Dynamic_influent
         eff= f.stream.Effluent
-        PBR20_eff = f.unit.PBR20.outs[0]
+        PBR20 = f.unit.PBR20
         #sys.simulate(t_span=(0, t), method='RK23')
         #inf = f.stream.Dynamic_influent
         Q = round(inf.get_total_flow('m3/d'))
@@ -245,19 +245,18 @@ def simulate_system(f_dct, t_step=1, t=25, export=False):
         fig_eff, axis_eff = eff.scope.plot_time_series(('S_P'))
         
         biomass_IDs = ('X_ALG', 'X_PG', 'X_TAG', 'X_N_ALG', 'X_P_ALG')
+        fig_PBR20, axis_PBR20 = PBR20.scope.plot_time_series(biomass_IDs)
         SRT = get_SRT(sys, biomass_IDs=biomass_IDs,
                 wastage=f.stream.Harvested_biomass,
                 # active_unit_IDs=(u.ID for u in sys.units if u.get_retained_mass(biomass_IDs) is not None)
                 active_unit_IDs=('MIX', *(f'PBR{i}' for i in range(1, 21)))
                 )
-        
-        # fig_PBR20, axis_PBR20 = PBR20_eff.scope.plot_time_series(biomass_IDs)
-        print('The SRT of the system is', SRT) # 2-3 d for 3 mg/L, 75 d for 15 mg/L
+        print('\n\nThe SRT of the system is', SRT) # 2-3 d for 3 mg/L, 75 d for 15 mg/L
         if export:
             now = datetime.datetime.now()
             time = f'{now.year}-{now.month}-{now.day}-{now.hour}-{now.minute}-{now.second}'
             fig_eff.savefig(os.path.join(figures_path, f'ecorecover_results_eff_{mgL}mgL_{t}d_{Q}m3d_{time}.jpg'))
-            # fig_PBR20.savefig(os.path.join(figures_path, f'ecorecover_results_PBR20_{mgL}mgL_{t}d_{Q}m3d_{time}.jpg'))
+            fig_PBR20.savefig(os.path.join(figures_path, f'ecorecover_results_PBR20_{mgL}mgL_{t}d_{Q}m3d_{time}.jpg'))
             sys.scope.export(os.path.join(results_path, f'ecorecover_results_{mgL}mgL_{t}d_{Q}m3d_{time}.xlsx'), t_eval=np.arange(0, t+t_step, t_step))
         print(f'\n\nfinished {k}\n\n')
     for k, v in f_dct.items():
