@@ -120,7 +120,8 @@ from exposan.phosphorus import (
     results_path,
     )
 
-V_pbr_default = pm2.V_pbr
+#V_pbr_default = pm2.V_pbr
+V_pbr_default = 20
 V_pbr_indv_default = V_pbr_default / 20
 Q_default = 449.06
 all_infs = range(3, 16) # inf=3-15 mg/L
@@ -151,6 +152,7 @@ for mgL in all_infs:
     init_conds['S_NH'] = df.S_NH[0]
     init_conds['S_NO'] = df.S_NO[0]
     init_conds['S_P'] = df.S_P[0]
+    
 
 # BioWin effluent P
 # S_P_dct = {
@@ -221,21 +223,41 @@ def create_flowsheets(inf_range=all_infs, Q=1000, init_conds=default_init_conds)
 # %%
 
 # Function to run all concentrations
-def simulate_system(f_dct, t_step=1, t=25, export=True):
+def simulate_system(f_dct, t_step=1, t=25, export=False):
     simulation_kwargs = dict(t_step=t_step, t=t, export=export)
     @time_printer
     def single_simulation(flowsheet, **simulation_kwargs):
+        
+        inf = f.stream.Dynamic_influent
+        eff= f.stream.Effluent
+        PBR20_eff = f.unit.PBR20.outs[0]
+        #sys.simulate(t_span=(0, t), method='RK23')
+        #inf = f.stream.Dynamic_influent
+        Q = round(inf.get_total_flow('m3/d'))
+        #eff = f.stream.Effluent
+        #fig, axis = eff.scope.plot_time_series(('S_P'))
+        POST_MEM = f.unit.POST_MEM
+        POST_MEM.split = 0.95 # split to return, default 0.97, smaller number means harvesting, thus shorter SRT
+        
         sys = f.system.sys
         sys.reset_cache()
         sys.simulate(t_span=(0, t), method='RK23')
-        inf = f.stream.Dynamic_influent
-        Q = round(inf.get_total_flow('m3/d'))
-        eff = f.stream.Effluent
-        fig, axis = eff.scope.plot_time_series(('S_P'))
+        fig_eff, axis_eff = eff.scope.plot_time_series(('S_P'))
+        
+        biomass_IDs = ('X_ALG', 'X_PG', 'X_TAG', 'X_N_ALG', 'X_P_ALG')
+        SRT = get_SRT(sys, biomass_IDs=biomass_IDs,
+                wastage=f.stream.Harvested_biomass,
+                # active_unit_IDs=(u.ID for u in sys.units if u.get_retained_mass(biomass_IDs) is not None)
+                active_unit_IDs=('MIX', *(f'PBR{i}' for i in range(1, 21)))
+                )
+        
+        # fig_PBR20, axis_PBR20 = PBR20_eff.scope.plot_time_series(biomass_IDs)
+        print('The SRT of the system is', SRT) # 2-3 d for 3 mg/L, 75 d for 15 mg/L
         if export:
             now = datetime.datetime.now()
             time = f'{now.year}-{now.month}-{now.day}-{now.hour}-{now.minute}-{now.second}'
-            fig.savefig(os.path.join(figures_path, f'ecorecover_results_{mgL}mgL_{t}d_{Q}m3d_{time}.jpg'))
+            fig_eff.savefig(os.path.join(figures_path, f'ecorecover_results_eff_{mgL}mgL_{t}d_{Q}m3d_{time}.jpg'))
+            # fig_PBR20.savefig(os.path.join(figures_path, f'ecorecover_results_PBR20_{mgL}mgL_{t}d_{Q}m3d_{time}.jpg'))
             sys.scope.export(os.path.join(results_path, f'ecorecover_results_{mgL}mgL_{t}d_{Q}m3d_{time}.xlsx'), t_eval=np.arange(0, t+t_step, t_step))
         print(f'\n\nfinished {k}\n\n')
     for k, v in f_dct.items():
@@ -243,29 +265,29 @@ def simulate_system(f_dct, t_step=1, t=25, export=True):
         f = f_dct[f'f{mgL}']
         single_simulation(flowsheet=f, **simulation_kwargs)
     return f_dct
-
+#%%
 
 # Individual trial
-mgL = 3
-f_dct = create_flowsheets(inf_range=range(mgL, mgL+1), Q=1000)
+mgL = 6
+f_dct = create_flowsheets(inf_range=range(mgL, mgL+1), Q=100)
 f = f_dct[f'f{mgL}']
 sys = f.system.sys
 f_dct = simulate_system(f_dct=f_dct, t_step=1, t=5, export=False)
 
-biomass_IDs = ('X_ALG', 'X_PG', 'X_TAG', 'X_N_ALG', 'X_P_ALG')
-SRT = get_SRT(sys, biomass_IDs=biomass_IDs,
-        wastage=f.stream.Harvested_biomass,
+#biomass_IDs = ('X_ALG', 'X_PG', 'X_TAG', 'X_N_ALG', 'X_P_ALG')
+#SRT = get_SRT(sys, biomass_IDs=biomass_IDs,
+        #wastage=f.stream.Harvested_biomass,
         # active_unit_IDs=(u.ID for u in sys.units if u.get_retained_mass(biomass_IDs) is not None)
-        active_unit_IDs=('MIX', *(f'PBR{i}' for i in range(1, 21)))
-        )
-print(SRT) # 2-3 d for 3 mg/L, 75 d for 15 mg/L
+        #active_unit_IDs=('MIX', *(f'PBR{i}' for i in range(1, 21)))
+        #)
+#print(SRT) # 2-3 d for 3 mg/L, 75 d for 15 mg/L
 
 # Adjust SRT by changing the amount of harvested biomass
-POST_MEM = f.unit.POST_MEM
-POST_MEM.split = 0.95 # split to return, default 0.97, smaller number means harvesting, thus shorter SRT
-sys.reset_cache()
-sys.simulate(t_span=(0, 5), method='RK23')
-fig, axis = f.stream.Effluent.scope.plot_time_series(('S_P'))
+#POST_MEM = f.unit.POST_MEM
+#POST_MEM.split = 0.95 # split to return, default 0.97, smaller number means harvesting, thus shorter SRT
+#sys.reset_cache()
+#sys.simulate(t_span=(0, 25), method='RK23')
+#fig, axis = f.stream.Effluent.scope.plot_time_series(('S_P'))
 
 # Run all results
 # f_dct = create_flowsheets(inf_range=range(3, 16), Q=1000)
