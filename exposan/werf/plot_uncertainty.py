@@ -188,7 +188,98 @@ def compile_all_opex(ID='F1', save_as=''):
     allopex['Strength'] = allopex.Strength.astype(int)
     if save_as: allopex.to_excel(ospath.join(results_path, save_as))
     else: return allopex
+
+# %%
+
+def compile_n_recovery(ID='F1'):
+    out = []
+    for f_str in np.linspace(0,1,11)*100:
+        dfs = load_data(ospath.join(results_path, f'HA_{ID}_UA-strength{int(f_str)}.xlsx'), 
+                        header=[0,1], skiprows=[2,], sheet=None)
+        rcv = []
+        fs_rmv = []
+        for f_rmv, df in dfs.items():
+            fs_rmv.append(f_rmv)
+            rcv.append(df[('System','NH4 recovery [kg-N/d]')][0])
+        out.append(rcv)
     
+    out = pd.DataFrame(out, index=np.linspace(0,1,11)*100, columns=fs_rmv)
+    return out
+
+# %%
+
+def plot_nrcv_by_strength(ID='F1'):
+    data = compile_n_recovery(ID)
+    stats = data.quantile([0.05, 0.25, 0.5, 0.75, 0.95], axis=1).T
+    inf_stats = load_data(
+        ospath.join(results_path, f'HA_{ID}_UA_opex_stats_by_strength.xlsx'),
+        header=[0,1], skiprows=[2,]
+        )
+    x = [int(i) for i in stats.index]
+    _x = np.linspace(min(x), max(x), 50)
+    def smoo(y, k=3):
+        spl = mis(x, y, k=k)
+        return spl(_x)
+    
+    fig, ax = plt.subplots(figsize=(6,9))
+
+    ax.fill_between(
+        _x, y1=smoo(stats[0.05]), y2=smoo(stats[0.95]), 
+        alpha=0.3, color=a, lw=0, 
+        )
+    ax.fill_between(
+        _x, y1=smoo(stats[0.25]), y2=smoo(stats[0.75]), 
+        alpha=0.5, color=a, lw=0,
+        )
+    ax.plot(_x, smoo(stats[0.25]), color=a, lw=1.5, ls='--')
+    ax.plot(_x, smoo(stats[0.75]), color=a, lw=1.5, ls='--')
+    ax.plot(_x, smoo(stats[0.5]), color=da)
+    ax.plot(x, stats[0.5], marker='o', lw=0, ms=3, mec=da, mfc=a)
+    ax.set_ylabel('$\mathbf{Ammonia\ recovery}$ [kg-N·day${^{-1}}$]', 
+                    fontname='Arial', fontsize=13, labelpad=8, linespacing=0.8)
+    ax.set_xlabel('$\mathbf{Wastewater\ strength}$ [-]', 
+                    fontname='Arial', fontsize=13, labelpad=1, linespacing=0.8)
+    ax.xaxis.set_ticks([0, 24.9, 100], ['low', 'medium', 'high'])    
+
+    major = dict(which='major', length=8, labelsize=12)
+    minor = dict(which='minor', length=5)
+    ax.tick_params(axis='both', direction='inout', **major)
+    ax.tick_params(axis='y', direction='inout', **minor)
+    ax.tick_params(axis='x', which='minor', length=0)
+    
+    ax2y = ax.secondary_yaxis('right')
+    ax2y.tick_params(axis='y', which='major', direction='in', length=4)
+    ax2y.tick_params(axis='y', which='minor', direction='in', length=2.5)
+    ax2y.yaxis.set_major_formatter(plt.NullFormatter())
+    
+    xmin, xmax = ax.get_xlim()
+    def get_xlim(xx):
+        xmn = xx.min()
+        xmx = xx.max()
+        return xmn + (xmx-xmn) * xmin/100, xmn + (xmx-xmn) * xmax/100
+    
+    loc = -0.2    
+    for xvar in ('BOD', 'TSS', 'TN', 'NH4-N', 'TP', 'OP'):
+        twnx = ax.twiny()
+        twnx.spines['bottom'].set_position(('axes', loc))
+        twnx.xaxis.tick_bottom()
+        twnx.xaxis.set_label_position('bottom')  # Move label to bottom
+        twnx.tick_params(axis='x', direction='out', which='major', length=4.5, labelsize=12)
+        twnx.tick_params(axis='x', direction='out', which='minor', length=2.5)
+        twnx.plot(inf_stats.Influent[xvar], stats[0.5], marker='o', lw=0, ms=3, mec=da, mfc=a)
+        twnx.set_xlim(get_xlim(inf_stats.Influent[xvar]))
+        if xvar == 'NH4-N': xvar = 'NH_4-N'
+        elif xvar == 'OP': xvar = 'Ortho-P'
+        twnx.set_xlabel('$\mathbf{%s}$ [mg/L]' % xvar, 
+                        fontname='Arial', fontsize=13, labelpad=0, linespacing=0.8)
+        loc -= 0.2
+
+    fig.subplots_adjust(bottom=0.55, left=0.2)
+    fig.savefig(ospath.join(figures_path, f'HA_{ID}_UA_nrecovery.png'),
+                dpi=300, transparent=True)
+
+# plot_nrcv_by_strength()
+
 # %%
 from scipy.interpolate import make_interp_spline as mis
 
