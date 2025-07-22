@@ -18,7 +18,6 @@ For parameters/numbers not explained, see geospatial_systems.py or _sanunits.py 
 import qsdsan as qs, biosteam as bst
 from chaospy import distributions as shape
 from qsdsan.utils import auom, DictAttrSetter
-from exposan.htl import create_geospatial_system
 
 __all__ = ('create_geospatial_model',)
 

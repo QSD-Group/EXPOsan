@@ -347,6 +347,10 @@ state_ID = {'Alabama':'AL',
             'Wisconsin':'WI',
             'Wyoming':'WY'}
 
+# confirmed farm_fertilizer and nonfarm_fertilizer just include CONUS
+assert (~farm_fertilizer.State.isin(state_ID.values())).sum() == 0
+assert (~nonfarm_fertilizer.State.isin(state_ID.values())).sum() == 0
+
 ID_state = dict((value, key) for key, value in state_ID.items())
 
 state_PADD = {'Alabama': 3,
@@ -2804,7 +2808,7 @@ CI_spearman_r = pd.DataFrame()
 CI_spearman_p = pd.DataFrame()
 
 # !!! run in different consoles to speed up: 0, 80, 160, 240, 320, 400, 480, len(qualified_facility)
-for i in range(240, 320):
+for i in range(0, len(qualified_facility)):
     sys = create_geospatial_system(size=qualified_facility.iloc[i]['total_sludge_amount_kg_per_year']/1000/365,
                                    sludge_transportation=False,
                                    sludge_distance=100,
@@ -2938,6 +2942,8 @@ geo_uncertainty_anhydrous_ammonia.to_excel(folder + f'results/qualified_facility
 geo_uncertainty_urea.to_excel(folder + f'results/qualified_facility/before_integration/urea_tonne_per_year_{date.today()}_{i}.xlsx')
 geo_uncertainty_UAN.to_excel(folder + f'results/qualified_facility/before_integration/UAN_tonne_per_year_{date.today()}_{i}.xlsx')
 
+# !!!: note these contains WRRFs with nan uncertainty results that are removed in the following cell for the above datasets
+# !!!: but these will not be used)
 cost_spearman_r.to_excel(folder + f'results/qualified_facility/before_integration/cost_spearman_r_{date.today()}_{i}.xlsx')
 cost_spearman_p.to_excel(folder + f'results/qualified_facility/before_integration/cost_spearman_p_{date.today()}_{i}.xlsx')
 CI_spearman_r.to_excel(folder + f'results/qualified_facility/before_integration/CI_spearman_r_{date.today()}_{i}.xlsx')
@@ -2954,11 +2960,17 @@ def combine_file(name):
     file_5 = pd.read_excel(folder + f'results/qualified_facility/before_integration/{name}_2025-07-22_399.xlsx')
     file_6 = pd.read_excel(folder + f'results/qualified_facility/before_integration/{name}_2025-07-22_479.xlsx')
     file_7 = pd.read_excel(folder + f'results/qualified_facility/before_integration/{name}_2025-07-22_576.xlsx')
-
+    
     for file in [file_1, file_2, file_3, file_4, file_5, file_6, file_7]:
         file.drop('Unnamed: 0', axis=1, inplace=True)
-
+    
     integrated_file = pd.concat([file_1, file_2, file_3, file_4, file_5, file_6, file_7], axis=1)
+    
+    print(*integrated_file.columns[integrated_file.isna().any()].tolist())
+    
+    integrated_file.dropna(axis=1, inplace=True)
+    
+    print(len(integrated_file.columns))
     
     integrated_file.to_excel(folder + f'results/qualified_facility/integrated_{name}_{date.today()}.xlsx')
 
@@ -2987,7 +2999,7 @@ WRRF_all = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
 biocrude_transportation = biocrude_transportation.merge(WRRF_all, how='left', on='CWNS')
 
 biocrude_transportation['source'] = biocrude_transportation['state']
-biocrude_transportation['target'] = biocrude_transportation['State'].apply(lambda x: state_ID[x])
+biocrude_transportation['target'] = biocrude_transportation['State_left'].apply(lambda x: state_ID[x])
 biocrude_transportation['weight'] = biocrude_transportation['50th']
 biocrude_transportation = biocrude_transportation[['source','target','weight']]
 
@@ -3047,7 +3059,7 @@ def get_copula_sum(item):
     dependent_uniform = stats.norm.cdf(dependent_samples)
     
     # transform back to original distributions using quantiles
-    sum_results = sum(np.quantile(np.array([production[production.columns[i]]]).reshape(len(production),), dependent_uniform[:, i]) for i in range(len(production.columns)))
+    sum_results = sum(np.nanquantile(np.array([production[production.columns[i]]]).reshape(len(production),), dependent_uniform[:, i]) for i in range(len(production.columns)))
     
     return sum_results
 
@@ -3058,13 +3070,23 @@ N_offset = (get_copula_sum('integrated_anhydrous_ammonia_tonne_per_year_2025-07-
             get_copula_sum('integrated_urea_tonne_per_year_2025-07-22')/60.06*2*14.0067 +\
             get_copula_sum('integrated_UAN_tonne_per_year_2025-07-22')*0.3)/N['total'].sum()*1000*100
 
+print(np.quantile(P_offset, 0.05))
+print(np.quantile(P_offset, 0.5))
+print(np.quantile(P_offset, 0.95))
+
+print(np.quantile(N_offset, 0.05))
+print(np.quantile(N_offset, 0.5))
+print(np.quantile(N_offset, 0.95))
+
 all_facility = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
 selected_facility = all_facility[all_facility['USD_decarbonization'].notna()]
 selected_facility = selected_facility[selected_facility['USD_decarbonization'] <= 0]
 
+# TODO: update 83% if needed
 # estimate 83% coverage
 P_ratio = selected_facility['total_sludge_amount_kg_per_year'].sum()/all_facility['total_sludge_amount_kg_per_year'].sum()/0.83
 
+# TODO: update 83% if needed
 # estimate 83% coverage
 def N_ratio(fertilizer):
     selected_N = selected_facility[selected_facility['nitrogen_fertilizer'] == fertilizer]['total_sludge_amount_kg_per_year'].sum()
@@ -3076,6 +3098,14 @@ P_offset_future = P_offset/P_ratio
 N_offset_future = (get_copula_sum('integrated_anhydrous_ammonia_tonne_per_year_2025-07-22')/N_ratio('NH3')/17.031*14.0067 +\
                    get_copula_sum('integrated_urea_tonne_per_year_2025-07-22')/N_ratio('urea')/60.06*2*14.0067 +\
                    get_copula_sum('integrated_UAN_tonne_per_year_2025-07-22')/N_ratio('UAN')*0.3)/N['total'].sum()*1000*100
+
+print(np.quantile(P_offset_future, 0.05))
+print(np.quantile(P_offset_future, 0.5))
+print(np.quantile(P_offset_future, 0.95))
+
+print(np.quantile(N_offset_future, 0.05))
+print(np.quantile(N_offset_future, 0.5))
+print(np.quantile(N_offset_future, 0.95))
 
 #%% N and P offsets - visualization
 
@@ -3181,10 +3211,15 @@ all_facility = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydr
 selected_facility = all_facility[all_facility['USD_decarbonization'].notna()]
 selected_facility = selected_facility[selected_facility['USD_decarbonization'] <= 0]
 
+# TODO: update 83% if needed
 # estimate 83% coverage
 biocrude_ratio = selected_facility['total_sludge_amount_kg_per_year'].sum()/all_facility['total_sludge_amount_kg_per_year'].sum()/0.83
 
 biocrude_production_future = np.quantile(biocrude_production, 0.5)/biocrude_ratio
+
+print(biocrude_production_future)
+
+# TODO: continue from here
 
 #%% sampled facility level uncertainty and sensitivity analyses (data preparation)
 
