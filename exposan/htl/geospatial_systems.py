@@ -72,13 +72,13 @@ labor_index = {2014: 21.49,
 def create_geospatial_system(test_run=False,
                              # MGD
                              size=10,
-                             # 0: no; 1: yes
-                             sludge_transportation=0,
+                             sludge_transportation=False,
                              # in km, this is the slduge transportation total
                              # distance (normalized to total sludge amount)
                              sludge_distance=100,
                              # km
                              biocrude_distance=100,
+                             hydrochar_recovery=True,
                              # km
                              hydrochar_distance=100,
                              # average values below are for sludge aggregation analyses
@@ -206,7 +206,7 @@ def create_geospatial_system(test_run=False,
     # is ash (cannot be digested), Y is VSS (can be digested)
     # for anaerobic digestion: X/(X+Y*(1-0.425)) = 0.414
     # we can calculate that for aerobic digestion: X/(X+Y*(1-0.475)) = 0.436
-    if sludge_transportation == 0 or ((sludge_transportation != 0) and test_run):
+    if (not sludge_transportation) or (sludge_transportation and test_run):
         if aerobic_digestion == 1:
             WWTP = su.WWTP(ID='WWTP',
                            ins=raw_wastewater,
@@ -280,10 +280,9 @@ def create_geospatial_system(test_run=False,
                        init_with='Stream',
                        rigorous=True)
     
-    # assume no value/cost and no environmental benefit/impact associated with hydrochar
     HTL = qsu.HydrothermalLiquefaction(ID='HTL',
                                        ins=H1-0,
-                                       outs=('hydrochar','HTL_aqueous_undefined',
+                                       outs=('HTL_hydrochar','HTL_aqueous_undefined',
                                              'biocrude_to_be_stored','offgas_HTL'),
                                        mositure_adjustment_exist_in_the_system=False)
     
@@ -357,10 +356,14 @@ def create_geospatial_system(test_run=False,
     # based on 93% H2SO4 and fresh water (dilute onsite to 5%), https://doi.org/10.2172/1483234
     H2SO4_Tank.ins[0].price = (0.043*1+0.0002*(93/5-1))/(93/5)/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
     
-    # assume no cost/CI associated with residual since it can be both disposed or used
     AcidEx = su.AcidExtraction(ID='AcidEx',
                                ins=(HTL-0, H2SO4_Tank-0),
-                               outs=('residual','extracted'))
+                               outs=('hydrochar','extracted'),
+                               hard_coal_HHV=27.91, # ecoinvent
+                               hydrochar_distance=hydrochar_distance)
+    if hydrochar_recovery:
+        # 0 - 0.093 2018$, Figure 6 in https://www.sciencedirect.com/science/article/pii/S0306261919318021?via%3Dihub
+        AcidEx.outs[0].price = 0.0465/GDPCTPI[2018]*GDPCTPI[2022]
     
     PreStripper = su.PreStripper(ID='PreStripper',
                                  ins=(F1-1,'NaOH'),
@@ -551,9 +554,7 @@ def create_geospatial_system(test_run=False,
     # assume the sludge/biosolids decomposition is minimal during transportation since our transportation distance is not long
     Sludge_trucking.add_indicator(GlobalWarming, WWTP.ww_2_dry_sludge*0.13004958/0.2/3.79/(10**6))
     # 4.56 $/m3, 0.072 $/m3/mile (likely 2015$, https://doi.org/10.1016/j.tra.2015.02.001)
-    Sludge_trucking.price = WWTP.ww_2_dry_sludge*\
-        (4.56/WWTP.sludge_wet_density*1000/0.2+0.072/_mile_to_km/WWTP.sludge_wet_density*1000/0.2*WWTP.sludge_distance)/\
-            GDPCTPI[2015]*GDPCTPI[2022]/3.79/(10**6)/WWTP.sludge_distance
+    Sludge_trucking.price = (4.56 + 0.072/_mile_to_km*WWTP.sludge_distance)*WWTP.ww_2_dry_sludge/WWTP.sludge_wet_density*1000/0.2/3.79/(10**6)/WWTP.sludge_distance/GDPCTPI[2015]*GDPCTPI[2022]
     
     Sludge_transportation = qs.Transportation('Sludge_trucking',
                                               linked_unit=WWTP,
@@ -572,7 +573,7 @@ def create_geospatial_system(test_run=False,
     # 0.13004958 kg CO2 eq/metric ton/km ('market for transport, freight, lorry, unspecified'))
     Biocrude_trucking.add_indicator(GlobalWarming, 0.13004958/1000)
     # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), https://doi.org/10.1016/j.biortech.2010.03.136
-    Biocrude_trucking.price = (5.67/BiocrudeTank.biocrude_wet_density+0.07/BiocrudeTank.biocrude_wet_density*BiocrudeTank.biocrude_distance)/GDPCTPI[2008]*GDPCTPI[2022]/BiocrudeTank.biocrude_distance
+    Biocrude_trucking.price = (5.67 + 0.07*BiocrudeTank.biocrude_distance)/BiocrudeTank.biocrude_wet_density/BiocrudeTank.biocrude_distance/GDPCTPI[2008]*GDPCTPI[2022]
         
     Biocrude_transportation = qs.Transportation('Biocrude_trucking',
                                                 linked_unit=BiocrudeTank,
@@ -587,6 +588,28 @@ def create_geospatial_system(test_run=False,
                                                 interval_unit='h')
     BiocrudeTank.transportation = Biocrude_transportation
     
+    if hydrochar_recovery:
+        Hydrochar_trucking = qs.ImpactItem('Hydrochar_trucking', functional_unit='kg*km')
+        # 0.13004958 kg CO2 eq/metric ton/km ('market for transport, freight, lorry, unspecified'))
+        Hydrochar_trucking.add_indicator(GlobalWarming, 0.13004958/1000)
+        # assume the transportation is the same as the same sludge based on weight (assume the sludge density is 1040 kg/m3)
+        # generally, for transportation cost: hydrochar < sludge (hihger moisture content) < biocrude (special tank trucker)
+        # 5.32 $/tonne, 0.0522 $/tonne/km
+        Hydrochar_trucking.price = (5.32 + 0.0522*AcidEx.hydrochar_distance)/1000/AcidEx.hydrochar_distance
+        
+        Hydrochar_transportation = qs.Transportation('Hydrochar_trucking',
+                                                     linked_unit=AcidEx,
+                                                     item=Hydrochar_trucking,
+                                                     load_type='mass',
+                                                     load=stream.hydrochar.F_mass,
+                                                     load_unit='kg',
+                                                     distance=AcidEx.hydrochar_distance,
+                                                     distance_unit='km',
+                                                     # set to 1 h since load = kg/h
+                                                     interval='1',
+                                                     interval_unit='h')
+        AcidEx.transportation = Hydrochar_transportation
+    
     impact_items = {'CHG_catalyst': [stream.CHG_catalyst, 471.098936962268],
                     'H2SO4':        [stream.H2SO4, 0.005529872568],
                     'NaOH':         [stream.NaOH, 1.2497984],
@@ -594,10 +617,17 @@ def create_geospatial_system(test_run=False,
                     # TODO: do not use market or market group for products for other systems (i.e., CO2 sorbent, HTL-PFAS)
                     # include emission
                     'natural_gas':  [stream.natural_gas, 0.47016123/natural_gas_density+44/16],
-                    # use market or market group for biocrude since we want to offset transportation and then add our own transportation part
+                    # TODO: this allocates the benefit of biogenic carbon in biocrude to oil refineries, is this mentioned in the manuscript or the SI
+                    # use market or market group for biocrude to offset transportation and then add the transportation part
                     # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
                     'biocrude':     [stream.biocrude, -0.22290007/BiocrudeTank.crude_oil_HHV*HTL.biocrude_HHV],
                     'ash_disposal': [stream.solid_ash, 0.0082744841]}
+    
+    if hydrochar_recovery:
+        # TODO: this allocates the benefit of biogenic carbon in hydrochar to coal-based power plants, consider mentioning this in the manuscript or the SI
+        # use market or market group for hydrochar to offset transportation and then add the transportation part
+        # 0.17013652 kg CO2 eq/kg hard coal ('market for hard coal')
+        impact_items['hydrochar'] = [stream.hydrochar, -0.17013652/AcidEx.hard_coal_HHV*HTL.hydrochar_HHV]
     
     if nitrogen_fertilizer == 'NH3':
         impact_items['anhydrous_ammonia'] = [stream.anhydrous_ammonia, -2.4833472]

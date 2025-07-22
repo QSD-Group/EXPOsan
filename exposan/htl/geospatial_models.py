@@ -67,18 +67,8 @@ def create_geospatial_model(system=None,
                             UAN_price=[],
                             exclude_IRR=False,
                             include_check=True):
-    '''
-    Create a model based on the given system
-    (or create the system based on the given configuration).
     
-    Parameters
-    ----------
-    system : obj or str
-        Can be either a :class:`System` objective for which the model will be created,
-        or one of the allowed configurations ("baseline", "no_P", "PSA").
-    '''
-    
-    sys = create_geospatial_system() if not system else system
+    sys = system
     flowsheet = sys.flowsheet
     unit = flowsheet.unit
     stream = flowsheet.stream
@@ -103,6 +93,7 @@ def create_geospatial_model(system=None,
     NaOH = stream.NaOH
     water_steam = stream.water_steam
     biocrude = stream.biocrude
+    hydrochar = stream.hydrochar
     DAP = stream.DAP
     natural_gas = stream.natural_gas
     solid_ash = stream.solid_ash
@@ -424,6 +415,17 @@ def create_geospatial_model(system=None,
     def set_hydrochar_C_slope(i):
         HTL.hydrochar_C_slope=i
     
+    hydrochar_H_slope = 0.141
+    dist = shape.Normal(hydrochar_H_slope*0.8,hydrochar_H_slope*1.2)
+    @param(name='hydrochar_H_slope',
+           element=HTL,
+           kind='coupled',
+           units='-',
+           baseline=hydrochar_H_slope,
+           distribution=dist)
+    def set_hydrochar_H_slope(i):
+        HTL.hydrochar_H_slope=i
+    
     dist = shape.Triangle(0.035,0.063,0.102)
     @param(name='biocrude_moisture_content',
            element=HTL,
@@ -552,6 +554,28 @@ def create_geospatial_model(system=None,
            distribution=dist)
     def set_P_recovery_ratio(i):
         AcidEx.P_acid_recovery_ratio=i
+
+    hard_coal_HHV = 27.91
+    dist = shape.Uniform(hard_coal_HHV*0.9,hard_coal_HHV*1.1)
+    @param(name='hard_coal_HHV',
+           element=AcidEx,
+           kind='coupled',
+           units='-',
+           baseline=hard_coal_HHV,
+           distribution=dist)
+    def set_hard_coal_HHV(i):
+        AcidEx.hard_coal_HHV=i
+    
+    hydrochar_distance = AcidEx.hydrochar_distance
+    dist = shape.Uniform(hydrochar_distance,hydrochar_distance*1.1)
+    @param(name='hydrochar_distance',
+           element=AcidEx,
+           kind='coupled',
+           units='-',
+           baseline=hydrochar_distance,
+           distribution=dist)
+    def set_hydrochar_distance(i):
+        AcidEx.hydrochar_distance=i
     
     # =========================================================================
     # DAP
@@ -761,6 +785,17 @@ def create_geospatial_model(system=None,
         def set_biocrude_price(i):
             biocrude.price=i/BiocrudeTank.crude_oil_density/BiocrudeTank.crude_oil_HHV*HTL.biocrude_HHV
     
+    hydrochar_price = 0.0465/GDPCTPI[2018]*GDPCTPI[2022]
+    dist = shape.Uniform(0,0.093/GDPCTPI[2018]*GDPCTPI[2022])
+    @param(name='hydrochar_price',
+           element='TEA',
+           kind='isolated',
+           units='$/kg',
+           baseline=hydrochar_price,
+           distribution=dist)
+    def set_hydrochar_price(i):
+        hydrochar.price=i
+    
     H2SO4_price = (0.043*1+0.0002*(93/5-1))/(93/5)/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
     dist = shape.Uniform(H2SO4_price*0.9,H2SO4_price*1.1)
     @param(name='5%_H2SO4_price',
@@ -942,9 +977,7 @@ def create_geospatial_model(system=None,
             def set_UAN_price(i):
                 UAN.price=i
     
-    sludge_transportation_price = WWTP.ww_2_dry_sludge*\
-                                    (4.56*1000/0.2+0.072/_mile_to_km*1000/0.2*WWTP.sludge_distance)/\
-                                        GDPCTPI[2015]*GDPCTPI[2022]/3.79/(10**6)/WWTP.sludge_distance
+    sludge_transportation_price = (4.56+0.072/_mile_to_km*WWTP.sludge_distance)*WWTP.ww_2_dry_sludge*1000/0.2/3.79/(10**6)/WWTP.sludge_distance/GDPCTPI[2015]*GDPCTPI[2022]
     dist = shape.Uniform(sludge_transportation_price*0.9,sludge_transportation_price*1.1)
     @param(name='sludge_transportation_price',
            element='TEA',
@@ -965,6 +998,17 @@ def create_geospatial_model(system=None,
            distribution=dist)
     def set_biocrude_transportation_price(i):
         qs.ImpactItem.get_all_items()['Biocrude_trucking'].price=i/BiocrudeTank.biocrude_wet_density
+    
+    hydrochar_transportation_price = (5.32 + 0.0522*AcidEx.hydrochar_distance)/1000/AcidEx.hydrochar_distance
+    dist = shape.Uniform(hydrochar_transportation_price*0.8,hydrochar_transportation_price*1.2)
+    @param(name='hydrochar_transportation_price',
+           element='TEA',
+           kind='isolated',
+           units='$/kg/km',
+           baseline=hydrochar_transportation_price,
+           distribution=dist)
+    def set_hydrochar_transportation_price(i):
+        qs.ImpactItem.get_all_items()['Hydrochar_trucking'].price=i
     
     # =========================================================================
     # LCA (unifrom ± 10%)

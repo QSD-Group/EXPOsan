@@ -66,9 +66,13 @@ class AcidExtraction(Reactor):
     outs : iterable
         residual, extracted.
     acid_vol : float
-        0.5 M H2SO4 to hydrochar ratio: mL/g.
+        0.5 M H2SO4 to hydrochar ratio, [mL/g].
     P_acid_recovery_ratio : float
         The ratio of phosphorus that can be extracted.
+    hard_coal_HHV : float
+        HHV of hard coal, MJ/kg.
+    hydrochar_distance : float
+        Distance between WRRFs and coal-based power plants, [km].
         
     References
     ----------
@@ -83,7 +87,8 @@ class AcidExtraction(Reactor):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', acid_vol=7, P_acid_recovery_ratio=0.8,
-                 P=None, tau=2, V_wf=0.8, # tau: [1]
+                 hard_coal_HHV=27.91, # ecoinvent
+                 hydrochar_distance=100, P=None, tau=2, V_wf=0.8, # tau: [1]
                  length_to_diameter=2, N=1, V=10, auxiliary=False,
                  mixing_intensity=None, kW_per_m3=0, # use MixTank default value
                  wall_thickness_factor=1,
@@ -93,6 +98,8 @@ class AcidExtraction(Reactor):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.acid_vol = acid_vol
         self.P_acid_recovery_ratio = P_acid_recovery_ratio
+        self.hard_coal_HHV = hard_coal_HHV
+        self.hydrochar_distance = hydrochar_distance
         self.P = P
         self.tau = tau
         self.V_wf = V_wf
@@ -276,7 +283,8 @@ class BiocrudeTank(Tank, BSTStorageTank):
     References
     ----------
     .. [1] https://www.transmountain.com/about-petroleum-liquids (accessed 2025-02-05).
-    .. [2] https://world-nuclear.org/information-library/facts-and-figures/heat-values-of-various-fuels
+    # TODO: add access date
+    .. [2] https://world-nuclear.org/information-library/facts-and-figures/heat-values-of-various-fuels.
     .. [3] Snowden-Swan, L. J.; Li, S.; Thorson, M. R.; Schmidt, A. J.; Cronin, D. J.;
         Zhu, Y.; Hart, T. R.; Santosa, D. M.; Fox, S. P.; Lemmon, T. L.; Swita, M. S.
         Wet Waste Hydrothermal Liquefaction and Biocrude Upgrading to Hydrocarbon Fuels:
@@ -1193,7 +1201,6 @@ class UreaSynthesis(SanUnit):
         self.power_utility.consumption = (0.18 + 0.95)*1000/1000*urea.imass['urea']
     
     def _design(self):
-        
         Design = self.design_results
         Design['Production capacity'] = self.outs[0].F_mass
 
@@ -1421,8 +1428,8 @@ class WWTP(SanUnit):
     
     @property
     def sludge_HHV(self):
-       return 100*(0.338*self.sludge_C_ratio + 1.428*(self.sludge_H_ratio -\
-              self.sludge_O_ratio/8)) # [3]
+       return (0.338*self.sludge_C_ratio + 1.428*(self.sludge_H_ratio -\
+              self.sludge_O_ratio/8))*100 # [3]
     
     @property
     def H_C_eff(self):
