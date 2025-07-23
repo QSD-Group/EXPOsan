@@ -2977,7 +2977,7 @@ class HydrothermalAlkalineTreatment(SanUnit):
         eff_hx_out = Stream(f'{ID}_eff_hx_out')
         self.eff_hx = HXutility(ID=f'.{ID}_eff_hx', ins=eff_after_hx, outs=eff_hx_out, T=eff_T, rigorous=True)
     
-    # TODO: is it reasonable HTL and HALT have the same yield, just the gas composition changes
+    # TODO: see Table 1 in the HTL-PFAS model paper, assume yield changes are the same as carbon changes (i.e., biocrude -> MCA biocrude times 0.781, hydrochar -> MCA hydrochar times 0.2, gas based on the NaOH factor -> alrealy implemented, aqueous based on the mass balance closure)
     def _run(self):
         dewatered_solids, sodium_hydroxide, hydrochloric_acid = self.ins
         hydrochar, HTLaqueous, biocrude, offgas = self.outs
