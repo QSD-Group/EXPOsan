@@ -269,7 +269,7 @@ def get_recoveries(system, ppl=None, include_breakdown=False):
                 lambda: get_N(comp_splitter.outs[0]) / (get_N(solid_separation.ins[0])+get_N(solid_separation.ins[1])) * 100,  # total_N_recovery
                 lambda: get_P(comp_splitter.outs[1]) / (get_P(solid_separation.ins[0])+get_P(solid_separation.ins[1])) * 100,  # total_P_recovery
                 lambda: get_K(comp_splitter.outs[2]) / (get_K(solid_separation.ins[0])+get_K(solid_separation.ins[1])) * 100,  # total_K_recovery
-                lambda: get_Water(RO.outs[2]) / (get_Water(RO.outs[0])+get_Water(RO.outs[1])+get_Water(RO.outs[2]))* 100, #total water recovery
+                lambda: get_Water(RO.outs[0]) / (get_Water(RO.outs[0])+get_Water(RO.outs[1])+get_Water(RO.outs[2]))* 100, #total water recovery
                 lambda: (1 - get_N(RO.outs[2]) / (get_N(solid_separation.ins[0])+get_N(solid_separation.ins[1]))) * 100,# N removal efficiency
                 lambda: (1 - get_P(RO.outs[2]) / (get_P(solid_separation.ins[0])+get_P(solid_separation.ins[1]))) * 100,# P removal efficiency
                 lambda: get_COD_conc(RO.outs[2]),  # effluent COD concentration mg/L
@@ -582,11 +582,11 @@ def print_summaries(systems):
             sys.LCA.show()
 
 
-from . import models
+from .models import *
 from . import analysis
 
-from . import city_specific
-from .city_specific import *
+from . import location_specific
+from .location_specific import *
 
 __all__ = (
     'g2rt_path',
@@ -596,5 +596,5 @@ __all__ = (
     *systems.__all__,
     *models.__all__,
     *analysis.__all__,
-    *city_specific.__all__,
+    *location_specific.__all__,
 )

@@ -105,10 +105,10 @@ def add_metrics(model, ppl= None):
     #     Metric('Annual operating emissions', get_LCA_metrics(system, ppl,include_breakdown=True)[8], 'kg CO2-eq/yr', 'LCA results')
     #     ])
     
-    metrics.extend([
-        Metric('Energy consumption', get_TEA_metrics(system, ppl,include_breakdown=True)[2], 'kWh /cap/day', 'TEA results')
-        ])
-    #To run unit breakdown of costs and GHG emissions, uncomment line 112-139
+    # metrics.extend([
+    #     Metric('Energy consumption', get_TEA_metrics(system, ppl,include_breakdown=True)[2], 'kWh /cap/day', 'TEA results')
+    #     ])
+    # #To run unit breakdown of costs and GHG emissions, uncomment line 112-139
     # for u in system.TEA.units:
     #     class_name = u.__class__.__name__
     #     metrics.extend([

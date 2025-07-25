@@ -41,7 +41,7 @@ import os, numpy as np, pandas as pd
 from datetime import datetime
 old_price_ratio = copy(g2rt.price_ratio)
 
-#%%
+#%% Note "city" and "country" are not strictly differentiated in this script. Sometimes a set of country level contextual parameters are used when running "city-specific" analysis 
 
 # =============================================================================
 # Create model for city-specific analysis
