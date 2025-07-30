@@ -1755,9 +1755,12 @@ class Incineration(SanUnit):
 # TODO: gasification, 3 HX, if not cost data is available, may slightly higher than pyrolysis, electricity may also higher, add yield
 # TODO: HALT: same as HTL, adjust yields, different lifetime, add 2 streams - NaOH and HCl
 # TODO: SCWO: produce CO2 and H2O, HX, pump, reaction time can be less than 1 min
+
 # =============================================================================
 # Pyrolysis
 # =============================================================================
+
+# TODO: Aaron (Cusick Group) has an emperical pyrolysis model (check thesis if that is available)
 
 # TODO: yield: https://pubs.rsc.org/en/content/articlelanding/2024/ew/d4ew00278d/unauth
 # TODO: need heating, cooling, and heat exchanger

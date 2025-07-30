@@ -43,6 +43,7 @@ from scipy.linalg import cholesky
 from scipy.spatial import KDTree
 from numba import njit
 
+# TODO: if this is here, this might not be needed for each figure
 mathtext.FontConstantsBase.sup1 = 0.35
 
 # TODO: update file paths later
@@ -511,9 +512,9 @@ plt.rcParams['xtick.labelsize'] = 38
 plt.rcParams['ytick.labelsize'] = 38
 plt.rcParams['font.sans-serif'] = 'Arial'
 
-plt.rcParams.update({'mathtext.fontset': 'custom'})
-plt.rcParams.update({'mathtext.default': 'regular'})
-plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 fig, ax = plt.subplots(figsize=(10, 10))
 
@@ -724,9 +725,9 @@ plt.rcParams['xtick.labelsize'] = 30
 plt.rcParams['ytick.labelsize'] = 30
 plt.rcParams['font.sans-serif'] = 'Arial'
 
-plt.rcParams.update({'mathtext.fontset': 'custom'})
-plt.rcParams.update({'mathtext.default': 'regular'})
-plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 plt.rcParams.update({'figure.max_open_warning': 100})
 
 fig, ax = plt.subplots(figsize=(30, 30))
@@ -735,7 +736,7 @@ color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['
 
 US_county_N.plot(column='total', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, edgecolor='k', linewidth=0.5)
 
-fig.axes[1].set_ylabel('$\mathbf{Nitrogen}$ [kg]', fontname='Arial', fontsize=41)
+fig.axes[1].set_ylabel('$\mathbf{Nitrogen}$ [kg·${year^{−1}}$]', fontname='Arial', fontsize=41)
 fig.axes[1].tick_params(length=7.5, width=1.5)
 
 pos1 = fig.axes[1].get_position()
@@ -762,9 +763,9 @@ plt.rcParams['xtick.labelsize'] = 30
 plt.rcParams['ytick.labelsize'] = 30
 plt.rcParams['font.sans-serif'] = 'Arial'
 
-plt.rcParams.update({'mathtext.fontset': 'custom'})
-plt.rcParams.update({'mathtext.default': 'regular'})
-plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 plt.rcParams.update({'figure.max_open_warning': 100})
 
 fig, ax = plt.subplots(figsize=(30, 30))
@@ -773,7 +774,7 @@ color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['
 
 US_county_P.plot(column='total', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, edgecolor='k', linewidth=0.5)
 
-fig.axes[1].set_ylabel('$\mathbf{Phosphorus}$ [kg]', fontname='Arial', fontsize=41)
+fig.axes[1].set_ylabel('$\mathbf{Phosphorus}$ [kg·${year^{−1}}$]', fontname='Arial', fontsize=41)
 fig.axes[1].tick_params(length=7.5, width=1.5)
 
 pos1 = fig.axes[1].get_position()
@@ -795,9 +796,9 @@ plt.rcParams['xtick.labelsize'] = 30
 plt.rcParams['ytick.labelsize'] = 30
 plt.rcParams['font.sans-serif'] = 'Arial'
 
-plt.rcParams.update({'mathtext.fontset': 'custom'})
-plt.rcParams.update({'mathtext.default': 'regular'})
-plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 plt.rcParams.update({'figure.max_open_warning': 100})
 
 fig, ax = plt.subplots(figsize=(30, 30))
@@ -828,9 +829,9 @@ plt.rcParams['xtick.labelsize'] = 30
 plt.rcParams['ytick.labelsize'] = 30
 plt.rcParams['font.sans-serif'] = 'Arial'
 
-plt.rcParams.update({'mathtext.fontset': 'custom'})
-plt.rcParams.update({'mathtext.default': 'regular'})
-plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 plt.rcParams.update({'figure.max_open_warning': 100})
 
 fig, ax = plt.subplots(figsize=(30, 30))
@@ -861,9 +862,9 @@ plt.rcParams['xtick.labelsize'] = 30
 plt.rcParams['ytick.labelsize'] = 30
 plt.rcParams['font.sans-serif'] = 'Arial'
 
-plt.rcParams.update({'mathtext.fontset': 'custom'})
-plt.rcParams.update({'mathtext.default': 'regular'})
-plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 plt.rcParams.update({'figure.max_open_warning': 100})
 
 fig, ax = plt.subplots(figsize=(30, 30))
@@ -896,9 +897,9 @@ plt.rcParams['xtick.labelsize'] = 30
 plt.rcParams['ytick.labelsize'] = 30
 plt.rcParams['font.sans-serif'] = 'Arial'
 
-plt.rcParams.update({'mathtext.fontset': 'custom'})
-plt.rcParams.update({'mathtext.default': 'regular'})
-plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 plt.rcParams.update({'figure.max_open_warning': 100})
 
 fig, ax = plt.subplots(figsize=(30, 30))
@@ -1070,9 +1071,9 @@ plt.rcParams['hatch.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 30
 plt.rcParams['ytick.labelsize'] = 30
 
-plt.rcParams.update({'mathtext.fontset': 'custom'})
-plt.rcParams.update({'mathtext.default': 'regular'})
-plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 fig, ax = plt.subplots(figsize = (5, 8))
 
@@ -1092,7 +1093,7 @@ ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True,
 bp = ax.boxplot(WRRF_input[['WRRF_refinery_real_distance_km','WRRF_coal_pp_real_distance_km']], whis=[5, 95], showfliers=False, widths=0.5, patch_artist=True)
 
 bp['boxes'][0].set(color='k', facecolor=b, linewidth=3)
-bp['boxes'][1].set(color='k', facecolor=b, linewidth=3, hatch='//',  edgecolor='w')
+bp['boxes'][1].set(color='k', facecolor=b, linewidth=3, hatch='//', edgecolor='w')
 
 for whisker in bp['whiskers']:
     whisker.set(color='k', linewidth=3)
@@ -1161,9 +1162,9 @@ def add_region(position, region, color):
     plt.rcParams['xtick.labelsize'] = 30
     plt.rcParams['ytick.labelsize'] = 30
     
-    plt.rcParams.update({'mathtext.fontset': 'custom'})
-    plt.rcParams.update({'mathtext.default': 'regular'})
-    plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+    plt.rcParams.update({'mathtext.fontset':'custom'})
+    plt.rcParams.update({'mathtext.default':'regular'})
+    plt.rcParams.update({'mathtext.bf':'Arial: bold'})
     
     plt.xticks(fontname='Arial')
     plt.yticks(fontname='Arial')
@@ -1238,6 +1239,138 @@ add_region(1, 'Midwest', g)
 add_region(2, 'Gulf Coast', r)
 add_region(3, 'Rocky Mountain', o)
 add_region(4, 'West Coast', y)
+
+#%% biocrude and hydrochar transporation distance box plot (national + per region)
+
+# !!! update the input file if necessary
+WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
+
+# results grouped by different regions (not by PADD regions, just they are the same as PADD regions)
+WRRF_input.loc[WRRF_input['state'].isin(['CT','DC','DE','FL','GA','MA','MD','ME','NC','NH','NJ','NY','PA','RI','SC','VA','VT','WV']),'WRRF_PADD'] = 1
+WRRF_input.loc[WRRF_input['state'].isin(['IA','IL','IN','KS','KY','MI','MN','MO','ND','NE','OH','OK','SD','TN','WI']),'WRRF_PADD'] = 2
+WRRF_input.loc[WRRF_input['state'].isin(['AL','AR','LA','MS','NM','TX']),'WRRF_PADD'] = 3
+WRRF_input.loc[WRRF_input['state'].isin(['CO','ID','MT','UT','WY']),'WRRF_PADD'] = 4
+WRRF_input.loc[WRRF_input['state'].isin(['AZ','CA','NV','OR','WA']),'WRRF_PADD'] = 5
+
+fig = plt.figure(figsize=(24, 10))
+
+gs = fig.add_gridspec(1, 6, hspace=0, wspace=0)
+
+def add_region(position, region, color):
+    ax = fig.add_subplot(gs[0, position])
+    
+    plt.rcParams['axes.linewidth'] = 3
+    plt.rcParams['hatch.linewidth'] = 3
+    plt.rcParams['xtick.labelsize'] = 30
+    plt.rcParams['ytick.labelsize'] = 30
+    
+    plt.rcParams.update({'mathtext.fontset':'custom'})
+    plt.rcParams.update({'mathtext.default':'regular'})
+    plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+    
+    plt.xticks(fontname='Arial')
+    plt.yticks(fontname='Arial')
+    
+    ax = plt.gca()
+    ax.set_ylim(0, 1000)
+    ax.set_xlabel(region, fontname='Arial', fontsize=30, labelpad=15)
+    
+    if position == 0:
+        ax.tick_params(direction='inout', length=20, width=3, labelbottom=False, bottom=False, top=False, left=True, right=False)
+        ax.set_ylabel(r'$\mathbf{Distance}$ [km]', fontname='Arial', fontsize=35)
+    
+    elif position == 5:
+        ax.tick_params(direction='inout', labelbottom=False, bottom=False, top=False, left=False, right=False, length=0, labelcolor='none')
+        
+        ax_right = ax.twinx()
+        ax_right.set_ylim(ax.get_ylim())
+        ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
+    
+    else:
+        ax.tick_params(direction='inout', labelbottom=False, bottom=False, top=False, left=False, right=False, labelcolor='none')
+    
+    if position == 0:
+        bp = ax.boxplot(WRRF_input[['WRRF_refinery_real_distance_km','WRRF_coal_pp_real_distance_km']],
+                        whis=[5, 95], showfliers=False, widths=0.5, patch_artist=True)
+    else:
+        bp = ax.boxplot(WRRF_input[WRRF_input['WRRF_PADD'] == position][['WRRF_refinery_real_distance_km','WRRF_coal_pp_real_distance_km']],
+                        whis=[5, 95], showfliers=False, widths=0.5, patch_artist=True)
+    
+    bp['boxes'][0].set(color='k', facecolor=color, linewidth=3)
+    bp['boxes'][1].set(color='k', facecolor=color, linewidth=3, hatch='//',  edgecolor='w')
+    
+    for whisker in bp['whiskers']:
+        whisker.set(color='k', linewidth=3)
+    
+    for median in bp['medians']:
+        median.set(color='k', linewidth=3)
+    
+    for cap in bp['caps']:
+        cap.set(color='k', linewidth=3)
+    
+    # for flier in bp['fliers']:
+    #     flier.set(marker='o', markersize=7, markerfacecolor=color, markeredgewidth=1.5)
+    
+    if position == 0:
+        bp_2 = ax.boxplot(WRRF_input[['WRRF_refinery_real_distance_km','WRRF_coal_pp_real_distance_km']],
+                          whis=[5, 95], showfliers=False, widths=0.5, patch_artist=True)
+    else:
+        bp_2 = ax.boxplot(WRRF_input[WRRF_input['WRRF_PADD'] == position][['WRRF_refinery_real_distance_km','WRRF_coal_pp_real_distance_km']],
+                          whis=[5, 95], showfliers=False, widths=0.5, patch_artist=True)
+    
+    bp_2['boxes'][0].set(color='k', facecolor='none', linewidth=3)
+    bp_2['boxes'][1].set(color='k', facecolor='none', linewidth=3)
+
+    for median in bp_2['medians']:
+        median.set(color='k', linewidth=3)
+    
+    if position == 0:
+        ax.scatter(x=1,
+                   y=WRRF_input['WRRF_refinery_real_distance_km'].mean(),
+                   marker='D',
+                   s=300,
+                   c='w',
+                   linewidths=3,
+                   alpha=1,
+                   edgecolor='k',
+                   zorder=3)
+        
+        ax.scatter(x=2,
+                   y=WRRF_input['WRRF_coal_pp_real_distance_km'].mean(),
+                   marker='D',
+                   s=300,
+                   c='w',
+                   linewidths=3,
+                   alpha=1,
+                   edgecolor='k',
+                   zorder=3)
+    else:
+        ax.scatter(x=1,
+                   y=WRRF_input[WRRF_input['WRRF_PADD'] == position]['WRRF_refinery_real_distance_km'].mean(),
+                   marker='D',
+                   s=300,
+                   c='w',
+                   linewidths=3,
+                   alpha=1,
+                   edgecolor='k',
+                   zorder=3)
+        
+        ax.scatter(x=2,
+                   y=WRRF_input[WRRF_input['WRRF_PADD'] == position]['WRRF_coal_pp_real_distance_km'].mean(),
+                   marker='D',
+                   s=300,
+                   c='w',
+                   linewidths=3,
+                   alpha=1,
+                   edgecolor='k',
+                   zorder=3)
+
+add_region(0, 'CONUS', a)
+add_region(1, 'East Coast', b)
+add_region(2, 'Midwest', g)
+add_region(3, 'Gulf Coast', r)
+add_region(4, 'Rocky Mountain', o)
+add_region(5, 'West Coast', y)
 
 #%% WRRFs GHG map
 
@@ -1374,9 +1507,9 @@ def add_region(position, start_region, end_region, color):
     plt.rcParams['xtick.labelsize'] = 30
     plt.rcParams['ytick.labelsize'] = 30
     
-    plt.rcParams.update({'mathtext.fontset': 'custom'})
-    plt.rcParams.update({'mathtext.default': 'regular'})
-    plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+    plt.rcParams.update({'mathtext.fontset':'custom'})
+    plt.rcParams.update({'mathtext.default':'regular'})
+    plt.rcParams.update({'mathtext.bf':'Arial: bold'})
     
     ax.set_xlim(0, max_distance_plot)
     ax.set_ylim(0, 7000)
@@ -1430,9 +1563,9 @@ plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 30
 plt.rcParams['ytick.labelsize'] = 30
 
-plt.rcParams.update({'mathtext.fontset': 'custom'})
-plt.rcParams.update({'mathtext.default': 'regular'})
-plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 fig, ax = plt.subplots(figsize=(11, 10))
 
@@ -1534,9 +1667,9 @@ def add_region(position, start_region, end_region, color):
     plt.rcParams['xtick.labelsize'] = 30
     plt.rcParams['ytick.labelsize'] = 30
     
-    plt.rcParams.update({'mathtext.fontset': 'custom'})
-    plt.rcParams.update({'mathtext.default': 'regular'})
-    plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+    plt.rcParams.update({'mathtext.fontset':'custom'})
+    plt.rcParams.update({'mathtext.default':'regular'})
+    plt.rcParams.update({'mathtext.bf':'Arial: bold'})
     
     ax.set_xlim(0, max_distance_plot)
     ax.set_ylim(0, 7000)
@@ -1590,9 +1723,9 @@ plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 30
 plt.rcParams['ytick.labelsize'] = 30
 
-plt.rcParams.update({'mathtext.fontset': 'custom'})
-plt.rcParams.update({'mathtext.default': 'regular'})
-plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 fig, ax = plt.subplots(figsize=(11, 10))
 
@@ -1796,23 +1929,31 @@ integrated_no_hydrochar_result.to_excel(folder + f'results/baseline/integrated_b
 
 # !!! update the file here if necessary
 qualified_percentage = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+# manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
+qualified_percentage = qualified_percentage[qualified_percentage['CWNS'] != 48008015003]
+qualified_percentage = qualified_percentage[qualified_percentage['USD_decarbonization'].notna()]
+qualified_percentage = qualified_percentage[qualified_percentage['USD_decarbonization']<0]
+
+print(len(qualified_percentage))
 
 print(len(qualified_percentage[(qualified_percentage['total_sludge_amount_kg_per_year']>5*1000*365)&\
-                               (qualified_percentage['total_sludge_amount_kg_per_year']<10*1000*365)&\
-                               (qualified_percentage['USD_decarbonization']<0)])/\
-      len(qualified_percentage[(qualified_percentage['total_sludge_amount_kg_per_year']>5*1000*365)&\
-                               (qualified_percentage['total_sludge_amount_kg_per_year']<10*1000*365)]))
+                               (qualified_percentage['total_sludge_amount_kg_per_year']<10*1000*365)])/\
+      len(WRRF[(WRRF['total_sludge_amount_kg_per_year']>5*1000*365)&\
+               (WRRF['total_sludge_amount_kg_per_year']<10*1000*365)]))
 
 print(len(qualified_percentage[(qualified_percentage['total_sludge_amount_kg_per_year']>50*1000*365)&\
-                               (qualified_percentage['total_sludge_amount_kg_per_year']<100*1000*365)&\
-                               (qualified_percentage['USD_decarbonization']<0)])/\
-      len(qualified_percentage[(qualified_percentage['total_sludge_amount_kg_per_year']>50*1000*365)&\
-                               (qualified_percentage['total_sludge_amount_kg_per_year']<100*1000*365)]))
+                               (qualified_percentage['total_sludge_amount_kg_per_year']<100*1000*365)])/\
+      len(WRRF[(WRRF['total_sludge_amount_kg_per_year']>50*1000*365)&\
+               (WRRF['total_sludge_amount_kg_per_year']<100*1000*365)]))
+
+print(qualified_percentage['total_sludge_amount_kg_per_year'].min()/1000/365)
 
 #%% decarbonization map (preparation)
 
 # !!! update the file here if necessary
 decarbonization_map = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+# manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
+decarbonization_map = decarbonization_map[decarbonization_map['CWNS'] != 48008015003]
 decarbonization_map = decarbonization_map[decarbonization_map['USD_decarbonization'].notna()]
 decarbonization_map = decarbonization_map[decarbonization_map['USD_decarbonization'] <= 0]
 decarbonization_map = decarbonization_map.sort_values(by='total_emission', ascending=False).copy()
@@ -1828,9 +1969,9 @@ def plot_map(dataset, color):
     plt.rcParams['xtick.labelsize'] = 30
     plt.rcParams['ytick.labelsize'] = 30
 
-    plt.rcParams.update({'mathtext.fontset': 'custom'})
-    plt.rcParams.update({'mathtext.default': 'regular'})
-    plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+    plt.rcParams.update({'mathtext.fontset':'custom'})
+    plt.rcParams.update({'mathtext.default':'regular'})
+    plt.rcParams.update({'mathtext.bf':'Arial: bold'})
     
     fig, ax = plt.subplots(figsize=(30, 30))
 
@@ -1887,6 +2028,8 @@ plot_map(none_map, r)
 
 # !!! update the file here if necessary
 decarbonization_map = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+# manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
+decarbonization_map = decarbonization_map[decarbonization_map['CWNS'] != 48008015003]
 decarbonization_map = decarbonization_map[decarbonization_map['USD_decarbonization'].notna()]
 decarbonization_map = decarbonization_map[decarbonization_map['USD_decarbonization'] <= 0]
 decarbonization_map = decarbonization_map.sort_values(by='total_emission', ascending=False).copy()
@@ -1906,9 +2049,9 @@ plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 38
 plt.rcParams['ytick.labelsize'] = 38
 
-plt.rcParams.update({'mathtext.fontset': 'custom'})
-plt.rcParams.update({'mathtext.default': 'regular'})
-plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 fig, ax = plt.subplots(figsize=(11, 10))
 
@@ -1998,9 +2141,9 @@ plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 38
 plt.rcParams['ytick.labelsize'] = 38
 
-plt.rcParams.update({'mathtext.fontset': 'custom'})
-plt.rcParams.update({'mathtext.default': 'regular'})
-plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 fig, ax = plt.subplots(figsize = (7, 10))
 
@@ -2067,9 +2210,9 @@ plt.rcParams['axes.linewidth'] = 6
 plt.rcParams['xtick.labelsize'] = 75
 plt.rcParams['ytick.labelsize'] = 75
 
-plt.rcParams.update({'mathtext.fontset': 'custom'})
-plt.rcParams.update({'mathtext.default': 'regular'})
-plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 fig, ax = plt.subplots(figsize = (5, 10))
 
@@ -2117,20 +2260,22 @@ ax_right.scatter(x=1,
 #%% cost vs sludge amount
 
 # !!! update the file here if necessary
-saving_vs_sludge = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
-saving_vs_sludge = saving_vs_sludge[saving_vs_sludge['USD_decarbonization'].notna()]
-saving_vs_sludge = saving_vs_sludge[saving_vs_sludge['USD_decarbonization'] <= 0]
+cost_vs_sludge = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+# manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
+cost_vs_sludge = cost_vs_sludge[cost_vs_sludge['CWNS'] != 48008015003]
+cost_vs_sludge = cost_vs_sludge[cost_vs_sludge['USD_decarbonization'].notna()]
+cost_vs_sludge = cost_vs_sludge[cost_vs_sludge['USD_decarbonization'] <= 0]
 
-assert (saving_vs_sludge['total_sludge_amount_kg_per_year']/1000/365).max() <= 250
-assert (saving_vs_sludge['cost']).max() <= 700
+assert (cost_vs_sludge['total_sludge_amount_kg_per_year']/1000/365).max() <= 250
+assert (cost_vs_sludge['cost']).max() <= 700
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 38
 plt.rcParams['ytick.labelsize'] = 38
 
-plt.rcParams.update({'mathtext.fontset': 'custom'})
-plt.rcParams.update({'mathtext.default': 'regular'})
-plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 fig, ax = plt.subplots(figsize=(10, 10))
 
@@ -2163,8 +2308,8 @@ ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True,
 plt.xticks(np.arange(0, 300, 50), fontname='Arial')
 plt.yticks(np.arange(-200, 800, 100), fontname='Arial')
 
-ax.scatter(x=saving_vs_sludge['total_sludge_amount_kg_per_year']/1000/365,
-           y=saving_vs_sludge['cost'],
+ax.scatter(x=cost_vs_sludge['total_sludge_amount_kg_per_year']/1000/365,
+           y=cost_vs_sludge['cost'],
            s=300,
            c=a,
            linewidths=2,
@@ -2173,20 +2318,22 @@ ax.scatter(x=saving_vs_sludge['total_sludge_amount_kg_per_year']/1000/365,
 #%% CI vs sludge amount
 
 # !!! update the file here if necessary
-decarbonization_vs_sludge = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
-decarbonization_vs_sludge = decarbonization_vs_sludge[decarbonization_vs_sludge['USD_decarbonization'].notna()]
-decarbonization_vs_sludge = decarbonization_vs_sludge[decarbonization_vs_sludge['USD_decarbonization'] <= 0]
+CI_vs_sludge = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+# manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
+CI_vs_sludge = CI_vs_sludge[CI_vs_sludge['CWNS'] != 48008015003]
+CI_vs_sludge = CI_vs_sludge[CI_vs_sludge['USD_decarbonization'].notna()]
+CI_vs_sludge = CI_vs_sludge[CI_vs_sludge['USD_decarbonization'] <= 0]
 
-assert (decarbonization_vs_sludge['total_sludge_amount_kg_per_year']/1000/365).max() <= 250
-assert (decarbonization_vs_sludge['CI']).max() <= 200
+assert (CI_vs_sludge['total_sludge_amount_kg_per_year']/1000/365).max() <= 250
+assert (CI_vs_sludge['CI']).max() <= 200
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 38
 plt.rcParams['ytick.labelsize'] = 38
 
-plt.rcParams.update({'mathtext.fontset': 'custom'})
-plt.rcParams.update({'mathtext.default': 'regular'})
-plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 fig, ax = plt.subplots(figsize=(10, 10))
 
@@ -2219,8 +2366,8 @@ ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True,
 plt.xticks(np.arange(0, 300, 50), fontname='Arial')
 plt.yticks(np.arange(-100, 250, 50), fontname='Arial')
 
-ax.scatter(x=decarbonization_vs_sludge['total_sludge_amount_kg_per_year']/1000/365,
-           y=decarbonization_vs_sludge['CI'],
+ax.scatter(x=CI_vs_sludge['total_sludge_amount_kg_per_year']/1000/365,
+           y=CI_vs_sludge['CI'],
            s=300,
            c=a,
            linewidths=2,
@@ -2229,20 +2376,22 @@ ax.scatter(x=decarbonization_vs_sludge['total_sludge_amount_kg_per_year']/1000/3
 #%% cost vs WRRF-oil refinery distance
 
 # !!! update the file here if necessary
-saving_vs_biocrude_distance = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
-saving_vs_biocrude_distance = saving_vs_biocrude_distance[saving_vs_biocrude_distance['USD_decarbonization'].notna()]
-saving_vs_biocrude_distance = saving_vs_biocrude_distance[saving_vs_biocrude_distance['USD_decarbonization'] <= 0]
+cost_vs_biocrude_distance = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+# manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
+cost_vs_biocrude_distance = cost_vs_biocrude_distance[cost_vs_biocrude_distance['CWNS'] != 48008015003]
+cost_vs_biocrude_distance = cost_vs_biocrude_distance[cost_vs_biocrude_distance['USD_decarbonization'].notna()]
+cost_vs_biocrude_distance = cost_vs_biocrude_distance[cost_vs_biocrude_distance['USD_decarbonization'] <= 0]
 
-assert (saving_vs_biocrude_distance['WRRF_refinery_real_distance_km']).max() <= 1400
-assert (saving_vs_biocrude_distance['cost']).max() <= 700
+assert (cost_vs_biocrude_distance['WRRF_refinery_real_distance_km']).max() <= 1400
+assert (cost_vs_biocrude_distance['cost']).max() <= 700
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 38
 plt.rcParams['ytick.labelsize'] = 38
 
-plt.rcParams.update({'mathtext.fontset': 'custom'})
-plt.rcParams.update({'mathtext.default': 'regular'})
-plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 fig, ax = plt.subplots(figsize=(10, 10))
 
@@ -2275,8 +2424,8 @@ ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True,
 plt.xticks(np.arange(0, 1600, 200), fontname='Arial')
 plt.yticks(np.arange(-200, 800, 100), fontname='Arial')
 
-ax.scatter(x=saving_vs_biocrude_distance['WRRF_refinery_real_distance_km'],
-           y=saving_vs_biocrude_distance['cost'],
+ax.scatter(x=cost_vs_biocrude_distance['WRRF_refinery_real_distance_km'],
+           y=cost_vs_biocrude_distance['cost'],
            s=300,
            c=a,
            linewidths=2,
@@ -2285,20 +2434,22 @@ ax.scatter(x=saving_vs_biocrude_distance['WRRF_refinery_real_distance_km'],
 #%% CI vs WRRF-oil refinery distance
 
 # !!! update the file here if necessary
-decarbonization_vs_biocrude_distance = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
-decarbonization_vs_biocrude_distance = decarbonization_vs_biocrude_distance[decarbonization_vs_biocrude_distance['USD_decarbonization'].notna()]
-decarbonization_vs_biocrude_distance = decarbonization_vs_biocrude_distance[decarbonization_vs_biocrude_distance['USD_decarbonization'] <= 0]
+CI_vs_biocrude_distance = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+# manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
+CI_vs_biocrude_distance = CI_vs_biocrude_distance[CI_vs_biocrude_distance['CWNS'] != 48008015003]
+CI_vs_biocrude_distance = CI_vs_biocrude_distance[CI_vs_biocrude_distance['USD_decarbonization'].notna()]
+CI_vs_biocrude_distance = CI_vs_biocrude_distance[CI_vs_biocrude_distance['USD_decarbonization'] <= 0]
 
-assert (decarbonization_vs_biocrude_distance['WRRF_refinery_real_distance_km']).max() <= 1400
-assert (decarbonization_vs_biocrude_distance['CI']).max() <= 200
+assert (CI_vs_biocrude_distance['WRRF_refinery_real_distance_km']).max() <= 1400
+assert (CI_vs_biocrude_distance['CI']).max() <= 200
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 38
 plt.rcParams['ytick.labelsize'] = 38
 
-plt.rcParams.update({'mathtext.fontset': 'custom'})
-plt.rcParams.update({'mathtext.default': 'regular'})
-plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 fig, ax = plt.subplots(figsize=(10, 10))
 
@@ -2331,8 +2482,8 @@ ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True,
 plt.xticks(np.arange(0, 1600, 200), fontname='Arial')
 plt.yticks(np.arange(-100, 250, 50), fontname='Arial')
 
-ax.scatter(x=decarbonization_vs_biocrude_distance['WRRF_refinery_real_distance_km'],
-           y=decarbonization_vs_biocrude_distance['CI'],
+ax.scatter(x=CI_vs_biocrude_distance['WRRF_refinery_real_distance_km'],
+           y=CI_vs_biocrude_distance['CI'],
            s=300,
            c=a,
            linewidths=2,
@@ -2341,20 +2492,22 @@ ax.scatter(x=decarbonization_vs_biocrude_distance['WRRF_refinery_real_distance_k
 #%% cost vs WRRF-coal-baed power plant distance
 
 # !!! update the file here if necessary
-saving_vs_hydrochar_distance = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
-saving_vs_hydrochar_distance = saving_vs_hydrochar_distance[saving_vs_hydrochar_distance['USD_decarbonization'].notna()]
-saving_vs_hydrochar_distance = saving_vs_hydrochar_distance[saving_vs_hydrochar_distance['USD_decarbonization'] <= 0]
+cost_vs_hydrochar_distance = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+# manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
+cost_vs_hydrochar_distance = cost_vs_hydrochar_distance[cost_vs_hydrochar_distance['CWNS'] != 48008015003]
+cost_vs_hydrochar_distance = cost_vs_hydrochar_distance[cost_vs_hydrochar_distance['USD_decarbonization'].notna()]
+cost_vs_hydrochar_distance = cost_vs_hydrochar_distance[cost_vs_hydrochar_distance['USD_decarbonization'] <= 0]
 
-assert (saving_vs_hydrochar_distance['WRRF_coal_pp_real_distance_km']).max() <= 800
-assert (saving_vs_hydrochar_distance['cost']).max() <= 700
+assert (cost_vs_hydrochar_distance['WRRF_coal_pp_real_distance_km']).max() <= 800
+assert (cost_vs_hydrochar_distance['cost']).max() <= 700
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 38
 plt.rcParams['ytick.labelsize'] = 38
 
-plt.rcParams.update({'mathtext.fontset': 'custom'})
-plt.rcParams.update({'mathtext.default': 'regular'})
-plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 fig, ax = plt.subplots(figsize=(10, 10))
 
@@ -2387,30 +2540,32 @@ ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True,
 plt.xticks(np.arange(0, 900, 100), fontname='Arial')
 plt.yticks(np.arange(-200, 800, 100), fontname='Arial')
 
-ax.scatter(x=saving_vs_hydrochar_distance['WRRF_coal_pp_real_distance_km'],
-           y=saving_vs_hydrochar_distance['cost'],
+ax.scatter(x=cost_vs_hydrochar_distance['WRRF_coal_pp_real_distance_km'],
+           y=cost_vs_hydrochar_distance['cost'],
            s=300,
            c=a,
            linewidths=2,
            edgecolors='k')
 
-#%% CI vs WRRF-oil refinery distance
+#%% CI vs WRRF-coal-baed power plant distance
 
 # !!! update the file here if necessary
-decarbonization_vs_hydrochar_distance = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
-decarbonization_vs_hydrochar_distance = decarbonization_vs_hydrochar_distance[decarbonization_vs_hydrochar_distance['USD_decarbonization'].notna()]
-decarbonization_vs_hydrochar_distance = decarbonization_vs_hydrochar_distance[decarbonization_vs_hydrochar_distance['USD_decarbonization'] <= 0]
+CI_vs_hydrochar_distance = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+# manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
+CI_vs_hydrochar_distance = CI_vs_hydrochar_distance[CI_vs_hydrochar_distance['CWNS'] != 48008015003]
+CI_vs_hydrochar_distance = CI_vs_hydrochar_distance[CI_vs_hydrochar_distance['USD_decarbonization'].notna()]
+CI_vs_hydrochar_distance = CI_vs_hydrochar_distance[CI_vs_hydrochar_distance['USD_decarbonization'] <= 0]
 
-assert (decarbonization_vs_hydrochar_distance['WRRF_coal_pp_real_distance_km']).max() <= 800
-assert (decarbonization_vs_hydrochar_distance['CI']).max() <= 200
+assert (CI_vs_hydrochar_distance['WRRF_coal_pp_real_distance_km']).max() <= 800
+assert (CI_vs_hydrochar_distance['CI']).max() <= 200
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 38
 plt.rcParams['ytick.labelsize'] = 38
 
-plt.rcParams.update({'mathtext.fontset': 'custom'})
-plt.rcParams.update({'mathtext.default': 'regular'})
-plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 fig, ax = plt.subplots(figsize=(10, 10))
 
@@ -2443,8 +2598,8 @@ ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=True,
 plt.xticks(np.arange(0, 900, 100), fontname='Arial')
 plt.yticks(np.arange(-100, 250, 50), fontname='Arial')
 
-ax.scatter(x=decarbonization_vs_hydrochar_distance['WRRF_coal_pp_real_distance_km'],
-           y=decarbonization_vs_hydrochar_distance['CI'],
+ax.scatter(x=CI_vs_hydrochar_distance['WRRF_coal_pp_real_distance_km'],
+           y=CI_vs_hydrochar_distance['CI'],
            s=300,
            c=a,
            linewidths=2,
@@ -2453,17 +2608,19 @@ ax.scatter(x=decarbonization_vs_hydrochar_distance['WRRF_coal_pp_real_distance_k
 #%% cost vs degestion or not
 
 # !!! update the file here if necessary
-digestion_or_not = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
-digestion_or_not = digestion_or_not[digestion_or_not['USD_decarbonization'].notna()]
-digestion_or_not = digestion_or_not[digestion_or_not['USD_decarbonization'] <= 0]
+cost_vs_digestion = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+# manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
+cost_vs_digestion = cost_vs_digestion[cost_vs_digestion['CWNS'] != 48008015003]
+cost_vs_digestion = cost_vs_digestion[cost_vs_digestion['USD_decarbonization'].notna()]
+cost_vs_digestion = cost_vs_digestion[cost_vs_digestion['USD_decarbonization'] <= 0]
 
-assert (digestion_or_not['cost']).max() <= 700
+assert (cost_vs_digestion['cost']).max() <= 700
 
-digestion = digestion_or_not.loc[(digestion_or_not['sludge_anaerobic_digestion'] == 1) | (digestion_or_not['sludge_aerobic_digestion'] == 1), 'cost']
-no_digestion = digestion_or_not.loc[(digestion_or_not['sludge_anaerobic_digestion'] == 0) & (digestion_or_not['sludge_aerobic_digestion'] == 0), 'cost']
+cost_digestion = cost_vs_digestion.loc[(cost_vs_digestion['sludge_anaerobic_digestion'] == 1) | (cost_vs_digestion['sludge_aerobic_digestion'] == 1), 'cost']
+cost_no_digestion = cost_vs_digestion.loc[(cost_vs_digestion['sludge_anaerobic_digestion'] == 0) & (cost_vs_digestion['sludge_aerobic_digestion'] == 0), 'cost']
 
-digestion_or_not_plot = pd.DataFrame({'digestion': digestion,
-                                      'no_digestion': no_digestion})
+cost_vs_digestion_plot = pd.DataFrame({'digestion': cost_digestion,
+                                       'no_digestion': cost_no_digestion})
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
@@ -2471,9 +2628,9 @@ plt.rcParams['xtick.labelsize'] = 38
 plt.rcParams['ytick.labelsize'] = 38
 plt.rcParams['font.sans-serif'] = 'Arial'
 
-plt.rcParams.update({'mathtext.fontset': 'custom'})
-plt.rcParams.update({'mathtext.default': 'regular'})
-plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 fig, ax = plt.subplots(figsize=(10, 10))
 
@@ -2497,7 +2654,7 @@ ax_right.tick_params(direction='in', length=10, width=3,
 
 plt.yticks(np.arange(-200, 800, 100), fontname='Arial')
 
-bp = ax.boxplot([digestion_or_not_plot['digestion'].dropna(), digestion_or_not_plot['no_digestion'].dropna()],
+bp = ax.boxplot([cost_vs_digestion_plot['digestion'].dropna(), cost_vs_digestion_plot['no_digestion'].dropna()],
                 whis=[5, 95], showfliers=False, widths=0.7, patch_artist=True)
 
 for box in bp['boxes']:
@@ -2512,7 +2669,7 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='none', linewidth=3)
 
-scatter_y = digestion_or_not_plot['digestion'].dropna()
+scatter_y = cost_vs_digestion_plot['digestion'].dropna()
 scatter_x = np.random.normal(1, 0.12, size=len(scatter_y))
 ax.scatter(scatter_x, scatter_y,
            s=300,
@@ -2520,7 +2677,7 @@ ax.scatter(scatter_x, scatter_y,
            linewidths=2,
            edgecolors='k')
 
-scatter_y = digestion_or_not_plot['no_digestion'].dropna()
+scatter_y = cost_vs_digestion_plot['no_digestion'].dropna()
 scatter_x = np.random.normal(2, 0.12, size=len(scatter_y))
 ax.scatter(scatter_x, scatter_y,
            s=300,
@@ -2531,17 +2688,19 @@ ax.scatter(scatter_x, scatter_y,
 #%% CI vs degestion or not
 
 # !!! update the file here if necessary
-digestion_or_not = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
-digestion_or_not = digestion_or_not[digestion_or_not['USD_decarbonization'].notna()]
-digestion_or_not = digestion_or_not[digestion_or_not['USD_decarbonization'] <= 0]
+CI_vs_digestion = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+# manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
+CI_vs_digestion = CI_vs_digestion[CI_vs_digestion['CWNS'] != 48008015003]
+CI_vs_digestion = CI_vs_digestion[CI_vs_digestion['USD_decarbonization'].notna()]
+CI_vs_digestion = CI_vs_digestion[CI_vs_digestion['USD_decarbonization'] <= 0]
 
-assert (digestion_or_not['CI']).max() <= 200
+assert (CI_vs_digestion['CI']).max() <= 200
 
-digestion = digestion_or_not.loc[(digestion_or_not['sludge_anaerobic_digestion'] == 1) | (digestion_or_not['sludge_aerobic_digestion'] == 1), 'CI']
-no_digestion = digestion_or_not.loc[(digestion_or_not['sludge_anaerobic_digestion'] == 0) & (digestion_or_not['sludge_aerobic_digestion'] == 0), 'CI']
+CI_digestion = CI_vs_digestion.loc[(CI_vs_digestion['sludge_anaerobic_digestion'] == 1) | (CI_vs_digestion['sludge_aerobic_digestion'] == 1), 'CI']
+CI_no_digestion = CI_vs_digestion.loc[(CI_vs_digestion['sludge_anaerobic_digestion'] == 0) & (CI_vs_digestion['sludge_aerobic_digestion'] == 0), 'CI']
 
-digestion_or_not_plot = pd.DataFrame({'digestion': digestion,
-                                      'no_digestion': no_digestion})
+CI_vs_digestion_plot = pd.DataFrame({'digestion': CI_digestion,
+                                     'no_digestion': CI_no_digestion})
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
@@ -2549,9 +2708,9 @@ plt.rcParams['xtick.labelsize'] = 38
 plt.rcParams['ytick.labelsize'] = 38
 plt.rcParams['font.sans-serif'] = 'Arial'
 
-plt.rcParams.update({'mathtext.fontset': 'custom'})
-plt.rcParams.update({'mathtext.default': 'regular'})
-plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 fig, ax = plt.subplots(figsize=(10, 10))
 
@@ -2575,7 +2734,7 @@ ax_right.tick_params(direction='in', length=10, width=3,
 
 plt.yticks(np.arange(-100, 250, 50), fontname='Arial')
 
-bp = ax.boxplot([digestion_or_not_plot['digestion'].dropna(), digestion_or_not_plot['no_digestion'].dropna()],
+bp = ax.boxplot([CI_vs_digestion_plot['digestion'].dropna(), CI_vs_digestion_plot['no_digestion'].dropna()],
                 whis=[5, 95], showfliers=False, widths=0.7, patch_artist=True)
 
 for box in bp['boxes']:
@@ -2590,7 +2749,7 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='none', linewidth=3)
 
-scatter_y = digestion_or_not_plot['digestion'].dropna()
+scatter_y = CI_vs_digestion_plot['digestion'].dropna()
 scatter_x = np.random.normal(1, 0.12, size=len(scatter_y))
 ax.scatter(scatter_x, scatter_y,
            s=300,
@@ -2598,7 +2757,7 @@ ax.scatter(scatter_x, scatter_y,
            linewidths=2,
            edgecolors='k')
 
-scatter_y = digestion_or_not_plot['no_digestion'].dropna()
+scatter_y = CI_vs_digestion_plot['no_digestion'].dropna()
 scatter_x = np.random.normal(2, 0.12, size=len(scatter_y))
 ax.scatter(scatter_x, scatter_y,
            s=300,
@@ -2609,19 +2768,21 @@ ax.scatter(scatter_x, scatter_y,
 #%% cost vs nitrogen fertilizer type
 
 # !!! update the file here if necessary
-nitrogen_fertilizer_type = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
-nitrogen_fertilizer_type = nitrogen_fertilizer_type[nitrogen_fertilizer_type['USD_decarbonization'].notna()]
-nitrogen_fertilizer_type = nitrogen_fertilizer_type[nitrogen_fertilizer_type['USD_decarbonization'] <= 0]
+cost_vs_N_fertilizer = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+# manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
+cost_vs_N_fertilizer = cost_vs_N_fertilizer[cost_vs_N_fertilizer['CWNS'] != 48008015003]
+cost_vs_N_fertilizer = cost_vs_N_fertilizer[cost_vs_N_fertilizer['USD_decarbonization'].notna()]
+cost_vs_N_fertilizer = cost_vs_N_fertilizer[cost_vs_N_fertilizer['USD_decarbonization'] <= 0]
 
-assert (nitrogen_fertilizer_type['cost']).max() <= 700
+assert (cost_vs_N_fertilizer['cost']).max() <= 700
 
-anhydrous_ammonia = nitrogen_fertilizer_type.loc[nitrogen_fertilizer_type['nitrogen_fertilizer'] == 'NH3', 'cost']
-urea = nitrogen_fertilizer_type.loc[nitrogen_fertilizer_type['nitrogen_fertilizer'] == 'urea', 'cost']
-UAN = nitrogen_fertilizer_type.loc[nitrogen_fertilizer_type['nitrogen_fertilizer'] == 'UAN', 'cost']
+cost_anhydrous_ammonia = cost_vs_N_fertilizer.loc[cost_vs_N_fertilizer['nitrogen_fertilizer'] == 'NH3', 'cost']
+cost_urea = cost_vs_N_fertilizer.loc[cost_vs_N_fertilizer['nitrogen_fertilizer'] == 'urea', 'cost']
+cost_UAN = cost_vs_N_fertilizer.loc[cost_vs_N_fertilizer['nitrogen_fertilizer'] == 'UAN', 'cost']
 
-nitrogen_fertilizer_type_plot = pd.DataFrame({'anhydrous_ammonia': anhydrous_ammonia,
-                                              'urea': urea,
-                                              'UAN': UAN})
+cost_vs_N_fertilizer_plot = pd.DataFrame({'anhydrous_ammonia': cost_anhydrous_ammonia,
+                                          'urea': cost_urea,
+                                          'UAN': cost_UAN})
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
@@ -2629,9 +2790,9 @@ plt.rcParams['xtick.labelsize'] = 38
 plt.rcParams['ytick.labelsize'] = 38
 plt.rcParams['font.sans-serif'] = 'Arial'
 
-plt.rcParams.update({'mathtext.fontset': 'custom'})
-plt.rcParams.update({'mathtext.default': 'regular'})
-plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 fig, ax = plt.subplots(figsize=(10, 10))
 
@@ -2655,9 +2816,9 @@ ax_right.tick_params(direction='in', length=10, width=3,
 
 plt.yticks(np.arange(-200, 800, 100), fontname='Arial')
 
-bp = ax.boxplot([nitrogen_fertilizer_type_plot['anhydrous_ammonia'].dropna(),
-                 nitrogen_fertilizer_type_plot['urea'].dropna(),
-                 nitrogen_fertilizer_type_plot['UAN'].dropna()],
+bp = ax.boxplot([cost_vs_N_fertilizer_plot['anhydrous_ammonia'].dropna(),
+                 cost_vs_N_fertilizer_plot['urea'].dropna(),
+                 cost_vs_N_fertilizer_plot['UAN'].dropna()],
                 whis=[5, 95], showfliers=False, widths=0.7, patch_artist=True)
 
 for box in bp['boxes']:
@@ -2672,7 +2833,7 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='none', linewidth=3)
 
-scatter_y = nitrogen_fertilizer_type_plot['anhydrous_ammonia'].dropna()
+scatter_y = cost_vs_N_fertilizer_plot['anhydrous_ammonia'].dropna()
 scatter_x = np.random.normal(1, 0.12, size=len(scatter_y))
 ax.scatter(scatter_x, scatter_y,
            s=300,
@@ -2680,7 +2841,7 @@ ax.scatter(scatter_x, scatter_y,
            linewidths=2,
            edgecolors='k')
 
-scatter_y = nitrogen_fertilizer_type_plot['urea'].dropna()
+scatter_y = cost_vs_N_fertilizer_plot['urea'].dropna()
 scatter_x = np.random.normal(2, 0.12, size=len(scatter_y))
 ax.scatter(scatter_x, scatter_y,
            s=300,
@@ -2688,7 +2849,7 @@ ax.scatter(scatter_x, scatter_y,
            linewidths=2,
            edgecolors='k')
 
-scatter_y = nitrogen_fertilizer_type_plot['UAN'].dropna()
+scatter_y = cost_vs_N_fertilizer_plot['UAN'].dropna()
 scatter_x = np.random.normal(3, 0.12, size=len(scatter_y))
 ax.scatter(scatter_x, scatter_y,
            s=300,
@@ -2699,19 +2860,21 @@ ax.scatter(scatter_x, scatter_y,
 #%% CI vs nitrogen fertilizer type
 
 # !!! update the file here if necessary
-nitrogen_fertilizer_type = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
-nitrogen_fertilizer_type = nitrogen_fertilizer_type[nitrogen_fertilizer_type['USD_decarbonization'].notna()]
-nitrogen_fertilizer_type = nitrogen_fertilizer_type[nitrogen_fertilizer_type['USD_decarbonization'] <= 0]
+CI_vs_N_fertilizer = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+# manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
+CI_vs_N_fertilizer = CI_vs_N_fertilizer[CI_vs_N_fertilizer['CWNS'] != 48008015003]
+CI_vs_N_fertilizer = CI_vs_N_fertilizer[CI_vs_N_fertilizer['USD_decarbonization'].notna()]
+CI_vs_N_fertilizer = CI_vs_N_fertilizer[CI_vs_N_fertilizer['USD_decarbonization'] <= 0]
 
-assert (nitrogen_fertilizer_type['CI']).max() <= 200
+assert (CI_vs_N_fertilizer['CI']).max() <= 200
 
-anhydrous_ammonia = nitrogen_fertilizer_type.loc[nitrogen_fertilizer_type['nitrogen_fertilizer'] == 'NH3', 'CI']
-urea = nitrogen_fertilizer_type.loc[nitrogen_fertilizer_type['nitrogen_fertilizer'] == 'urea', 'CI']
-UAN = nitrogen_fertilizer_type.loc[nitrogen_fertilizer_type['nitrogen_fertilizer'] == 'UAN', 'CI']
+CI_anhydrous_ammonia = CI_vs_N_fertilizer.loc[CI_vs_N_fertilizer['nitrogen_fertilizer'] == 'NH3', 'CI']
+CI_urea = CI_vs_N_fertilizer.loc[CI_vs_N_fertilizer['nitrogen_fertilizer'] == 'urea', 'CI']
+CI_UAN = CI_vs_N_fertilizer.loc[CI_vs_N_fertilizer['nitrogen_fertilizer'] == 'UAN', 'CI']
 
-nitrogen_fertilizer_type_plot = pd.DataFrame({'anhydrous_ammonia': anhydrous_ammonia,
-                                              'urea': urea,
-                                              'UAN': UAN})
+CI_vs_N_fertilizer_plot = pd.DataFrame({'anhydrous_ammonia': CI_anhydrous_ammonia,
+                                        'urea': CI_urea,
+                                        'UAN': CI_UAN})
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
@@ -2719,9 +2882,9 @@ plt.rcParams['xtick.labelsize'] = 38
 plt.rcParams['ytick.labelsize'] = 38
 plt.rcParams['font.sans-serif'] = 'Arial'
 
-plt.rcParams.update({'mathtext.fontset': 'custom'})
-plt.rcParams.update({'mathtext.default': 'regular'})
-plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 fig, ax = plt.subplots(figsize=(10, 10))
 
@@ -2745,9 +2908,9 @@ ax_right.tick_params(direction='in', length=10, width=3,
 
 plt.yticks(np.arange(-100, 250, 50), fontname='Arial')
 
-bp = ax.boxplot([nitrogen_fertilizer_type_plot['anhydrous_ammonia'].dropna(),
-                 nitrogen_fertilizer_type_plot['urea'].dropna(),
-                 nitrogen_fertilizer_type_plot['UAN'].dropna()],
+bp = ax.boxplot([CI_vs_N_fertilizer_plot['anhydrous_ammonia'].dropna(),
+                 CI_vs_N_fertilizer_plot['urea'].dropna(),
+                 CI_vs_N_fertilizer_plot['UAN'].dropna()],
                 whis=[5, 95], showfliers=False, widths=0.7, patch_artist=True)
 
 for box in bp['boxes']:
@@ -2762,7 +2925,7 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='none', linewidth=3)
 
-scatter_y = nitrogen_fertilizer_type_plot['anhydrous_ammonia'].dropna()
+scatter_y = CI_vs_N_fertilizer_plot['anhydrous_ammonia'].dropna()
 scatter_x = np.random.normal(1, 0.12, size=len(scatter_y))
 ax.scatter(scatter_x, scatter_y,
            s=300,
@@ -2770,7 +2933,7 @@ ax.scatter(scatter_x, scatter_y,
            linewidths=2,
            edgecolors='k')
 
-scatter_y = nitrogen_fertilizer_type_plot['urea'].dropna()
+scatter_y = CI_vs_N_fertilizer_plot['urea'].dropna()
 scatter_x = np.random.normal(2, 0.12, size=len(scatter_y))
 ax.scatter(scatter_x, scatter_y,
            s=300,
@@ -2778,7 +2941,7 @@ ax.scatter(scatter_x, scatter_y,
            linewidths=2,
            edgecolors='k')
 
-scatter_y = nitrogen_fertilizer_type_plot['UAN'].dropna()
+scatter_y = CI_vs_N_fertilizer_plot['UAN'].dropna()
 scatter_x = np.random.normal(3, 0.12, size=len(scatter_y))
 ax.scatter(scatter_x, scatter_y,
            s=300,
@@ -2790,6 +2953,8 @@ ax.scatter(scatter_x, scatter_y,
 
 # !!! update the file here if necessary
 relative_importance = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+# manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
+relative_importance = relative_importance[relative_importance['CWNS'] != 48008015003]
 relative_importance = relative_importance[relative_importance['USD_decarbonization'].notna()]
 relative_importance = relative_importance[relative_importance['USD_decarbonization'] <= 0]
 relative_importance['digestion'] = relative_importance[['sludge_aerobic_digestion','sludge_anaerobic_digestion']].values.max(axis=1)
@@ -2832,6 +2997,8 @@ print(feature_importance)
 
 # !!! update the file here if necessary
 relative_importance = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+# manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
+relative_importance = relative_importance[relative_importance['CWNS'] != 48008015003]
 relative_importance = relative_importance[relative_importance['USD_decarbonization'].notna()]
 relative_importance = relative_importance[relative_importance['USD_decarbonization'] <= 0]
 relative_importance['digestion'] = relative_importance[['sludge_aerobic_digestion','sludge_anaerobic_digestion']].values.max(axis=1)
@@ -2894,6 +3061,7 @@ for parameter_number in range(50, 101):
 filterwarnings('ignore')
 
 # !!! update the file here if necessary
+# !!! do not remove 48008015003 here since this is where this WRRF is identified
 qualified_facility = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
 qualified_facility = qualified_facility[qualified_facility['USD_decarbonization'].notna()]
 qualified_facility = qualified_facility[qualified_facility['USD_decarbonization'] <= 0]
@@ -3109,6 +3277,7 @@ biocrude_transportation['95th'] = biocrude_transportation[0:999].quantile(q=0.95
 biocrude_transportation.reset_index(names='CWNS', inplace=True)
 biocrude_transportation = biocrude_transportation[['CWNS','5th','50th','95th']]
 
+# do not need to remove 48008015003 since it is accessible but just cannot independently deploy HTL-based systems
 WRRF_all = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
 
 biocrude_transportation = biocrude_transportation.merge(WRRF_all, how='left', on='CWNS')
@@ -3142,6 +3311,10 @@ d3.edge_properties['color'] = d3.edge_properties['source'].apply(lambda x: PADD_
 
 d3.show()
 
+#%% biocrude transportation results
+
+biocrude_transportation.groupby('source').sum('weight').sort_values('weight', ascending=False)
+
 #%% N and P offsets - data preparation
 
 def get_copula_sum(item):
@@ -3174,7 +3347,7 @@ def get_copula_sum(item):
     dependent_uniform = stats.norm.cdf(dependent_samples)
     
     # transform back to original distributions using quantiles
-    sum_results = sum(np.nanquantile(np.array([production[production.columns[i]]]).reshape(len(production),), dependent_uniform[:, i]) for i in range(len(production.columns)))
+    sum_results = sum(np.quantile(np.array([production[production.columns[i]]]).reshape(len(production),), dependent_uniform[:, i]) for i in range(len(production.columns)))
     
     return sum_results
 
@@ -3193,41 +3366,43 @@ print(np.quantile(N_offset, 0.05))
 print(np.quantile(N_offset, 0.5))
 print(np.quantile(N_offset, 0.95))
 
+# !!! update the file here if necessary
+# do not need to remove 48008015003 since it is accessible but just cannot independently deploy HTL-based systems
 all_facility = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
 selected_facility = all_facility[all_facility['USD_decarbonization'].notna()]
 selected_facility = selected_facility[selected_facility['USD_decarbonization'] <= 0]
 
-# TODO: update 83% if needed
-# estimate 83% coverage
-P_ratio = selected_facility['total_sludge_amount_kg_per_year'].sum()/all_facility['total_sludge_amount_kg_per_year'].sum()/0.83
+# !!! update ~84% if needed
+# estimate ~84% coverage
+P_ratio = selected_facility['total_sludge_amount_kg_per_year'].sum()/all_facility['total_sludge_amount_kg_per_year'].sum()/0.8403192480306797
 
-# TODO: update 83% if needed
-# estimate 83% coverage
+# !!! update ~84% if needed
+# estimate ~84% coverage
 def N_ratio(fertilizer):
     selected_N = selected_facility[selected_facility['nitrogen_fertilizer'] == fertilizer]['total_sludge_amount_kg_per_year'].sum()
     all_N = all_facility[all_facility['nitrogen_fertilizer'] == fertilizer]['total_sludge_amount_kg_per_year'].sum()
-    return selected_N/all_N/0.83
+    return selected_N/all_N/0.8403192480306797
 
-P_offset_future = P_offset/P_ratio
+P_offset_hub = P_offset/P_ratio
 # !!! update the file here if necessary
-N_offset_future = (get_copula_sum('integrated_anhydrous_ammonia_tonne_per_year_2025-07-22')/N_ratio('NH3')/17.031*14.0067 +\
-                   get_copula_sum('integrated_urea_tonne_per_year_2025-07-22')/N_ratio('urea')/60.06*2*14.0067 +\
-                   get_copula_sum('integrated_UAN_tonne_per_year_2025-07-22')/N_ratio('UAN')*0.3)/N['total'].sum()*1000*100
+N_offset_hub = (get_copula_sum('integrated_anhydrous_ammonia_tonne_per_year_2025-07-22')/N_ratio('NH3')/17.031*14.0067 +\
+                get_copula_sum('integrated_urea_tonne_per_year_2025-07-22')/N_ratio('urea')/60.06*2*14.0067 +\
+                get_copula_sum('integrated_UAN_tonne_per_year_2025-07-22')/N_ratio('UAN')*0.3)/N['total'].sum()*1000*100
 
-print(np.quantile(P_offset_future, 0.05))
-print(np.quantile(P_offset_future, 0.5))
-print(np.quantile(P_offset_future, 0.95))
+print(np.quantile(P_offset_hub, 0.05))
+print(np.quantile(P_offset_hub, 0.5))
+print(np.quantile(P_offset_hub, 0.95))
 
-print(np.quantile(N_offset_future, 0.05))
-print(np.quantile(N_offset_future, 0.5))
-print(np.quantile(N_offset_future, 0.95))
+print(np.quantile(N_offset_hub, 0.05))
+print(np.quantile(N_offset_hub, 0.5))
+print(np.quantile(N_offset_hub, 0.95))
 
 #%% N and P offsets - visualization
 
 offset = pd.DataFrame({'N_near_term': pd.Series(N_offset),
-                       'N_future': pd.Series(N_offset_future),
+                       'N_hub': pd.Series(N_offset_hub),
                        'P_near_term': pd.Series(P_offset),
-                       'P_future': pd.Series(P_offset_future)})
+                       'P_hub': pd.Series(P_offset_hub)})
 
 fig = plt.figure(figsize=(12.5, 10))
 
@@ -3239,9 +3414,9 @@ def add_region(position, color):
     plt.rcParams['xtick.labelsize'] = 30
     plt.rcParams['ytick.labelsize'] = 30
     
-    plt.rcParams.update({'mathtext.fontset': 'custom'})
-    plt.rcParams.update({'mathtext.default': 'regular'})
-    plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+    plt.rcParams.update({'mathtext.fontset':'custom'})
+    plt.rcParams.update({'mathtext.default':'regular'})
+    plt.rcParams.update({'mathtext.bf':'Arial: bold'})
     
     ax = fig.add_subplot(gs[0, position])
     
@@ -3322,25 +3497,28 @@ add_region(3, p)
 
 biocrude_production = get_copula_sum('integrated_biocrude_BPD_2025-07-22')
 
+# !!! update the file here if necessary
+# do not need to remove 48008015003 since it is accessible but just cannot independently deploy HTL-based systems
 all_facility = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
 selected_facility = all_facility[all_facility['USD_decarbonization'].notna()]
 selected_facility = selected_facility[selected_facility['USD_decarbonization'] <= 0]
 
-# TODO: update 83% if needed
-# estimate 83% coverage
-biocrude_ratio = selected_facility['total_sludge_amount_kg_per_year'].sum()/all_facility['total_sludge_amount_kg_per_year'].sum()/0.83
+# !!! update ~84% if needed
+# estimate ~84% coverage
+biocrude_ratio = selected_facility['total_sludge_amount_kg_per_year'].sum()/all_facility['total_sludge_amount_kg_per_year'].sum()/0.8403192480306797
 
-biocrude_production_future = np.quantile(biocrude_production, 0.5)/biocrude_ratio
+biocrude_production_hub = np.quantile(biocrude_production, 0.5)/biocrude_ratio
 
 print(np.quantile(biocrude_production, 0.05))
 print(np.quantile(biocrude_production, 0.5))
 print(np.quantile(biocrude_production, 0.95))
 
-print(biocrude_production_future)
+print(biocrude_production_hub)
 
 #%% sampled facility level uncertainty and sensitivity analyses (data preparation)
 
 # !!! update the file here if necessary
+# do not need to remove 48008015003 since it is accessible but just cannot independently deploy HTL-based systems
 sampled_facility = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
 
 print(len(sampled_facility))
@@ -3632,9 +3810,9 @@ def plot_sensitivity(data_type, figure_label=False):
         plt.rcParams['xtick.labelsize'] = 24
         plt.rcParams['ytick.labelsize'] = 24
     
-        plt.rcParams.update({'mathtext.fontset': 'custom'})
-        plt.rcParams.update({'mathtext.default': 'regular'})
-        plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+        plt.rcParams.update({'mathtext.fontset':'custom'})
+        plt.rcParams.update({'mathtext.default':'regular'})
+        plt.rcParams.update({'mathtext.bf':'Arial: bold'})
         
         if not figure_label:
             fig, ax = plt.subplots(figsize = (8.5, 2.5))
@@ -3694,14 +3872,14 @@ def plot_sensitivity(data_type, figure_label=False):
             if not figure_label:
                 ax.set_ylabel(r"$\mathbf{Spearman's\ \rho}$", fontname='Arial', fontsize=24)
             else:
-                ax.set_ylabel(r"$\mathbf{Spearman's\ \rho\ for\ wastewater\ solids\ management\ cost}$", fontname='Arial', fontsize=24)
+                ax.set_ylabel(r"$\mathbf{Spearman's\ \rho}$" + '\n' + r'$\mathbf{for\ wastewater\ solids\ management\ cost}$', fontname='Arial', fontsize=24, linespacing=0.8)
         elif (data_type[0:4] == 'cost') & (data_type[-1] == 'p'):
             ax.set_ylabel(r"$\mathbf{Spearman's\ p}$", fontname='Arial', fontsize=24)
         elif (data_type[0:2] == 'CI') & (data_type[-1] == 'r'):
             if not figure_label:
                 ax.set_ylabel(r"$\mathbf{Spearman's\ \rho}$", fontname='Arial', fontsize=24)
             else:
-                ax.set_ylabel(r"$\mathbf{Spearman's\ \rho\ for\ wastewater\ solids\ management\ CI}$", fontname='Arial', fontsize=24)
+                ax.set_ylabel(r"$\mathbf{Spearman's\ \rho}$" + '\n' + r'$\mathbf{for\ wastewater\ solids\ management\ CI}$', fontname='Arial', fontsize=24)
         elif (data_type[0:2] == 'CI') & (data_type[-1] == 'p'):
             ax.set_ylabel(r"$\mathbf{Spearman's\ p}$", fontname='Arial', fontsize=24)
         else:
@@ -3781,9 +3959,9 @@ def plot_sensitivity(data_type, figure_label=False):
                            'UANSyn co2 to urea efficiency':'UANSyn_CO2_to_urea_efficiency'}
         
         if i in add_underscore:
-            title = i.replace(' ', '_')
+            title = i.replace(' ','_')
         elif i in lowercase_add_underscore:
-            title = i.replace(' ', '_')
+            title = i.replace(' ','_')
             title = title[0].lower() + title[1:]
         elif i in manually_update.keys():
             title = manually_update[i]
@@ -3861,6 +4039,7 @@ print(key_CI_drivers_only)
 filterwarnings('ignore')
 
 # !!! update the input file if necessary
+# do not need to remove 48008015003 since it is accessible but just cannot independently deploy HTL-based systems
 WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
 
 print(len(WRRF_input))
@@ -3917,6 +4096,7 @@ for size in [WRRF_input['total_sludge_amount_kg_per_year'].min()/1000/365, 0.001
                                        aerobic_digestion=None,
                                        ww_2_dry_sludge_ratio=1,
                                        state='US',
+                                       # TODO: explain why only 'UAN' is used
                                        nitrogen_fertilizer='UAN',
                                        elec_GHG=(WRRF_input['kg_CO2e_kWh']*WRRF_input['total_sludge_amount_kg_per_year']).sum()/WRRF_input['total_sludge_amount_kg_per_year'].sum(),
                                        wage_adjustment=(WRRF_input.iloc[i]['wage_quotient']/100*WRRF_input['total_sludge_amount_kg_per_year']).sum()/WRRF_input['total_sludge_amount_kg_per_year'].sum())
@@ -3969,6 +4149,8 @@ cost_vs_IRR.to_excel(folder + f'results/cost_vs_IRR/cost_vs_IRR_{date.today()}.x
 # import PADD information
 # !!! update the file here if necessary
 WRRF_PADD = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+# manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
+WRRF_PADD = WRRF_PADD[WRRF_PADD['CWNS'] != 48008015003]
 WRRF_PADD = WRRF_PADD[WRRF_PADD['USD_decarbonization'].notna()]
 WRRF_PADD = WRRF_PADD[WRRF_PADD['USD_decarbonization'] <= 0]
 
@@ -4032,13 +4214,13 @@ regional_decarbonization_result.to_excel(folder + f'results/regional/decarboniza
 
 # saving
 # !!! update these files if necessary
-saving = pd.read_excel(folder + 'results/regional/saving_2025-07-23.xlsx')
+saving = pd.read_excel(folder + 'results/regional/saving_2025-07-24.xlsx')
 # MM$/day
 saving = saving/1000000
 
 # decarbonization
 # !!! update these files if necessary
-decarbonization = pd.read_excel(folder + 'results/regional/decarbonization_2025-07-23.xlsx')
+decarbonization = pd.read_excel(folder + 'results/regional/decarbonization_2025-07-24.xlsx')
 # tonne CO2 eq/day
 decarbonization = decarbonization/1000
 
@@ -4046,9 +4228,9 @@ plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 30
 plt.rcParams['ytick.labelsize'] = 30
 
-plt.rcParams.update({'mathtext.fontset': 'custom'})
-plt.rcParams.update({'mathtext.default': 'regular'})
-plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 fig, ax = plt.subplots(figsize = (11, 10))
 
@@ -4151,6 +4333,7 @@ print(np.quantile(national_GHG_reduction, 0.95)/1000)
 filterwarnings('ignore')
 
 # !!! update the input file if necessary
+# do not need to remove 48008015003 since it is accessible but just cannot independently deploy HTL-based systems
 WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
 
 print(len(WRRF_input))
@@ -4285,9 +4468,9 @@ def plot_heat_map(nitrogen_fertilizer, solids_quantity, item):
     plt.rcParams['xtick.labelsize'] = 38
     plt.rcParams['ytick.labelsize'] = 38
     
-    plt.rcParams.update({'mathtext.fontset': 'custom'})
-    plt.rcParams.update({'mathtext.default': 'regular'})
-    plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+    plt.rcParams.update({'mathtext.fontset':'custom'})
+    plt.rcParams.update({'mathtext.default':'regular'})
+    plt.rcParams.update({'mathtext.bf':'Arial: bold'})
     
     fig, ax = plt.subplots(figsize=(12.5, 10))
     
@@ -4387,7 +4570,10 @@ plot_heat_map('UAN', 20.0, 'saving_50th')
 
 plot_heat_map('UAN', 20.0, 'decarbonization_50th')
 
-#%% future coverage (data preparation for coverage visualization)
+#%% hub coverage (data preparation for coverage visualization)
+
+# do not need to remove 48008015003 since it is accessible but just cannot independently deploy HTL-based systems
+WRRF_all = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
 
 distance_x = []
 coverage_y = []
@@ -4395,17 +4581,17 @@ coverage_y = []
 for distance_threshold in np.linspace(0, 30, 151):
     print(distance_threshold)
     
-    # max distance to consider WWTPs as neighbors
+    # max distance to consider WRRFs as neighbors
     distance_threshold_km = distance_threshold
     solids_threshold = 7
-    # /1.3 to convert the real distance to linear distance, 1.3 is the average ratio from WRRF-oil refinery transportation
+    # /1.3 to convert the real distance to linear distance, 1.3 is the average value for WRRF-fossil energy facility transportation
     distance_constant = 80/1.3
     
     WRRF_coverage = []
-    for i in range(len(WRRF)):
-        WRRF_x = WRRF.iloc[i].latitude
-        WRRF_y = WRRF.iloc[i].longitude
-        solids = WRRF.iloc[i].total_sludge_amount_kg_per_year/1000/365
+    for i in range(len(WRRF_all)):
+        WRRF_x = WRRF_all.iloc[i].latitude
+        WRRF_y = WRRF_all.iloc[i].longitude
+        solids = WRRF_all.iloc[i].total_sludge_amount_kg_per_year/1000/365
         WRRF_coverage.append({'id': i, 'pos': (WRRF_x, WRRF_y), 'solids': solids})
     
     G = nx.Graph()
@@ -4494,16 +4680,16 @@ for distance_threshold in np.linspace(0, 30, 151):
     distance_x.append(distance_threshold)
     coverage_y.append(percentage_covered)
     
-#%% future coverage (coverage visualization)
+#%% hub coverage (coverage visualization)
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 38
 plt.rcParams['ytick.labelsize'] = 38
 plt.rcParams['font.sans-serif'] = 'Arial'
 
-plt.rcParams.update({'mathtext.fontset': 'custom'})
-plt.rcParams.update({'mathtext.default': 'regular'})
-plt.rcParams.update({'mathtext.bf': 'Arial: bold'})
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 fig, ax = plt.subplots(figsize=(10, 10))
 
@@ -4558,20 +4744,21 @@ ax.scatter(distance_x[coverage_y.index(max(coverage_y))],
 print(distance_x[coverage_y.index(max(coverage_y))])
 print(max(coverage_y))
 
-#%% future coverage (data preparation for map visualization)
+#%% hub coverage (data preparation for map visualization)
 
-# max distance to consider WWTPs as neighbors
+# TODO: automatically update distance_threshold_km
+# max distance to consider WRRFs as neighbors
 distance_threshold_km = 16.2
-solids_threshold = 8
-# /1.3 to convert the real distance to linear distance, 1.3 is the average ratio from WRRF-oil refinery transportation
+solids_threshold = 7
+# /1.3 to convert the real distance to linear distance, 1.3 is the average value for WRRF-fossil energy facility transportation
 distance_constant = 80/1.3
 
 WRRF_coverage = []
-for i in range(len(WRRF)):
+for i in range(len(WRRF_all)):
     WRRF_coverage.append({'id': i,
-                          'pos': (WRRF.iloc[i].latitude,
-                                           WRRF.iloc[i].longitude),
-                          'solids': WRRF.iloc[i].total_sludge_amount_kg_per_year/1000/365})
+                          'pos': (WRRF_all.iloc[i].latitude,
+                                  WRRF_all.iloc[i].longitude),
+                          'solids': WRRF_all.iloc[i].total_sludge_amount_kg_per_year/1000/365})
 
 G = nx.Graph()
 for facility in WRRF_coverage:
@@ -4651,7 +4838,7 @@ for cluster in clusters:
     #     print(f"Cluster {cluster_nodes}: Does not meet hub criteria (solids = {total_solids:.2f}, "
     #           f"distance = {total_distance:.2f}).")
 
-#%% future coverage (map visualization)
+#%% hub coverage (map visualization)
 
 pos_dict = nx.get_node_attributes(G, 'pos')
 
@@ -4733,6 +4920,296 @@ print(len(new_hub_position) + len(old_hub_position))
 # hubs covering more than 1 WRRF
 print(len(new_hub_position))
 
+#%% hub coverage (newly added WRRF)
+
+individual_WRRF = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+# manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
+select_WRRF = individual_WRRF[individual_WRRF['CWNS'] != 48008015003]
+select_WRRF = select_WRRF[select_WRRF['USD_decarbonization'].notna()]
+select_WRRF = select_WRRF[select_WRRF['USD_decarbonization']<0]
+
+hub_WRRF = individual_WRRF.loc[[i for i in covered_WRRF_index]]
+
+# unique WRRFs covered by hubs
+extra_WRRF = individual_WRRF.loc[[i for i in covered_WRRF_index if i not in select_WRRF.index]]
+
+len(extra_WRRF[extra_WRRF['total_sludge_amount_kg_per_year']/1000/365 < select_WRRF['total_sludge_amount_kg_per_year'].min()/1000/365])/len(extra_WRRF)
+
+# using WRRF and individual_WRRF have the same results
+print(select_WRRF['total_sludge_amount_kg_per_year'].sum()/WRRF['total_sludge_amount_kg_per_year'].sum())
+print(hub_WRRF['total_sludge_amount_kg_per_year'].sum()/WRRF['total_sludge_amount_kg_per_year'].sum())
+print(extra_WRRF['total_sludge_amount_kg_per_year'].sum()/WRRF['total_sludge_amount_kg_per_year'].sum())
+
+# TODO: this can be put in other cells
+# using WRRF and individual_WRRF have the same results
+print(select_WRRF['total_emission'].sum()/individual_WRRF['total_emission'].sum())
+
+# cost reduction only
+print(len(individual_WRRF[(individual_WRRF['saving'] > 0) & (individual_WRRF['CO2_reduction'] < 0)]))
+# CI reduction only
+print(len(individual_WRRF[(individual_WRRF['saving'] < 0) & (individual_WRRF['CO2_reduction'] > 0)]))
+# both reductions (including 48008015003)
+print(len(individual_WRRF[(individual_WRRF['saving'] > 0) & (individual_WRRF['CO2_reduction'] > 0)]))
+# no reduction
+print(len(individual_WRRF[(individual_WRRF['saving'] < 0) & (individual_WRRF['CO2_reduction'] < 0)]))
+
+#%% county-level phosphorus fertilizer offset - data preparation
+
+# TODO: this cell can be put in other places
+
+P_county_offset = pd.read_excel(folder + 'results/qualified_facility/integrated_DAP_tonne_per_year_2025-07-22.xlsx')
+P_county_offset.drop('Unnamed: 0', axis=1, inplace=True)
+P_county_offset = P_county_offset/132.06*30.973762*1000
+P_county_offset = P_county_offset.quantile(0.5, axis=0)
+P_county_offset = P_county_offset.reset_index()
+P_county_offset.rename(columns={'index':'CWNS',
+                                0.5:'median_P_kg_per_year'},
+                       inplace=True)
+
+individual_WRRF = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+# manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
+select_WRRF = individual_WRRF[individual_WRRF['CWNS'] != 48008015003]
+select_WRRF = select_WRRF[select_WRRF['USD_decarbonization'].notna()]
+select_WRRF = select_WRRF[select_WRRF['USD_decarbonization']<0]
+
+P_select_WRRF = select_WRRF.merge(P_county_offset, how='left', on='CWNS')
+
+P_select_WRRF = gpd.GeoDataFrame(P_select_WRRF, crs='EPSG:4269',
+                                 geometry=gpd.points_from_xy(x=P_select_WRRF.longitude,
+                                                             y=P_select_WRRF.latitude))
+
+P_select_WRRF = P_select_WRRF.to_crs(crs='EPSG:3857')
+
+P_select_WRRF = P_select_WRRF.sjoin_nearest(US_county, max_distance=None)
+
+P_select_WRRF = P_select_WRRF.groupby('COUNTYNS').sum('median_P_kg_per_year')
+
+P_county_demand = US_county.merge(P, left_on=['NAME','STATE'], right_on=['CountyName','State'], how='left')
+
+P_county = P_county_demand.merge(P_select_WRRF, how='left', on='COUNTYNS')
+
+P_county['offset'] = P_county['median_P_kg_per_year']/P_county['total']
+
+P_county['offset_capped'] = P_county['offset'].apply(lambda x: 1 if x > 1 else x)
+
+#%% county-level phosphorus fertilizer offset - visualization
+
+# TODO: this cell can be put in other places
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 30
+plt.rcParams['ytick.labelsize'] = 30
+plt.rcParams['font.sans-serif'] = 'Arial'
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+plt.rcParams.update({'figure.max_open_warning': 100})
+
+fig, ax = plt.subplots(figsize=(30, 30))
+
+color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['w', p, dp])
+
+US_county.plot(ax=ax, color='none', edgecolor='k', linewidth=0.5)
+
+P_county.plot(column='offset_capped', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, edgecolor='k', linewidth=0.5)
+
+fig.axes[1].set_ylabel('$\mathbf{Phosphorus\ offset\ ratio}$', fontname='Arial', fontsize=41)
+fig.axes[1].tick_params(length=7.5, width=1.5)
+
+pos1 = fig.axes[1].get_position()
+pos2 = [pos1.x0-0.035, pos1.y0, pos1.width, pos1.height] 
+fig.axes[1].set_position(pos2)
+
+# comment out the following line if the colorbar is needed
+# fig.delaxes(fig.axes[1])
+
+ax.set_aspect(1)
+
+ax.set_axis_off()
+
+#%% county-level nitrogen fertilizer offset - data preparation
+
+# TODO: this cell can be put in other places
+
+N_county_offset_anhydrous_ammonia = pd.read_excel(folder + 'results/qualified_facility/integrated_anhydrous_ammonia_tonne_per_year_2025-07-22.xlsx')
+N_county_offset_anhydrous_ammonia.drop('Unnamed: 0', axis=1, inplace=True)
+N_county_offset_anhydrous_ammonia = N_county_offset_anhydrous_ammonia/17.031*14.0067*1000
+N_county_offset_anhydrous_ammonia = N_county_offset_anhydrous_ammonia.quantile(0.5, axis=0)
+N_county_offset_anhydrous_ammonia = N_county_offset_anhydrous_ammonia.reset_index()
+N_county_offset_anhydrous_ammonia.rename(columns={'index':'CWNS',
+                                                  0.5:'median_N_kg_per_year_anhydrous_ammonia'},
+                                         inplace=True)
+
+N_county_offset_urea = pd.read_excel(folder + 'results/qualified_facility/integrated_urea_tonne_per_year_2025-07-22.xlsx')
+N_county_offset_urea.drop('Unnamed: 0', axis=1, inplace=True)
+N_county_offset_urea = N_county_offset_urea/60.06*2*14.0067*1000
+N_county_offset_urea = N_county_offset_urea.quantile(0.5, axis=0)
+N_county_offset_urea = N_county_offset_urea.reset_index()
+N_county_offset_urea.rename(columns={'index':'CWNS',
+                                     0.5:'median_N_kg_per_year_urea'},
+                            inplace=True)
+
+N_county_offset_UAN = pd.read_excel(folder + 'results/qualified_facility/integrated_UAN_tonne_per_year_2025-07-22.xlsx')
+N_county_offset_UAN.drop('Unnamed: 0', axis=1, inplace=True)
+N_county_offset_UAN = N_county_offset_UAN*0.3*1000
+N_county_offset_UAN = N_county_offset_UAN.quantile(0.5, axis=0)
+N_county_offset_UAN = N_county_offset_UAN.reset_index()
+N_county_offset_UAN.rename(columns={'index':'CWNS',
+                                    0.5:'median_N_kg_per_year_UAN'},
+                           inplace=True)
+
+N_county_offset = N_county_offset_anhydrous_ammonia['median_N_kg_per_year_anhydrous_ammonia'] +\
+                  N_county_offset_urea['median_N_kg_per_year_urea'] +\
+                  N_county_offset_UAN['median_N_kg_per_year_UAN']
+
+assert (N_county_offset_anhydrous_ammonia.CWNS != N_county_offset_urea.CWNS).sum() == 0
+assert (N_county_offset_anhydrous_ammonia.CWNS != N_county_offset_UAN.CWNS).sum() == 0
+assert (N_county_offset_urea.CWNS != N_county_offset_UAN.CWNS).sum() == 0
+
+N_county_offset.index = N_county_offset_anhydrous_ammonia.CWNS
+
+N_county_offset = N_county_offset.reset_index()
+N_county_offset.rename(columns={0:'median_N_kg_per_year'},
+                       inplace=True)
+
+individual_WRRF = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+# manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
+select_WRRF = individual_WRRF[individual_WRRF['CWNS'] != 48008015003]
+select_WRRF = select_WRRF[select_WRRF['USD_decarbonization'].notna()]
+select_WRRF = select_WRRF[select_WRRF['USD_decarbonization']<0]
+
+N_select_WRRF = select_WRRF.merge(N_county_offset, how='left', on='CWNS')
+
+N_select_WRRF = gpd.GeoDataFrame(N_select_WRRF, crs='EPSG:4269',
+                                 geometry=gpd.points_from_xy(x=N_select_WRRF.longitude,
+                                                             y=N_select_WRRF.latitude))
+
+N_select_WRRF = N_select_WRRF.to_crs(crs='EPSG:3857')
+
+N_select_WRRF = N_select_WRRF.sjoin_nearest(US_county, max_distance=None)
+
+N_select_WRRF = N_select_WRRF.groupby('COUNTYNS').sum('median_P_kg_per_year')
+
+N_county_demand = US_county.merge(N, left_on=['NAME','STATE'], right_on=['CountyName','State'], how='left')
+
+N_county = N_county_demand.merge(N_select_WRRF, how='left', on='COUNTYNS')
+
+N_county['offset'] = N_county['median_N_kg_per_year']/N_county['total']
+
+N_county['offset_capped'] = N_county['offset'].apply(lambda x: 1 if x > 1 else x)
+
+#%% county-level nitrogen fertilizer offset - visualization
+
+# TODO: this cell can be put in other places
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 30
+plt.rcParams['ytick.labelsize'] = 30
+plt.rcParams['font.sans-serif'] = 'Arial'
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+plt.rcParams.update({'figure.max_open_warning': 100})
+
+fig, ax = plt.subplots(figsize=(30, 30))
+
+color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['w', a, da])
+
+US_county.plot(ax=ax, color='none', edgecolor='k', linewidth=0.5)
+
+N_county.plot(column='offset_capped', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, edgecolor='k', linewidth=0.5)
+
+fig.axes[1].set_ylabel('$\mathbf{Nitrogen\ offset\ ratio}$', fontname='Arial', fontsize=41)
+fig.axes[1].tick_params(length=7.5, width=1.5)
+
+pos1 = fig.axes[1].get_position()
+pos2 = [pos1.x0-0.035, pos1.y0, pos1.width, pos1.height] 
+fig.axes[1].set_position(pos2)
+
+# comment out the following line if the colorbar is needed
+# fig.delaxes(fig.axes[1])
+
+ax.set_aspect(1)
+
+ax.set_axis_off()
+
+#%% Agglomerative clustering representativeness
+
+# TODO: this cell can be put in other places
+
+# !!! update the file here if necessary
+# do not need to remove 48008015003 since it is accessible but just cannot independently deploy HTL-based systems
+all_facility = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+
+all_facility['dollar_per_kWh'] = all_facility['state'].apply(lambda x: elec_price[elec_price['state'] == x]['price'].iloc[0]/100)
+all_facility['crude_oil_dollar_per_barrel'] = all_facility['state'].apply(lambda x: crude_oil_price_data[crude_oil_price_data['state'] == x]['2022_average'].iloc[0])
+
+all_facility['DAP_price'] = all_facility['state'].apply(lambda x: fertilizer_price_uncertainty[x]['DAP'][1] if x in ['AL','IA','IL','NC','OK','SC'] else 984.5)
+all_facility['anhydrous_ammonia_price'] = all_facility['state'].apply(lambda x: fertilizer_price_uncertainty[x]['anhydrous_ammonia'][1] if x in ['IA','IL','OK'] else 1407.5)
+all_facility['urea_price'] = all_facility['state'].apply(lambda x: fertilizer_price_uncertainty[x]['urea'][1] if x in ['AL','IA','IL','NC','OK','SC'] else 855)
+all_facility['UAN_price'] = all_facility['state'].apply(lambda x: fertilizer_price_uncertainty[x]['UAN'][1] if x in ['AL','IA','IL','NC','OK','SC'] else 605)
+
+all_facility.loc[all_facility['nitrogen_fertilizer']=='NH3', 'nitrogen_fertilizer'] = 1
+all_facility.loc[all_facility['nitrogen_fertilizer']=='urea', 'nitrogen_fertilizer'] = 2
+all_facility.loc[all_facility['nitrogen_fertilizer']=='UAN', 'nitrogen_fertilizer'] = 3
+
+# exclude income_tax since it is decided by the included parameters (even the location can be represented by dollar_per_kWh)
+all_facility = all_facility[['total_sludge_amount_kg_per_year',
+                                                'sludge_aerobic_digestion',
+                                                'sludge_anaerobic_digestion',
+                                                'dollar_per_kWh',
+                                                'kg_CO2e_kWh',
+                                                'crude_oil_dollar_per_barrel',
+                                                'DAP_price',
+                                                'anhydrous_ammonia_price',
+                                                'urea_price',
+                                                'UAN_price',
+                                                'wage_quotient',
+                                                'nitrogen_fertilizer',
+                                                'WRRF_refinery_real_distance_km',
+                                                'WRRF_coal_pp_real_distance_km']]
+
+sampled_facility = all_facility.copy()
+
+# scale the data
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(sampled_facility)
+
+# 1000 clusters
+k = 1000
+
+# initialize the AgglomerativeClustering model and fit it to the data
+agg_cluster = AgglomerativeClustering(n_clusters=k)
+agg_cluster.fit(X_scaled)
+
+# get the cluster labels
+labels = agg_cluster.labels_
+
+sampled_facility['label'] = labels
+
+cluster_medians = sampled_facility.groupby('label').median()
+
+cluster_medians.reset_index(inplace=True)
+
+cluster_medians['nitrogen_fertilizer'] = cluster_medians['nitrogen_fertilizer'].apply(lambda x: round(x))
+
+# Step 3: Map each data point to its cluster's median
+# Build a DataFrame that maps cluster label to its median vector
+df_medians = sampled_facility['label'].map(cluster_medians.to_dict(orient='index'))
+df_reconstructed = pd.DataFrame(df_medians.tolist(), index=all_facility.index, columns=all_facility.columns[:-1])  # exclude 'cluster'
+
+
+
+# Step 4: Compute R² across all features
+ss_res = ((all_facility.iloc[:, :-1] - df_reconstructed) ** 2).sum().sum()
+ss_tot = ((all_facility.iloc[:, :-1] - all_facility.iloc[:, :-1].mean()) ** 2).sum().sum()
+r2 = 1 - ss_res / ss_tot
+print(r2)
+
 #%% writing results
 
 qualified_facility_biocrude = pd.read_excel(folder + 'results/qualified_facility/integrated_biocrude_BPD_2025-07-22.xlsx')
@@ -4742,6 +5219,7 @@ qualified_facility_biocrude_max.reset_index(names='CWNS', inplace=True)
 qualified_facility_biocrude_max.rename(columns={0:'BPD'}, inplace=True)
 
 # !!! update the input file if necessary
+# do not need to remove 48008015003 since it is accessible but just cannot independently deploy HTL-based systems
 WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
 WRRF_input = WRRF_input[['CWNS','Site ID','capacity']]
 
