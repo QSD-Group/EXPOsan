@@ -76,6 +76,7 @@ def create_geospatial_system(test_run=False,
                              # in km, this is the slduge transportation total
                              # distance (normalized to total sludge amount)
                              sludge_distance=100,
+                             biocrude_transportation=True,
                              # km
                              biocrude_distance=100,
                              hydrochar_recovery=True,
@@ -307,6 +308,157 @@ def create_geospatial_system(test_run=False,
     # assume biocrude has an HHV of 35 MJ/kg
     # in the model, biocrude HHV will be calculated as HTL.biocrude_HHV
     BiocrudeTank.outs[0].price = crude_oil_price/_oil_barrel_to_m3/BiocrudeTank.crude_oil_density/BiocrudeTank.crude_oil_HHV*35
+    
+    if not biocrude_transportation:
+        # =========================================================================
+        # HT (Area 300)
+        # =========================================================================
+        
+        P2 = qsu.SludgePump('A300', ins=HTL-2, outs='press_biocrude', P=1530.0*6894.76,
+                  init_with='Stream')
+        # Jones 2014: 1530.0 psia
+        P2.register_alias('P2')
+        P2.include_construction = True
+        
+        # Tin = 174 C (345 F) based on Jones PNNL report. However, the reaction
+        # releases a lot of heat and increase the temperature of effluent to 402 C
+        # (755.5 F).
+        
+        RSP1 = qsu.ReversedSplitter('S300', ins='H2', outs=('HT_H2','HC_H2'),
+                                    init_with='WasteStream')
+        # reversed splitter, write before HT and HC, simulate after HT and HC
+        RSP1.ins[0].price = 1.61
+        RSP1.register_alias('RSP1')
+        
+        HT = qsu.Hydrotreating('A310', ins=(P2-0, RSP1-0, 'CoMo_alumina_HT'),
+                   outs=('HTout','CoMo_alumina_HT_out'), include_PSA=False)
+            
+        HT.ins[2].price = 38.79
+        HT.register_alias('HT')
+        
+        V2 = IsenthalpicValve('A320', ins=HT-0, outs='depressurized_HT', P=717.4*6894.76, vle=True)
+        V2.register_alias('V2')
+        
+        H2 = qsu.HXutility('A330', ins=V2-0, outs='cooled_HT', T=60+273.15,
+                           init_with='Stream', rigorous=True)
+        H2.register_alias('H2')
+        H2.include_construction = True,
+    
+        F2 = qsu.Flash('A340', ins=H2-0, outs=('HT_fuel_gas','HT_aqueous'), T=43+273.15,
+                   P=717.4*6894.76, thermo=settings.thermo.ideal()) # outflow P
+        F2.register_alias('F2')
+        F2.include_construction = True
+        
+        V3 = IsenthalpicValve('A350', ins=F2-1, outs='depressurized_flash_effluent', P=55*6894.76, vle=True)
+        V3.register_alias('V3')
+        
+        SP2 = qsu.Splitter('S310', ins=V3-0, outs=('HT_ww','HT_oil'),
+                            split={'H2O':1}, init_with='Stream')
+        # separate water and oil based on gravity
+        SP2.register_alias('SP2')
+        
+        H3 = qsu.HXutility('A360', ins=SP2-1, outs='heated_oil', T=104+273.15,
+                           init_with='Stream', rigorous=True)
+        # temperature: Jones stream #334 (we remove the first distillation column)
+        H3.register_alias('H3')
+        H3.include_construction = True
+        
+        D1 = qsu.BinaryDistillation('A370', ins=H3-0,
+                                outs=('HT_light','HT_heavy'),
+                                LHK=('C4H10','TWOMBUTAN'), P=50*6894.76, # outflow P
+                                y_top=188/253, x_bot=53/162, k=2, is_divided=True)
+        D1.register_alias('D1')
+        D1.include_construction = True
+        
+        D2 = qsu.BinaryDistillation('A380', ins=D1-1,
+                                outs=('HT_Gasoline','HT_other_oil'),
+                                LHK=('C10H22','C4BENZ'), P=25*6894.76, # outflow P
+                                y_top=116/122, x_bot=114/732, k=2, is_divided=True)
+        D2.register_alias('D2')
+        D2.include_construction = True
+        
+        D3 = qsu.BinaryDistillation('A390', ins=D2-1,
+                                outs=('HT_Diesel','HT_heavy_oil'),
+                                LHK=('C19H40','C21H44'),P=18.7*6894.76, # outflow P
+                                y_top=2421/2448, x_bot=158/2448, k=2, is_divided=True)
+        D3.register_alias('D3')
+        D3.include_construction = True
+        
+        # =========================================================================
+        # HC (Area 400)
+        # =========================================================================
+        
+        P3 = qsu.SludgePump('A400', ins=D3-1, outs='press_heavy_oil', P=1034.7*6894.76,
+                      init_with='Stream')
+        # Jones 2014: 1034.7 psia
+        P3.register_alias('P3')
+        P3.include_construction = True
+        
+        # Tin = 394 C (741.2 F) based on Jones PNNL report. However, the reaction
+        # releases a lot of heat and increase the temperature of effluent to 451 C
+        # (844.6 F).
+        
+        HC = qsu.Hydrocracking('A410', ins=(P3-0, RSP1-1, 'CoMo_alumina_HC'),
+                           outs=('HC_out','CoMo_alumina_HC_out'))
+        HC.ins[2].price = 38.79
+        HC.register_alias('HC')
+        HC.include_construction = True
+        
+        H4 = qsu.HXutility('A420', ins=HC-0, outs='cooled_HC', T=60+273.15,
+                           init_with='Stream', rigorous=True)
+        H4.register_alias('H4')
+        H4.include_construction = True
+        
+        V4 = IsenthalpicValve('A430', ins=H4-0, outs='cooled_depressurized_HC', P=30*6894.76, vle=True)
+        V4.register_alias('V4')
+        
+        F3 = qsu.Flash('A440', ins=V4-0, outs=('HC_fuel_gas','HC_aqueous'), T=60.2+273,
+                   P=30*6894.76) # outflow P
+        F3.register_alias('F3')
+        F3.include_construction = True
+        
+        D4 = qsu.BinaryDistillation('A450', ins=F3-1, outs=('HC_Gasoline','HC_Diesel'),
+                                LHK=('C9H20','C10H22'), P=20*6894.76, # outflow P
+                                y_top=360/546, x_bot=7/708, k=2, is_divided=True)
+        D4.register_alias('D4')
+        D4.include_construction = True
+    
+    
+        GasolineMixer = qsu.Mixer('S500', ins=(D2-0, D4-0), outs='mixed_gasoline',
+                                  init_with='Stream', rigorous=True)
+        GasolineMixer.register_alias('GasolineMixer')
+        
+        DieselMixer = qsu.Mixer('S510', ins=(D3-0, D4-1), outs='mixed_diesel',
+                                init_with='Stream', rigorous=True)
+        DieselMixer.register_alias('DieselMixer')
+        
+        H5 = qsu.HXutility('A500', ins=GasolineMixer-0, outs='cooled_gasoline',
+                           T=60+273.15, init_with='Stream', rigorous=True)
+        H5.register_alias('H5')
+        H5.include_construction = True
+        
+        H6 = qsu.HXutility('A510', ins=DieselMixer-0, outs='cooled_diesel',
+                           T=60+273.15, init_with='Stream', rigorous=True)
+        H6.register_alias('H6')
+        H6.include_construction = True
+    
+        PC1 = qsu.PhaseChanger('S520', ins=H5-0, outs='cooled_gasoline_liquid')
+        PC1.register_alias('PC1')
+        
+        PC2 = qsu.PhaseChanger('S530', ins=H6-0, outs='cooled_diesel_liquid')
+        PC2.register_alias('PC2')
+        
+        GasolineTank = qsu.StorageTank('T500', ins=PC1-0, outs=('gasoline'),
+                                        tau=3*24, init_with='WasteStream', vessel_material='Carbon steel')
+        # store for 3 days based on Jones 2014
+        GasolineTank.register_alias('GasolineTank')
+        GasolineTank.outs[0].price = 0.9388
+        
+        DieselTank = qsu.StorageTank('T510', ins=PC2-0, outs=('diesel'),
+                                      tau=3*24, init_with='WasteStream', vessel_material='Carbon steel')
+        # store for 3 days based on Jones 2014
+        DieselTank.register_alias('DieselTank')
+        DieselTank.outs[0].price = 0.9722
     
     # =========================================================================
     # CHG
@@ -569,24 +721,25 @@ def create_geospatial_system(test_run=False,
                                               interval_unit='h')
     WWTP.transportation = Sludge_transportation
     
-    Biocrude_trucking = qs.ImpactItem('Biocrude_trucking', functional_unit='kg*km')
-    # 0.13004958 kg CO2 eq/metric ton/km ('market for transport, freight, lorry, unspecified'))
-    Biocrude_trucking.add_indicator(GlobalWarming, 0.13004958/1000)
-    # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), https://doi.org/10.1016/j.biortech.2010.03.136
-    Biocrude_trucking.price = (5.67 + 0.07*BiocrudeTank.biocrude_distance)/BiocrudeTank.biocrude_wet_density/BiocrudeTank.biocrude_distance/GDPCTPI[2008]*GDPCTPI[2022]
-        
-    Biocrude_transportation = qs.Transportation('Biocrude_trucking',
-                                                linked_unit=BiocrudeTank,
-                                                item=Biocrude_trucking,
-                                                load_type='mass',
-                                                load=stream.biocrude.F_mass,
-                                                load_unit='kg',
-                                                distance=BiocrudeTank.biocrude_distance,
-                                                distance_unit='km',
-                                                # set to 1 h since load = kg/h
-                                                interval='1',
-                                                interval_unit='h')
-    BiocrudeTank.transportation = Biocrude_transportation
+    if biocrude_transportation:
+        Biocrude_trucking = qs.ImpactItem('Biocrude_trucking', functional_unit='kg*km')
+        # 0.13004958 kg CO2 eq/metric ton/km ('market for transport, freight, lorry, unspecified'))
+        Biocrude_trucking.add_indicator(GlobalWarming, 0.13004958/1000)
+        # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), https://doi.org/10.1016/j.biortech.2010.03.136
+        Biocrude_trucking.price = (5.67 + 0.07*BiocrudeTank.biocrude_distance)/BiocrudeTank.biocrude_wet_density/BiocrudeTank.biocrude_distance/GDPCTPI[2008]*GDPCTPI[2022]
+            
+        Biocrude_transportation = qs.Transportation('Biocrude_trucking',
+                                                    linked_unit=BiocrudeTank,
+                                                    item=Biocrude_trucking,
+                                                    load_type='mass',
+                                                    load=stream.biocrude.F_mass,
+                                                    load_unit='kg',
+                                                    distance=BiocrudeTank.biocrude_distance,
+                                                    distance_unit='km',
+                                                    # set to 1 h since load = kg/h
+                                                    interval='1',
+                                                    interval_unit='h')
+        BiocrudeTank.transportation = Biocrude_transportation
     
     if hydrochar_recovery:
         Hydrochar_trucking = qs.ImpactItem('Hydrochar_trucking', functional_unit='kg*km')
@@ -617,11 +770,13 @@ def create_geospatial_system(test_run=False,
                     # TODO: do not use market or market group for products for other systems (i.e., CO2 sorbent, HTL-PFAS)
                     # include emission
                     'natural_gas':  [stream.natural_gas, 0.47016123/natural_gas_density+44/16],
-                    # TODO: this allocates the benefit of biogenic carbon in biocrude to oil refineries, is this mentioned in the manuscript or the SI
-                    # use market or market group for biocrude to offset transportation and then add the transportation part
-                    # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
-                    'biocrude':     [stream.biocrude, -0.22290007/BiocrudeTank.crude_oil_HHV*HTL.biocrude_HHV],
                     'ash_disposal': [stream.solid_ash, 0.0082744841]}
+    
+    if biocrude_transportation:
+        # TODO: this allocates the benefit of biogenic carbon in biocrude to oil refineries, is this mentioned in the manuscript or the SI
+        # use market or market group for biocrude to offset transportation and then add the transportation part
+        # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
+        impact_items['biocrude'] = [stream.biocrude, -0.22290007/BiocrudeTank.crude_oil_HHV*HTL.biocrude_HHV]
     
     if hydrochar_recovery:
         # TODO: this allocates the benefit of biogenic carbon in hydrochar to coal-based power plants, consider mentioning this in the manuscript or the SI

@@ -4082,8 +4082,8 @@ sludge_protein_values = [average_protein_afdw*0.8, average_protein_afdw, average
 cost_vs_IRR = pd.DataFrame()
 
 for size in [WRRF_input['total_sludge_amount_kg_per_year'].min()/1000/365, 0.001, 0.01, 0.1, 1, 10, 100, WRRF_input['total_sludge_amount_kg_per_year'].max()/1000/365]:
-    for IRR in [0, 0.01, 0.02, 0.03, 0.04 ,0.05]:
-        print('\n\n', f'size: {size} metric tonne/day\n', f'IRR: {IRR}\n')
+    for IRR in [0, 0.01, 0.02, 0.03, 0.04, 0.05]:
+        print('\n\n', f'size: {size} metric tonne/day', f'IRR: {IRR}')
         
         sys = create_geospatial_system(size=size,
                                        biocrude_distance=(WRRF_input['WRRF_refinery_real_distance_km']*WRRF_input['total_sludge_amount_kg_per_year']).sum()/WRRF_input['total_sludge_amount_kg_per_year'].sum(),
@@ -4123,26 +4123,74 @@ for size in [WRRF_input['total_sludge_amount_kg_per_year'].min()/1000/365, 0.001
                                         UAN_price=UAN_price_values,
                                         exclude_IRR=True)
         
-        kwargs = {'N':1000,'rule':'L','seed':3221}
-        samples = model.sample(**kwargs)
-        model.load_samples(samples)
-        model.evaluate()
-        
-        idx = len(model.parameters)
-        parameters = model.table.iloc[:, :idx]
-        results = model.table.iloc[:, idx:]
-        
-        if size < 0.001:
-            size_name = 'min'
-        elif size > 100:
-            size_name = 'max'
+        if IRR == 0 or IRR == 0.05:
+            print(f"wastewater solids management cost: {model.metrics_at_baseline()['geospatial','Sludge management cost [$/tonne dry sludge]']}")
         else:
-            size_name = size
+            print(f"wastewater solids management cost: {model.metrics_at_baseline()['geospatial','Sludge management cost [$/tonne dry sludge]']: .3g}")
         
-        # $/day
-        cost_vs_IRR[f'{size_name}_{IRR}'] = results[('geospatial','Sludge management cost [$/tonne dry sludge]')]
+        if IRR == 0.03:
+            print(f'TCI: {sys.TEA.TCI: .3g}')
+            print(f'AOC: {sys.TEA.AOC: .3g}')
+            
+            chemical_input_CI = sys.LCA.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]'].loc[['CHG_catalyst','H2SO4','HNO3','NaOH','UAN_water',
+                                                                                                     'makeup_MEA','makeup_water','natural_gas','solid_ash']].sum() +\
+                                sys.LCA.get_impact_table('Other')['GlobalWarming [kg CO2-eq]'].loc['Deionized_water']
+            transportation_CI = float(sys.LCA.get_impact_table('Transportation')['GlobalWarming [kg CO2-eq]'].loc['Sum'])
+            biofuel_recovery_CI = sys.LCA.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]'].loc[['biocrude','hydrochar']].sum()
+            fertilizer_recovery_CI = sys.LCA.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]'].loc[['DAP','UAN']].sum()
+            electricity_generation_CI = sys.LCA.get_impact_table('Other')['GlobalWarming [kg CO2-eq]'].loc['Electricity']
         
-cost_vs_IRR.to_excel(folder + f'results/cost_vs_IRR/cost_vs_IRR_{date.today()}.xlsx')
+            print(f'chemical_input_CI: {chemical_input_CI: .3g}')
+            print(f'transportation_CI: {transportation_CI: .3g}')
+            print(f'biofuel_recovery_CI: {biofuel_recovery_CI: .3g}')
+            print(f'fertilizer_recovery_CI: {fertilizer_recovery_CI: .3g}')
+            print(f'electricity_generation_CI: {electricity_generation_CI: .3g}')
+
+for size in [WRRF_input['total_sludge_amount_kg_per_year'].min()/1000/365, 0.001, 0.01, 0.1, 1, 10, 100, WRRF_input['total_sludge_amount_kg_per_year'].max()/1000/365]:
+        print('\n\n', f'IRR: {IRR}')
+        
+        sys = create_geospatial_system(size=size,
+                                       biocrude_transportation=False,
+                                       biocrude_distance=(WRRF_input['WRRF_refinery_real_distance_km']*WRRF_input['total_sludge_amount_kg_per_year']).sum()/WRRF_input['total_sludge_amount_kg_per_year'].sum(),
+                                       hydrochar_recovery=True,
+                                       hydrochar_distance=(WRRF_input['WRRF_coal_pp_real_distance_km']*WRRF_input['total_sludge_amount_kg_per_year']).sum()/WRRF_input['total_sludge_amount_kg_per_year'].sum(),
+                                       average_sludge_dw_ash=sludge_ash_values[1],
+                                       average_sludge_afdw_lipid=sludge_lipid_values[1],
+                                       average_sludge_afdw_protein=sludge_protein_values[1],
+                                       anaerobic_digestion=None,
+                                       aerobic_digestion=None,
+                                       ww_2_dry_sludge_ratio=1,
+                                       state='US',
+                                       # TODO: explain why only 'UAN' is used
+                                       nitrogen_fertilizer='UAN',
+                                       elec_GHG=(WRRF_input['kg_CO2e_kWh']*WRRF_input['total_sludge_amount_kg_per_year']).sum()/WRRF_input['total_sludge_amount_kg_per_year'].sum(),
+                                       wage_adjustment=(WRRF_input.iloc[i]['wage_quotient']/100*WRRF_input['total_sludge_amount_kg_per_year']).sum()/WRRF_input['total_sludge_amount_kg_per_year'].sum())
+        
+        sys.TEA.IRR = IRR
+        
+        crude_oil_price_values = [crude_oil_price_data[crude_oil_price_data['state']=='US']['2022_min'].iloc[0],
+                                  crude_oil_price_data[crude_oil_price_data['state']=='US']['2022_average'].iloc[0],
+                                  crude_oil_price_data[crude_oil_price_data['state']=='US']['2022_max'].iloc[0]]
+        
+        DAP_price_values = [588, 984.5, 1381]
+        anhydrous_ammonia_price_values = [1065, 1407.5, 1750]
+        urea_price_values = [447, 855, 1263]
+        UAN_price_values = [350, 605, 860]
+                
+        model = create_geospatial_model(system=sys,
+                                        sludge_ash=sludge_ash_values,
+                                        sludge_lipid=sludge_lipid_values,
+                                        sludge_protein=sludge_protein_values,
+                                        crude_oil_price=crude_oil_price_values,
+                                        DAP_price=DAP_price_values,
+                                        anhydrous_ammonia_price=anhydrous_ammonia_price_values,
+                                        urea_price=urea_price_values,
+                                        UAN_price=UAN_price_values,
+                                        exclude_IRR=True)
+        
+
+        print(f'TCI: {sys.TEA.TCI: .3g}')
+        print(f'AOC: {sys.TEA.AOC: .3g}')
 
 #%% regional uncertainty (build and run model)
 
