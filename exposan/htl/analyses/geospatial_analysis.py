@@ -5228,3 +5228,5 @@ BPD_capacity = BPD_capacity.groupby(by=['Site ID','capacity']).sum()
 BPD_capacity.reset_index(inplace=True)
 BPD_capacity['ratio'] = BPD_capacity['BPD']/BPD_capacity['capacity']/1000000
 print(f'The highest blending ratio in the individual scenario is {BPD_capacity["ratio"].max()*100: .3f}%.')
+
+# !!! to calculate the contribution of construction to the life cycle CI, assume the wastewater solids transportation distance is 200 km and only account emissions not credits
