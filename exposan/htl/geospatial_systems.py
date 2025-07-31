@@ -773,13 +773,13 @@ def create_geospatial_system(test_run=False,
                     'ash_disposal': [stream.solid_ash, 0.0082744841]}
     
     if biocrude_transportation:
-        # TODO: this allocates the benefit of biogenic carbon in biocrude to oil refineries, is this mentioned in the manuscript or the SI
+        # !!! this allocates the benefit of biogenic carbon in biocrude to oil refineries
         # use market or market group for biocrude to offset transportation and then add the transportation part
         # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
         impact_items['biocrude'] = [stream.biocrude, -0.22290007/BiocrudeTank.crude_oil_HHV*HTL.biocrude_HHV]
     
     if hydrochar_recovery:
-        # TODO: this allocates the benefit of biogenic carbon in hydrochar to coal-based power plants, consider mentioning this in the manuscript or the SI
+        # !!! this allocates the benefit of biogenic carbon in hydrochar to coal-based power plants
         # use market or market group for hydrochar to offset transportation and then add the transportation part
         # 0.17013652 kg CO2 eq/kg hard coal ('market for hard coal')
         impact_items['hydrochar'] = [stream.hydrochar, -0.17013652/AcidEx.hard_coal_HHV*HTL.hydrochar_HHV]
