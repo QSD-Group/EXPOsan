@@ -1,20 +1,9 @@
 # -*- coding: utf-8 -*-
-'''
-EXPOsan: Exposition of sanitation and resource recovery systems
+"""
+Created on Thu Jul 17 17:16:00 2025
 
-This module is developed by:
-    
-    Yalin Li <mailto.yalin.li@gmail.com>
-
-This module is under the University of Illinois/NCSA Open Source License.
-Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
-for license details.
-
-References
-[1] Snowden-Swan et al., Wet Waste Hydrothermal Liquefaction and Biocrude Upgrading to Hydrocarbon Fuels:
-    2021 State of Technology; PNNL-32731; Pacific Northwest National Lab. (PNNL), Richland, WA (United States), 2022.
-    https://doi.org/10.2172/1863608.
-'''
+@author: aliah
+"""
 
 # !!! Temporarily ignoring warnings
 # import warnings
@@ -244,7 +233,29 @@ def create_system(
         K_streams = []
         liquids_to_disposal_lst = []
         solids_to_disposal_lst = []
-
+    
+    dilution_ratio = 20  # 1:20 ratio
+    # HTL_water= qs.WasteStream('dilution_water', phase='l', T=298.15, P=101325)
+    # HTL_hydroponic_water= qs.WasteStream('HTL_hydroponic_water')
+    
+    # FungalTank= qsu.MixTank(
+    #     'FungalTank',
+    #     ins=[HTL_ECwwScaler-0, HTL_water],
+    #     tau=24,  #hours
+    #     outs='HTL_hydroponic_water'
+    #   )
+    # def water_ratio():
+    #     HTL_water.empty()
+    #     total_htl_ap = FungalTank.ins[0].F_vol
+    #     required_htl_water = total_htl_ap * dilution_ratio
+    #     print(f"Total aqueous phase flow: {total_htl_ap} m³/hr")
+    #     print(f"Required dilution water: {required_htl_water} m³/hr")
+    #     HTL_water.imol['H2O'] = required_htl_water * 55.46
+    #     # hydroponic_water=dilution_water
+    #     FungalTank._run()
+    
+    # FungalTank.add_specification(water_ratio)
+        
     BiocrudeTrans = u.Transportation(
         'BiocrudeTrans',
         ins=(HTL-2, 'biocrude_trans_surrogate'),
@@ -363,9 +374,24 @@ def create_system(
     
     liquids_to_disposal_lst.append(Upgrading_EC.outs[-1])
     
-    ww_to_disposal = qs.WasteStream('ww_to_disposal')
-    WWdisposalMixer = qsu.Mixer('WWdisposalMixer', ins=liquids_to_disposal_lst, outs=ww_to_disposal)
-    @WWdisposalMixer.add_specification        
+    
+    dilution_water = qs.WasteStream('dilution_water', phase='l', T=298.15, P=101325)
+    # fungal_water= qs.WasteStream('fungal_water')
+    # liquids_to_disposal_lst= fungal_water
+    hydroponic_water= qs.WasteStream('hydroponic_water')
+    # DilutionMixTank = qsu.MixTank ('DilutionTank', 
+    #      ins=[liquids_to_disposal_lst, dilution_water],
+    #      tau=24,  #hours
+    #     outs='hydroponic_water'
+    #    )
+    DilutionTank = qsu.MixTank(
+        'DilutionTank',
+        ins=[Upgrading_EC.ins[0], dilution_water],
+        tau=24,  #hours
+        outs='hydroponic_water'
+      )
+
+    @DilutionTank.add_specification        
     def adjust_prices():
         FeedstockTrans._run()        
         # Centralized HTL and upgrading, transport feedstock
@@ -384,12 +410,23 @@ def create_system(
         # Decentralized HTL and upgrading, no transportation needed
         else:
             FeedstockTrans.transportation_unit_cost = BiocrudeTrans.transportation_unit_cost = 0
+            
+            #Dilution
+        dilution_water.empty()
+        total_ap = DilutionTank.ins[0].F_vol
+        required_water = total_ap * dilution_ratio
+        print(f"Total aqueous phase flow: {total_ap} m³/hr")
+        print(f"Required dilution water: {required_water} m³/hr")
+        dilution_water.imol['H2O'] = required_water * 55.46
+        # hydroponic_water=dilution_water
+        DilutionTank._run()
+            
         
         # Wastewater
-        WWdisposalMixer._run()
-        COD_mass_content = ww_to_disposal.COD*ww_to_disposal.F_vol/1e3 # mg/L*m3/hr to kg/hr
-        factor = COD_mass_content/ww_to_disposal.F_mass
-        ww_to_disposal.price = price_dct['COD']*factor
+        # WWdisposalMixer._run()
+        # COD_mass_content = ww_to_disposal.COD*ww_to_disposal.F_vol/1e3 # mg/L*m3/hr to kg/hr
+        # factor = COD_mass_content/ww_to_disposal.F_mass
+        # ww_to_disposal.price = price_dct['COD']*factor
     
     # dilution_ratio = 20  # 1:20 ratio
     # dilution_water = qs.WasteStream('dilution_water', phase='l', T=298.15, P=101325)
@@ -488,7 +525,7 @@ def create_system(
     # Can ignore this if the feedstock moisture if close to desired range
     PWC = u.ProcessWaterCenter(
         'ProcessWaterCenter',
-        process_water_streams=scaled_process_water,
+        process_water_streams=[scaled_process_water, dilution_water],
         process_water_price=price_dct['process_water']
         )
     PWC.register_alias('PWC')
@@ -497,6 +534,7 @@ def create_system(
         FeedstockScaler._run()
         ProcessWaterScaler._run()
         PWC._run()
+                
 
     sys = qs.System.from_units(
         'sys',
@@ -576,16 +614,16 @@ def create_system(
         linked_stream=natural_gas,
         GWP=gwp_dict['natural_gas'],
         )
-    ww_to_disposal_item = qs.StreamImpactItem(
-        ID='ww_to_disposal_item',
-        linked_stream=ww_to_disposal,
-        GWP=gwp_dict['wastewater'], 
-        )
-    # hydroponic_water_item = qs.StreamImpactItem(
-    #     ID='hydroponic_water',
-    #     linked_stream=hydroponic_water,
+    # htl_hydroponic_water_item = qs.StreamImpactItem(
+    #     ID='HTL_hydroponic_water',
+    #     linked_stream=HTL_hydroponic_water,
     #     GWP=gwp_dict['process_water'], 
     #     )
+    hydroponic_water_item = qs.StreamImpactItem(
+        ID='hydroponic_water',
+        linked_stream=hydroponic_water,
+        GWP=gwp_dict['process_water'], 
+        )
     solids_to_disposal_item = qs.StreamImpactItem(
         ID='solids_to_disposal_item',
         linked_stream=solids_to_disposal,
@@ -728,14 +766,14 @@ if __name__ == '__main__':
         )
 
     # What to do with HTL-AP
-    # config_kwargs.update(dict(skip_EC=True, generate_H2=False, EC_config=None)) # no EC
+    config_kwargs.update(dict(skip_EC=True, generate_H2=False, EC_config=None)) # no EC
     # config_kwargs.update(dict(skip_EC=False, generate_H2=False, EC_config=None)) # EC, recover nutrients only
-    config_kwargs.update(dict(skip_EC=False, generate_H2=True, EC_config=None)) # EC, recover nutrients and generate H2
+    # config_kwargs.update(dict(skip_EC=False, generate_H2=True, EC_config=None)) # EC, recover nutrients and generate H2
     # config_kwargs.update(dict(skip_EC=False, generate_H2=True, EC_config=EC_future_config)) # EC, recovery nutrients, generate H2, optimistic assumptions
     
     # Decentralized vs. centralized configuration
-    # config_kwargs.update(dict(decentralized_HTL=False, decentralized_upgrading=False)) # CHCU
-    config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=False)) # DHCU
+    config_kwargs.update(dict(decentralized_HTL=False, decentralized_upgrading=False)) # CHCU
+    # config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=False)) # DHCU
     
     # Distillation column cost calculation doesn't scale down well, so the cost is very high now.
     # But maybe don't need to do the DHDU scenario, if DHCU isn't too different from CHCU
@@ -749,110 +787,3 @@ if __name__ == '__main__':
     lca = sys.LCA
     
     simulate_and_print(sys)
-
-
-# #%%
-# # import numpy as np
-# # import pandas as pd
-# # import os
-
-# # output_dir = "results"
-# # os.makedirs(output_dir, exist_ok=True)
-# # output_file = os.path.join(output_dir, "MSP_electrode_costs_DHCU.xlsx")
-# # # electricity_prices = np.arange(0.00, 0.11, 0.01)  # 0.00 to 0.10 for EC configs
-# # electrode_costs = np.arange(0, 50001, 1000)  # 0 to 50,000 for EC configs
-# # # voltages = np.arrange (2.5, 50, 1) # 2.5 to 50 for EC configs
-# # biobinder = sys.flowsheet.stream.biobinder
-# # HTL_EC = sys.flowsheet.unit.HTL_EC
-# # Upgrading_EC = sys.flowsheet.unit.Upgrading_EC
-# # MSPs = []
-# # # for voltage in voltages:
-# # #     HTL_EC.EO_voltage = HTL_EC.ED_voltage = Upgrading_EC.EO_voltage = Upgrading_EC.ED_voltage = voltage
-# # #     HTL_EC.simulate()
-# # #     Upgrading_EC.simulate()
-# # #     MSPs.append(tea.solve_price(biobinder))
-# # for electrode_cost in electrode_costs:
-# #         HTL_EC.electrode_cost = Upgrading_EC.electrode_cost = electrode_cost
-# #         HTL_EC.simulate()
-# #         Upgrading_EC.simulate()
-# #         MSPs.append(tea.solve_price(biobinder))
-# # df = pd.DataFrame({
-# #     "Electrode Cost ($)": electrode_costs,
-# #     "MSP ($/kg)": MSPs  # Ensure this list is populated before saving
-# # })
-
-# # # Save to Excel
-# # df.to_excel(output_file, index=False)
-
-
-# #%%
-# import qsdsan as qs
-# from qsdsan import sanunits as qsu
-# import numpy as np
-
-
-# # Create a dilution water stream from the existing PWC
-# # HTL_EC = sys.flowsheet.unit.HTL_EC
-# Upgrading_EC = sys.flowsheet.unit.Upgrading_EC
-# dilution_water = qs.WasteStream('dilution_water', phase='l', T=298.15, P=101325)
-
-# # HTL_EC_water= HTL_EC.ins[0]
-# Upgrading_EC_water= Upgrading_EC.ins[0]
-
-# # Define dilution factor
-# dilution_ratio = 20  # 1:20 ratio
-
-# DilutionTank = qsu.MixTank(
-#     'DilutionTank',
-#     ins=[Upgrading_EC_water, dilution_water],
-#     tau=24,  #hours
-#     outs='hydroponic_water'
-# )
-
-# def adjust_water_flow():
-#     total_ap = DilutionTank.ins[0].F_vol
-#     required_water = total_ap * dilution_ratio
-#     print(f"Total aqueous phase flow: {total_ap} m³/hr")
-#     print(f"Required dilution water: {required_water} m³/hr")
-#     dilution_water.empty()
-#     dilution_water.imol['H2O'] = required_water * 55.46
-
-
-# adjust_water_flow()
-
-# DilutionTank.simulate()
-
-# dilution_water_cost = dilution_water.F_mass * price_dct['process_water']* sys.operating_hours 
-
-# sys.simulate()
-# tea=sys.TEA
-# DilutionTank.show()
-# # dilution_water_cost
-# biobinder = sys.flowsheet.stream.biobinder
-# biobinder.price = MSP = tea.solve_price(biobinder)
-# # biobinder.price = 0.06
-# # IRR= tea.solve_IRR()
-# print(f'Minimum selling price of the biobinder is ${MSP:.2f}/kg.')
-# # print(f'Internal rate of return of the process is {IRR * 100:.2f}%')
-    
-# all_impacts = lca.get_allocated_impacts(streams=(biobinder,), operation_only=True, annual=True)
-# GWP = all_impacts['GWP']/(biobinder.F_mass*lca.system.operating_hours)
-# print(f'Global warming potential of the biobinder is {GWP:.4f} kg CO2e/kg.')
-# # dilution_ratios = range(2, 51, 5)  # Step of 5
-
-# # tau_values = range(1, 25)  # Tau from 1 to 24
-
-# # for dilution_ratio in dilution_ratios:
-# #     for tau in tau_values:
-# #         DilutionTank.tau = tau
-# #         total_ap = DilutionTank.ins[0].F_vol
-# #         required_water = total_ap * dilution_ratio
-
-# #         dilution_water.empty()
-# #         dilution_water.imol['H2O'] = required_water * 55.46
-
-# #         DilutionTank.simulate()
-
-# #         cost = DilutionTank.installed_cost/1e6
-# #         print(f'{dilution_ratio}, {tau}, {cost}')
-
