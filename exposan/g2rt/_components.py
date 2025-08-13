@@ -21,7 +21,7 @@ __all__ = ('create_components',)
 def create_components(set_thermo=True):
     #Reuse components in the bwaise and reclaimer for consistency
     #Modify Tissue so that it becomes combustaible
-    #HHV 25MJ/lg, https://doi.org/10.1016/j.jenvman.2019.01.005
+    #HHV 25MJ/lg, https://doi.org/10.1016/j.jenvman.2019.01.005                 #BS notes: HHV is higher heating value, total amount of heat released when burned
     re_cmps = create_re_components(set_thermo = True)
     re_cmps = Components(re_cmps)
     re_cmps.Tissue.degradability= 'Slowly' 
