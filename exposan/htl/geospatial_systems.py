@@ -526,6 +526,7 @@ def create_geospatial_system(test_run=False,
     # use steam could reduce the required air:liquid volume ratio from 3000:1 to ~300:1
     # set the flow here as size*ww_2_dry_sludge_ratio*2 results in a volume ratio of ~350:1
     water_steam = qs.Stream(ID='water_steam', H2O=size*ww_2_dry_sludge_ratio*2, phase='l', T=25+273.15)
+    # https://doi.org/10.2172/1483234
     water_steam.price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
     
     boiler = qsu.HXutility(ID='boiler',

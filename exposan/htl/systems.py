@@ -378,14 +378,12 @@ def create_system(configuration='baseline', capacity=100,
                                     tau=3*24, init_with='WasteStream', vessel_material='Carbon steel')
     # store for 3 days based on Jones 2014
     GasolineTank.register_alias('GasolineTank')
-    
     GasolineTank.outs[0].price = 0.9388
     
     DieselTank = qsu.StorageTank('T510', ins=PC2-0, outs=('diesel'),
                                   tau=3*24, init_with='WasteStream', vessel_material='Carbon steel')
     # store for 3 days based on Jones 2014
     DieselTank.register_alias('DieselTank')
-    
     DieselTank.outs[0].price = 0.9722
     
     GasMixer = qsu.Mixer('S580', ins=(HTL-3, F1-0, F2-0, D1-0, F3-0),

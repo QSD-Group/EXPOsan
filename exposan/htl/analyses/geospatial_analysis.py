@@ -43,7 +43,6 @@ from scipy.linalg import cholesky
 from scipy.spatial import KDTree
 from numba import njit
 
-# TODO: if this is here, this might not be needed for each figure
 mathtext.FontConstantsBase.sup1 = 0.35
 
 # TODO: update file paths later
@@ -146,7 +145,6 @@ refinery = gpd.GeoDataFrame(refinery, crs='EPSG:4269',
                             geometry=gpd.points_from_xy(x=refinery.Longitude,
                                                         y=refinery.Latitude))
 
-# TODO: make sure the capacity of coal-based power plant allows blending coal with hydrochar
 # coal-based power plant
 coal_pp = pd.read_csv(folder + 'Power_Plants.csv')
 coal_pp = coal_pp[coal_pp['PrimSource'] == 'coal']
@@ -527,8 +525,6 @@ ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, le
 
 ax.set_xlabel(r'$\mathbf{Hauling\ distance}$ [km]', fontname='Arial', fontsize=45)
 ax.set_ylabel(r'$\mathbf{Management\ CI}$' + '\n[kg CO${_2}$ eq·tonne${^{−1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
-
-mathtext.FontConstantsBase.sup1 = 0.35
 
 plt.xticks(np.arange(0, 90, 10), fontname='Arial')
 plt.yticks(np.arange(0, 280, 40), fontname='Arial')
@@ -927,7 +923,6 @@ ax.set_axis_off()
 # no need to set a max distance since the transportation of biocrude is not a key/limiting factor
 WRRF_input = WRRF.sjoin_nearest(refinery, max_distance=None, distance_col='WRRF_refinery_distance')
 WRRF_input.drop(columns='index_right', inplace=True)
-# TODO: decide if the transportation of hydrochar is a key/limiting factor
 WRRF_input = WRRF_input.sjoin_nearest(coal_pp, max_distance=None, distance_col='WRRF_coal_pp_distance')
 WRRF_input.drop(columns='index_right', inplace=True)
 
@@ -1773,7 +1768,7 @@ WRRF_input['waste_cost'] = sum(WRRF_input[i]*sludge_disposal_cost[i] for i in sl
 # kg CO2 eq/tonne
 WRRF_input['waste_GHG'] =  sum(WRRF_input[i]*sludge_emission_factor[i] for i in sludge_emission_factor.keys())/WRRF_input['total_sludge_amount_kg_per_year']*1000
 
-# TODO: default is True, False is just for comparison
+# !!! default is True, False is just for comparison
 hydrochar_recovery_baseline = True
 
 CWNS = []
@@ -1898,7 +1893,6 @@ else:
 # !!! update the input file if necessary
 input_data = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
 
-# TODO: 2025-07-22 results were trashed
 # !!! update these files if necessary
 output_result_hydrochar_1 = pd.read_excel(folder + 'results/baseline/baseline_hydrochar_2025-07-22_4999.xlsx')
 output_result_hydrochar_2 = pd.read_excel(folder + 'results/baseline/baseline_hydrochar_2025-07-22_9999.xlsx')
@@ -2130,8 +2124,6 @@ ax.set_ylabel(r'$\mathbf{Cumulative\ GHG\ reduction}$' + '\n[tonne CO${_2}$ eq·
               labelpad=0,
               linespacing=0.8)
 
-mathtext.FontConstantsBase.sup1 = 0.35
-
 print(sorted_data['cumulative_emissions'].iloc[percentile_10]/sorted_data['cumulative_emissions'].iloc[-1])
 print(sorted_data['cumulative_emissions'].iloc[percentile_50]/sorted_data['cumulative_emissions'].iloc[-1])
 
@@ -2289,8 +2281,6 @@ ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, le
 ax.set_xlabel(r'$\mathbf{Solids}$ [tonne·day${^{−1}}$]', fontname='Arial', fontsize=45)
 ax.set_ylabel(r'$\mathbf{Management\ cost}$' + '\n[\$·tonne${^{−1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
 
-mathtext.FontConstantsBase.sup1 = 0.35
-
 plt.xticks(np.arange(0, 300, 50), fontname='Arial')
 plt.yticks(np.arange(-200, 800, 100), fontname='Arial')
 
@@ -2346,8 +2336,6 @@ ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, le
 
 ax.set_xlabel(r'$\mathbf{Solids}$ [tonne·day${^{−1}}$]', fontname='Arial', fontsize=45)
 ax.set_ylabel(r'$\mathbf{Management\ CI}$' + '\n[kg CO${_2}$ eq·tonne${^{−1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
-
-mathtext.FontConstantsBase.sup1 = 0.35
 
 plt.xticks(np.arange(0, 300, 50), fontname='Arial')
 plt.yticks(np.arange(-100, 250, 50), fontname='Arial')
@@ -2405,8 +2393,6 @@ ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, le
 ax.set_xlabel(r'$\mathbf{Biocrude\ distance}$ [km]', fontname='Arial', fontsize=45)
 ax.set_ylabel(r'$\mathbf{Management\ cost}$' + '\n[\$·tonne${^{−1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
 
-mathtext.FontConstantsBase.sup1 = 0.35
-
 plt.xticks(np.arange(0, 1600, 200), fontname='Arial')
 plt.yticks(np.arange(-200, 800, 100), fontname='Arial')
 
@@ -2462,8 +2448,6 @@ ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, le
 
 ax.set_xlabel(r'$\mathbf{Biocrude\ distance}$ [km]', fontname='Arial', fontsize=45)
 ax.set_ylabel(r'$\mathbf{Management\ CI}$' + '\n[kg CO${_2}$ eq·tonne${^{−1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
-
-mathtext.FontConstantsBase.sup1 = 0.35
 
 plt.xticks(np.arange(0, 1600, 200), fontname='Arial')
 plt.yticks(np.arange(-100, 250, 50), fontname='Arial')
@@ -2521,8 +2505,6 @@ ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, le
 ax.set_xlabel(r'$\mathbf{Hydrochar\ distance}$ [km]', fontname='Arial', fontsize=45)
 ax.set_ylabel(r'$\mathbf{Management\ cost}$' + '\n[\$·tonne${^{−1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
 
-mathtext.FontConstantsBase.sup1 = 0.35
-
 plt.xticks(np.arange(0, 900, 100), fontname='Arial')
 plt.yticks(np.arange(-200, 800, 100), fontname='Arial')
 
@@ -2578,8 +2560,6 @@ ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, le
 
 ax.set_xlabel(r'$\mathbf{Hydrochar\ distance}$ [km]', fontname='Arial', fontsize=45)
 ax.set_ylabel(r'$\mathbf{Management\ CI}$' + '\n[kg CO${_2}$ eq·tonne${^{−1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
-
-mathtext.FontConstantsBase.sup1 = 0.35
 
 plt.xticks(np.arange(0, 900, 100), fontname='Arial')
 plt.yticks(np.arange(-100, 250, 50), fontname='Arial')
@@ -2642,8 +2622,6 @@ ax.tick_params(direction='inout', length=20, width=3,
                bottom=False, top=False, left=True, right=False, pad=0)
 
 ax.set_ylabel(r'$\mathbf{Management\ cost}$' + '\n[\$·tonne${^{−1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
-
-mathtext.FontConstantsBase.sup1 = 0.35
 
 ax.set_xticklabels(['digestion','no digestion'])
 plt.yticks(np.arange(-200, 800, 100), fontname='Arial')
@@ -2722,8 +2700,6 @@ ax.tick_params(direction='inout', length=20, width=3,
                bottom=False, top=False, left=True, right=False, pad=0)
 
 ax.set_ylabel(r'$\mathbf{Management\ CI}$' + '\n[kg CO${_2}$ eq·tonne${^{−1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
-
-mathtext.FontConstantsBase.sup1 = 0.35
 
 ax.set_xticklabels(['digestion','no digestion'])
 plt.yticks(np.arange(-100, 250, 50), fontname='Arial')
@@ -2804,8 +2780,6 @@ ax.tick_params(direction='inout', length=20, width=3,
                bottom=False, top=False, left=True, right=False, pad=0)
 
 ax.set_ylabel(r'$\mathbf{Management\ cost}$' + '\n[\$·tonne${^{−1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
-
-mathtext.FontConstantsBase.sup1 = 0.35
 
 ax.set_xticklabels(['anhydrous\nammonia','urea','UAN'], linespacing=0.8)
 plt.yticks(np.arange(-200, 800, 100), fontname='Arial')
@@ -2896,8 +2870,6 @@ ax.tick_params(direction='inout', length=20, width=3,
                bottom=False, top=False, left=True, right=False, pad=0)
 
 ax.set_ylabel(r'$\mathbf{Management\ CI}$' + '\n[kg CO${_2}$ eq·tonne${^{−1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
-
-mathtext.FontConstantsBase.sup1 = 0.35
 
 ax.set_xticklabels(['anhydrous\nammonia','urea','UAN'], linespacing=0.8)
 plt.yticks(np.arange(-100, 250, 50), fontname='Arial')
@@ -3884,8 +3856,6 @@ def plot_sensitivity(data_type, figure_label=False):
             ax.set_ylabel(r"$\mathbf{Spearman's\ p}$", fontname='Arial', fontsize=24)
         else:
             raise ValueError(f'Check name: {data_type}.')
-
-        mathtext.FontConstantsBase.sup1 = 0.35
     
         if data_type[-1] == 'r':
             color = b
@@ -3902,8 +3872,6 @@ def plot_sensitivity(data_type, figure_label=False):
             ax.add_patch(rectangle_fill)
         else:
             plt.plot([0, 250],[0.05, 0.05], lw=2, color='k', linestyle='--')
-        
-        # TODO: update parameters (there are newly added parameters)
         
         # add _ only
         add_underscore = ['N 2 P','HTLaqueous C slope','TOC TC','P acid recovery ratio','P syn recovery ratio',
@@ -4096,7 +4064,6 @@ for size in [WRRF_input['total_sludge_amount_kg_per_year'].min()/1000/365, 0.001
                                        aerobic_digestion=None,
                                        ww_2_dry_sludge_ratio=1,
                                        state='US',
-                                       # TODO: explain why only 'UAN' is used
                                        nitrogen_fertilizer='UAN',
                                        elec_GHG=(WRRF_input['kg_CO2e_kWh']*WRRF_input['total_sludge_amount_kg_per_year']).sum()/WRRF_input['total_sludge_amount_kg_per_year'].sum(),
                                        wage_adjustment=(WRRF_input.iloc[i]['wage_quotient']/100*WRRF_input['total_sludge_amount_kg_per_year']).sum()/WRRF_input['total_sludge_amount_kg_per_year'].sum())
@@ -4161,7 +4128,6 @@ for size in [WRRF_input['total_sludge_amount_kg_per_year'].min()/1000/365, 0.001
                                        aerobic_digestion=None,
                                        ww_2_dry_sludge_ratio=1,
                                        state='US',
-                                       # TODO: explain why only 'UAN' is used
                                        nitrogen_fertilizer='UAN',
                                        elec_GHG=(WRRF_input['kg_CO2e_kWh']*WRRF_input['total_sludge_amount_kg_per_year']).sum()/WRRF_input['total_sludge_amount_kg_per_year'].sum(),
                                        wage_adjustment=(WRRF_input.iloc[i]['wage_quotient']/100*WRRF_input['total_sludge_amount_kg_per_year']).sum()/WRRF_input['total_sludge_amount_kg_per_year'].sum())
@@ -4305,8 +4271,6 @@ ax_top.set_zorder(ax.get_zorder() + 1)
 
 ax.set_xlabel(r'$\mathbf{GHG\ reduction}$ [tonne CO${_2}$ eq·day${^{−1}}$]', fontname='Arial', fontsize=35)
 ax.set_ylabel(r'$\mathbf{Saving}$ [MM\$·day${^{−1}}$]', fontname='Arial', fontsize=35)
-
-mathtext.FontConstantsBase.sup1 = 0.35
 
 def add_rectangle(region, color, edgecolor):
     rectangle_fill = Rectangle((decarbonization[region].quantile(0.05), saving[region].quantile(0.05)),
@@ -4529,8 +4493,6 @@ def plot_heat_map(nitrogen_fertilizer, solids_quantity, item):
     ax.set_xlabel(r'$\mathbf{Average\ distance}$ [km]', fontname='Arial', fontsize=45)
     ax.set_ylabel(r'$\mathbf{Total\ solids\ mass\ flow\ rate}$' + '\n[tonne·day${^{−1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
     
-    mathtext.FontConstantsBase.sup1 = 0.35
-    
     plt.xticks(np.arange(20, 220, 30), fontname='Arial')
     plt.yticks(np.arange((solids_quantity)*0.1, (solids_quantity)*1.1, (solids_quantity)*0.9/6), fontname='Arial')
     
@@ -4751,8 +4713,6 @@ ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, le
 ax.set_xlabel(r'$\mathbf{Max.\ clustering\ distance}$ [km]', fontname='Arial', fontsize=45)
 ax.set_ylabel(r'$\mathbf{Coverage}$ [%]', fontname='Arial', fontsize=45, linespacing=0.8)
 
-mathtext.FontConstantsBase.sup1 = 0.35
-
 plt.xticks(np.arange(0, 35, 5), fontname='Arial')
 plt.yticks(np.arange(0, 120, 20), fontname='Arial')
 
@@ -4794,7 +4754,10 @@ print(max(coverage_y))
 
 #%% hub coverage (data preparation for map visualization)
 
-# TODO: automatically update distance_threshold_km
+# do not need to remove 48008015003 since it is accessible but just cannot independently deploy HTL-based systems
+WRRF_all = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
+
+# TODO: update distance_threshold_km if necessary
 # max distance to consider WRRFs as neighbors
 distance_threshold_km = 16.2
 solids_threshold = 7
@@ -4988,22 +4951,7 @@ print(select_WRRF['total_sludge_amount_kg_per_year'].sum()/WRRF['total_sludge_am
 print(hub_WRRF['total_sludge_amount_kg_per_year'].sum()/WRRF['total_sludge_amount_kg_per_year'].sum())
 print(extra_WRRF['total_sludge_amount_kg_per_year'].sum()/WRRF['total_sludge_amount_kg_per_year'].sum())
 
-# TODO: this can be put in other cells
-# using WRRF and individual_WRRF have the same results
-print(select_WRRF['total_emission'].sum()/individual_WRRF['total_emission'].sum())
-
-# cost reduction only
-print(len(individual_WRRF[(individual_WRRF['saving'] > 0) & (individual_WRRF['CO2_reduction'] < 0)]))
-# CI reduction only
-print(len(individual_WRRF[(individual_WRRF['saving'] < 0) & (individual_WRRF['CO2_reduction'] > 0)]))
-# both reductions (including 48008015003)
-print(len(individual_WRRF[(individual_WRRF['saving'] > 0) & (individual_WRRF['CO2_reduction'] > 0)]))
-# no reduction
-print(len(individual_WRRF[(individual_WRRF['saving'] < 0) & (individual_WRRF['CO2_reduction'] < 0)]))
-
 #%% county-level phosphorus fertilizer offset - data preparation
-
-# TODO: this cell can be put in other places
 
 P_county_offset = pd.read_excel(folder + 'results/qualified_facility/integrated_DAP_tonne_per_year_2025-07-22.xlsx')
 P_county_offset.drop('Unnamed: 0', axis=1, inplace=True)
@@ -5042,8 +4990,6 @@ P_county['offset_capped'] = P_county['offset'].apply(lambda x: 1 if x > 1 else x
 
 #%% county-level phosphorus fertilizer offset - visualization
 
-# TODO: this cell can be put in other places
-
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 30
@@ -5078,8 +5024,6 @@ ax.set_aspect(1)
 ax.set_axis_off()
 
 #%% county-level nitrogen fertilizer offset - data preparation
-
-# TODO: this cell can be put in other places
 
 N_county_offset_anhydrous_ammonia = pd.read_excel(folder + 'results/qualified_facility/integrated_anhydrous_ammonia_tonne_per_year_2025-07-22.xlsx')
 N_county_offset_anhydrous_ammonia.drop('Unnamed: 0', axis=1, inplace=True)
@@ -5150,8 +5094,6 @@ N_county['offset_capped'] = N_county['offset'].apply(lambda x: 1 if x > 1 else x
 
 #%% county-level nitrogen fertilizer offset - visualization
 
-# TODO: this cell can be put in other places
-
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 30
@@ -5186,8 +5128,6 @@ ax.set_aspect(1)
 ax.set_axis_off()
 
 #%% Agglomerative clustering representativeness
-
-# TODO: this cell can be put in other places
 
 # !!! update the file here if necessary
 # do not need to remove 48008015003 since it is accessible but just cannot independently deploy HTL-based systems
@@ -5258,7 +5198,27 @@ ss_tot = ((all_facility.iloc[:, :-1] - all_facility.iloc[:, :-1].mean()) ** 2).s
 r2 = 1 - ss_res / ss_tot
 print(r2)
 
-#%% writing results
+#%% writing results - 1
+
+individual_WRRF = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+# manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
+select_WRRF = individual_WRRF[individual_WRRF['CWNS'] != 48008015003]
+select_WRRF = select_WRRF[select_WRRF['USD_decarbonization'].notna()]
+select_WRRF = select_WRRF[select_WRRF['USD_decarbonization']<0]
+
+# using WRRF and individual_WRRF have the same results
+print(select_WRRF['total_emission'].sum()/individual_WRRF['total_emission'].sum())
+
+# cost reduction only
+print(len(individual_WRRF[(individual_WRRF['saving'] > 0) & (individual_WRRF['CO2_reduction'] < 0)]))
+# CI reduction only
+print(len(individual_WRRF[(individual_WRRF['saving'] < 0) & (individual_WRRF['CO2_reduction'] > 0)]))
+# both reductions (including 48008015003)
+print(len(individual_WRRF[(individual_WRRF['saving'] > 0) & (individual_WRRF['CO2_reduction'] > 0)]))
+# no reduction
+print(len(individual_WRRF[(individual_WRRF['saving'] < 0) & (individual_WRRF['CO2_reduction'] < 0)]))
+
+#%% writing results - 2
 
 qualified_facility_biocrude = pd.read_excel(folder + 'results/qualified_facility/integrated_biocrude_BPD_2025-07-22.xlsx')
 qualified_facility_biocrude.drop('Unnamed: 0', axis=1, inplace=True)
