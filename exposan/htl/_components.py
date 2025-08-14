@@ -440,6 +440,19 @@ def create_components(set_thermo=True):
     # made up value, so that HTL.ins[0].nu = 0.03 m2/s ~30000 cSt
     # (NREL 2013 appendix B)
     
+    # assume Compost have the same composition as Sludge_carbo (carbohydrate)
+    Compost = Component('Compost', phase='s',
+                        particle_size='Particulate',
+                        formula='C56H95O24N9P',
+                        degradability='Undegradable',
+                        organic=True)
+    add_V_from_rho(Compost, 1400)
+    Compost.HHV = 22.0*10**6*Compost.MW/1000
+    Compost.Cn.add_model(1.25*10**3*Compost.MW/1000)
+    Compost.mu.add_model(6000)
+    # made up value, so that HTL.ins[0].nu = 0.03 m2/s ~30000 cSt
+    # (NREL 2013 appendix B)
+    
     HCl = Component('HCl', phase='l', particle_size='Soluble',
                     degradability='Undegradable', organic=False)
     
@@ -475,7 +488,7 @@ def create_components(set_thermo=True):
                        C18H38, C19H40, C20H42, C21H44, TRICOSANE, C24H38O4,
                        C26H42O4, C30H62, Gasoline, Diesel, CHG_catalyst,
                        HT_catalyst, HC_catalyst, Membrane, DAP, MEA, Urea, HNO3,
-                       UAN, PAM, Sawdust, HCl, Biooil, Tar, Biochar])
+                       UAN, PAM, Sawdust, Compost, HCl, Biooil, Tar, Biochar])
     
     for i in cmps:
         for attr in ('HHV', 'LHV', 'Hf'):
