@@ -1406,6 +1406,7 @@ class Excretion(SanUnit):
         ur, fec = self.outs
         ur.empty()
         fec.empty()
+        breakpoint()
         not_wasted = 1 - self.waste_ratio
         factor = 24 * 1e3 # from g per person per day to kg per hour
 
