@@ -45,7 +45,6 @@ from numba import njit
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
-# TODO: update file paths later
 folder = '/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_geospatial/'
 
 # color palette
@@ -4757,7 +4756,7 @@ print(max(coverage_y))
 # do not need to remove 48008015003 since it is accessible but just cannot independently deploy HTL-based systems
 WRRF_all = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
 
-# TODO: update distance_threshold_km if necessary
+# !!! update distance_threshold_km if necessary
 # max distance to consider WRRFs as neighbors
 distance_threshold_km = 16.2
 solids_threshold = 7
