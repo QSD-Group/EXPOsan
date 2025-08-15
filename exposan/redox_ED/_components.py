@@ -34,9 +34,9 @@ def create_components(set_thermo=True):
                            degradability='Readily', organic=True)
     Butyrate = Component('Butyrate', phase='l', particle_size='Soluble',
                          degradability='Readily', organic=True)
-    Hexanoic = Component('Hexanoic', phase='l', particle_size='Soluble',
+    Hexanoate = Component('Hexanoate', phase='l', particle_size='Soluble',
                          degradability='Readily', organic=True)
-    cmps = Components((Na, K, H2O,Cl,Propionate,Butyrate, Hexanoic))
+    cmps = Components((Na, K, H2O,Cl,Propionate,Butyrate, Hexanoate))
     
     if set_thermo: qs_set_thermo(cmps)
     
