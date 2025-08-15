@@ -708,44 +708,6 @@ ax.set_aspect(1)
 
 ax.set_axis_off()
 
-#%% N needs
-
-US_county_N = US_county.merge(N, left_on=['NAME','STATE'], right_on=['CountyName','State'], how='left')
-US_county_N = US_county_N[['NAME','STATE','total','geometry']]
-
-US_county_N['total'] = US_county_N['total'].fillna(0)
-
-plt.rcParams['axes.linewidth'] = 3
-plt.rcParams['hatch.linewidth'] = 3
-plt.rcParams['xtick.labelsize'] = 30
-plt.rcParams['ytick.labelsize'] = 30
-plt.rcParams['font.sans-serif'] = 'Arial'
-
-plt.rcParams.update({'mathtext.fontset':'custom'})
-plt.rcParams.update({'mathtext.default':'regular'})
-plt.rcParams.update({'mathtext.bf':'Arial: bold'})
-plt.rcParams.update({'figure.max_open_warning': 100})
-
-fig, ax = plt.subplots(figsize=(30, 30))
-
-color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['w', a, da])
-
-US_county_N.plot(column='total', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, edgecolor='k', linewidth=0.5)
-
-fig.axes[1].set_ylabel('$\mathbf{Nitrogen}$ [kg·${year^{−1}}$]', fontname='Arial', fontsize=41)
-fig.axes[1].tick_params(length=7.5, width=1.5)
-
-pos1 = fig.axes[1].get_position()
-pos2 = [pos1.x0-0.035, pos1.y0, pos1.width, pos1.height] 
-fig.axes[1].set_position(pos2)
-
-# comment out the following line if the colorbar is needed
-# fig.delaxes(fig.axes[1])
-
-ax.set_aspect(1)
-
-ax.set_axis_off()
-
 #%% P needs
 
 US_county_P = US_county.merge(P, left_on=['NAME','STATE'], right_on=['CountyName','State'], how='left')
@@ -770,8 +732,46 @@ color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['
 
 US_county_P.plot(column='total', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, edgecolor='k', linewidth=0.5)
 
-fig.axes[1].set_ylabel('$\mathbf{Phosphorus}$ [kg·${year^{−1}}$]', fontname='Arial', fontsize=41)
-fig.axes[1].tick_params(length=7.5, width=1.5)
+fig.axes[1].set_ylabel('$\mathbf{Phosphorus}$ [kg·${year^{−1}}$]', fontname='Arial', fontsize=35)
+fig.axes[1].tick_params(length=10, width=3)
+
+pos1 = fig.axes[1].get_position()
+pos2 = [pos1.x0-0.035, pos1.y0, pos1.width, pos1.height] 
+fig.axes[1].set_position(pos2)
+
+# comment out the following line if the colorbar is needed
+# fig.delaxes(fig.axes[1])
+
+ax.set_aspect(1)
+
+ax.set_axis_off()
+
+#%% N needs
+
+US_county_N = US_county.merge(N, left_on=['NAME','STATE'], right_on=['CountyName','State'], how='left')
+US_county_N = US_county_N[['NAME','STATE','total','geometry']]
+
+US_county_N['total'] = US_county_N['total'].fillna(0)
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 30
+plt.rcParams['ytick.labelsize'] = 30
+plt.rcParams['font.sans-serif'] = 'Arial'
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+plt.rcParams.update({'figure.max_open_warning': 100})
+
+fig, ax = plt.subplots(figsize=(30, 30))
+
+color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['w', a, da])
+
+US_county_N.plot(column='total', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, edgecolor='k', linewidth=0.5)
+
+fig.axes[1].set_ylabel('$\mathbf{Nitrogen}$ [kg·${year^{−1}}$]', fontname='Arial', fontsize=35)
+fig.axes[1].tick_params(length=10, width=3)
 
 pos1 = fig.axes[1].get_position()
 pos2 = [pos1.x0-0.035, pos1.y0, pos1.width, pos1.height] 
@@ -4988,6 +4988,8 @@ P_county['offset'] = P_county['median_P_kg_per_year']/P_county['total']
 
 P_county['offset_capped'] = P_county['offset'].apply(lambda x: 1 if x > 1 else x)
 
+P_county['offset_capped'] = P_county['offset_capped'].fillna(0)
+
 #%% county-level phosphorus fertilizer offset - visualization
 
 plt.rcParams['axes.linewidth'] = 3
@@ -5009,8 +5011,8 @@ US_county.plot(ax=ax, color='none', edgecolor='k', linewidth=0.5)
 
 P_county.plot(column='offset_capped', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, edgecolor='k', linewidth=0.5)
 
-fig.axes[1].set_ylabel('$\mathbf{Phosphorus\ offset\ ratio}$', fontname='Arial', fontsize=41)
-fig.axes[1].tick_params(length=7.5, width=1.5)
+fig.axes[1].set_ylabel('$\mathbf{Phosphorus\ offset\ ratio}$', fontname='Arial', fontsize=35)
+fig.axes[1].tick_params(length=10, width=3)
 
 pos1 = fig.axes[1].get_position()
 pos2 = [pos1.x0-0.035, pos1.y0, pos1.width, pos1.height] 
@@ -5092,6 +5094,8 @@ N_county['offset'] = N_county['median_N_kg_per_year']/N_county['total']
 
 N_county['offset_capped'] = N_county['offset'].apply(lambda x: 1 if x > 1 else x)
 
+N_county['offset_capped'] = N_county['offset_capped'].fillna(0)
+
 #%% county-level nitrogen fertilizer offset - visualization
 
 plt.rcParams['axes.linewidth'] = 3
@@ -5113,12 +5117,14 @@ US_county.plot(ax=ax, color='none', edgecolor='k', linewidth=0.5)
 
 N_county.plot(column='offset_capped', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, edgecolor='k', linewidth=0.5)
 
-fig.axes[1].set_ylabel('$\mathbf{Nitrogen\ offset\ ratio}$', fontname='Arial', fontsize=41)
-fig.axes[1].tick_params(length=7.5, width=1.5)
+fig.axes[1].set_ylabel('$\mathbf{Nitrogen\ offset\ ratio}$', fontname='Arial', fontsize=35)
+fig.axes[1].tick_params(length=10, width=3)
 
 pos1 = fig.axes[1].get_position()
 pos2 = [pos1.x0-0.035, pos1.y0, pos1.width, pos1.height] 
 fig.axes[1].set_position(pos2)
+
+fig.axes[1]
 
 # comment out the following line if the colorbar is needed
 # fig.delaxes(fig.axes[1])
