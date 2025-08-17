@@ -204,9 +204,6 @@ for function in (create_C1_system, create_C2_system, create_C3_system,
                                                  exclude=(sys.flowsheet.raw_wastewater,),
                                                  annual=True)['GlobalWarming']/sys.flowsheet.raw_wastewater.F_vol/2.3141471786573806)
     
-    
-    
-    
     LCA_results.append(sys.LCA.get_total_impacts(operation_only=True,
                                                  exclude=(sys.flowsheet.raw_wastewater,),
                                                  annual=True)['GlobalWarming']/sys.flowsheet.raw_wastewater.F_vol/2.3141471786573806)

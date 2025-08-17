@@ -637,9 +637,9 @@ class AnaerobicDigestion(SanUnit):
     Parameters
     ----------
     ins : iterable
-        input_sludge, natural_gas.
+        input_sludge.
     outs : iterable
-        digested_sludge, fugitive_methane.
+        digested_sludge, natural_gas, fugitive_methane.
     VS_reduction : float
         volatile solids reduction after aerobic digestion, [-].
     biogas_yield : float
@@ -657,9 +657,6 @@ class AnaerobicDigestion(SanUnit):
         typically, 0.01 for default, 0 for enclosed, 0.05 for candlestick.
     RNG_parasitic : float
         parasitic load from natural gas conditioning and injection, [-].
-    # TODO: double check unit_heat is for m3 solids but not m3 reactor volume
-    unit_heat : float
-        heat for anaerobic digestion, [m3 natural gas/m3 solids].
     net_capacity_factor : float
         actual electricity generated to the theoretical maximum, [-].
     HRT : float
@@ -791,6 +788,7 @@ class AnaerobicDigestion(SanUnit):
         digested_sludge, natural_gas, fugitive_methane = self.outs
         
         digested_sludge.phase = 'l'
+        natural_gas.phase = 'g'
         fugitive_methane.phase = 'g'
         
         digested_sludge.imass['H2O'] = input_sludge.imass['H2O']
@@ -1162,6 +1160,7 @@ class AlkalineStabilization(SanUnit):
         stabilized_solids, NG_as_CO2 = self.outs
         
         stabilized_solids.phase = 'l'
+        NG_as_CO2.phase = 'g'
         
         # dry tonne/h
         self.dry_solids = (dewatered_sludge.F_mass - dewatered_sludge.imass['H2O'])/1000
@@ -1467,6 +1466,7 @@ class HeatDrying(SanUnit):
         input_sludge, natural_gas = self.ins
         dried_solids, vapor = self.outs
         
+        natural_gas.phase = 'g'
         dried_solids.phase = 'l'
         vapor.phase = 'g'
         
@@ -1623,6 +1623,7 @@ class Incineration(SanUnit):
         dried_solids, natural_gas = self.ins
         ash, vapor, fugitive_methane, fugitive_nitrous_oxide = self.outs
         
+        natural_gas.phase = 'g'
         ash.phase = 's'
         vapor.phase = 'g'
         fugitive_methane.phase = 'g'
@@ -2255,14 +2256,14 @@ class Landfilling(SanUnit):
         # TODO: add CI; any price?
         sequestered_carbon_dioxide.imass['CO2'] = -OC_mass_flow*(1 - self.OC_decomposition_ratio)*_C_to_CO2
     
-    def _design(self):
-        # TODO: confirm no methane is combusted to produce heat
-        # kW
-        self.add_power_utility(-self.methane_combustion*self.methane_electricity/methane_density*methane_heat*self.BTU_to_kWh_with_efficiency*self.net_capacity_factor)
-    
     def _cost(self):
         landfilled_solids = self.outs[0]
         landfilled_solids.price = -self.tipping_fee/1000
+    
+    @property
+    def electricity_kW(self):
+        # TODO: confirm no methane is combusted to produce heat
+        return self.methane_combustion*self.methane_electricity/methane_density*methane_heat*self.BTU_to_kWh_with_efficiency*self.net_capacity_factor
     
     @property
     def unit_process(self):
