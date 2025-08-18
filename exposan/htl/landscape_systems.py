@@ -14,7 +14,6 @@ for license details.
 
 #%% housekeeping
 
-# TODO: if including emissions during downstream processes (e.g., land application, landfilling), add related costs or just assume e.g., a biosolids selling price or a tipping fee?
 
 #%% initialization
 
@@ -55,12 +54,6 @@ GDPCTPI = {2005: 81.537,
            2024: 125.231}	
 
 labor_index = tea_indices['labor']
-
-GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
-                                   method='TRACI',
-                                   category='environmental impact',
-                                   unit='kg CO2-eq',
-                                   description='Global Warming Potential')
 
 # TODO: no HXN in all systems
 
@@ -111,13 +104,14 @@ __all__ = (
 
 #%% system C1
 
-def create_C1_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.15):
+def create_C1_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.15):
     flowsheet_ID = 'C1'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -157,13 +151,19 @@ def create_C1_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.1
     Landfilling = lsu.Landfilling(ID='Landfilling',
                                   ins=Dewatering-0,
                                   outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'),
-                                  solids_distance=solids_distance)
+                                  solids_distance=LF_distance)
     
     sys = qs.System.from_units(ID='system_C1',
                                units=list(flowsheet.unit),
                                operating_hours=operation_hours)
     
     sys.simulate()
+    
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
     Electricity.add_indicator(GlobalWarming, 0.67877501)
@@ -173,7 +173,7 @@ def create_C1_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.1
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
     Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
-        
+    
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.065877932)
     
@@ -188,7 +188,7 @@ def create_C1_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.1
     # carbon sequestration
     qs.StreamImpactItem(ID='Sequestered_carbon_dioxide_LF', linked_stream=stream.sequestered_carbon_dioxide_LF, GlobalWarming=1)
     
-    sludge_trucking = qs.ImpactItem('Sludge_trucking', functional_unit='kg*km')
+    sludge_trucking = qs.ImpactItem(ID='Sludge_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     sludge_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
     
@@ -197,7 +197,7 @@ def create_C1_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.1
     # converted to 2023$/kg/km
     sludge_trucking.price = (0.00551 + 0.0000541*Landfilling.solids_distance)/Landfilling.solids_distance
     
-    sludge_transportation = qs.Transportation('Sludge_trucking',
+    sludge_transportation = qs.Transportation(ID='Sludge_transportation',
                                               linked_unit=Landfilling,
                                               item=sludge_trucking,
                                               load_type='mass',
@@ -236,13 +236,14 @@ def create_C1_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.1
 
 #%% system C2
 
-def create_C2_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.2):
+def create_C2_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.2):
     flowsheet_ID = 'C2'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -278,22 +279,30 @@ def create_C2_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.2
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: add cost and CI for natural_gas_as_CO2
     AlkalineStabilization = lsu.AlkalineStabilization(ID='AlkalineStabilization',
-                                                      ins=(Dewatering-0, 'lime'),
-                                                      outs=('stabilized_solids','natural_gas_as_CO2'))
+                                                      ins=(Dewatering-0, 'lime', 'natural_gas_lime'),
+                                                      outs='stabilized_solids')
     AlkalineStabilization.ins[1].price = 0.1189/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
+    # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
+    AlkalineStabilization.ins[2].price = 0.218
     
     Landfilling = lsu.Landfilling(ID='Landfilling',
                                   ins=AlkalineStabilization-0,
                                   outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'),
-                                  solids_distance=solids_distance)
+                                  solids_distance=LF_distance)
     
     sys = qs.System.from_units(ID='system_C2',
                                units=list(flowsheet.unit),
                                operating_hours=operation_hours)
     
     sys.simulate()
+    
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
     Electricity.add_indicator(GlobalWarming, 0.67877501)
@@ -303,15 +312,16 @@ def create_C2_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.2
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
     Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
-        
+    
+    Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
+    Natural_gas_V.add_indicator(GlobalWarming, 0.47016123 + natural_gas_density/16*44)
+    
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.065877932)
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
-    # TODO: in the baseline analysis, need to determine what order of the geography to use (e.g., global then ROW?)
     qs.StreamImpactItem(ID='Lime', linked_stream=stream.lime, GlobalWarming=0.04261602)
-    qs.StreamImpactItem(ID='Natural_gas_as_CO2', linked_stream=stream.natural_gas_as_CO2, GlobalWarming=1)
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
@@ -321,7 +331,7 @@ def create_C2_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.2
     # carbon sequestration
     qs.StreamImpactItem(ID='Sequestered_carbon_dioxide_LF', linked_stream=stream.sequestered_carbon_dioxide_LF, GlobalWarming=1)
     
-    sludge_trucking = qs.ImpactItem('Sludge_trucking', functional_unit='kg*km')
+    sludge_trucking = qs.ImpactItem(ID='Sludge_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     sludge_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
     
@@ -330,7 +340,7 @@ def create_C2_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.2
     # converted to 2023$/kg/km
     sludge_trucking.price = (0.00551 + 0.0000541*Landfilling.solids_distance)/Landfilling.solids_distance
     
-    sludge_transportation = qs.Transportation('Sludge_trucking',
+    sludge_transportation = qs.Transportation(ID='Sludge_transportation',
                                               linked_unit=Landfilling,
                                               item=sludge_trucking,
                                               load_type='mass',
@@ -349,6 +359,7 @@ def create_C2_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.2
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production()-sys.flowsheet.Landfilling.electricity_kW*operation_hours)*20,
            Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
            Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Natural_gas_V=lambda:sys.flowsheet.AlkalineStabilization.ins[2].F_vol*operation_hours*20,
            Cooling=lambda:sys.get_cooling_duty()/1000*20,
            )
     
@@ -369,13 +380,14 @@ def create_C2_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.2
 
 #%% system C3
 
-def create_C3_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.2):
+def create_C3_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.2):
     flowsheet_ID = 'C3'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -411,16 +423,18 @@ def create_C3_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.2
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: add cost and CI for natural_gas_as_CO2
     AlkalineStabilization = lsu.AlkalineStabilization(ID='AlkalineStabilization',
-                                                      ins=(Dewatering-0, 'lime'),
-                                                      outs=('stabilized_solids','natural_gas_as_CO2'))
+                                                      ins=(Dewatering-0, 'lime', 'natural_gas_lime'),
+                                                      outs='stabilized_solids')
     AlkalineStabilization.ins[1].price = 0.1189/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
+    # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
+    AlkalineStabilization.ins[2].price = 0.218
     
     LandApplication = lsu.LandApplication(ID='LandApplication',
                                           ins=(AlkalineStabilization-0, 'diesel_LA'),
                                           outs=('biosolids_cost','methane_LA','nitrous_oxide_LA','carbon_dioxide_LA'),
-                                          solids_distance=solids_distance)
+                                          solids_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
     # TODO: update cost for biosolids_cost with references (should be based on dry weight since heat drying in some systems can reduce moisture)
@@ -431,6 +445,12 @@ def create_C3_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.2
                                operating_hours=operation_hours)
     
     sys.simulate()
+    
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
     
     # BEAM
     N_fertilizer = qs.ImpactItem('N_fertilizer', functional_unit='kg')
@@ -448,15 +468,16 @@ def create_C3_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.2
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
     Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
-        
+    
+    Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
+    Natural_gas_V.add_indicator(GlobalWarming, 0.47016123 + natural_gas_density/16*44)
+    
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.065877932)
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
-    # TODO: in the baseline analysis, need to determine what order of the geography to use (e.g., global then ROW?)
     qs.StreamImpactItem(ID='Lime', linked_stream=stream.lime, GlobalWarming=0.04261602)
-    qs.StreamImpactItem(ID='Natural_gas_as_CO2', linked_stream=stream.natural_gas_as_CO2, GlobalWarming=1)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
     qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.4776041 + 44*12/(12*12 + 23*1))
@@ -469,7 +490,7 @@ def create_C3_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.2
     # carbon sequestration
     qs.StreamImpactItem(ID='Carbon_dioxide_LA', linked_stream=stream.carbon_dioxide_LA, GlobalWarming=1)
     
-    biosolids_trucking = qs.ImpactItem('Biosolids_trucking', functional_unit='kg*km')
+    biosolids_trucking = qs.ImpactItem(ID='Biosolids_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     biosolids_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
     
@@ -478,7 +499,7 @@ def create_C3_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.2
     # converted to 2023$/kg/km
     biosolids_trucking.price = (0.00551 + 0.0000541*LandApplication.solids_distance)/LandApplication.solids_distance
     
-    biosolids_transportation = qs.Transportation('Sludge_trucking',
+    biosolids_transportation = qs.Transportation(ID='Biosolids_transportation',
                                                  linked_unit=LandApplication,
                                                  item=biosolids_trucking,
                                                  load_type='mass',
@@ -499,6 +520,7 @@ def create_C3_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.2
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*20,
            Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
            Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Natural_gas_V=lambda:sys.flowsheet.AlkalineStabilization.ins[2].F_vol*operation_hours*20,
            Cooling=lambda:sys.get_cooling_duty()/1000*20,
            )
     
@@ -519,13 +541,14 @@ def create_C3_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.2
 
 #%% system C4
 
-def create_C4_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.2):
+def create_C4_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.2):
     flowsheet_ID = 'C4'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -561,11 +584,11 @@ def create_C4_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.2
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: add cost for diesel_composting
     # TODO: make sure the Composting unit is composting + land application
     Composting = lsu.Composting(ID='Composting', ins=(Dewatering-0, 'bulking_agent', 'diesel_composting'),
                                 outs=('compost_cost','methane_composting','nitrous_oxide_composting','sequestered_carbon_dioxide_composting'),
-                                solids_distance=solids_distance)
+                                solids_distance=LA_distance)
+    # TODO: need to decide how to deal with the bulking_agent in composting and its costing
     # TODO: uncertainty range (uniform) 18-36 2005$/tonne
     Composting.ins[1].price = 27/1000/GDPCTPI[2005]*GDPCTPI[2023]
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
@@ -578,6 +601,12 @@ def create_C4_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.2
                                operating_hours=operation_hours)
     
     sys.simulate()
+    
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
     
     # BEAM
     N_fertilizer = qs.ImpactItem('N_fertilizer', functional_unit='kg')
@@ -595,13 +624,12 @@ def create_C4_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.2
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
     Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
-        
+    
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.065877932)
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
-    # TODO: in the baseline analysis, need to determine what order of the geography to use (e.g., global then ROW?)
     qs.StreamImpactItem(ID='Bulking_agent', linked_stream=stream.bulking_agent, GlobalWarming=0.041056332)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
@@ -615,7 +643,7 @@ def create_C4_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.2
     # carbon sequestration
     qs.StreamImpactItem(ID='Sequestered_carbon_dioxide_composting', linked_stream=stream.sequestered_carbon_dioxide_composting, GlobalWarming=1)
     
-    compost_trucking = qs.ImpactItem('Compost_trucking', functional_unit='kg*km')
+    compost_trucking = qs.ImpactItem(ID='Compost_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     compost_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
     
@@ -624,7 +652,7 @@ def create_C4_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.2
     # converted to 2023$/kg/km
     compost_trucking.price = (0.00551 + 0.0000541*Composting.solids_distance)/Composting.solids_distance
     
-    compost_transportation = qs.Transportation('Sludge_trucking',
+    compost_transportation = qs.Transportation(ID='Compost_transportation',
                                                linked_unit=Composting,
                                                item=compost_trucking,
                                                load_type='mass',
@@ -665,13 +693,14 @@ def create_C4_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.2
 
 #%% system C5
 
-def create_C5_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.3):
+def create_C5_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.3):
     flowsheet_ID = 'C5'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -716,13 +745,19 @@ def create_C5_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.3
     Landfilling = lsu.Landfilling(ID='Landfilling',
                                   ins=HeatDrying-0,
                                   outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'),
-                                  solids_distance=solids_distance)
+                                  solids_distance=LF_distance)
     
     sys = qs.System.from_units(ID='system_C5',
                                units=list(flowsheet.unit),
                                operating_hours=operation_hours)
     
     sys.simulate()
+    
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
     Electricity.add_indicator(GlobalWarming, 0.67877501)
@@ -750,7 +785,7 @@ def create_C5_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.3
     # carbon sequestration
     qs.StreamImpactItem(ID='Sequestered_carbon_dioxide_LF', linked_stream=stream.sequestered_carbon_dioxide_LF, GlobalWarming=1)
     
-    sludge_trucking = qs.ImpactItem('Sludge_trucking', functional_unit='kg*km')
+    sludge_trucking = qs.ImpactItem(ID='Sludge_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     sludge_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
     
@@ -759,7 +794,7 @@ def create_C5_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.3
     # converted to 2023$/kg/km
     sludge_trucking.price = (0.00551 + 0.0000541*Landfilling.solids_distance)/Landfilling.solids_distance
     
-    sludge_transportation = qs.Transportation('Sludge_trucking',
+    sludge_transportation = qs.Transportation(ID='Sludge_transportation',
                                               linked_unit=Landfilling,
                                               item=sludge_trucking,
                                               load_type='mass',
@@ -799,13 +834,14 @@ def create_C5_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.3
 
 #%% system C6
 
-def create_C6_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.3):
+def create_C6_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.3):
     flowsheet_ID = 'C6'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -850,7 +886,7 @@ def create_C6_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.3
     LandApplication = lsu.LandApplication(ID='LandApplication',
                                           ins=(HeatDrying-0, 'diesel_LA'),
                                           outs=('biosolids_cost','methane_LA','nitrous_oxide_LA','carbon_dioxide_LA'),
-                                          solids_distance=solids_distance)
+                                          solids_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
     
@@ -859,6 +895,12 @@ def create_C6_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.3
                                operating_hours=operation_hours)
     
     sys.simulate()
+    
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
     
     # BEAM
     N_fertilizer = qs.ImpactItem('N_fertilizer', functional_unit='kg')
@@ -885,7 +927,6 @@ def create_C6_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.3
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
-    # TODO: in the baseline analysis, need to determine what order of the geography to use (e.g., global then ROW?)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
     qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.4776041 + 44*12/(12*12 + 23*1))
@@ -898,7 +939,7 @@ def create_C6_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.3
     # carbon sequestration
     qs.StreamImpactItem(ID='Carbon_dioxide_LA', linked_stream=stream.carbon_dioxide_LA, GlobalWarming=1)
     
-    biosolids_trucking = qs.ImpactItem('Biosolids_trucking', functional_unit='kg*km')
+    biosolids_trucking = qs.ImpactItem(ID='Biosolids_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     biosolids_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
     
@@ -907,7 +948,7 @@ def create_C6_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.3
     # converted to 2023$/kg/km
     biosolids_trucking.price = (0.00551 + 0.0000541*LandApplication.solids_distance)/LandApplication.solids_distance
     
-    biosolids_transportation = qs.Transportation('Sludge_trucking',
+    biosolids_transportation = qs.Transportation(ID='Biosolids_transportation',
                                                  linked_unit=LandApplication,
                                                  item=biosolids_trucking,
                                                  load_type='mass',
@@ -949,13 +990,14 @@ def create_C6_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.3
 
 #%% system C7
 
-def create_C7_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.4):
+def create_C7_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.4):
     flowsheet_ID = 'C7'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -997,11 +1039,10 @@ def create_C7_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.4
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
     HeatDrying.ins[1].price = 0.218
     
-    # TODO: consider adding ash disposal
     Incineration = lsu.Incineration(ID='Incineration',
                                     ins=(HeatDrying-0, 'natural_gas_incineration'),
                                     outs=('ash_incineration','vapor_incineration','methane_IN','nitrous_oxide_IN'),
-                                    solids_distance=solids_distance)
+                                    solids_distance=LF_distance)
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
     Incineration.ins[1].price = 0.218
@@ -1013,6 +1054,12 @@ def create_C7_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.4
                                operating_hours=operation_hours)
     
     sys.simulate()
+    
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
     Electricity.add_indicator(GlobalWarming, 0.67877501)
@@ -1038,27 +1085,27 @@ def create_C7_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.4
     qs.StreamImpactItem(ID='Methane_IN', linked_stream=stream.methane_IN, GlobalWarming=29.8)
     qs.StreamImpactItem(ID='Nitrous_oxide_IN', linked_stream=stream.nitrous_oxide_IN, GlobalWarming=273)
     
-    ash_trucking = qs.ImpactItem('Sludge_trucking', functional_unit='kg*km')
+    ash_incineration_trucking = qs.ImpactItem(ID='Ash_incineration_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    ash_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    ash_incineration_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
     
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
-    ash_trucking.price = (0.00551 + 0.0000541*Incineration.solids_distance)/Incineration.solids_distance
+    ash_incineration_trucking.price = (0.00551 + 0.0000541*Incineration.solids_distance)/Incineration.solids_distance
     
-    ash_transportation = qs.Transportation('Sludge_trucking',
-                                           linked_unit=Incineration,
-                                           item=ash_trucking,
-                                           load_type='mass',
-                                           load=stream.ash_incineration.F_mass,
-                                           load_unit='kg',
-                                           distance=Incineration.solids_distance,
-                                           distance_unit='km',
-                                           # set to 1 h since load = kg/h
-                                           interval='1',
-                                           interval_unit='h')
-    Incineration.transportation = ash_transportation
+    ash_incineration_transportation = qs.Transportation(ID='Ash_incineration_transportation',
+                                                        linked_unit=Incineration,
+                                                        item=ash_incineration_trucking,
+                                                        load_type='mass',
+                                                        load=stream.ash_incineration.F_mass,
+                                                        load_unit='kg',
+                                                        distance=Incineration.solids_distance,
+                                                        distance_unit='km',
+                                                        # set to 1 h since load = kg/h
+                                                        interval='1',
+                                                        interval_unit='h')
+    Incineration.transportation = ash_incineration_transportation
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
@@ -1087,13 +1134,14 @@ def create_C7_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.4
 
 #%% system C8
 
-def create_C8_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.3):
+def create_C8_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.3):
     flowsheet_ID = 'C8'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -1135,13 +1183,19 @@ def create_C8_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.3
     Landfilling = lsu.Landfilling(ID='Landfilling',
                                   ins=Dewatering-0,
                                   outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'),
-                                  solids_distance=solids_distance)
+                                  solids_distance=LF_distance)
     
     sys = qs.System.from_units(ID='system_C8',
                                units=list(flowsheet.unit),
                                operating_hours=operation_hours)
     
     sys.simulate()
+    
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
     Electricity.add_indicator(GlobalWarming, 0.67877501)
@@ -1151,7 +1205,7 @@ def create_C8_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.3
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
     Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
-        
+    
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.065877932)
     
@@ -1166,7 +1220,7 @@ def create_C8_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.3
     # carbon sequestration
     qs.StreamImpactItem(ID='Sequestered_carbon_dioxide_LF', linked_stream=stream.sequestered_carbon_dioxide_LF, GlobalWarming=1)
     
-    sludge_trucking = qs.ImpactItem('Sludge_trucking', functional_unit='kg*km')
+    sludge_trucking = qs.ImpactItem(ID='Sludge_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     sludge_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
     
@@ -1175,7 +1229,7 @@ def create_C8_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.3
     # converted to 2023$/kg/km
     sludge_trucking.price = (0.00551 + 0.0000541*Landfilling.solids_distance)/Landfilling.solids_distance
     
-    sludge_transportation = qs.Transportation('Sludge_trucking',
+    sludge_transportation = qs.Transportation(ID='Sludge_transportation',
                                               linked_unit=Landfilling,
                                               item=sludge_trucking,
                                               load_type='mass',
@@ -1214,13 +1268,14 @@ def create_C8_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.3
 
 #%% system C9
 
-def create_C9_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.3):
+def create_C9_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.3):
     flowsheet_ID = 'C9'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -1262,7 +1317,7 @@ def create_C9_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.3
     LandApplication = lsu.LandApplication(ID='LandApplication',
                                           ins=(Dewatering-0, 'diesel_LA'),
                                           outs=('biosolids_cost','methane_LA','nitrous_oxide_LA','carbon_dioxide_LA'),
-                                          solids_distance=solids_distance)
+                                          solids_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
     
@@ -1271,6 +1326,12 @@ def create_C9_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.3
                                operating_hours=operation_hours)
     
     sys.simulate()
+    
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
     
     # BEAM
     N_fertilizer = qs.ImpactItem('N_fertilizer', functional_unit='kg')
@@ -1288,13 +1349,12 @@ def create_C9_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.3
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
     Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
-        
+    
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.065877932)
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
-    # TODO: in the baseline analysis, need to determine what order of the geography to use (e.g., global then ROW?)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
     qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.4776041 + 44*12/(12*12 + 23*1))
@@ -1307,7 +1367,7 @@ def create_C9_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.3
     # carbon sequestration
     qs.StreamImpactItem(ID='Carbon_dioxide_LA', linked_stream=stream.carbon_dioxide_LA, GlobalWarming=1)
     
-    biosolids_trucking = qs.ImpactItem('Biosolids_trucking', functional_unit='kg*km')
+    biosolids_trucking = qs.ImpactItem(ID='Biosolids_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     biosolids_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
     
@@ -1316,7 +1376,7 @@ def create_C9_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.3
     # converted to 2023$/kg/km
     biosolids_trucking.price = (0.00551 + 0.0000541*LandApplication.solids_distance)/LandApplication.solids_distance
     
-    biosolids_transportation = qs.Transportation('Sludge_trucking',
+    biosolids_transportation = qs.Transportation(ID='Biosolids_transportation',
                                                  linked_unit=LandApplication,
                                                  item=biosolids_trucking,
                                                  load_type='mass',
@@ -1357,13 +1417,14 @@ def create_C9_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.3
 
 #%% system C10
 
-def create_C10_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.35):
+def create_C10_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.35):
     flowsheet_ID = 'C10'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -1402,11 +1463,11 @@ def create_C10_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: add cost for diesel_composting
     # TODO: make sure the Composting unit is composting + land application
     Composting = lsu.Composting(ID='Composting', ins=(Dewatering-0, 'bulking_agent', 'diesel_composting'),
                                 outs=('compost_cost','methane_composting','nitrous_oxide_composting','sequestered_carbon_dioxide_composting'),
-                                solids_distance=solids_distance)
+                                solids_distance=LA_distance)
+    # TODO: need to decide how to deal with the bulking_agent in composting and its costing
     # TODO: uncertainty range (uniform) 18-36 2005$/tonne
     Composting.ins[1].price = 27/1000/GDPCTPI[2005]*GDPCTPI[2023]
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
@@ -1419,6 +1480,12 @@ def create_C10_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                operating_hours=operation_hours)
     
     sys.simulate()
+    
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
     
     # BEAM
     N_fertilizer = qs.ImpactItem('N_fertilizer', functional_unit='kg')
@@ -1436,13 +1503,12 @@ def create_C10_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
     Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
-        
+    
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.065877932)
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
-    # TODO: in the baseline analysis, need to determine what order of the geography to use (e.g., global then ROW?)
     qs.StreamImpactItem(ID='Bulking_agent', linked_stream=stream.bulking_agent, GlobalWarming=0.041056332)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
@@ -1456,7 +1522,7 @@ def create_C10_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     # carbon sequestration
     qs.StreamImpactItem(ID='Sequestered_carbon_dioxide_composting', linked_stream=stream.sequestered_carbon_dioxide_composting, GlobalWarming=1)
     
-    compost_trucking = qs.ImpactItem('Compost_trucking', functional_unit='kg*km')
+    compost_trucking = qs.ImpactItem(ID='Compost_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     compost_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
     
@@ -1465,7 +1531,7 @@ def create_C10_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     # converted to 2023$/kg/km
     compost_trucking.price = (0.00551 + 0.0000541*Composting.solids_distance)/Composting.solids_distance
     
-    compost_transportation = qs.Transportation('Sludge_trucking',
+    compost_transportation = qs.Transportation(ID='Compost_transportation',
                                                linked_unit=Composting,
                                                item=compost_trucking,
                                                load_type='mass',
@@ -1506,13 +1572,14 @@ def create_C10_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
 
 #%% system C11
 
-def create_C11_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.45):
+def create_C11_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.45):
     flowsheet_ID = 'C11'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -1560,13 +1627,19 @@ def create_C11_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     Landfilling = lsu.Landfilling(ID='Landfilling',
                                   ins=HeatDrying-0,
                                   outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'),
-                                  solids_distance=solids_distance)
+                                  solids_distance=LF_distance)
     
     sys = qs.System.from_units(ID='system_C11',
                                units=list(flowsheet.unit),
                                operating_hours=operation_hours)
     
     sys.simulate()
+    
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
     Electricity.add_indicator(GlobalWarming, 0.67877501)
@@ -1594,7 +1667,7 @@ def create_C11_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     # carbon sequestration
     qs.StreamImpactItem(ID='Sequestered_carbon_dioxide_LF', linked_stream=stream.sequestered_carbon_dioxide_LF, GlobalWarming=1)
     
-    sludge_trucking = qs.ImpactItem('Sludge_trucking', functional_unit='kg*km')
+    sludge_trucking = qs.ImpactItem(ID='Sludge_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     sludge_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
     
@@ -1603,7 +1676,7 @@ def create_C11_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     # converted to 2023$/kg/km
     sludge_trucking.price = (0.00551 + 0.0000541*Landfilling.solids_distance)/Landfilling.solids_distance
     
-    sludge_transportation = qs.Transportation('Sludge_trucking',
+    sludge_transportation = qs.Transportation(ID='Sludge_transportation',
                                               linked_unit=Landfilling,
                                               item=sludge_trucking,
                                               load_type='mass',
@@ -1643,13 +1716,14 @@ def create_C11_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
 
 #%% system C12
 
-def create_C12_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.45):
+def create_C12_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.45):
     flowsheet_ID = 'C12'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -1697,7 +1771,7 @@ def create_C12_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     LandApplication = lsu.LandApplication(ID='LandApplication',
                                           ins=(HeatDrying-0, 'diesel_LA'),
                                           outs=('biosolids_cost','methane_LA','nitrous_oxide_LA','carbon_dioxide_LA'),
-                                          solids_distance=solids_distance)
+                                          solids_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
     
@@ -1706,6 +1780,12 @@ def create_C12_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                operating_hours=operation_hours)
     
     sys.simulate()
+    
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
     
     # BEAM
     N_fertilizer = qs.ImpactItem('N_fertilizer', functional_unit='kg')
@@ -1732,7 +1812,6 @@ def create_C12_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
-    # TODO: in the baseline analysis, need to determine what order of the geography to use (e.g., global then ROW?)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
     qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.4776041 + 44*12/(12*12 + 23*1))
@@ -1745,7 +1824,7 @@ def create_C12_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     # carbon sequestration
     qs.StreamImpactItem(ID='Carbon_dioxide_LA', linked_stream=stream.carbon_dioxide_LA, GlobalWarming=1)
     
-    biosolids_trucking = qs.ImpactItem('Biosolids_trucking', functional_unit='kg*km')
+    biosolids_trucking = qs.ImpactItem(ID='Biosolids_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     biosolids_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
     
@@ -1754,7 +1833,7 @@ def create_C12_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     # converted to 2023$/kg/km
     biosolids_trucking.price = (0.00551 + 0.0000541*LandApplication.solids_distance)/LandApplication.solids_distance
     
-    biosolids_transportation = qs.Transportation('Sludge_trucking',
+    biosolids_transportation = qs.Transportation(ID='Biosolids_transportation',
                                                  linked_unit=LandApplication,
                                                  item=biosolids_trucking,
                                                  load_type='mass',
@@ -1796,13 +1875,14 @@ def create_C12_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
 
 #%% system C13
 
-def create_C13_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.55):
+def create_C13_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.55):
     flowsheet_ID = 'C13'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -1850,7 +1930,7 @@ def create_C13_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     Incineration = lsu.Incineration(ID='Incineration',
                                     ins=(HeatDrying-0, 'natural_gas_incineration'),
                                     outs=('ash_incineration','vapor_incineration','methane_IN','nitrous_oxide_IN'),
-                                    solids_distance=solids_distance)
+                                    solids_distance=LF_distance)
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
     Incineration.ins[1].price = 0.218
@@ -1862,6 +1942,12 @@ def create_C13_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                operating_hours=operation_hours)
     
     sys.simulate()
+    
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
     Electricity.add_indicator(GlobalWarming, 0.67877501)
@@ -1887,27 +1973,27 @@ def create_C13_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     qs.StreamImpactItem(ID='Methane_IN', linked_stream=stream.methane_IN, GlobalWarming=29.8)
     qs.StreamImpactItem(ID='Nitrous_oxide_IN', linked_stream=stream.nitrous_oxide_IN, GlobalWarming=273)
     
-    ash_trucking = qs.ImpactItem('Sludge_trucking', functional_unit='kg*km')
+    ash_incineration_trucking = qs.ImpactItem(ID='Ash_incineration_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    ash_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    ash_incineration_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
     
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
-    ash_trucking.price = (0.00551 + 0.0000541*Incineration.solids_distance)/Incineration.solids_distance
+    ash_incineration_trucking.price = (0.00551 + 0.0000541*Incineration.solids_distance)/Incineration.solids_distance
     
-    ash_transportation = qs.Transportation('Sludge_trucking',
-                                           linked_unit=Incineration,
-                                           item=ash_trucking,
-                                           load_type='mass',
-                                           load=stream.ash_incineration.F_mass,
-                                           load_unit='kg',
-                                           distance=Incineration.solids_distance,
-                                           distance_unit='km',
-                                           # set to 1 h since load = kg/h
-                                           interval='1',
-                                           interval_unit='h')
-    Incineration.transportation = ash_transportation
+    ash_incineration_transportation = qs.Transportation(ID='Ash_incineration_transportation',
+                                                        linked_unit=Incineration,
+                                                        item=ash_incineration_trucking,
+                                                        load_type='mass',
+                                                        load=stream.ash_incineration.F_mass,
+                                                        load_unit='kg',
+                                                        distance=Incineration.solids_distance,
+                                                        distance_unit='km',
+                                                        # set to 1 h since load = kg/h
+                                                        interval='1',
+                                                        interval_unit='h')
+    Incineration.transportation = ash_incineration_transportation
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
@@ -1936,13 +2022,14 @@ def create_C13_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
 
 #%% system C14
 
-def create_C14_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.3):
+def create_C14_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.3):
     flowsheet_ID = 'C14'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -1973,7 +2060,6 @@ def create_C14_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                 outs=('thickened_sludge','reject_thickening'))
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: update biogas flare / RNG / CHP ratios for different scenarios (can keep the flare ratio the same all the time, and the rest of biogas either goes to RNG or CHP)
     # TODO: consider replacing natural_gas with biogas (CH4 + CO2) or create a stream for CO2
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD'),
@@ -1990,13 +2076,19 @@ def create_C14_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     Landfilling = lsu.Landfilling(ID='Landfilling',
                                   ins=Dewatering-0,
                                   outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'),
-                                  solids_distance=solids_distance)
+                                  solids_distance=LF_distance)
     
     sys = qs.System.from_units(ID='system_C14',
                                units=list(flowsheet.unit),
                                operating_hours=operation_hours)
     
     sys.simulate()
+    
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
     Electricity.add_indicator(GlobalWarming, 0.67877501)
@@ -2025,7 +2117,7 @@ def create_C14_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     # carbon sequestration
     qs.StreamImpactItem(ID='Sequestered_carbon_dioxide_LF', linked_stream=stream.sequestered_carbon_dioxide_LF, GlobalWarming=1)
     
-    sludge_trucking = qs.ImpactItem('Sludge_trucking', functional_unit='kg*km')
+    sludge_trucking = qs.ImpactItem(ID='Sludge_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     sludge_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
     
@@ -2034,7 +2126,7 @@ def create_C14_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     # converted to 2023$/kg/km
     sludge_trucking.price = (0.00551 + 0.0000541*Landfilling.solids_distance)/Landfilling.solids_distance
     
-    sludge_transportation = qs.Transportation('Sludge_trucking',
+    sludge_transportation = qs.Transportation(ID='Sludge_transportation',
                                               linked_unit=Landfilling,
                                               item=sludge_trucking,
                                               load_type='mass',
@@ -2074,13 +2166,14 @@ def create_C14_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
 
 #%% system C15
 
-def create_C15_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.3):
+def create_C15_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.3):
     flowsheet_ID = 'C15'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -2111,7 +2204,6 @@ def create_C15_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                 outs=('thickened_sludge','reject_thickening'))
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: update biogas flare / RNG / CHP ratios for different scenarios (can keep the flare ratio the same all the time, and the rest of biogas either goes to RNG or CHP)
     # TODO: consider replacing natural_gas with biogas (CH4 + CO2) or create a stream for CO2
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD'),
@@ -2128,7 +2220,7 @@ def create_C15_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     LandApplication = lsu.LandApplication(ID='LandApplication',
                                           ins=(Dewatering-0, 'diesel_LA'),
                                           outs=('biosolids_cost','methane_LA','nitrous_oxide_LA','carbon_dioxide_LA'),
-                                          solids_distance=solids_distance)
+                                          solids_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
     
@@ -2137,6 +2229,12 @@ def create_C15_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                operating_hours=operation_hours)
     
     sys.simulate()
+    
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
     
     # BEAM
     N_fertilizer = qs.ImpactItem('N_fertilizer', functional_unit='kg')
@@ -2163,7 +2261,6 @@ def create_C15_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
-    # TODO: in the baseline analysis, need to determine what order of the geography to use (e.g., global then ROW?)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
     qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.4776041 + 44*12/(12*12 + 23*1))
@@ -2177,7 +2274,7 @@ def create_C15_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     # carbon sequestration
     qs.StreamImpactItem(ID='Carbon_dioxide_LA', linked_stream=stream.carbon_dioxide_LA, GlobalWarming=1)
     
-    biosolids_trucking = qs.ImpactItem('Biosolids_trucking', functional_unit='kg*km')
+    biosolids_trucking = qs.ImpactItem(ID='Biosolids_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     biosolids_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
     
@@ -2186,7 +2283,7 @@ def create_C15_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     # converted to 2023$/kg/km
     biosolids_trucking.price = (0.00551 + 0.0000541*LandApplication.solids_distance)/LandApplication.solids_distance
     
-    biosolids_transportation = qs.Transportation('Sludge_trucking',
+    biosolids_transportation = qs.Transportation(ID='Biosolids_transportation',
                                                  linked_unit=LandApplication,
                                                  item=biosolids_trucking,
                                                  load_type='mass',
@@ -2228,13 +2325,14 @@ def create_C15_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
 
 #%% system C16
 
-def create_C16_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.35):
+def create_C16_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.35):
     flowsheet_ID = 'C16'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -2265,7 +2363,6 @@ def create_C16_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                 outs=('thickened_sludge','reject_thickening'))
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: update biogas flare / RNG / CHP ratios for different scenarios (can keep the flare ratio the same all the time, and the rest of biogas either goes to RNG or CHP)
     # TODO: consider replacing natural_gas with biogas (CH4 + CO2) or create a stream for CO2
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD'),
@@ -2279,11 +2376,11 @@ def create_C16_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: add cost for diesel_composting
     # TODO: make sure the Composting unit is composting + land application
     Composting = lsu.Composting(ID='Composting', ins=(Dewatering-0, 'bulking_agent', 'diesel_composting'),
                                 outs=('compost_cost','methane_composting','nitrous_oxide_composting','sequestered_carbon_dioxide_composting'),
-                                solids_distance=solids_distance)
+                                solids_distance=LA_distance)
+    # TODO: need to decide how to deal with the bulking_agent in composting and its costing
     # TODO: uncertainty range (uniform) 18-36 2005$/tonne
     Composting.ins[1].price = 27/1000/GDPCTPI[2005]*GDPCTPI[2023]
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
@@ -2296,6 +2393,12 @@ def create_C16_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                operating_hours=operation_hours)
     
     sys.simulate()
+    
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
     
     # BEAM
     N_fertilizer = qs.ImpactItem('N_fertilizer', functional_unit='kg')
@@ -2322,7 +2425,6 @@ def create_C16_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
-    # TODO: in the baseline analysis, need to determine what order of the geography to use (e.g., global then ROW?)
     qs.StreamImpactItem(ID='Bulking_agent', linked_stream=stream.bulking_agent, GlobalWarming=0.041056332)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
@@ -2337,7 +2439,7 @@ def create_C16_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     # carbon sequestration
     qs.StreamImpactItem(ID='Sequestered_carbon_dioxide_composting', linked_stream=stream.sequestered_carbon_dioxide_composting, GlobalWarming=1)
     
-    compost_trucking = qs.ImpactItem('Compost_trucking', functional_unit='kg*km')
+    compost_trucking = qs.ImpactItem(ID='Compost_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     compost_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
     
@@ -2346,7 +2448,7 @@ def create_C16_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     # converted to 2023$/kg/km
     compost_trucking.price = (0.00551 + 0.0000541*Composting.solids_distance)/Composting.solids_distance
     
-    compost_transportation = qs.Transportation('Sludge_trucking',
+    compost_transportation = qs.Transportation(ID='Compost_transportation',
                                                linked_unit=Composting,
                                                item=compost_trucking,
                                                load_type='mass',
@@ -2388,13 +2490,14 @@ def create_C16_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
 
 #%% system C17
 
-def create_C17_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.45):
+def create_C17_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.45):
     flowsheet_ID = 'C17'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -2425,7 +2528,6 @@ def create_C17_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                 outs=('thickened_sludge','reject_thickening'))
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: update biogas flare / RNG / CHP ratios for different scenarios (can keep the flare ratio the same all the time, and the rest of biogas either goes to RNG or CHP)
     # TODO: consider replacing natural_gas with biogas (CH4 + CO2) or create a stream for CO2
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD'),
@@ -2448,13 +2550,19 @@ def create_C17_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     Landfilling = lsu.Landfilling(ID='Landfilling',
                                   ins=HeatDrying-0,
                                   outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'),
-                                  solids_distance=solids_distance)
+                                  solids_distance=LF_distance)
     
     sys = qs.System.from_units(ID='system_C17',
                                units=list(flowsheet.unit),
                                operating_hours=operation_hours)
     
     sys.simulate()
+    
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
     Electricity.add_indicator(GlobalWarming, 0.67877501)
@@ -2483,7 +2591,7 @@ def create_C17_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     # carbon sequestration
     qs.StreamImpactItem(ID='Sequestered_carbon_dioxide_LF', linked_stream=stream.sequestered_carbon_dioxide_LF, GlobalWarming=1)
     
-    sludge_trucking = qs.ImpactItem('Sludge_trucking', functional_unit='kg*km')
+    sludge_trucking = qs.ImpactItem(ID='Sludge_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     sludge_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
     
@@ -2492,7 +2600,7 @@ def create_C17_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     # converted to 2023$/kg/km
     sludge_trucking.price = (0.00551 + 0.0000541*Landfilling.solids_distance)/Landfilling.solids_distance
     
-    sludge_transportation = qs.Transportation('Sludge_trucking',
+    sludge_transportation = qs.Transportation(ID='Sludge_transportation',
                                               linked_unit=Landfilling,
                                               item=sludge_trucking,
                                               load_type='mass',
@@ -2532,13 +2640,14 @@ def create_C17_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
 
 #%% system C18
 
-def create_C18_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.45):
+def create_C18_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.45):
     flowsheet_ID = 'C18'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -2569,7 +2678,6 @@ def create_C18_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                 outs=('thickened_sludge','reject_thickening'))
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: update biogas flare / RNG / CHP ratios for different scenarios (can keep the flare ratio the same all the time, and the rest of biogas either goes to RNG or CHP)
     # TODO: consider replacing natural_gas with biogas (CH4 + CO2) or create a stream for CO2
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD'),
@@ -2592,7 +2700,7 @@ def create_C18_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     LandApplication = lsu.LandApplication(ID='LandApplication',
                                           ins=(HeatDrying-0, 'diesel_LA'),
                                           outs=('biosolids_cost','methane_LA','nitrous_oxide_LA','carbon_dioxide_LA'),
-                                          solids_distance=solids_distance)
+                                          solids_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
     
@@ -2601,6 +2709,12 @@ def create_C18_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                operating_hours=operation_hours)
     
     sys.simulate()
+    
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
     
     # BEAM
     N_fertilizer = qs.ImpactItem('N_fertilizer', functional_unit='kg')
@@ -2627,7 +2741,6 @@ def create_C18_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
-    # TODO: in the baseline analysis, need to determine what order of the geography to use (e.g., global then ROW?)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
     qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.4776041 + 44*12/(12*12 + 23*1))
@@ -2641,7 +2754,7 @@ def create_C18_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     # carbon sequestration
     qs.StreamImpactItem(ID='Carbon_dioxide_LA', linked_stream=stream.carbon_dioxide_LA, GlobalWarming=1)
     
-    biosolids_trucking = qs.ImpactItem('Biosolids_trucking', functional_unit='kg*km')
+    biosolids_trucking = qs.ImpactItem(ID='Biosolids_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     biosolids_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
     
@@ -2650,7 +2763,7 @@ def create_C18_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     # converted to 2023$/kg/km
     biosolids_trucking.price = (0.00551 + 0.0000541*LandApplication.solids_distance)/LandApplication.solids_distance
     
-    biosolids_transportation = qs.Transportation('Sludge_trucking',
+    biosolids_transportation = qs.Transportation(ID='Biosolids_transportation',
                                                  linked_unit=LandApplication,
                                                  item=biosolids_trucking,
                                                  load_type='mass',
@@ -2692,13 +2805,14 @@ def create_C18_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
 
 #%% system C19
 
-def create_C19_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.55):
+def create_C19_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.55):
     flowsheet_ID = 'C19'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -2729,7 +2843,6 @@ def create_C19_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                 outs=('thickened_sludge','reject_thickening'))
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: update biogas flare / RNG / CHP ratios for different scenarios (can keep the flare ratio the same all the time, and the rest of biogas either goes to RNG or CHP)
     # TODO: consider replacing natural_gas with biogas (CH4 + CO2) or create a stream for CO2
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD'),
@@ -2753,7 +2866,7 @@ def create_C19_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     Incineration = lsu.Incineration(ID='Incineration',
                                     ins=(HeatDrying-0, 'natural_gas_incineration'),
                                     outs=('ash_incineration','vapor_incineration','methane_IN','nitrous_oxide_IN'),
-                                    solids_distance=solids_distance)
+                                    solids_distance=LF_distance)
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
     Incineration.ins[1].price = 0.218
@@ -2765,6 +2878,12 @@ def create_C19_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                operating_hours=operation_hours)
     
     sys.simulate()
+    
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
     Electricity.add_indicator(GlobalWarming, 0.67877501)
@@ -2791,27 +2910,27 @@ def create_C19_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     qs.StreamImpactItem(ID='Methane_IN', linked_stream=stream.methane_IN, GlobalWarming=29.8)
     qs.StreamImpactItem(ID='Nitrous_oxide_IN', linked_stream=stream.nitrous_oxide_IN, GlobalWarming=273)
     
-    ash_trucking = qs.ImpactItem('Sludge_trucking', functional_unit='kg*km')
+    ash_incineration_trucking = qs.ImpactItem(ID='Ash_incineration_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    ash_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    ash_incineration_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
     
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
-    ash_trucking.price = (0.00551 + 0.0000541*Incineration.solids_distance)/Incineration.solids_distance
+    ash_incineration_trucking.price = (0.00551 + 0.0000541*Incineration.solids_distance)/Incineration.solids_distance
     
-    ash_transportation = qs.Transportation('Sludge_trucking',
-                                           linked_unit=Incineration,
-                                           item=ash_trucking,
-                                           load_type='mass',
-                                           load=stream.ash_incineration.F_mass,
-                                           load_unit='kg',
-                                           distance=Incineration.solids_distance,
-                                           distance_unit='km',
-                                           # set to 1 h since load = kg/h
-                                           interval='1',
-                                           interval_unit='h')
-    Incineration.transportation = ash_transportation
+    ash_incineration_transportation = qs.Transportation(ID='Ash_incineration_transportation',
+                                                        linked_unit=Incineration,
+                                                        item=ash_incineration_trucking,
+                                                        load_type='mass',
+                                                        load=stream.ash_incineration.F_mass,
+                                                        load_unit='kg',
+                                                        distance=Incineration.solids_distance,
+                                                        distance_unit='km',
+                                                        # set to 1 h since load = kg/h
+                                                        interval='1',
+                                                        interval_unit='h')
+    Incineration.transportation = ash_incineration_transportation
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
@@ -2840,13 +2959,14 @@ def create_C19_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
 
 #%% system C20
 
-def create_C20_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.45):
+def create_C20_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.45):
     flowsheet_ID = 'C20'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -2877,7 +2997,6 @@ def create_C20_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                 outs=('thickened_sludge','reject_thickening'))
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: update biogas flare / RNG / CHP ratios for different scenarios (can keep the flare ratio the same all the time, and the rest of biogas either goes to RNG or CHP)
     # TODO: consider replacing natural_gas with biogas (CH4 + CO2) or create a stream for CO2
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD'),
@@ -2891,10 +3010,11 @@ def create_C20_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     Landfilling = lsu.Landfilling(ID='Landfilling',
                                   ins=Dewatering-0,
                                   outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'),
-                                  solids_distance=solids_distance)
+                                  solids_distance=LF_distance)
     
-    CHP = qsu.CombinedHeatPower(ID='CHP', ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+    CHP = lsu.CombinedHeatPower(ID='CHP', ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air'),
+                                outs=('emission','ash_CHP'), supplement_power_utility=False,
+                                solids_distance=LF_distance)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
@@ -2907,6 +3027,12 @@ def create_C20_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                operating_hours=operation_hours)
     
     sys.simulate()
+    
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
     Electricity.add_indicator(GlobalWarming, 0.67877501)
@@ -2936,7 +3062,7 @@ def create_C20_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     # carbon sequestration
     qs.StreamImpactItem(ID='Sequestered_carbon_dioxide_LF', linked_stream=stream.sequestered_carbon_dioxide_LF, GlobalWarming=1)
     
-    sludge_trucking = qs.ImpactItem('Sludge_trucking', functional_unit='kg*km')
+    sludge_trucking = qs.ImpactItem(ID='Sludge_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     sludge_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
     
@@ -2945,7 +3071,7 @@ def create_C20_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     # converted to 2023$/kg/km
     sludge_trucking.price = (0.00551 + 0.0000541*Landfilling.solids_distance)/Landfilling.solids_distance
     
-    sludge_transportation = qs.Transportation('Sludge_trucking',
+    sludge_transportation = qs.Transportation(ID='Sludge_transportation',
                                               linked_unit=Landfilling,
                                               item=sludge_trucking,
                                               load_type='mass',
@@ -2957,6 +3083,28 @@ def create_C20_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                               interval='1',
                                               interval_unit='h')
     Landfilling.transportation = sludge_transportation
+    
+    ash_CHP_trucking = qs.ImpactItem(ID='Ash_CHP_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    ash_CHP_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    ash_CHP_trucking.price = (0.00551 + 0.0000541*CHP.solids_distance)/CHP.solids_distance
+    
+    ash_CHP_transportation = qs.Transportation(ID='Ash_CHP_transportation',
+                                               linked_unit=CHP,
+                                               item=ash_CHP_trucking,
+                                               load_type='mass',
+                                               load=stream.ash_CHP.F_mass,
+                                               load_unit='kg',
+                                               distance=CHP.solids_distance,
+                                               distance_unit='km',
+                                               # set to 1 h since load = kg/h
+                                               interval='1',
+                                               interval_unit='h')
+    CHP.transportation = ash_CHP_transportation
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
@@ -2985,13 +3133,14 @@ def create_C20_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
 
 #%% system C21
 
-def create_C21_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.45):
+def create_C21_system(size=10, operation_hours=8760, LA_distance=100, LF_distance=100, FTE=0.45):
     flowsheet_ID = 'C21'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -3022,7 +3171,6 @@ def create_C21_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                 outs=('thickened_sludge','reject_thickening'))
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: update biogas flare / RNG / CHP ratios for different scenarios (can keep the flare ratio the same all the time, and the rest of biogas either goes to RNG or CHP)
     # TODO: consider replacing natural_gas with biogas (CH4 + CO2) or create a stream for CO2
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD'),
@@ -3036,12 +3184,13 @@ def create_C21_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     LandApplication = lsu.LandApplication(ID='LandApplication',
                                           ins=(Dewatering-0, 'diesel_LA'),
                                           outs=('biosolids_cost','methane_LA','nitrous_oxide_LA','carbon_dioxide_LA'),
-                                          solids_distance=solids_distance)
+                                          solids_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
     
-    CHP = qsu.CombinedHeatPower(ID='CHP', ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air_CHP'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+    CHP = lsu.CombinedHeatPower(ID='CHP', ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air_CHP'),
+                                outs=('emission','ash_CHP'), supplement_power_utility=False,
+                                solids_distance=LF_distance)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
@@ -3054,6 +3203,12 @@ def create_C21_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                operating_hours=operation_hours)
     
     sys.simulate()
+    
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
     
     # BEAM
     N_fertilizer = qs.ImpactItem('N_fertilizer', functional_unit='kg')
@@ -3080,7 +3235,6 @@ def create_C21_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
-    # TODO: in the baseline analysis, need to determine what order of the geography to use (e.g., global then ROW?)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
     qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.4776041 + 44*12/(12*12 + 23*1))
@@ -3095,7 +3249,7 @@ def create_C21_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     # carbon sequestration
     qs.StreamImpactItem(ID='Carbon_dioxide_LA', linked_stream=stream.carbon_dioxide_LA, GlobalWarming=1)
     
-    biosolids_trucking = qs.ImpactItem('Biosolids_trucking', functional_unit='kg*km')
+    biosolids_trucking = qs.ImpactItem(ID='Biosolids_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     biosolids_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
     
@@ -3104,7 +3258,7 @@ def create_C21_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     # converted to 2023$/kg/km
     biosolids_trucking.price = (0.00551 + 0.0000541*LandApplication.solids_distance)/LandApplication.solids_distance
     
-    biosolids_transportation = qs.Transportation('Sludge_trucking',
+    biosolids_transportation = qs.Transportation(ID='Biosolids_transportation',
                                                  linked_unit=LandApplication,
                                                  item=biosolids_trucking,
                                                  load_type='mass',
@@ -3116,6 +3270,28 @@ def create_C21_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                                  interval='1',
                                                  interval_unit='h')
     LandApplication.transportation = biosolids_transportation
+    
+    ash_CHP_trucking = qs.ImpactItem(ID='Ash_CHP_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    ash_CHP_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    ash_CHP_trucking.price = (0.00551 + 0.0000541*CHP.solids_distance)/CHP.solids_distance
+    
+    ash_CHP_transportation = qs.Transportation(ID='Ash_CHP_transportation',
+                                               linked_unit=CHP,
+                                               item=ash_CHP_trucking,
+                                               load_type='mass',
+                                               load=stream.ash_CHP.F_mass,
+                                               load_unit='kg',
+                                               distance=CHP.solids_distance,
+                                               distance_unit='km',
+                                               # set to 1 h since load = kg/h
+                                               interval='1',
+                                               interval_unit='h')
+    CHP.transportation = ash_CHP_transportation
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
@@ -3146,13 +3322,14 @@ def create_C21_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
 
 #%% system C22
 
-def create_C22_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.5):
+def create_C22_system(size=10, operation_hours=8760, LA_distance=100, LF_distance=100, FTE=0.5):
     flowsheet_ID = 'C22'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -3183,7 +3360,6 @@ def create_C22_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                 outs=('thickened_sludge','reject_thickening'))
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: update biogas flare / RNG / CHP ratios for different scenarios (can keep the flare ratio the same all the time, and the rest of biogas either goes to RNG or CHP)
     # TODO: consider replacing natural_gas with biogas (CH4 + CO2) or create a stream for CO2
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD'),
@@ -3194,11 +3370,11 @@ def create_C22_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: add cost for diesel_composting
     # TODO: make sure the Composting unit is composting + land application
     Composting = lsu.Composting(ID='Composting', ins=(Dewatering-0, 'bulking_agent', 'diesel_composting'),
                                 outs=('compost_cost','methane_composting','nitrous_oxide_composting','sequestered_carbon_dioxide_composting'),
-                                solids_distance=solids_distance)
+                                solids_distance=LA_distance)
+    # TODO: need to decide how to deal with the bulking_agent in composting and its costing
     # TODO: uncertainty range (uniform) 18-36 2005$/tonne
     Composting.ins[1].price = 27/1000/GDPCTPI[2005]*GDPCTPI[2023]
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
@@ -3206,8 +3382,9 @@ def create_C22_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     # TODO: update cost for compost_cost with references
     Composting.outs[0].price = 10/1000
     
-    CHP = qsu.CombinedHeatPower(ID='CHP', ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air_CHP'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+    CHP = lsu.CombinedHeatPower(ID='CHP', ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air_CHP'),
+                                outs=('emission','ash_CHP'), supplement_power_utility=False,
+                                solids_distance=LF_distance)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
@@ -3220,6 +3397,12 @@ def create_C22_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                operating_hours=operation_hours)
     
     sys.simulate()
+    
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
     
     # BEAM
     N_fertilizer = qs.ImpactItem('N_fertilizer', functional_unit='kg')
@@ -3246,7 +3429,6 @@ def create_C22_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
-    # TODO: in the baseline analysis, need to determine what order of the geography to use (e.g., global then ROW?)
     qs.StreamImpactItem(ID='Bulking_agent', linked_stream=stream.bulking_agent, GlobalWarming=0.041056332)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
@@ -3262,7 +3444,7 @@ def create_C22_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     # carbon sequestration
     qs.StreamImpactItem(ID='Sequestered_carbon_dioxide_composting', linked_stream=stream.sequestered_carbon_dioxide_composting, GlobalWarming=1)
     
-    compost_trucking = qs.ImpactItem('Compost_trucking', functional_unit='kg*km')
+    compost_trucking = qs.ImpactItem(ID='Compost_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     compost_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
     
@@ -3271,7 +3453,7 @@ def create_C22_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     # converted to 2023$/kg/km
     compost_trucking.price = (0.00551 + 0.0000541*Composting.solids_distance)/Composting.solids_distance
     
-    compost_transportation = qs.Transportation('Sludge_trucking',
+    compost_transportation = qs.Transportation(ID='Compost_transportation',
                                                linked_unit=Composting,
                                                item=compost_trucking,
                                                load_type='mass',
@@ -3283,6 +3465,28 @@ def create_C22_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                                interval='1',
                                                interval_unit='h')
     Composting.transportation = compost_transportation
+    
+    ash_CHP_trucking = qs.ImpactItem(ID='Ash_CHP_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    ash_CHP_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    ash_CHP_trucking.price = (0.00551 + 0.0000541*CHP.solids_distance)/CHP.solids_distance
+    
+    ash_CHP_transportation = qs.Transportation(ID='Ash_CHP_transportation',
+                                               linked_unit=CHP,
+                                               item=ash_CHP_trucking,
+                                               load_type='mass',
+                                               load=stream.ash_CHP.F_mass,
+                                               load_unit='kg',
+                                               distance=CHP.solids_distance,
+                                               distance_unit='km',
+                                               # set to 1 h since load = kg/h
+                                               interval='1',
+                                               interval_unit='h')
+    CHP.transportation = ash_CHP_transportation
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
@@ -3313,13 +3517,14 @@ def create_C22_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
 
 #%% system C23
 
-def create_C23_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.6):
+def create_C23_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.6):
     flowsheet_ID = 'C23'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -3350,7 +3555,6 @@ def create_C23_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                 outs=('thickened_sludge','reject_thickening'))
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: update biogas flare / RNG / CHP ratios for different scenarios (can keep the flare ratio the same all the time, and the rest of biogas either goes to RNG or CHP)
     # TODO: consider replacing natural_gas with biogas (CH4 + CO2) or create a stream for CO2
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD'),
@@ -3370,10 +3574,11 @@ def create_C23_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     Landfilling = lsu.Landfilling(ID='Landfilling',
                                   ins=HeatDrying-0,
                                   outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'),
-                                  solids_distance=solids_distance)
+                                  solids_distance=LF_distance)
     
-    CHP = qsu.CombinedHeatPower(ID='CHP', ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air_CHP'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+    CHP = lsu.CombinedHeatPower(ID='CHP', ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air_CHP'),
+                                outs=('emission','ash_CHP'), supplement_power_utility=False,
+                                solids_distance=LF_distance)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
@@ -3386,6 +3591,12 @@ def create_C23_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                operating_hours=operation_hours)
     
     sys.simulate()
+    
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
     Electricity.add_indicator(GlobalWarming, 0.67877501)
@@ -3415,7 +3626,7 @@ def create_C23_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     # carbon sequestration
     qs.StreamImpactItem(ID='Sequestered_carbon_dioxide_LF', linked_stream=stream.sequestered_carbon_dioxide_LF, GlobalWarming=1)
     
-    sludge_trucking = qs.ImpactItem('Sludge_trucking', functional_unit='kg*km')
+    sludge_trucking = qs.ImpactItem(ID='Sludge_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     sludge_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
     
@@ -3424,7 +3635,7 @@ def create_C23_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     # converted to 2023$/kg/km
     sludge_trucking.price = (0.00551 + 0.0000541*Landfilling.solids_distance)/Landfilling.solids_distance
     
-    sludge_transportation = qs.Transportation('Sludge_trucking',
+    sludge_transportation = qs.Transportation(ID='Sludge_transportation',
                                               linked_unit=Landfilling,
                                               item=sludge_trucking,
                                               load_type='mass',
@@ -3436,6 +3647,28 @@ def create_C23_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                               interval='1',
                                               interval_unit='h')
     Landfilling.transportation = sludge_transportation
+    
+    ash_CHP_trucking = qs.ImpactItem(ID='Ash_CHP_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    ash_CHP_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    ash_CHP_trucking.price = (0.00551 + 0.0000541*CHP.solids_distance)/CHP.solids_distance
+    
+    ash_CHP_transportation = qs.Transportation(ID='Ash_CHP_transportation',
+                                               linked_unit=CHP,
+                                               item=ash_CHP_trucking,
+                                               load_type='mass',
+                                               load=stream.ash_CHP.F_mass,
+                                               load_unit='kg',
+                                               distance=CHP.solids_distance,
+                                               distance_unit='km',
+                                               # set to 1 h since load = kg/h
+                                               interval='1',
+                                               interval_unit='h')
+    CHP.transportation = ash_CHP_transportation
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
@@ -3464,13 +3697,14 @@ def create_C23_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
 
 #%% system C24
 
-def create_C24_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.6):
+def create_C24_system(size=10, operation_hours=8760, LA_distance=100, LF_distance=100, FTE=0.6):
     flowsheet_ID = 'C24'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -3501,7 +3735,6 @@ def create_C24_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                 outs=('thickened_sludge','reject_thickening'))
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: update biogas flare / RNG / CHP ratios for different scenarios (can keep the flare ratio the same all the time, and the rest of biogas either goes to RNG or CHP)
     # TODO: consider replacing natural_gas with biogas (CH4 + CO2) or create a stream for CO2
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD'),
@@ -3521,12 +3754,13 @@ def create_C24_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     LandApplication = lsu.LandApplication(ID='LandApplication',
                                           ins=(HeatDrying-0, 'diesel_LA'),
                                           outs=('biosolids_cost','methane_LA','nitrous_oxide_LA','carbon_dioxide_LA'),
-                                          solids_distance=solids_distance)
+                                          solids_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
     
-    CHP = qsu.CombinedHeatPower(ID='CHP', ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air_CHP'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+    CHP = lsu.CombinedHeatPower(ID='CHP', ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air_CHP'),
+                                outs=('emission','ash_CHP'), supplement_power_utility=False,
+                                solids_distance=LF_distance)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
@@ -3539,6 +3773,12 @@ def create_C24_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                operating_hours=operation_hours)
     
     sys.simulate()
+    
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
     
     # BEAM
     N_fertilizer = qs.ImpactItem('N_fertilizer', functional_unit='kg')
@@ -3565,7 +3805,6 @@ def create_C24_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
-    # TODO: in the baseline analysis, need to determine what order of the geography to use (e.g., global then ROW?)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
     qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.4776041 + 44*12/(12*12 + 23*1))
@@ -3580,7 +3819,7 @@ def create_C24_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     # carbon sequestration
     qs.StreamImpactItem(ID='Carbon_dioxide_LA', linked_stream=stream.carbon_dioxide_LA, GlobalWarming=1)
     
-    biosolids_trucking = qs.ImpactItem('Biosolids_trucking', functional_unit='kg*km')
+    biosolids_trucking = qs.ImpactItem(ID='Biosolids_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     biosolids_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
     
@@ -3589,7 +3828,7 @@ def create_C24_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     # converted to 2023$/kg/km
     biosolids_trucking.price = (0.00551 + 0.0000541*LandApplication.solids_distance)/LandApplication.solids_distance
     
-    biosolids_transportation = qs.Transportation('Sludge_trucking',
+    biosolids_transportation = qs.Transportation(ID='Biosolids_transportation',
                                                  linked_unit=LandApplication,
                                                  item=biosolids_trucking,
                                                  load_type='mass',
@@ -3601,6 +3840,28 @@ def create_C24_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                                  interval='1',
                                                  interval_unit='h')
     LandApplication.transportation = biosolids_transportation
+    
+    ash_CHP_trucking = qs.ImpactItem(ID='Ash_CHP_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    ash_CHP_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    ash_CHP_trucking.price = (0.00551 + 0.0000541*CHP.solids_distance)/CHP.solids_distance
+    
+    ash_CHP_transportation = qs.Transportation(ID='Ash_CHP_transportation',
+                                               linked_unit=CHP,
+                                               item=ash_CHP_trucking,
+                                               load_type='mass',
+                                               load=stream.ash_CHP.F_mass,
+                                               load_unit='kg',
+                                               distance=CHP.solids_distance,
+                                               distance_unit='km',
+                                               # set to 1 h since load = kg/h
+                                               interval='1',
+                                               interval_unit='h')
+    CHP.transportation = ash_CHP_transportation
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
@@ -3631,13 +3892,14 @@ def create_C24_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
 
 #%% system C25
 
-def create_C25_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.7):
+def create_C25_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.7):
     flowsheet_ID = 'C25'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -3668,7 +3930,6 @@ def create_C25_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                 outs=('thickened_sludge','reject_thickening'))
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: update biogas flare / RNG / CHP ratios for different scenarios (can keep the flare ratio the same all the time, and the rest of biogas either goes to RNG or CHP)
     # TODO: consider replacing natural_gas with biogas (CH4 + CO2) or create a stream for CO2
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD'),
@@ -3688,15 +3949,16 @@ def create_C25_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     Incineration = lsu.Incineration(ID='Incineration',
                                     ins=(HeatDrying-0, 'natural_gas_incineration'),
                                     outs=('ash_incineration','vapor_incineration','methane_IN','nitrous_oxide_IN'),
-                                    solids_distance=solids_distance)
+                                    solids_distance=LF_distance)
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
     Incineration.ins[1].price = 0.218
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     Incineration.outs[0].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
     
-    CHP = qsu.CombinedHeatPower(ID='CHP', ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air_CHP'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+    CHP = lsu.CombinedHeatPower(ID='CHP', ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air_CHP'),
+                                outs=('emission','ash_CHP'), supplement_power_utility=False,
+                                solids_distance=LF_distance)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
@@ -3709,6 +3971,12 @@ def create_C25_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                operating_hours=operation_hours)
     
     sys.simulate()
+    
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
     Electricity.add_indicator(GlobalWarming, 0.67877501)
@@ -3736,27 +4004,49 @@ def create_C25_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     qs.StreamImpactItem(ID='Methane_IN', linked_stream=stream.methane_IN, GlobalWarming=29.8)
     qs.StreamImpactItem(ID='Nitrous_oxide_IN', linked_stream=stream.nitrous_oxide_IN, GlobalWarming=273)
     
-    ash_trucking = qs.ImpactItem('Sludge_trucking', functional_unit='kg*km')
+    ash_incineration_trucking = qs.ImpactItem(ID='Ash_incineration_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    ash_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    ash_incineration_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
     
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
-    ash_trucking.price = (0.00551 + 0.0000541*Incineration.solids_distance)/Incineration.solids_distance
+    ash_incineration_trucking.price = (0.00551 + 0.0000541*Incineration.solids_distance)/Incineration.solids_distance
     
-    ash_transportation = qs.Transportation('Sludge_trucking',
-                                           linked_unit=Incineration,
-                                           item=ash_trucking,
-                                           load_type='mass',
-                                           load=stream.ash_incineration.F_mass,
-                                           load_unit='kg',
-                                           distance=Incineration.solids_distance,
-                                           distance_unit='km',
-                                           # set to 1 h since load = kg/h
-                                           interval='1',
-                                           interval_unit='h')
-    Incineration.transportation = ash_transportation
+    ash_incineration_transportation = qs.Transportation(ID='Ash_incineration_transportation',
+                                                        linked_unit=Incineration,
+                                                        item=ash_incineration_trucking,
+                                                        load_type='mass',
+                                                        load=stream.ash_incineration.F_mass,
+                                                        load_unit='kg',
+                                                        distance=Incineration.solids_distance,
+                                                        distance_unit='km',
+                                                        # set to 1 h since load = kg/h
+                                                        interval='1',
+                                                        interval_unit='h')
+    Incineration.transportation = ash_incineration_transportation
+    
+    ash_CHP_trucking = qs.ImpactItem(ID='Ash_CHP_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    ash_CHP_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    ash_CHP_trucking.price = (0.00551 + 0.0000541*CHP.solids_distance)/CHP.solids_distance
+    
+    ash_CHP_transportation = qs.Transportation(ID='Ash_CHP_transportation',
+                                               linked_unit=CHP,
+                                               item=ash_CHP_trucking,
+                                               load_type='mass',
+                                               load=stream.ash_CHP.F_mass,
+                                               load_unit='kg',
+                                               distance=CHP.solids_distance,
+                                               distance_unit='km',
+                                               # set to 1 h since load = kg/h
+                                               interval='1',
+                                               interval_unit='h')
+    CHP.transportation = ash_CHP_transportation
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
@@ -3786,13 +4076,14 @@ def create_C25_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
 #%% system T1
 
 # TODO: need to decide whether to recover N and P or not
-def create_T1_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.55):
+def create_T1_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.55):
     flowsheet_ID = 'T1'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -3875,10 +4166,10 @@ def create_T1_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.5
     MemDis.ins[2].price = 0.5256
     MemDis.outs[0].price = 0.3236
     
-    # TODO: add cost and CI for chemicals in CHP and CT for all relevant systems
     # TODO: just CHG fuel gas to CHP, not HTL; need to add fugitive emissions for both
-    CHP = qsu.CombinedHeatPower(ID='CHP', ins=(F1-0, 'natural_gas_CHP', 'air_CHP'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+    CHP = lsu.CombinedHeatPower(ID='CHP', ins=(F1-0, 'natural_gas_CHP', 'air_CHP'),
+                                outs=('emission','ash_CHP'), supplement_power_utility=False,
+                                solids_distance=LF_distance)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
@@ -3909,6 +4200,12 @@ def create_T1_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.5
                                        operating_hours=operation_hours)
             
             sys.simulate()
+    
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
     Electricity.add_indicator(GlobalWarming, 0.67877501)
@@ -3948,6 +4245,28 @@ def create_T1_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.5
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
     
+    ash_CHP_trucking = qs.ImpactItem(ID='Ash_CHP_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    ash_CHP_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    ash_CHP_trucking.price = (0.00551 + 0.0000541*CHP.solids_distance)/CHP.solids_distance
+    
+    ash_CHP_transportation = qs.Transportation(ID='Ash_CHP_transportation',
+                                               linked_unit=CHP,
+                                               item=ash_CHP_trucking,
+                                               load_type='mass',
+                                               load=stream.ash_CHP.F_mass,
+                                               load_unit='kg',
+                                               distance=CHP.solids_distance,
+                                               distance_unit='km',
+                                               # set to 1 h since load = kg/h
+                                               interval='1',
+                                               interval_unit='h')
+    CHP.transportation = ash_CHP_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -3975,13 +4294,14 @@ def create_T1_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.5
 
 #%% system T2
 
-def create_T2_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.55):
+def create_T2_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.55):
     flowsheet_ID = 'T2'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -4063,8 +4383,9 @@ def create_T2_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.5
     MemDis.outs[0].price = 0.3236
     
     # TODO: just CHG fuel gas to CHP, not HTL; need to add fugitive emissions for both
-    CHP = qsu.CombinedHeatPower(ID='CHP', ins=(F1-0, 'natural_gas_CHP', 'air_CHP'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+    CHP = lsu.CombinedHeatPower(ID='CHP', ins=(F1-0, 'natural_gas_CHP', 'air_CHP'),
+                                outs=('emission','ash_CHP'), supplement_power_utility=False,
+                                solids_distance=LF_distance)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
@@ -4095,6 +4416,12 @@ def create_T2_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.5
                                        operating_hours=operation_hours)
             
             sys.simulate()
+    
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
     Electricity.add_indicator(GlobalWarming, 0.67877501)
@@ -4134,6 +4461,28 @@ def create_T2_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.5
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
     
+    ash_CHP_trucking = qs.ImpactItem(ID='Ash_CHP_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    ash_CHP_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    ash_CHP_trucking.price = (0.00551 + 0.0000541*CHP.solids_distance)/CHP.solids_distance
+    
+    ash_CHP_transportation = qs.Transportation(ID='Ash_CHP_transportation',
+                                               linked_unit=CHP,
+                                               item=ash_CHP_trucking,
+                                               load_type='mass',
+                                               load=stream.ash_CHP.F_mass,
+                                               load_unit='kg',
+                                               distance=CHP.solids_distance,
+                                               distance_unit='km',
+                                               # set to 1 h since load = kg/h
+                                               interval='1',
+                                               interval_unit='h')
+    CHP.transportation = ash_CHP_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -4161,13 +4510,14 @@ def create_T2_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.5
 
 #%% system T3
 
-def create_T3_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.4):
+def create_T3_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.4):
     flowsheet_ID = 'T3'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -4204,7 +4554,8 @@ def create_T3_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.4
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     # TODO: add ash disposal
-    SCWO = lsu.SupercriticalWaterOxidation(ID='SCWO', ins=Dewatering-0, outs=('ash_SCWO','offgas_SCWO'))
+    SCWO = lsu.SupercriticalWaterOxidation(ID='SCWO', ins=Dewatering-0, outs=('ash_SCWO','offgas_SCWO'),
+                                           solids_distance=LF_distance)
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     SCWO.outs[0].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
     
@@ -4232,6 +4583,12 @@ def create_T3_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.4
             
             sys.simulate()
     
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
+    
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
     Electricity.add_indicator(GlobalWarming, 0.67877501)
     
@@ -4240,7 +4597,7 @@ def create_T3_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.4
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
     Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
-        
+    
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.065877932)
     
@@ -4266,6 +4623,28 @@ def create_T3_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.4
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
+    
+    ash_SCWO_trucking = qs.ImpactItem(ID='Ash_SCWO_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    ash_SCWO_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    ash_SCWO_trucking.price = (0.00551 + 0.0000541*SCWO.solids_distance)/SCWO.solids_distance
+    
+    ash_SCWO_transportation = qs.Transportation(ID='Ash_SCWO_transportation',
+                                                linked_unit=SCWO,
+                                                item=ash_SCWO_trucking,
+                                                load_type='mass',
+                                                load=stream.ash_SCWO.F_mass,
+                                                load_unit='kg',
+                                                distance=SCWO.solids_distance,
+                                                distance_unit='km',
+                                                # set to 1 h since load = kg/h
+                                                interval='1',
+                                                interval_unit='h')
+    SCWO.transportation = ash_SCWO_transportation
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
@@ -4293,13 +4672,14 @@ def create_T3_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.4
 
 #%% system T4
 
-def create_T4_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.7):
+def create_T4_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.7):
     flowsheet_ID = 'T4'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -4345,8 +4725,9 @@ def create_T4_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.7
                               outs=('biooil','biochar','pyrogas','methane_pyrolysis','nitrous_oxide_pyrolysis'))
     
     # TODO: consider adding pyrogas to CHP (for other unit sending gas to CHP, may add fugitive emissions together in the CHP unit)
-    CHP = qsu.CombinedHeatPower(ID='CHP', ins=(Pyrolysis-2, 'natural_gas_CHP', 'air_CHP'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+    CHP = lsu.CombinedHeatPower(ID='CHP', ins=(Pyrolysis-2, 'natural_gas_CHP', 'air_CHP'),
+                                outs=('emission','ash_CHP'), supplement_power_utility=False,
+                                solids_distance=LF_distance)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
@@ -4378,6 +4759,12 @@ def create_T4_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.7
             
             sys.simulate()
     
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
+    
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
     Electricity.add_indicator(GlobalWarming, 0.67877501)
     
@@ -4418,6 +4805,28 @@ def create_T4_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.7
     qs.StreamImpactItem(ID='Methane_pyrolysis', linked_stream=stream.methane_pyrolysis, GlobalWarming=29.8)
     qs.StreamImpactItem(ID='Nitrous_oxide_pyrolysis', linked_stream=stream.nitrous_oxide_pyrolysis, GlobalWarming=273)
     
+    ash_CHP_trucking = qs.ImpactItem(ID='Ash_CHP_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    ash_CHP_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    ash_CHP_trucking.price = (0.00551 + 0.0000541*CHP.solids_distance)/CHP.solids_distance
+    
+    ash_CHP_transportation = qs.Transportation(ID='Ash_CHP_transportation',
+                                               linked_unit=CHP,
+                                               item=ash_CHP_trucking,
+                                               load_type='mass',
+                                               load=stream.ash_CHP.F_mass,
+                                               load_unit='kg',
+                                               distance=CHP.solids_distance,
+                                               distance_unit='km',
+                                               # set to 1 h since load = kg/h
+                                               interval='1',
+                                               interval_unit='h')
+    CHP.transportation = ash_CHP_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -4445,13 +4854,14 @@ def create_T4_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.7
 
 #%% system T5
 
-def create_T5_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.7):
+def create_T5_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.7):
     flowsheet_ID = 'T5'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -4497,8 +4907,9 @@ def create_T5_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.7
                                     outs=('tar','biochar','syngas','methane_gasification','nitrous_oxide_gasification'))
     
     # TODO: consider adding pyrogas to CHP (for other unit sending gas to CHP, may add fugitive emissions together in the CHP unit)
-    CHP = qsu.CombinedHeatPower(ID='CHP', ins=(Gasification-2, 'natural_gas_CHP', 'air_CHP'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+    CHP = lsu.CombinedHeatPower(ID='CHP', ins=(Gasification-2, 'natural_gas_CHP', 'air_CHP'),
+                                outs=('emission','ash_CHP'), supplement_power_utility=False,
+                                solids_distance=LF_distance)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
@@ -4530,6 +4941,12 @@ def create_T5_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.7
             
             sys.simulate()
     
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
+    
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
     Electricity.add_indicator(GlobalWarming, 0.67877501)
     
@@ -4570,6 +4987,28 @@ def create_T5_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.7
     qs.StreamImpactItem(ID='Methane_gasification', linked_stream=stream.methane_gasification, GlobalWarming=29.8)
     qs.StreamImpactItem(ID='Nitrous_oxide_gasification', linked_stream=stream.nitrous_oxide_gasification, GlobalWarming=273)
     
+    ash_CHP_trucking = qs.ImpactItem(ID='Ash_CHP_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    ash_CHP_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    ash_CHP_trucking.price = (0.00551 + 0.0000541*CHP.solids_distance)/CHP.solids_distance
+    
+    ash_CHP_transportation = qs.Transportation(ID='Ash_CHP_transportation',
+                                               linked_unit=CHP,
+                                               item=ash_CHP_trucking,
+                                               load_type='mass',
+                                               load=stream.ash_CHP.F_mass,
+                                               load_unit='kg',
+                                               distance=CHP.solids_distance,
+                                               distance_unit='km',
+                                               # set to 1 h since load = kg/h
+                                               interval='1',
+                                               interval_unit='h')
+    CHP.transportation = ash_CHP_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -4597,13 +5036,14 @@ def create_T5_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.7
 
 #%% system T6
 
-def create_T6_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.7):
+def create_T6_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.7):
     flowsheet_ID = 'T6'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -4685,8 +5125,9 @@ def create_T6_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.7
     MemDis.outs[0].price = 0.3236
     
     # TODO: just CHG fuel gas to CHP, not HTL; need to add fugitive emissions for both
-    CHP = qsu.CombinedHeatPower(ID='CHP', ins=(F1-0, 'natural_gas_CHP', 'air_CHP'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+    CHP = lsu.CombinedHeatPower(ID='CHP', ins=(F1-0, 'natural_gas_CHP', 'air_CHP'),
+                                outs=('emission','ash_CHP'), supplement_power_utility=False,
+                                solids_distance=LF_distance)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
@@ -4718,6 +5159,12 @@ def create_T6_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.7
             
             sys.simulate()
     
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
+    
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
     Electricity.add_indicator(GlobalWarming, 0.67877501)
     
@@ -4756,6 +5203,28 @@ def create_T6_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.7
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
     
+    ash_CHP_trucking = qs.ImpactItem(ID='Ash_CHP_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    ash_CHP_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    ash_CHP_trucking.price = (0.00551 + 0.0000541*CHP.solids_distance)/CHP.solids_distance
+    
+    ash_CHP_transportation = qs.Transportation(ID='Ash_CHP_transportation',
+                                               linked_unit=CHP,
+                                               item=ash_CHP_trucking,
+                                               load_type='mass',
+                                               load=stream.ash_CHP.F_mass,
+                                               load_unit='kg',
+                                               distance=CHP.solids_distance,
+                                               distance_unit='km',
+                                               # set to 1 h since load = kg/h
+                                               interval='1',
+                                               interval_unit='h')
+    CHP.transportation = ash_CHP_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -4783,13 +5252,14 @@ def create_T6_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.7
 
 #%% system T7
 
-def create_T7_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.7):
+def create_T7_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.7):
     flowsheet_ID = 'T7'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -4871,8 +5341,9 @@ def create_T7_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.7
     MemDis.outs[0].price = 0.3236
     
     # TODO: just CHG fuel gas to CHP, not HTL; need to add fugitive emissions for both
-    CHP = qsu.CombinedHeatPower(ID='CHP', ins=(F1-0, 'natural_gas_CHP', 'air_CHP'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+    CHP = lsu.CombinedHeatPower(ID='CHP', ins=(F1-0, 'natural_gas_CHP', 'air_CHP'),
+                                outs=('emission','ash_CHP'), supplement_power_utility=False,
+                                solids_distance=LF_distance)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
@@ -4903,6 +5374,12 @@ def create_T7_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.7
                                        operating_hours=operation_hours)
             
             sys.simulate()
+    
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
     Electricity.add_indicator(GlobalWarming, 0.67877501)
@@ -4942,6 +5419,28 @@ def create_T7_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.7
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
     
+    ash_CHP_trucking = qs.ImpactItem(ID='Ash_CHP_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    ash_CHP_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    ash_CHP_trucking.price = (0.00551 + 0.0000541*CHP.solids_distance)/CHP.solids_distance
+    
+    ash_CHP_transportation = qs.Transportation(ID='Ash_CHP_transportation',
+                                               linked_unit=CHP,
+                                               item=ash_CHP_trucking,
+                                               load_type='mass',
+                                               load=stream.ash_CHP.F_mass,
+                                               load_unit='kg',
+                                               distance=CHP.solids_distance,
+                                               distance_unit='km',
+                                               # set to 1 h since load = kg/h
+                                               interval='1',
+                                               interval_unit='h')
+    CHP.transportation = ash_CHP_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -4969,13 +5468,14 @@ def create_T7_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.7
 
 #%% system T8
 
-def create_T8_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.55):
+def create_T8_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.55):
     flowsheet_ID = 'T8'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -5014,7 +5514,8 @@ def create_T8_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.5
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
-    SCWO = lsu.SupercriticalWaterOxidation(ID='SCWO', ins=Dewatering-0, outs=('ash_SCWO','offgas_SCWO'))
+    SCWO = lsu.SupercriticalWaterOxidation(ID='SCWO', ins=Dewatering-0, outs=('ash_SCWO','offgas_SCWO'),
+                                           solids_distance=LF_distance)
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     SCWO.outs[0].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
     
@@ -5042,6 +5543,12 @@ def create_T8_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.5
             
             sys.simulate()
     
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
+    
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
     Electricity.add_indicator(GlobalWarming, 0.67877501)
     
@@ -5050,7 +5557,7 @@ def create_T8_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.5
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
     Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
-        
+    
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.065877932)
     
@@ -5076,6 +5583,28 @@ def create_T8_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.5
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
+    
+    ash_SCWO_trucking = qs.ImpactItem(ID='Ash_SCWO_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    ash_SCWO_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    ash_SCWO_trucking.price = (0.00551 + 0.0000541*SCWO.solids_distance)/SCWO.solids_distance
+    
+    ash_SCWO_transportation = qs.Transportation(ID='Ash_SCWO_transportation',
+                                                linked_unit=SCWO,
+                                                item=ash_SCWO_trucking,
+                                                load_type='mass',
+                                                load=stream.ash_SCWO.F_mass,
+                                                load_unit='kg',
+                                                distance=SCWO.solids_distance,
+                                                distance_unit='km',
+                                                # set to 1 h since load = kg/h
+                                                interval='1',
+                                                interval_unit='h')
+    SCWO.transportation = ash_SCWO_transportation
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
@@ -5103,13 +5632,14 @@ def create_T8_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.5
 
 #%% system T9
 
-def create_T9_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.85):
+def create_T9_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.85):
     flowsheet_ID = 'T9'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -5158,8 +5688,9 @@ def create_T9_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.8
                               outs=('biooil','biochar','pyrogas','methane_pyrolysis','nitrous_oxide_pyrolysis'))
     
     # TODO: consider adding pyrogas to CHP (for other unit sending gas to CHP, may add fugitive emissions together in the CHP unit)
-    CHP = qsu.CombinedHeatPower(ID='CHP', ins=(Pyrolysis-2, 'natural_gas_CHP', 'air_CHP'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+    CHP = lsu.CombinedHeatPower(ID='CHP', ins=(Pyrolysis-2, 'natural_gas_CHP', 'air_CHP'),
+                                outs=('emission','ash_CHP'), supplement_power_utility=False,
+                                solids_distance=LF_distance)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
@@ -5190,6 +5721,12 @@ def create_T9_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.8
                                        operating_hours=operation_hours)
             
             sys.simulate()
+    
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
     Electricity.add_indicator(GlobalWarming, 0.67877501)
@@ -5231,6 +5768,28 @@ def create_T9_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.8
     qs.StreamImpactItem(ID='Methane_pyrolysis', linked_stream=stream.methane_pyrolysis, GlobalWarming=29.8)
     qs.StreamImpactItem(ID='Nitrous_oxide_pyrolysis', linked_stream=stream.nitrous_oxide_pyrolysis, GlobalWarming=273)
     
+    ash_CHP_trucking = qs.ImpactItem(ID='Ash_CHP_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    ash_CHP_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    ash_CHP_trucking.price = (0.00551 + 0.0000541*CHP.solids_distance)/CHP.solids_distance
+    
+    ash_CHP_transportation = qs.Transportation(ID='Ash_CHP_transportation',
+                                               linked_unit=CHP,
+                                               item=ash_CHP_trucking,
+                                               load_type='mass',
+                                               load=stream.ash_CHP.F_mass,
+                                               load_unit='kg',
+                                               distance=CHP.solids_distance,
+                                               distance_unit='km',
+                                               # set to 1 h since load = kg/h
+                                               interval='1',
+                                               interval_unit='h')
+    CHP.transportation = ash_CHP_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -5258,13 +5817,14 @@ def create_T9_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.8
 
 #%% system T10
 
-def create_T10_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.85):
+def create_T10_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.85):
     flowsheet_ID = 'T10'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -5313,8 +5873,9 @@ def create_T10_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                     outs=('tar','biochar','syngas','methane_gasification','nitrous_oxide_gasification'))
     
     # TODO: consider adding pyrogas to CHP (for other unit sending gas to CHP, may add fugitive emissions together in the CHP unit)
-    CHP = qsu.CombinedHeatPower(ID='CHP', ins=(Gasification-2, 'natural_gas_CHP', 'air_CHP'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+    CHP = lsu.CombinedHeatPower(ID='CHP', ins=(Gasification-2, 'natural_gas_CHP', 'air_CHP'),
+                                outs=('emission','ash_CHP'), supplement_power_utility=False,
+                                solids_distance=LF_distance)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
@@ -5345,6 +5906,12 @@ def create_T10_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                        operating_hours=operation_hours)
             
             sys.simulate()
+    
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
     Electricity.add_indicator(GlobalWarming, 0.67877501)
@@ -5386,6 +5953,28 @@ def create_T10_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     qs.StreamImpactItem(ID='Methane_gasification', linked_stream=stream.methane_gasification, GlobalWarming=29.8)
     qs.StreamImpactItem(ID='Nitrous_oxide_gasification', linked_stream=stream.nitrous_oxide_gasification, GlobalWarming=273)
     
+    ash_CHP_trucking = qs.ImpactItem(ID='Ash_CHP_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    ash_CHP_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    ash_CHP_trucking.price = (0.00551 + 0.0000541*CHP.solids_distance)/CHP.solids_distance
+    
+    ash_CHP_transportation = qs.Transportation(ID='Ash_CHP_transportation',
+                                               linked_unit=CHP,
+                                               item=ash_CHP_trucking,
+                                               load_type='mass',
+                                               load=stream.ash_CHP.F_mass,
+                                               load_unit='kg',
+                                               distance=CHP.solids_distance,
+                                               distance_unit='km',
+                                               # set to 1 h since load = kg/h
+                                               interval='1',
+                                               interval_unit='h')
+    CHP.transportation = ash_CHP_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -5413,13 +6002,14 @@ def create_T10_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
 
 #%% system T11
 
-def create_T11_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.7):
+def create_T11_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.7):
     flowsheet_ID = 'T11'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -5450,7 +6040,6 @@ def create_T11_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                 outs=('thickened_sludge','reject_thickening'))
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: update biogas flare / RNG / CHP ratios for different scenarios (can keep the flare ratio the same all the time, and the rest of biogas either goes to RNG or CHP)
     # TODO: consider replacing natural_gas with biogas (CH4 + CO2) or create a stream for CO2
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD'),
@@ -5507,8 +6096,9 @@ def create_T11_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                          outs=('fuel_gas'), init_with='WasteStream')
     
     # TODO: just CHG fuel gas to CHP, not HTL; need to add fugitive emissions for both
-    CHP = qsu.CombinedHeatPower(ID='CHP', ins=(GasMixer-0, 'natural_gas_CHP', 'air_CHP'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+    CHP = lsu.CombinedHeatPower(ID='CHP', ins=(GasMixer-0, 'natural_gas_CHP', 'air_CHP'),
+                                outs=('emission','ash_CHP'), supplement_power_utility=False,
+                                solids_distance=LF_distance)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
@@ -5539,6 +6129,12 @@ def create_T11_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                        operating_hours=operation_hours)
             
             sys.simulate()
+    
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
     Electricity.add_indicator(GlobalWarming, 0.67877501)
@@ -5579,6 +6175,28 @@ def create_T11_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
     
+    ash_CHP_trucking = qs.ImpactItem(ID='Ash_CHP_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    ash_CHP_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    ash_CHP_trucking.price = (0.00551 + 0.0000541*CHP.solids_distance)/CHP.solids_distance
+    
+    ash_CHP_transportation = qs.Transportation(ID='Ash_CHP_transportation',
+                                               linked_unit=CHP,
+                                               item=ash_CHP_trucking,
+                                               load_type='mass',
+                                               load=stream.ash_CHP.F_mass,
+                                               load_unit='kg',
+                                               distance=CHP.solids_distance,
+                                               distance_unit='km',
+                                               # set to 1 h since load = kg/h
+                                               interval='1',
+                                               interval_unit='h')
+    CHP.transportation = ash_CHP_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -5606,13 +6224,14 @@ def create_T11_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
 
 #%% system T12
 
-def create_T12_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.7):
+def create_T12_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.7):
     flowsheet_ID = 'T12'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -5643,7 +6262,6 @@ def create_T12_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                 outs=('thickened_sludge','reject_thickening'))
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: update biogas flare / RNG / CHP ratios for different scenarios (can keep the flare ratio the same all the time, and the rest of biogas either goes to RNG or CHP)
     # TODO: consider replacing natural_gas with biogas (CH4 + CO2) or create a stream for CO2
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD'),
@@ -5700,8 +6318,9 @@ def create_T12_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                          outs=('fuel_gas'), init_with='WasteStream')
     
     # TODO: just CHG fuel gas to CHP, not HTL; need to add fugitive emissions for both
-    CHP = qsu.CombinedHeatPower(ID='CHP', ins=(GasMixer-0, 'natural_gas_CHP', 'air_CHP'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+    CHP = lsu.CombinedHeatPower(ID='CHP', ins=(GasMixer-0, 'natural_gas_CHP', 'air_CHP'),
+                                outs=('emission','ash_CHP'), supplement_power_utility=False,
+                                solids_distance=LF_distance)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
@@ -5732,6 +6351,12 @@ def create_T12_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                        operating_hours=operation_hours)
             
             sys.simulate()
+    
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
     Electricity.add_indicator(GlobalWarming, 0.67877501)
@@ -5772,6 +6397,28 @@ def create_T12_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
     
+    ash_CHP_trucking = qs.ImpactItem(ID='Ash_CHP_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    ash_CHP_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    ash_CHP_trucking.price = (0.00551 + 0.0000541*CHP.solids_distance)/CHP.solids_distance
+    
+    ash_CHP_transportation = qs.Transportation(ID='Ash_CHP_transportation',
+                                               linked_unit=CHP,
+                                               item=ash_CHP_trucking,
+                                               load_type='mass',
+                                               load=stream.ash_CHP.F_mass,
+                                               load_unit='kg',
+                                               distance=CHP.solids_distance,
+                                               distance_unit='km',
+                                               # set to 1 h since load = kg/h
+                                               interval='1',
+                                               interval_unit='h')
+    CHP.transportation = ash_CHP_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -5799,13 +6446,14 @@ def create_T12_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
 
 #%% system T13
 
-def create_T13_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.55):
+def create_T13_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.55):
     flowsheet_ID = 'T13'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -5836,7 +6484,6 @@ def create_T13_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                 outs=('thickened_sludge','reject_thickening'))
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: update biogas flare / RNG / CHP ratios for different scenarios (can keep the flare ratio the same all the time, and the rest of biogas either goes to RNG or CHP)
     # TODO: consider replacing natural_gas with biogas (CH4 + CO2) or create a stream for CO2
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD'),
@@ -5847,12 +6494,14 @@ def create_T13_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
-    SCWO = lsu.SupercriticalWaterOxidation(ID='SCWO', ins=Dewatering-0, outs=('ash_SCWO','offgas_SCWO'))
+    SCWO = lsu.SupercriticalWaterOxidation(ID='SCWO', ins=Dewatering-0, outs=('ash_SCWO','offgas_SCWO'),
+                                           solids_distance=LF_distance)
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     SCWO.outs[0].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
     
-    CHP = qsu.CombinedHeatPower(ID='CHP', ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air_CHP'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+    CHP = lsu.CombinedHeatPower(ID='CHP', ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air_CHP'),
+                                outs=('emission','ash_CHP'), supplement_power_utility=False,
+                                solids_distance=LF_distance)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
@@ -5882,6 +6531,12 @@ def create_T13_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                        operating_hours=operation_hours)
             
             sys.simulate()
+    
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
     Electricity.add_indicator(GlobalWarming, 0.67877501)
@@ -5923,6 +6578,50 @@ def create_T13_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
     
+    ash_SCWO_trucking = qs.ImpactItem(ID='Ash_SCWO_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    ash_SCWO_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    ash_SCWO_trucking.price = (0.00551 + 0.0000541*SCWO.solids_distance)/SCWO.solids_distance
+    
+    ash_SCWO_transportation = qs.Transportation(ID='Ash_SCWO_transportation',
+                                                linked_unit=SCWO,
+                                                item=ash_SCWO_trucking,
+                                                load_type='mass',
+                                                load=stream.ash_SCWO.F_mass,
+                                                load_unit='kg',
+                                                distance=SCWO.solids_distance,
+                                                distance_unit='km',
+                                                # set to 1 h since load = kg/h
+                                                interval='1',
+                                                interval_unit='h')
+    SCWO.transportation = ash_SCWO_transportation
+    
+    ash_CHP_trucking = qs.ImpactItem(ID='Ash_CHP_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    ash_CHP_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    ash_CHP_trucking.price = (0.00551 + 0.0000541*CHP.solids_distance)/CHP.solids_distance
+    
+    ash_CHP_transportation = qs.Transportation(ID='Ash_CHP_transportation',
+                                               linked_unit=CHP,
+                                               item=ash_CHP_trucking,
+                                               load_type='mass',
+                                               load=stream.ash_CHP.F_mass,
+                                               load_unit='kg',
+                                               distance=CHP.solids_distance,
+                                               distance_unit='km',
+                                               # set to 1 h since load = kg/h
+                                               interval='1',
+                                               interval_unit='h')
+    CHP.transportation = ash_CHP_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -5950,13 +6649,14 @@ def create_T13_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
 
 #%% system T14
 
-def create_T14_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.85):
+def create_T14_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.85):
     flowsheet_ID = 'T14'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -5987,7 +6687,6 @@ def create_T14_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                 outs=('thickened_sludge','reject_thickening'))
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: update biogas flare / RNG / CHP ratios for different scenarios (can keep the flare ratio the same all the time, and the rest of biogas either goes to RNG or CHP)
     # TODO: consider replacing natural_gas with biogas (CH4 + CO2) or create a stream for CO2
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD'),
@@ -6011,8 +6710,9 @@ def create_T14_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                          outs=('fuel_gas'), init_with='WasteStream')
     
     # TODO: consider adding pyrogas to CHP (for other unit sending gas to CHP, may add fugitive emissions together in the CHP unit)
-    CHP = qsu.CombinedHeatPower(ID='CHP', ins=(GasMixer-0, 'natural_gas_CHP', 'air_CHP'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+    CHP = lsu.CombinedHeatPower(ID='CHP', ins=(GasMixer-0, 'natural_gas_CHP', 'air_CHP'),
+                                outs=('emission','ash_CHP'), supplement_power_utility=False,
+                                solids_distance=LF_distance)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
@@ -6043,6 +6743,12 @@ def create_T14_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                        operating_hours=operation_hours)
             
             sys.simulate()
+    
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
     Electricity.add_indicator(GlobalWarming, 0.67877501)
@@ -6085,6 +6791,28 @@ def create_T14_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     qs.StreamImpactItem(ID='Methane_pyrolysis', linked_stream=stream.methane_pyrolysis, GlobalWarming=29.8)
     qs.StreamImpactItem(ID='Nitrous_oxide_pyrolysis', linked_stream=stream.nitrous_oxide_pyrolysis, GlobalWarming=273)
     
+    ash_CHP_trucking = qs.ImpactItem(ID='Ash_CHP_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    ash_CHP_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    ash_CHP_trucking.price = (0.00551 + 0.0000541*CHP.solids_distance)/CHP.solids_distance
+    
+    ash_CHP_transportation = qs.Transportation(ID='Ash_CHP_transportation',
+                                               linked_unit=CHP,
+                                               item=ash_CHP_trucking,
+                                               load_type='mass',
+                                               load=stream.ash_CHP.F_mass,
+                                               load_unit='kg',
+                                               distance=CHP.solids_distance,
+                                               distance_unit='km',
+                                               # set to 1 h since load = kg/h
+                                               interval='1',
+                                               interval_unit='h')
+    CHP.transportation = ash_CHP_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -6112,13 +6840,14 @@ def create_T14_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
 
 #%% system T15
 
-def create_T15_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.85):
+def create_T15_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.85):
     flowsheet_ID = 'T15'
     
     # clear flowsheet and registry for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
+        
+    clear_lca_registries()
     
     bst.CE = qs.CEPCI_by_year[2023]
     
@@ -6149,7 +6878,6 @@ def create_T15_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                 outs=('thickened_sludge','reject_thickening'))
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: update biogas flare / RNG / CHP ratios for different scenarios (can keep the flare ratio the same all the time, and the rest of biogas either goes to RNG or CHP)
     # TODO: consider replacing natural_gas with biogas (CH4 + CO2) or create a stream for CO2
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD'),
@@ -6173,8 +6901,9 @@ def create_T15_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                          outs=('fuel_gas'), init_with='WasteStream')
     
     # TODO: consider adding pyrogas to CHP (for other unit sending gas to CHP, may add fugitive emissions together in the CHP unit)
-    CHP = qsu.CombinedHeatPower(ID='CHP', ins=(GasMixer-0, 'natural_gas_CHP', 'air_CHP'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+    CHP = lsu.CombinedHeatPower(ID='CHP', ins=(GasMixer-0, 'natural_gas_CHP', 'air_CHP'),
+                                outs=('emission','ash_CHP'), supplement_power_utility=False,
+                                solids_distance=LF_distance)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
@@ -6205,6 +6934,12 @@ def create_T15_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
                                        operating_hours=operation_hours)
             
             sys.simulate()
+    
+    GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                       method='TRACI',
+                                       category='environmental impact',
+                                       unit='kg CO2-eq',
+                                       description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
     Electricity.add_indicator(GlobalWarming, 0.67877501)
@@ -6246,6 +6981,28 @@ def create_T15_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
     qs.StreamImpactItem(ID='Methane_gasification', linked_stream=stream.methane_gasification, GlobalWarming=29.8)
     qs.StreamImpactItem(ID='Nitrous_oxide_gasification', linked_stream=stream.nitrous_oxide_gasification, GlobalWarming=273)
+    
+    ash_CHP_trucking = qs.ImpactItem(ID='Ash_CHP_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    ash_CHP_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    ash_CHP_trucking.price = (0.00551 + 0.0000541*CHP.solids_distance)/CHP.solids_distance
+    
+    ash_CHP_transportation = qs.Transportation(ID='Ash_CHP_transportation',
+                                               linked_unit=CHP,
+                                               item=ash_CHP_trucking,
+                                               load_type='mass',
+                                               load=stream.ash_CHP.F_mass,
+                                               load_unit='kg',
+                                               distance=CHP.solids_distance,
+                                               distance_unit='km',
+                                               # set to 1 h since load = kg/h
+                                               interval='1',
+                                               interval_unit='h')
+    CHP.transportation = ash_CHP_transportation
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
