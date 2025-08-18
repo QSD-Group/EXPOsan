@@ -29,9 +29,13 @@ from biosteam.units import IsenthalpicValve
 # https://en.wikipedia.org/wiki/Methane (accessed 2025-02-10)
 natural_gas_density = 0.657
 
+# diesel density, kg/m3
+diesel_density = 850
+
 _mile_to_km = auom('mile').conversion_factor('km')
 _ton_to_tonne = auom('ton').conversion_factor('tonne')
 _lb_to_kg = auom('lb').conversion_factor('kg')
+_gal_to_liter = auom('gallon').conversion_factor('liter')
 
 # TODO: add in writing: use 2023$ (since CEPCI is not available after that, need a fee to access the full 2024 data)
 
@@ -152,7 +156,8 @@ def create_C1_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.1
     # TODO: landfilling tipping fees can be an uncertainty parameter or a typology parameter
     Landfilling = lsu.Landfilling(ID='Landfilling',
                                   ins=Dewatering-0,
-                                  outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'))
+                                  outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'),
+                                  solids_distance=solids_distance)
     
     sys = qs.System.from_units(ID='system_C1',
                                units=list(flowsheet.unit),
@@ -183,6 +188,28 @@ def create_C1_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.1
     # carbon sequestration
     qs.StreamImpactItem(ID='Sequestered_carbon_dioxide_LF', linked_stream=stream.sequestered_carbon_dioxide_LF, GlobalWarming=1)
     
+    sludge_trucking = qs.ImpactItem('Sludge_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    sludge_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    sludge_trucking.price = (0.00551 + 0.0000541*Landfilling.solids_distance)/Landfilling.solids_distance
+    
+    sludge_transportation = qs.Transportation('Sludge_trucking',
+                                              linked_unit=Landfilling,
+                                              item=sludge_trucking,
+                                              load_type='mass',
+                                              load=stream.landfilled_solids.F_mass,
+                                              load_unit='kg',
+                                              distance=Landfilling.solids_distance,
+                                              distance_unit='km',
+                                              # set to 1 h since load = kg/h
+                                              interval='1',
+                                              interval_unit='h')
+    Landfilling.transportation = sludge_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -209,8 +236,7 @@ def create_C1_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.1
 
 #%% system C2
 
-def create_C2_system(size=10, operation_hours=8760,
-                     solids_distance=100, FTE=0.2):
+def create_C2_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.2):
     flowsheet_ID = 'C2'
     
     # clear flowsheet and registry for reloading
@@ -260,7 +286,8 @@ def create_C2_system(size=10, operation_hours=8760,
     
     Landfilling = lsu.Landfilling(ID='Landfilling',
                                   ins=AlkalineStabilization-0,
-                                  outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'))
+                                  outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'),
+                                  solids_distance=solids_distance)
     
     sys = qs.System.from_units(ID='system_C2',
                                units=list(flowsheet.unit),
@@ -294,6 +321,28 @@ def create_C2_system(size=10, operation_hours=8760,
     # carbon sequestration
     qs.StreamImpactItem(ID='Sequestered_carbon_dioxide_LF', linked_stream=stream.sequestered_carbon_dioxide_LF, GlobalWarming=1)
     
+    sludge_trucking = qs.ImpactItem('Sludge_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    sludge_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    sludge_trucking.price = (0.00551 + 0.0000541*Landfilling.solids_distance)/Landfilling.solids_distance
+    
+    sludge_transportation = qs.Transportation('Sludge_trucking',
+                                              linked_unit=Landfilling,
+                                              item=sludge_trucking,
+                                              load_type='mass',
+                                              load=stream.landfilled_solids.F_mass,
+                                              load_unit='kg',
+                                              distance=Landfilling.solids_distance,
+                                              distance_unit='km',
+                                              # set to 1 h since load = kg/h
+                                              interval='1',
+                                              interval_unit='h')
+    Landfilling.transportation = sludge_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -320,8 +369,7 @@ def create_C2_system(size=10, operation_hours=8760,
 
 #%% system C3
 
-def create_C3_system(size=10, operation_hours=8760,
-                     solids_distance=100, FTE=0.2):
+def create_C3_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.2):
     flowsheet_ID = 'C3'
     
     # clear flowsheet and registry for reloading
@@ -371,7 +419,10 @@ def create_C3_system(size=10, operation_hours=8760,
     
     LandApplication = lsu.LandApplication(ID='LandApplication',
                                           ins=(AlkalineStabilization-0, 'diesel_LA'),
-                                          outs=('biosolids_cost','methane_LA','nitrous_oxide_LA','carbon_dioxide_LA'))
+                                          outs=('biosolids_cost','methane_LA','nitrous_oxide_LA','carbon_dioxide_LA'),
+                                          solids_distance=solids_distance)
+    # 2023 weekly average from U.S. EIA: 4.224 $/gallon
+    LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
     # TODO: update cost for biosolids_cost with references (should be based on dry weight since heat drying in some systems can reduce moisture)
     LandApplication.outs[0].price = 10/1000
     
@@ -418,6 +469,28 @@ def create_C3_system(size=10, operation_hours=8760,
     # carbon sequestration
     qs.StreamImpactItem(ID='Carbon_dioxide_LA', linked_stream=stream.carbon_dioxide_LA, GlobalWarming=1)
     
+    biosolids_trucking = qs.ImpactItem('Biosolids_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    biosolids_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    biosolids_trucking.price = (0.00551 + 0.0000541*LandApplication.solids_distance)/LandApplication.solids_distance
+    
+    biosolids_transportation = qs.Transportation('Sludge_trucking',
+                                                 linked_unit=LandApplication,
+                                                 item=biosolids_trucking,
+                                                 load_type='mass',
+                                                 load=stream.biosolids_cost.F_mass,
+                                                 load_unit='kg',
+                                                 distance=LandApplication.solids_distance,
+                                                 distance_unit='km',
+                                                 # set to 1 h since load = kg/h
+                                                 interval='1',
+                                                 interval_unit='h')
+    LandApplication.transportation = biosolids_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -446,8 +519,7 @@ def create_C3_system(size=10, operation_hours=8760,
 
 #%% system C4
 
-def create_C4_system(size=10, operation_hours=8760,
-                     solids_distance=100, FTE=0.2):
+def create_C4_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.2):
     flowsheet_ID = 'C4'
     
     # clear flowsheet and registry for reloading
@@ -492,9 +564,12 @@ def create_C4_system(size=10, operation_hours=8760,
     # TODO: add cost for diesel_composting
     # TODO: make sure the Composting unit is composting + land application
     Composting = lsu.Composting(ID='Composting', ins=(Dewatering-0, 'bulking_agent', 'diesel_composting'),
-                                outs=('compost_cost','methane_composting','nitrous_oxide_composting','sequestered_carbon_dioxide_composting'))
+                                outs=('compost_cost','methane_composting','nitrous_oxide_composting','sequestered_carbon_dioxide_composting'),
+                                solids_distance=solids_distance)
     # TODO: uncertainty range (uniform) 18-36 2005$/tonne
     Composting.ins[1].price = 27/1000/GDPCTPI[2005]*GDPCTPI[2023]
+    # 2023 weekly average from U.S. EIA: 4.224 $/gallon
+    Composting.ins[2].price = 4.224/_gal_to_liter*1000/diesel_density
     # TODO: update cost for compost_cost with references
     Composting.outs[0].price = 10/1000
     
@@ -540,6 +615,28 @@ def create_C4_system(size=10, operation_hours=8760,
     # carbon sequestration
     qs.StreamImpactItem(ID='Sequestered_carbon_dioxide_composting', linked_stream=stream.sequestered_carbon_dioxide_composting, GlobalWarming=1)
     
+    compost_trucking = qs.ImpactItem('Compost_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    compost_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    compost_trucking.price = (0.00551 + 0.0000541*Composting.solids_distance)/Composting.solids_distance
+    
+    compost_transportation = qs.Transportation('Sludge_trucking',
+                                               linked_unit=Composting,
+                                               item=compost_trucking,
+                                               load_type='mass',
+                                               load=stream.compost_cost.F_mass,
+                                               load_unit='kg',
+                                               distance=Composting.solids_distance,
+                                               distance_unit='km',
+                                               # set to 1 h since load = kg/h
+                                               interval='1',
+                                               interval_unit='h')
+    Composting.transportation = compost_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -568,8 +665,7 @@ def create_C4_system(size=10, operation_hours=8760,
 
 #%% system C5
 
-def create_C5_system(size=10, operation_hours=8760,
-                     solids_distance=100, FTE=0.3):
+def create_C5_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.3):
     flowsheet_ID = 'C5'
     
     # clear flowsheet and registry for reloading
@@ -619,7 +715,8 @@ def create_C5_system(size=10, operation_hours=8760,
     
     Landfilling = lsu.Landfilling(ID='Landfilling',
                                   ins=HeatDrying-0,
-                                  outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'))
+                                  outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'),
+                                  solids_distance=solids_distance)
     
     sys = qs.System.from_units(ID='system_C5',
                                units=list(flowsheet.unit),
@@ -653,6 +750,28 @@ def create_C5_system(size=10, operation_hours=8760,
     # carbon sequestration
     qs.StreamImpactItem(ID='Sequestered_carbon_dioxide_LF', linked_stream=stream.sequestered_carbon_dioxide_LF, GlobalWarming=1)
     
+    sludge_trucking = qs.ImpactItem('Sludge_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    sludge_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    sludge_trucking.price = (0.00551 + 0.0000541*Landfilling.solids_distance)/Landfilling.solids_distance
+    
+    sludge_transportation = qs.Transportation('Sludge_trucking',
+                                              linked_unit=Landfilling,
+                                              item=sludge_trucking,
+                                              load_type='mass',
+                                              load=stream.landfilled_solids.F_mass,
+                                              load_unit='kg',
+                                              distance=Landfilling.solids_distance,
+                                              distance_unit='km',
+                                              # set to 1 h since load = kg/h
+                                              interval='1',
+                                              interval_unit='h')
+    Landfilling.transportation = sludge_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -680,8 +799,7 @@ def create_C5_system(size=10, operation_hours=8760,
 
 #%% system C6
 
-def create_C6_system(size=10, operation_hours=8760,
-                     solids_distance=100, FTE=0.3):
+def create_C6_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.3):
     flowsheet_ID = 'C6'
     
     # clear flowsheet and registry for reloading
@@ -731,7 +849,10 @@ def create_C6_system(size=10, operation_hours=8760,
     
     LandApplication = lsu.LandApplication(ID='LandApplication',
                                           ins=(HeatDrying-0, 'diesel_LA'),
-                                          outs=('biosolids_cost','methane_LA','nitrous_oxide_LA','carbon_dioxide_LA'))
+                                          outs=('biosolids_cost','methane_LA','nitrous_oxide_LA','carbon_dioxide_LA'),
+                                          solids_distance=solids_distance)
+    # 2023 weekly average from U.S. EIA: 4.224 $/gallon
+    LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
     
     sys = qs.System.from_units(ID='system_C6',
                                units=list(flowsheet.unit),
@@ -777,6 +898,28 @@ def create_C6_system(size=10, operation_hours=8760,
     # carbon sequestration
     qs.StreamImpactItem(ID='Carbon_dioxide_LA', linked_stream=stream.carbon_dioxide_LA, GlobalWarming=1)
     
+    biosolids_trucking = qs.ImpactItem('Biosolids_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    biosolids_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    biosolids_trucking.price = (0.00551 + 0.0000541*LandApplication.solids_distance)/LandApplication.solids_distance
+    
+    biosolids_transportation = qs.Transportation('Sludge_trucking',
+                                                 linked_unit=LandApplication,
+                                                 item=biosolids_trucking,
+                                                 load_type='mass',
+                                                 load=stream.biosolids_cost.F_mass,
+                                                 load_unit='kg',
+                                                 distance=LandApplication.solids_distance,
+                                                 distance_unit='km',
+                                                 # set to 1 h since load = kg/h
+                                                 interval='1',
+                                                 interval_unit='h')
+    LandApplication.transportation = biosolids_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -806,8 +949,7 @@ def create_C6_system(size=10, operation_hours=8760,
 
 #%% system C7
 
-def create_C7_system(size=10, operation_hours=8760,
-                     solids_distance=100, FTE=0.4):
+def create_C7_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.4):
     flowsheet_ID = 'C7'
     
     # clear flowsheet and registry for reloading
@@ -858,7 +1000,8 @@ def create_C7_system(size=10, operation_hours=8760,
     # TODO: consider adding ash disposal
     Incineration = lsu.Incineration(ID='Incineration',
                                     ins=(HeatDrying-0, 'natural_gas_incineration'),
-                                    outs=('ash_incineration','vapor_incineration','methane_IN','nitrous_oxide_IN'))
+                                    outs=('ash_incineration','vapor_incineration','methane_IN','nitrous_oxide_IN'),
+                                    solids_distance=solids_distance)
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
     Incineration.ins[1].price = 0.218
@@ -895,6 +1038,28 @@ def create_C7_system(size=10, operation_hours=8760,
     qs.StreamImpactItem(ID='Methane_IN', linked_stream=stream.methane_IN, GlobalWarming=29.8)
     qs.StreamImpactItem(ID='Nitrous_oxide_IN', linked_stream=stream.nitrous_oxide_IN, GlobalWarming=273)
     
+    ash_trucking = qs.ImpactItem('Sludge_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    ash_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    ash_trucking.price = (0.00551 + 0.0000541*Incineration.solids_distance)/Incineration.solids_distance
+    
+    ash_transportation = qs.Transportation('Sludge_trucking',
+                                           linked_unit=Incineration,
+                                           item=ash_trucking,
+                                           load_type='mass',
+                                           load=stream.ash_incineration.F_mass,
+                                           load_unit='kg',
+                                           distance=Incineration.solids_distance,
+                                           distance_unit='km',
+                                           # set to 1 h since load = kg/h
+                                           interval='1',
+                                           interval_unit='h')
+    Incineration.transportation = ash_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -922,8 +1087,7 @@ def create_C7_system(size=10, operation_hours=8760,
 
 #%% system C8
 
-def create_C8_system(size=10, operation_hours=8760,
-                     solids_distance=100, FTE=0.3):
+def create_C8_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.3):
     flowsheet_ID = 'C8'
     
     # clear flowsheet and registry for reloading
@@ -970,7 +1134,8 @@ def create_C8_system(size=10, operation_hours=8760,
     
     Landfilling = lsu.Landfilling(ID='Landfilling',
                                   ins=Dewatering-0,
-                                  outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'))
+                                  outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'),
+                                  solids_distance=solids_distance)
     
     sys = qs.System.from_units(ID='system_C8',
                                units=list(flowsheet.unit),
@@ -1001,6 +1166,28 @@ def create_C8_system(size=10, operation_hours=8760,
     # carbon sequestration
     qs.StreamImpactItem(ID='Sequestered_carbon_dioxide_LF', linked_stream=stream.sequestered_carbon_dioxide_LF, GlobalWarming=1)
     
+    sludge_trucking = qs.ImpactItem('Sludge_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    sludge_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    sludge_trucking.price = (0.00551 + 0.0000541*Landfilling.solids_distance)/Landfilling.solids_distance
+    
+    sludge_transportation = qs.Transportation('Sludge_trucking',
+                                              linked_unit=Landfilling,
+                                              item=sludge_trucking,
+                                              load_type='mass',
+                                              load=stream.landfilled_solids.F_mass,
+                                              load_unit='kg',
+                                              distance=Landfilling.solids_distance,
+                                              distance_unit='km',
+                                              # set to 1 h since load = kg/h
+                                              interval='1',
+                                              interval_unit='h')
+    Landfilling.transportation = sludge_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -1027,8 +1214,7 @@ def create_C8_system(size=10, operation_hours=8760,
 
 #%% system C9
 
-def create_C9_system(size=10, operation_hours=8760,
-                     solids_distance=100, FTE=0.3):
+def create_C9_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.3):
     flowsheet_ID = 'C9'
     
     # clear flowsheet and registry for reloading
@@ -1075,7 +1261,10 @@ def create_C9_system(size=10, operation_hours=8760,
     
     LandApplication = lsu.LandApplication(ID='LandApplication',
                                           ins=(Dewatering-0, 'diesel_LA'),
-                                          outs=('biosolids_cost','methane_LA','nitrous_oxide_LA','carbon_dioxide_LA'))
+                                          outs=('biosolids_cost','methane_LA','nitrous_oxide_LA','carbon_dioxide_LA'),
+                                          solids_distance=solids_distance)
+    # 2023 weekly average from U.S. EIA: 4.224 $/gallon
+    LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
     
     sys = qs.System.from_units(ID='system_C9',
                                units=list(flowsheet.unit),
@@ -1118,6 +1307,28 @@ def create_C9_system(size=10, operation_hours=8760,
     # carbon sequestration
     qs.StreamImpactItem(ID='Carbon_dioxide_LA', linked_stream=stream.carbon_dioxide_LA, GlobalWarming=1)
     
+    biosolids_trucking = qs.ImpactItem('Biosolids_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    biosolids_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    biosolids_trucking.price = (0.00551 + 0.0000541*LandApplication.solids_distance)/LandApplication.solids_distance
+    
+    biosolids_transportation = qs.Transportation('Sludge_trucking',
+                                                 linked_unit=LandApplication,
+                                                 item=biosolids_trucking,
+                                                 load_type='mass',
+                                                 load=stream.biosolids_cost.F_mass,
+                                                 load_unit='kg',
+                                                 distance=LandApplication.solids_distance,
+                                                 distance_unit='km',
+                                                 # set to 1 h since load = kg/h
+                                                 interval='1',
+                                                 interval_unit='h')
+    LandApplication.transportation = biosolids_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -1146,8 +1357,7 @@ def create_C9_system(size=10, operation_hours=8760,
 
 #%% system C10
 
-def create_C10_system(size=10, operation_hours=8760,
-                      solids_distance=100, FTE=0.35):
+def create_C10_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.35):
     flowsheet_ID = 'C10'
     
     # clear flowsheet and registry for reloading
@@ -1195,9 +1405,12 @@ def create_C10_system(size=10, operation_hours=8760,
     # TODO: add cost for diesel_composting
     # TODO: make sure the Composting unit is composting + land application
     Composting = lsu.Composting(ID='Composting', ins=(Dewatering-0, 'bulking_agent', 'diesel_composting'),
-                                outs=('compost_cost','methane_composting','nitrous_oxide_composting','sequestered_carbon_dioxide_composting'))
+                                outs=('compost_cost','methane_composting','nitrous_oxide_composting','sequestered_carbon_dioxide_composting'),
+                                solids_distance=solids_distance)
     # TODO: uncertainty range (uniform) 18-36 2005$/tonne
     Composting.ins[1].price = 27/1000/GDPCTPI[2005]*GDPCTPI[2023]
+    # 2023 weekly average from U.S. EIA: 4.224 $/gallon
+    Composting.ins[2].price = 4.224/_gal_to_liter*1000/diesel_density
     # TODO: update cost for compost_cost with references
     Composting.outs[0].price = 10/1000
     
@@ -1243,6 +1456,28 @@ def create_C10_system(size=10, operation_hours=8760,
     # carbon sequestration
     qs.StreamImpactItem(ID='Sequestered_carbon_dioxide_composting', linked_stream=stream.sequestered_carbon_dioxide_composting, GlobalWarming=1)
     
+    compost_trucking = qs.ImpactItem('Compost_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    compost_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    compost_trucking.price = (0.00551 + 0.0000541*Composting.solids_distance)/Composting.solids_distance
+    
+    compost_transportation = qs.Transportation('Sludge_trucking',
+                                               linked_unit=Composting,
+                                               item=compost_trucking,
+                                               load_type='mass',
+                                               load=stream.compost_cost.F_mass,
+                                               load_unit='kg',
+                                               distance=Composting.solids_distance,
+                                               distance_unit='km',
+                                               # set to 1 h since load = kg/h
+                                               interval='1',
+                                               interval_unit='h')
+    Composting.transportation = compost_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -1271,8 +1506,7 @@ def create_C10_system(size=10, operation_hours=8760,
 
 #%% system C11
 
-def create_C11_system(size=10, operation_hours=8760,
-                      solids_distance=100, FTE=0.45):
+def create_C11_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.45):
     flowsheet_ID = 'C11'
     
     # clear flowsheet and registry for reloading
@@ -1325,7 +1559,8 @@ def create_C11_system(size=10, operation_hours=8760,
     
     Landfilling = lsu.Landfilling(ID='Landfilling',
                                   ins=HeatDrying-0,
-                                  outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'))
+                                  outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'),
+                                  solids_distance=solids_distance)
     
     sys = qs.System.from_units(ID='system_C11',
                                units=list(flowsheet.unit),
@@ -1359,6 +1594,28 @@ def create_C11_system(size=10, operation_hours=8760,
     # carbon sequestration
     qs.StreamImpactItem(ID='Sequestered_carbon_dioxide_LF', linked_stream=stream.sequestered_carbon_dioxide_LF, GlobalWarming=1)
     
+    sludge_trucking = qs.ImpactItem('Sludge_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    sludge_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    sludge_trucking.price = (0.00551 + 0.0000541*Landfilling.solids_distance)/Landfilling.solids_distance
+    
+    sludge_transportation = qs.Transportation('Sludge_trucking',
+                                              linked_unit=Landfilling,
+                                              item=sludge_trucking,
+                                              load_type='mass',
+                                              load=stream.landfilled_solids.F_mass,
+                                              load_unit='kg',
+                                              distance=Landfilling.solids_distance,
+                                              distance_unit='km',
+                                              # set to 1 h since load = kg/h
+                                              interval='1',
+                                              interval_unit='h')
+    Landfilling.transportation = sludge_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -1386,8 +1643,7 @@ def create_C11_system(size=10, operation_hours=8760,
 
 #%% system C12
 
-def create_C12_system(size=10, operation_hours=8760,
-                      solids_distance=100, FTE=0.45):
+def create_C12_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.45):
     flowsheet_ID = 'C12'
     
     # clear flowsheet and registry for reloading
@@ -1440,7 +1696,10 @@ def create_C12_system(size=10, operation_hours=8760,
     
     LandApplication = lsu.LandApplication(ID='LandApplication',
                                           ins=(HeatDrying-0, 'diesel_LA'),
-                                          outs=('biosolids_cost','methane_LA','nitrous_oxide_LA','carbon_dioxide_LA'))
+                                          outs=('biosolids_cost','methane_LA','nitrous_oxide_LA','carbon_dioxide_LA'),
+                                          solids_distance=solids_distance)
+    # 2023 weekly average from U.S. EIA: 4.224 $/gallon
+    LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
     
     sys = qs.System.from_units(ID='system_C12',
                                units=list(flowsheet.unit),
@@ -1486,6 +1745,28 @@ def create_C12_system(size=10, operation_hours=8760,
     # carbon sequestration
     qs.StreamImpactItem(ID='Carbon_dioxide_LA', linked_stream=stream.carbon_dioxide_LA, GlobalWarming=1)
     
+    biosolids_trucking = qs.ImpactItem('Biosolids_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    biosolids_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    biosolids_trucking.price = (0.00551 + 0.0000541*LandApplication.solids_distance)/LandApplication.solids_distance
+    
+    biosolids_transportation = qs.Transportation('Sludge_trucking',
+                                                 linked_unit=LandApplication,
+                                                 item=biosolids_trucking,
+                                                 load_type='mass',
+                                                 load=stream.biosolids_cost.F_mass,
+                                                 load_unit='kg',
+                                                 distance=LandApplication.solids_distance,
+                                                 distance_unit='km',
+                                                 # set to 1 h since load = kg/h
+                                                 interval='1',
+                                                 interval_unit='h')
+    LandApplication.transportation = biosolids_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -1515,8 +1796,7 @@ def create_C12_system(size=10, operation_hours=8760,
 
 #%% system C13
 
-def create_C13_system(size=10, operation_hours=8760,
-                      solids_distance=100, FTE=0.55):
+def create_C13_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.55):
     flowsheet_ID = 'C13'
     
     # clear flowsheet and registry for reloading
@@ -1569,7 +1849,8 @@ def create_C13_system(size=10, operation_hours=8760,
     
     Incineration = lsu.Incineration(ID='Incineration',
                                     ins=(HeatDrying-0, 'natural_gas_incineration'),
-                                    outs=('ash_incineration','vapor_incineration','methane_IN','nitrous_oxide_IN'))
+                                    outs=('ash_incineration','vapor_incineration','methane_IN','nitrous_oxide_IN'),
+                                    solids_distance=solids_distance)
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
     Incineration.ins[1].price = 0.218
@@ -1606,6 +1887,28 @@ def create_C13_system(size=10, operation_hours=8760,
     qs.StreamImpactItem(ID='Methane_IN', linked_stream=stream.methane_IN, GlobalWarming=29.8)
     qs.StreamImpactItem(ID='Nitrous_oxide_IN', linked_stream=stream.nitrous_oxide_IN, GlobalWarming=273)
     
+    ash_trucking = qs.ImpactItem('Sludge_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    ash_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    ash_trucking.price = (0.00551 + 0.0000541*Incineration.solids_distance)/Incineration.solids_distance
+    
+    ash_transportation = qs.Transportation('Sludge_trucking',
+                                           linked_unit=Incineration,
+                                           item=ash_trucking,
+                                           load_type='mass',
+                                           load=stream.ash_incineration.F_mass,
+                                           load_unit='kg',
+                                           distance=Incineration.solids_distance,
+                                           distance_unit='km',
+                                           # set to 1 h since load = kg/h
+                                           interval='1',
+                                           interval_unit='h')
+    Incineration.transportation = ash_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -1633,8 +1936,7 @@ def create_C13_system(size=10, operation_hours=8760,
 
 #%% system C14
 
-def create_C14_system(size=10, operation_hours=8760,
-                      solids_distance=100, FTE=0.3):
+def create_C14_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.3):
     flowsheet_ID = 'C14'
     
     # clear flowsheet and registry for reloading
@@ -1687,7 +1989,8 @@ def create_C14_system(size=10, operation_hours=8760,
     
     Landfilling = lsu.Landfilling(ID='Landfilling',
                                   ins=Dewatering-0,
-                                  outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'))
+                                  outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'),
+                                  solids_distance=solids_distance)
     
     sys = qs.System.from_units(ID='system_C14',
                                units=list(flowsheet.unit),
@@ -1722,6 +2025,28 @@ def create_C14_system(size=10, operation_hours=8760,
     # carbon sequestration
     qs.StreamImpactItem(ID='Sequestered_carbon_dioxide_LF', linked_stream=stream.sequestered_carbon_dioxide_LF, GlobalWarming=1)
     
+    sludge_trucking = qs.ImpactItem('Sludge_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    sludge_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    sludge_trucking.price = (0.00551 + 0.0000541*Landfilling.solids_distance)/Landfilling.solids_distance
+    
+    sludge_transportation = qs.Transportation('Sludge_trucking',
+                                              linked_unit=Landfilling,
+                                              item=sludge_trucking,
+                                              load_type='mass',
+                                              load=stream.landfilled_solids.F_mass,
+                                              load_unit='kg',
+                                              distance=Landfilling.solids_distance,
+                                              distance_unit='km',
+                                              # set to 1 h since load = kg/h
+                                              interval='1',
+                                              interval_unit='h')
+    Landfilling.transportation = sludge_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -1749,8 +2074,7 @@ def create_C14_system(size=10, operation_hours=8760,
 
 #%% system C15
 
-def create_C15_system(size=10, operation_hours=8760,
-                      solids_distance=100, FTE=0.3):
+def create_C15_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.3):
     flowsheet_ID = 'C15'
     
     # clear flowsheet and registry for reloading
@@ -1803,7 +2127,10 @@ def create_C15_system(size=10, operation_hours=8760,
     
     LandApplication = lsu.LandApplication(ID='LandApplication',
                                           ins=(Dewatering-0, 'diesel_LA'),
-                                          outs=('biosolids_cost','methane_LA','nitrous_oxide_LA','carbon_dioxide_LA'))
+                                          outs=('biosolids_cost','methane_LA','nitrous_oxide_LA','carbon_dioxide_LA'),
+                                          solids_distance=solids_distance)
+    # 2023 weekly average from U.S. EIA: 4.224 $/gallon
+    LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
     
     sys = qs.System.from_units(ID='system_C15',
                                units=list(flowsheet.unit),
@@ -1850,6 +2177,28 @@ def create_C15_system(size=10, operation_hours=8760,
     # carbon sequestration
     qs.StreamImpactItem(ID='Carbon_dioxide_LA', linked_stream=stream.carbon_dioxide_LA, GlobalWarming=1)
     
+    biosolids_trucking = qs.ImpactItem('Biosolids_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    biosolids_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    biosolids_trucking.price = (0.00551 + 0.0000541*LandApplication.solids_distance)/LandApplication.solids_distance
+    
+    biosolids_transportation = qs.Transportation('Sludge_trucking',
+                                                 linked_unit=LandApplication,
+                                                 item=biosolids_trucking,
+                                                 load_type='mass',
+                                                 load=stream.biosolids_cost.F_mass,
+                                                 load_unit='kg',
+                                                 distance=LandApplication.solids_distance,
+                                                 distance_unit='km',
+                                                 # set to 1 h since load = kg/h
+                                                 interval='1',
+                                                 interval_unit='h')
+    LandApplication.transportation = biosolids_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -1879,8 +2228,7 @@ def create_C15_system(size=10, operation_hours=8760,
 
 #%% system C16
 
-def create_C16_system(size=10, operation_hours=8760,
-                      solids_distance=100, FTE=0.35):
+def create_C16_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.35):
     flowsheet_ID = 'C16'
     
     # clear flowsheet and registry for reloading
@@ -1934,9 +2282,12 @@ def create_C16_system(size=10, operation_hours=8760,
     # TODO: add cost for diesel_composting
     # TODO: make sure the Composting unit is composting + land application
     Composting = lsu.Composting(ID='Composting', ins=(Dewatering-0, 'bulking_agent', 'diesel_composting'),
-                                outs=('compost_cost','methane_composting','nitrous_oxide_composting','sequestered_carbon_dioxide_composting'))
+                                outs=('compost_cost','methane_composting','nitrous_oxide_composting','sequestered_carbon_dioxide_composting'),
+                                solids_distance=solids_distance)
     # TODO: uncertainty range (uniform) 18-36 2005$/tonne
     Composting.ins[1].price = 27/1000/GDPCTPI[2005]*GDPCTPI[2023]
+    # 2023 weekly average from U.S. EIA: 4.224 $/gallon
+    Composting.ins[2].price = 4.224/_gal_to_liter*1000/diesel_density
     # TODO: update cost for compost_cost with references
     Composting.outs[0].price = 10/1000
     
@@ -1986,6 +2337,28 @@ def create_C16_system(size=10, operation_hours=8760,
     # carbon sequestration
     qs.StreamImpactItem(ID='Sequestered_carbon_dioxide_composting', linked_stream=stream.sequestered_carbon_dioxide_composting, GlobalWarming=1)
     
+    compost_trucking = qs.ImpactItem('Compost_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    compost_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    compost_trucking.price = (0.00551 + 0.0000541*Composting.solids_distance)/Composting.solids_distance
+    
+    compost_transportation = qs.Transportation('Sludge_trucking',
+                                               linked_unit=Composting,
+                                               item=compost_trucking,
+                                               load_type='mass',
+                                               load=stream.compost_cost.F_mass,
+                                               load_unit='kg',
+                                               distance=Composting.solids_distance,
+                                               distance_unit='km',
+                                               # set to 1 h since load = kg/h
+                                               interval='1',
+                                               interval_unit='h')
+    Composting.transportation = compost_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -2015,8 +2388,7 @@ def create_C16_system(size=10, operation_hours=8760,
 
 #%% system C17
 
-def create_C17_system(size=10, operation_hours=8760,
-                      solids_distance=100, FTE=0.45):
+def create_C17_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.45):
     flowsheet_ID = 'C17'
     
     # clear flowsheet and registry for reloading
@@ -2075,7 +2447,8 @@ def create_C17_system(size=10, operation_hours=8760,
     
     Landfilling = lsu.Landfilling(ID='Landfilling',
                                   ins=HeatDrying-0,
-                                  outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'))
+                                  outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'),
+                                  solids_distance=solids_distance)
     
     sys = qs.System.from_units(ID='system_C17',
                                units=list(flowsheet.unit),
@@ -2110,6 +2483,28 @@ def create_C17_system(size=10, operation_hours=8760,
     # carbon sequestration
     qs.StreamImpactItem(ID='Sequestered_carbon_dioxide_LF', linked_stream=stream.sequestered_carbon_dioxide_LF, GlobalWarming=1)
     
+    sludge_trucking = qs.ImpactItem('Sludge_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    sludge_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    sludge_trucking.price = (0.00551 + 0.0000541*Landfilling.solids_distance)/Landfilling.solids_distance
+    
+    sludge_transportation = qs.Transportation('Sludge_trucking',
+                                              linked_unit=Landfilling,
+                                              item=sludge_trucking,
+                                              load_type='mass',
+                                              load=stream.landfilled_solids.F_mass,
+                                              load_unit='kg',
+                                              distance=Landfilling.solids_distance,
+                                              distance_unit='km',
+                                              # set to 1 h since load = kg/h
+                                              interval='1',
+                                              interval_unit='h')
+    Landfilling.transportation = sludge_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -2137,8 +2532,7 @@ def create_C17_system(size=10, operation_hours=8760,
 
 #%% system C18
 
-def create_C18_system(size=10, operation_hours=8760,
-                      solids_distance=100, FTE=0.45):
+def create_C18_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.45):
     flowsheet_ID = 'C18'
     
     # clear flowsheet and registry for reloading
@@ -2197,7 +2591,10 @@ def create_C18_system(size=10, operation_hours=8760,
     
     LandApplication = lsu.LandApplication(ID='LandApplication',
                                           ins=(HeatDrying-0, 'diesel_LA'),
-                                          outs=('biosolids_cost','methane_LA','nitrous_oxide_LA','carbon_dioxide_LA'))
+                                          outs=('biosolids_cost','methane_LA','nitrous_oxide_LA','carbon_dioxide_LA'),
+                                          solids_distance=solids_distance)
+    # 2023 weekly average from U.S. EIA: 4.224 $/gallon
+    LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
     
     sys = qs.System.from_units(ID='system_C18',
                                units=list(flowsheet.unit),
@@ -2244,6 +2641,28 @@ def create_C18_system(size=10, operation_hours=8760,
     # carbon sequestration
     qs.StreamImpactItem(ID='Carbon_dioxide_LA', linked_stream=stream.carbon_dioxide_LA, GlobalWarming=1)
     
+    biosolids_trucking = qs.ImpactItem('Biosolids_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    biosolids_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    biosolids_trucking.price = (0.00551 + 0.0000541*LandApplication.solids_distance)/LandApplication.solids_distance
+    
+    biosolids_transportation = qs.Transportation('Sludge_trucking',
+                                                 linked_unit=LandApplication,
+                                                 item=biosolids_trucking,
+                                                 load_type='mass',
+                                                 load=stream.biosolids_cost.F_mass,
+                                                 load_unit='kg',
+                                                 distance=LandApplication.solids_distance,
+                                                 distance_unit='km',
+                                                 # set to 1 h since load = kg/h
+                                                 interval='1',
+                                                 interval_unit='h')
+    LandApplication.transportation = biosolids_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -2273,8 +2692,7 @@ def create_C18_system(size=10, operation_hours=8760,
 
 #%% system C19
 
-def create_C19_system(size=10, operation_hours=8760,
-                      solids_distance=100, FTE=0.55):
+def create_C19_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.55):
     flowsheet_ID = 'C19'
     
     # clear flowsheet and registry for reloading
@@ -2334,7 +2752,8 @@ def create_C19_system(size=10, operation_hours=8760,
     # TODO: add ash disposal cost
     Incineration = lsu.Incineration(ID='Incineration',
                                     ins=(HeatDrying-0, 'natural_gas_incineration'),
-                                    outs=('ash_incineration','vapor_incineration','methane_IN','nitrous_oxide_IN'))
+                                    outs=('ash_incineration','vapor_incineration','methane_IN','nitrous_oxide_IN'),
+                                    solids_distance=solids_distance)
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
     Incineration.ins[1].price = 0.218
@@ -2372,6 +2791,28 @@ def create_C19_system(size=10, operation_hours=8760,
     qs.StreamImpactItem(ID='Methane_IN', linked_stream=stream.methane_IN, GlobalWarming=29.8)
     qs.StreamImpactItem(ID='Nitrous_oxide_IN', linked_stream=stream.nitrous_oxide_IN, GlobalWarming=273)
     
+    ash_trucking = qs.ImpactItem('Sludge_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    ash_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    ash_trucking.price = (0.00551 + 0.0000541*Incineration.solids_distance)/Incineration.solids_distance
+    
+    ash_transportation = qs.Transportation('Sludge_trucking',
+                                           linked_unit=Incineration,
+                                           item=ash_trucking,
+                                           load_type='mass',
+                                           load=stream.ash_incineration.F_mass,
+                                           load_unit='kg',
+                                           distance=Incineration.solids_distance,
+                                           distance_unit='km',
+                                           # set to 1 h since load = kg/h
+                                           interval='1',
+                                           interval_unit='h')
+    Incineration.transportation = ash_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -2399,8 +2840,7 @@ def create_C19_system(size=10, operation_hours=8760,
 
 #%% system C20
 
-def create_C20_system(size=10, operation_hours=8760,
-                      solids_distance=100, FTE=0.45):
+def create_C20_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.45):
     flowsheet_ID = 'C20'
     
     # clear flowsheet and registry for reloading
@@ -2450,7 +2890,8 @@ def create_C20_system(size=10, operation_hours=8760,
     
     Landfilling = lsu.Landfilling(ID='Landfilling',
                                   ins=Dewatering-0,
-                                  outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'))
+                                  outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'),
+                                  solids_distance=solids_distance)
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air'),
                                 outs=('emission','ash_CHP'), supplement_power_utility=False)
@@ -2495,6 +2936,28 @@ def create_C20_system(size=10, operation_hours=8760,
     # carbon sequestration
     qs.StreamImpactItem(ID='Sequestered_carbon_dioxide_LF', linked_stream=stream.sequestered_carbon_dioxide_LF, GlobalWarming=1)
     
+    sludge_trucking = qs.ImpactItem('Sludge_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    sludge_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    sludge_trucking.price = (0.00551 + 0.0000541*Landfilling.solids_distance)/Landfilling.solids_distance
+    
+    sludge_transportation = qs.Transportation('Sludge_trucking',
+                                              linked_unit=Landfilling,
+                                              item=sludge_trucking,
+                                              load_type='mass',
+                                              load=stream.landfilled_solids.F_mass,
+                                              load_unit='kg',
+                                              distance=Landfilling.solids_distance,
+                                              distance_unit='km',
+                                              # set to 1 h since load = kg/h
+                                              interval='1',
+                                              interval_unit='h')
+    Landfilling.transportation = sludge_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -2522,8 +2985,7 @@ def create_C20_system(size=10, operation_hours=8760,
 
 #%% system C21
 
-def create_C21_system(size=10, operation_hours=8760,
-                      solids_distance=100, FTE=0.45):
+def create_C21_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.45):
     flowsheet_ID = 'C21'
     
     # clear flowsheet and registry for reloading
@@ -2573,7 +3035,10 @@ def create_C21_system(size=10, operation_hours=8760,
     
     LandApplication = lsu.LandApplication(ID='LandApplication',
                                           ins=(Dewatering-0, 'diesel_LA'),
-                                          outs=('biosolids_cost','methane_LA','nitrous_oxide_LA','carbon_dioxide_LA'))
+                                          outs=('biosolids_cost','methane_LA','nitrous_oxide_LA','carbon_dioxide_LA'),
+                                          solids_distance=solids_distance)
+    # 2023 weekly average from U.S. EIA: 4.224 $/gallon
+    LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air_CHP'),
                                 outs=('emission','ash_CHP'), supplement_power_utility=False)
@@ -2630,6 +3095,28 @@ def create_C21_system(size=10, operation_hours=8760,
     # carbon sequestration
     qs.StreamImpactItem(ID='Carbon_dioxide_LA', linked_stream=stream.carbon_dioxide_LA, GlobalWarming=1)
     
+    biosolids_trucking = qs.ImpactItem('Biosolids_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    biosolids_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    biosolids_trucking.price = (0.00551 + 0.0000541*LandApplication.solids_distance)/LandApplication.solids_distance
+    
+    biosolids_transportation = qs.Transportation('Sludge_trucking',
+                                                 linked_unit=LandApplication,
+                                                 item=biosolids_trucking,
+                                                 load_type='mass',
+                                                 load=stream.biosolids_cost.F_mass,
+                                                 load_unit='kg',
+                                                 distance=LandApplication.solids_distance,
+                                                 distance_unit='km',
+                                                 # set to 1 h since load = kg/h
+                                                 interval='1',
+                                                 interval_unit='h')
+    LandApplication.transportation = biosolids_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -2659,8 +3146,7 @@ def create_C21_system(size=10, operation_hours=8760,
 
 #%% system C22
 
-def create_C22_system(size=10, operation_hours=8760,
-                      solids_distance=100, FTE=0.5):
+def create_C22_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.5):
     flowsheet_ID = 'C22'
     
     # clear flowsheet and registry for reloading
@@ -2711,9 +3197,12 @@ def create_C22_system(size=10, operation_hours=8760,
     # TODO: add cost for diesel_composting
     # TODO: make sure the Composting unit is composting + land application
     Composting = lsu.Composting(ID='Composting', ins=(Dewatering-0, 'bulking_agent', 'diesel_composting'),
-                                outs=('compost_cost','methane_composting','nitrous_oxide_composting','sequestered_carbon_dioxide_composting'))
+                                outs=('compost_cost','methane_composting','nitrous_oxide_composting','sequestered_carbon_dioxide_composting'),
+                                solids_distance=solids_distance)
     # TODO: uncertainty range (uniform) 18-36 2005$/tonne
     Composting.ins[1].price = 27/1000/GDPCTPI[2005]*GDPCTPI[2023]
+    # 2023 weekly average from U.S. EIA: 4.224 $/gallon
+    Composting.ins[2].price = 4.224/_gal_to_liter*1000/diesel_density
     # TODO: update cost for compost_cost with references
     Composting.outs[0].price = 10/1000
     
@@ -2773,6 +3262,28 @@ def create_C22_system(size=10, operation_hours=8760,
     # carbon sequestration
     qs.StreamImpactItem(ID='Sequestered_carbon_dioxide_composting', linked_stream=stream.sequestered_carbon_dioxide_composting, GlobalWarming=1)
     
+    compost_trucking = qs.ImpactItem('Compost_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    compost_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    compost_trucking.price = (0.00551 + 0.0000541*Composting.solids_distance)/Composting.solids_distance
+    
+    compost_transportation = qs.Transportation('Sludge_trucking',
+                                               linked_unit=Composting,
+                                               item=compost_trucking,
+                                               load_type='mass',
+                                               load=stream.compost_cost.F_mass,
+                                               load_unit='kg',
+                                               distance=Composting.solids_distance,
+                                               distance_unit='km',
+                                               # set to 1 h since load = kg/h
+                                               interval='1',
+                                               interval_unit='h')
+    Composting.transportation = compost_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -2802,8 +3313,7 @@ def create_C22_system(size=10, operation_hours=8760,
 
 #%% system C23
 
-def create_C23_system(size=10, operation_hours=8760,
-                      solids_distance=100, FTE=0.6):
+def create_C23_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.6):
     flowsheet_ID = 'C23'
     
     # clear flowsheet and registry for reloading
@@ -2859,7 +3369,8 @@ def create_C23_system(size=10, operation_hours=8760,
     
     Landfilling = lsu.Landfilling(ID='Landfilling',
                                   ins=HeatDrying-0,
-                                  outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'))
+                                  outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'),
+                                  solids_distance=solids_distance)
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air_CHP'),
                                 outs=('emission','ash_CHP'), supplement_power_utility=False)
@@ -2904,6 +3415,28 @@ def create_C23_system(size=10, operation_hours=8760,
     # carbon sequestration
     qs.StreamImpactItem(ID='Sequestered_carbon_dioxide_LF', linked_stream=stream.sequestered_carbon_dioxide_LF, GlobalWarming=1)
     
+    sludge_trucking = qs.ImpactItem('Sludge_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    sludge_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    sludge_trucking.price = (0.00551 + 0.0000541*Landfilling.solids_distance)/Landfilling.solids_distance
+    
+    sludge_transportation = qs.Transportation('Sludge_trucking',
+                                              linked_unit=Landfilling,
+                                              item=sludge_trucking,
+                                              load_type='mass',
+                                              load=stream.landfilled_solids.F_mass,
+                                              load_unit='kg',
+                                              distance=Landfilling.solids_distance,
+                                              distance_unit='km',
+                                              # set to 1 h since load = kg/h
+                                              interval='1',
+                                              interval_unit='h')
+    Landfilling.transportation = sludge_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -2931,8 +3464,7 @@ def create_C23_system(size=10, operation_hours=8760,
 
 #%% system C24
 
-def create_C24_system(size=10, operation_hours=8760,
-                      solids_distance=100, FTE=0.6):
+def create_C24_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.6):
     flowsheet_ID = 'C24'
     
     # clear flowsheet and registry for reloading
@@ -2988,7 +3520,10 @@ def create_C24_system(size=10, operation_hours=8760,
     
     LandApplication = lsu.LandApplication(ID='LandApplication',
                                           ins=(HeatDrying-0, 'diesel_LA'),
-                                          outs=('biosolids_cost','methane_LA','nitrous_oxide_LA','carbon_dioxide_LA'))
+                                          outs=('biosolids_cost','methane_LA','nitrous_oxide_LA','carbon_dioxide_LA'),
+                                          solids_distance=solids_distance)
+    # 2023 weekly average from U.S. EIA: 4.224 $/gallon
+    LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air_CHP'),
                                 outs=('emission','ash_CHP'), supplement_power_utility=False)
@@ -3045,6 +3580,28 @@ def create_C24_system(size=10, operation_hours=8760,
     # carbon sequestration
     qs.StreamImpactItem(ID='Carbon_dioxide_LA', linked_stream=stream.carbon_dioxide_LA, GlobalWarming=1)
     
+    biosolids_trucking = qs.ImpactItem('Biosolids_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    biosolids_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    biosolids_trucking.price = (0.00551 + 0.0000541*LandApplication.solids_distance)/LandApplication.solids_distance
+    
+    biosolids_transportation = qs.Transportation('Sludge_trucking',
+                                                 linked_unit=LandApplication,
+                                                 item=biosolids_trucking,
+                                                 load_type='mass',
+                                                 load=stream.biosolids_cost.F_mass,
+                                                 load_unit='kg',
+                                                 distance=LandApplication.solids_distance,
+                                                 distance_unit='km',
+                                                 # set to 1 h since load = kg/h
+                                                 interval='1',
+                                                 interval_unit='h')
+    LandApplication.transportation = biosolids_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -3074,8 +3631,7 @@ def create_C24_system(size=10, operation_hours=8760,
 
 #%% system C25
 
-def create_C25_system(size=10, operation_hours=8760,
-                      solids_distance=100, FTE=0.7):
+def create_C25_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.7):
     flowsheet_ID = 'C25'
     
     # clear flowsheet and registry for reloading
@@ -3131,7 +3687,8 @@ def create_C25_system(size=10, operation_hours=8760,
     
     Incineration = lsu.Incineration(ID='Incineration',
                                     ins=(HeatDrying-0, 'natural_gas_incineration'),
-                                    outs=('ash_incineration','vapor_incineration','methane_IN','nitrous_oxide_IN'))
+                                    outs=('ash_incineration','vapor_incineration','methane_IN','nitrous_oxide_IN'),
+                                    solids_distance=solids_distance)
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
     Incineration.ins[1].price = 0.218
@@ -3179,6 +3736,28 @@ def create_C25_system(size=10, operation_hours=8760,
     qs.StreamImpactItem(ID='Methane_IN', linked_stream=stream.methane_IN, GlobalWarming=29.8)
     qs.StreamImpactItem(ID='Nitrous_oxide_IN', linked_stream=stream.nitrous_oxide_IN, GlobalWarming=273)
     
+    ash_trucking = qs.ImpactItem('Sludge_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    ash_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    
+    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
+    # https://doi.org/10.1016/j.tra.2015.02.001
+    # converted to 2023$/kg/km
+    ash_trucking.price = (0.00551 + 0.0000541*Incineration.solids_distance)/Incineration.solids_distance
+    
+    ash_transportation = qs.Transportation('Sludge_trucking',
+                                           linked_unit=Incineration,
+                                           item=ash_trucking,
+                                           load_type='mass',
+                                           load=stream.ash_incineration.F_mass,
+                                           load_unit='kg',
+                                           distance=Incineration.solids_distance,
+                                           distance_unit='km',
+                                           # set to 1 h since load = kg/h
+                                           interval='1',
+                                           interval_unit='h')
+    Incineration.transportation = ash_transportation
+    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
@@ -3207,8 +3786,7 @@ def create_C25_system(size=10, operation_hours=8760,
 #%% system T1
 
 # TODO: need to decide whether to recover N and P or not
-def create_T1_system(size=10, operation_hours=8760,
-                     solids_distance=100, FTE=0.55):
+def create_T1_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.55):
     flowsheet_ID = 'T1'
     
     # clear flowsheet and registry for reloading
@@ -3397,8 +3975,7 @@ def create_T1_system(size=10, operation_hours=8760,
 
 #%% system T2
 
-def create_T2_system(size=10, operation_hours=8760,
-                     solids_distance=100, FTE=0.55):
+def create_T2_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.55):
     flowsheet_ID = 'T2'
     
     # clear flowsheet and registry for reloading
@@ -3584,8 +4161,7 @@ def create_T2_system(size=10, operation_hours=8760,
 
 #%% system T3
 
-def create_T3_system(size=10, operation_hours=8760,
-                     solids_distance=100, FTE=0.4):
+def create_T3_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.4):
     flowsheet_ID = 'T3'
     
     # clear flowsheet and registry for reloading
@@ -3717,8 +4293,7 @@ def create_T3_system(size=10, operation_hours=8760,
 
 #%% system T4
 
-def create_T4_system(size=10, operation_hours=8760,
-                     solids_distance=100, FTE=0.7):
+def create_T4_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.7):
     flowsheet_ID = 'T4'
     
     # clear flowsheet and registry for reloading
@@ -3870,8 +4445,7 @@ def create_T4_system(size=10, operation_hours=8760,
 
 #%% system T5
 
-def create_T5_system(size=10, operation_hours=8760,
-                     solids_distance=100, FTE=0.7):
+def create_T5_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.7):
     flowsheet_ID = 'T5'
     
     # clear flowsheet and registry for reloading
@@ -4023,8 +4597,7 @@ def create_T5_system(size=10, operation_hours=8760,
 
 #%% system T6
 
-def create_T6_system(size=10, operation_hours=8760,
-                     solids_distance=100, FTE=0.7):
+def create_T6_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.7):
     flowsheet_ID = 'T6'
     
     # clear flowsheet and registry for reloading
@@ -4210,8 +4783,7 @@ def create_T6_system(size=10, operation_hours=8760,
 
 #%% system T7
 
-def create_T7_system(size=10, operation_hours=8760,
-                     solids_distance=100, FTE=0.7):
+def create_T7_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.7):
     flowsheet_ID = 'T7'
     
     # clear flowsheet and registry for reloading
@@ -4397,8 +4969,7 @@ def create_T7_system(size=10, operation_hours=8760,
 
 #%% system T8
 
-def create_T8_system(size=10, operation_hours=8760,
-                     solids_distance=100, FTE=0.55):
+def create_T8_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.55):
     flowsheet_ID = 'T8'
     
     # clear flowsheet and registry for reloading
@@ -4532,8 +5103,7 @@ def create_T8_system(size=10, operation_hours=8760,
 
 #%% system T9
 
-def create_T9_system(size=10, operation_hours=8760,
-                     solids_distance=100, FTE=0.85):
+def create_T9_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.85):
     flowsheet_ID = 'T9'
     
     # clear flowsheet and registry for reloading
@@ -4688,8 +5258,7 @@ def create_T9_system(size=10, operation_hours=8760,
 
 #%% system T10
 
-def create_T10_system(size=10, operation_hours=8760,
-                     solids_distance=100, FTE=0.85):
+def create_T10_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.85):
     flowsheet_ID = 'T10'
     
     # clear flowsheet and registry for reloading
@@ -4844,8 +5413,7 @@ def create_T10_system(size=10, operation_hours=8760,
 
 #%% system T11
 
-def create_T11_system(size=10, operation_hours=8760,
-                      solids_distance=100, FTE=0.7):
+def create_T11_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.7):
     flowsheet_ID = 'T11'
     
     # clear flowsheet and registry for reloading
@@ -5038,8 +5606,7 @@ def create_T11_system(size=10, operation_hours=8760,
 
 #%% system T12
 
-def create_T12_system(size=10, operation_hours=8760,
-                      solids_distance=100, FTE=0.7):
+def create_T12_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.7):
     flowsheet_ID = 'T12'
     
     # clear flowsheet and registry for reloading
@@ -5232,8 +5799,7 @@ def create_T12_system(size=10, operation_hours=8760,
 
 #%% system T13
 
-def create_T13_system(size=10, operation_hours=8760,
-                      solids_distance=100, FTE=0.55):
+def create_T13_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.55):
     flowsheet_ID = 'T13'
     
     # clear flowsheet and registry for reloading
@@ -5384,8 +5950,7 @@ def create_T13_system(size=10, operation_hours=8760,
 
 #%% system T14
 
-def create_T14_system(size=10, operation_hours=8760,
-                      solids_distance=100, FTE=0.85):
+def create_T14_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.85):
     flowsheet_ID = 'T14'
     
     # clear flowsheet and registry for reloading
@@ -5547,8 +6112,7 @@ def create_T14_system(size=10, operation_hours=8760,
 
 #%% system T15
 
-def create_T15_system(size=10, operation_hours=8760,
-                      solids_distance=100, FTE=0.85):
+def create_T15_system(size=10, operation_hours=8760, solids_distance=100, FTE=0.85):
     flowsheet_ID = 'T15'
     
     # clear flowsheet and registry for reloading

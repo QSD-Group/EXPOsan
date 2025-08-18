@@ -58,6 +58,9 @@ GDPCTPI = {2007: 86.352,
 # methane density, kg/m3
 methane_density = 0.707
 
+# diesel density, kg/m3
+diesel_density = 850
+
 # methane heat content, BTU/m3
 methane_heat = 35830
 
@@ -1269,6 +1272,8 @@ class Composting(SanUnit):
     unit_electricity : float
         electricity for composting, [kWh/dry tonne solids (not including the bulking agent)].
         typically, 0 for windrow, 180 for ASP, 291 for in vessel.
+    solids_distance : float
+        distance between WRRFs and land application sites, [km].
     
     References
     ----------
@@ -1290,7 +1295,7 @@ class Composting(SanUnit):
                  compost_solids_ratio=2, compost_moisture_content=0.5, load_size=13,
                  load_frequency=3, tractor_fuel=25, methane_fugitive_ratio=0.0001,
                  nitrous_oxide_fugitive_ratio=0.00076, unit_carbon_sequestration=0.4475,
-                 unit_electricity=0):
+                 unit_electricity=0, solids_distance=100):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
         self.lipid_2_C = lipid_2_C
         self.protein_2_C = protein_2_C
@@ -1314,6 +1319,7 @@ class Composting(SanUnit):
         self.nitrous_oxide_fugitive_ratio = nitrous_oxide_fugitive_ratio
         self.unit_carbon_sequestration = unit_carbon_sequestration
         self.unit_electricity = unit_electricity
+        self.solids_distance = solids_distance
     
     def _run(self):
         input_solids, bulking_agent, diesel = self.ins
@@ -1362,12 +1368,11 @@ class Composting(SanUnit):
         # L diesel/h
         diesel_other_composting = (input_solids.F_mass + bulking_agent.F_mass)/1000*self.unit_diesel_other_composting
         
-        # TODO: make sure this does not include the transporation from the composting facility (WRRF) to the land application site
-        # L diesel/day
+        # this just includes the land application onsite spreading and does not include the transporation from the composting facility (WRRF) to the land application site
+        # L diesel/h
         diesel_land_application = (self.ins[0].F_vol*self.compost_solids_ratio/self.load_size/self.load_frequency*self.tractor_fuel)
         
-        # TODO: add price and CI, note the unit here is actually L diesel/h, if data are for kg, convert the unit by considering the density of diesel
-        diesel.imass['Diesel'] = diesel_grinding + diesel_other_composting + diesel_land_application
+        diesel.imass['Diesel'] = (diesel_grinding + diesel_other_composting + diesel_land_application)/1000*diesel_density
         
         fugitive_methane.imass['CH4'] = input_solids_OC_mass_flow*self.methane_fugitive_ratio
         
@@ -1574,6 +1579,8 @@ class Incineration(SanUnit):
     unit_electricity : float
         electricity for incineration, [kWh/dry tonne solids].
         typically, 200 for FBI, 285 for MHI.
+    solids_distance : float
+        distance between WRRFs and landfills, [km].
     
     References
     ----------
@@ -1596,8 +1603,8 @@ class Incineration(SanUnit):
                  heat_solids_incineration=12000, additional_fuel_ratio=0,
                  heat_recovery_ratio=0.5, heat_recovery_efficiency=0.8,
                  electricity_recovery_ratio=0,
-                 BTU_to_kWh_with_efficiency=0.0000854,
-                 net_capacity_factor=0.85, unit_electricity=200):
+                 BTU_to_kWh_with_efficiency=0.0000854, net_capacity_factor=0.85,
+                 unit_electricity=200, solids_distance=100):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
         self.incineration_temperature = incineration_temperature
         self.ash_moisture_content = ash_moisture_content
@@ -1618,6 +1625,7 @@ class Incineration(SanUnit):
         self.BTU_to_kWh_with_efficiency = BTU_to_kWh_with_efficiency
         self.net_capacity_factor = net_capacity_factor
         self.unit_electricity = unit_electricity
+        self.solids_distance = solids_distance
     
     def _run(self):
         dried_solids, natural_gas = self.ins
@@ -2139,6 +2147,8 @@ class Landfilling(SanUnit):
         tipping fee, [$·wet tonne-1].
         see exposan/htl/data/landfilling_tipping_fee.xlsx.
         U.S. average: 56.8 $·wet ton-1 ~ 62.6 $·wet tonne-1.
+    solids_distance : float
+        distance between WRRFs and landfills, [km].
     '''
     _N_ins = 1
     _N_outs = 4
@@ -2150,7 +2160,7 @@ class Landfilling(SanUnit):
                  k_decay=0.06, flare_fugitive_ratio=0.01, C_N_cutoff=30,
                  N2O_N_landfilling=0.015, methane_electricity=0.5,
                  BTU_to_kWh_with_efficiency=0.0000854, net_capacity_factor=0.85,
-                 tipping_fee=62.6):
+                 tipping_fee=62.6, solids_distance=100):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.lipid_2_C = lipid_2_C
         self.protein_2_C = protein_2_C
@@ -2167,6 +2177,7 @@ class Landfilling(SanUnit):
         self.BTU_to_kWh_with_efficiency = BTU_to_kWh_with_efficiency
         self.net_capacity_factor = net_capacity_factor
         self.tipping_fee = tipping_fee
+        self.solids_distance = solids_distance
     
     def _run(self):
         input_solids = self.ins[0]
@@ -2350,6 +2361,8 @@ class LandApplication(SanUnit):
         whether calcium carbonate is from waste, [True, False].
     # calcium_carbonate_replacing_lime : bool
         whether calcium carbonate replaces purchased lime during land application, [True, False].
+    solids_distance : float
+        distance between WRRFs and land application sites, [km].
     '''
     _N_ins = 2
     _N_outs = 4
@@ -2369,7 +2382,7 @@ class LandApplication(SanUnit):
                  OC_sequestered_ratio=0.75, unit_carbon_sequestration=0.4475,
                  # TODO: update CaCO3 equivalence (%-dry weight) value (this might be related to lime stablization)
                  calcium_carbonate_ratio=0.1, calcium_carbonate_from_waste=False,
-                 calcium_carbonate_replacing_lime=True):
+                 calcium_carbonate_replacing_lime=True, solids_distance=100):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.lipid_2_C = lipid_2_C
         self.protein_2_C = protein_2_C
@@ -2396,6 +2409,7 @@ class LandApplication(SanUnit):
         self.calcium_carbonate_ratio = calcium_carbonate_ratio
         self.calcium_carbonate_from_waste = calcium_carbonate_from_waste
         self.calcium_carbonate_replacing_lime = calcium_carbonate_replacing_lime
+        self.solids_distance = solids_distance
     
     def _run(self):
         biosolids, diesel = self.ins
@@ -2419,9 +2433,9 @@ class LandApplication(SanUnit):
         # kg N/h
         input_solids_N_mass_flow = biosolids.imass['Sludge_protein']*self.protein_2_N
         
-        # TODO: make sure this does not include the transporation from the composting facility (WRRF) to the land application site
+        # this just includes the land application onsite spreading and does not include the transporation from the composting facility (WRRF) to the land application site
         # TODO: add price and CI, note the unit here is actually L diesel/h, if data are for kg, convert the unit by considering the density of diesel
-        diesel.imass['Diesel'] = (self.ins[0].F_vol/self.load_size/self.load_frequency*self.tractor_fuel)
+        diesel.imass['Diesel'] = (self.ins[0].F_vol/self.load_size/self.load_frequency*self.tractor_fuel)/1000*diesel_density
         
         if self.dry_solids/biosolids.F_mass < self.min_solids_content_no_fugitive:
             fugitive_methane.imass['CH4'] = self.ins[0].F_vol*self.storage_time*24*self.unit_fugitive_methane_strogae/24
