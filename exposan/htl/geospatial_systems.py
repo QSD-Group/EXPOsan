@@ -473,7 +473,7 @@ def create_geospatial_system(test_run=False,
     CHG = qsu.CatalyticHydrothermalGasification(ID='CHG',
                                                 ins=(HTLaqueous-0, 'virgin_CHG_catalyst'),
                                                 outs=('CHG_out','used_CHG_catalyst'))
-    # CHG price, https://doi.org/10.2172/1126336
+    # CHG catalyst price, https://doi.org/10.2172/1126336
     CHG.ins[1].price = 60/_lb_to_kg/GDPCTPI[2011]*GDPCTPI[2022]
     
     S2WS1 = su.StreamTypeConverter(ID='S2WS1',

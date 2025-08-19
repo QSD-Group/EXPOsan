@@ -108,11 +108,8 @@ __all__ = (
     'LandApplication',
     'HydrothermalLiquefaction',
     'HydrothermalAlkalineTreatment',
-    'HTLmixer',
+    'Analyzer',
     'CatalyticHydrothermalGasification',
-    'AcidExtraction',
-    'StruvitePrecipitation',
-    'MembraneDistillation',
     'SupercriticalWaterOxidation'
     )
 
@@ -2522,19 +2519,6 @@ class LandApplication(SanUnit):
 # =============================================================================
 
 # TODO: add notes - KnockOutDrum and HydrothermalLiquefaction are based on exposan.saf._units and the original HTL model
-# TODO: see if the Transportation unit can be used
-# TODO: to be removed
-# __all__ = (
-#     'HydrothermalLiquefaction',
-#     'Hydroprocessing',
-#     'PressureSwingAdsorption',
-#     'Electrochemical',
-#     'HydrogenCenter',
-#     'ProcessWaterCenter',
-#     'BiocrudeSplitter',
-#     'Conditioning',
-#     'Transportation',
-#     )
 
 # =============================================================================
 # HydrothermalLiquefaction
@@ -3191,67 +3175,56 @@ class HydrothermalAlkalineTreatment(SanUnit):
         return self.solids_P*(1 - self.hydrochar_P_recovery_ratio)
 
 # =============================================================================
-# HTLmixer
+# Analyzer
 # =============================================================================
 
-class HTLmixer(SanUnit):
+class Analyzer(SanUnit):
     '''
-    A fake unit that calculates C, N, P, and H2O amount in the mixture of HTL
-    aqueous and AcidEx effluent.
+    A fake unit that calculates C, N, P, and H2O amount in the HTL/HALT aqueous effluent.
     
     Parameters
     ----------
     ins : iterable
-        HTLaqueous, extracted.
+        aqueous_undefined.
     outs : iterable
-        mixture.
+        aqueous_defined.
+        
+    References
+    ----------
+    .. [1] Li, Y.; Tarpeh, W. A.; Nelson, K. L.; Strathmann, T. J. 
+        Quantitative Evaluation of an Integrated System for Valorization of
+        Wastewater Algae as Bio-Oil, Fuel Gas, and Fertilizer Products. 
+        Environ. Sci. Technol. 2018, 52 (21), 12717–12727. 
+        https://doi.org/10.1021/acs.est.8b04035.
     '''
     
-    def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='WasteStream', lifetime=20):
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='Stream'):
+        
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
 
-    _N_ins = 2
+    _N_ins = 1
     _N_outs = 1
     _ins_size_is_fixed = False
         
     def _run(self):
-        HTLaqueous, extracted = self.ins
-        mixture = self.outs[0]
+        aqueous_undefined = self.ins[0]
+        aqueous_defined = self.outs[0]
         
-        mixture.mix_from(self.ins)
-        mixture.empty()
+        aqueous_defined.copy_like(aqueous_undefined)
+        aqueous_defined.empty()
         
-        mixture.imass['C'] = self.ins[0]._source.HTLaqueous_C
-        mixture.imass['N'] = self.ins[0]._source.HTLaqueous_N
-        mixture.imass['P'] = self.ins[0]._source.HTLaqueous_P +\
-                             extracted.imass['P']
+        aqueous_defined.imass['C'] = self.ins[0]._source.HTLaqueous_C
+        aqueous_defined.imass['N'] = self.ins[0]._source.HTLaqueous_N
+        aqueous_defined.imass['P'] = self.ins[0]._source.HTLaqueous_P
         # other compositions represented by H2O except C, N, P
-        mixture.imass['H2O'] = HTLaqueous.F_mass + extracted.F_mass -\
-                               mixture.imass['C'] - mixture.imass['N'] -\
-                               mixture.imass['P']
+        aqueous_defined.imass['H2O'] = aqueous_undefined.F_mass -\
+                                            aqueous_defined.imass['C'] -\
+                                            aqueous_defined.imass['N'] -\
+                                            aqueous_defined.imass['P']
     
     @property
     def pH(self):
-        HTLaqueous, extracted = self.ins
-        mixture = self.outs[0]
-
-        base_mol_per_h = HTLaqueous.imass['NaOH']*1000/40
-        acid_mol_per_h = extracted.imass['H2SO4']*1000/98*2
-        
-        volume_L_per_h = mixture.F_vol*1000
-        
-        base_M = base_mol_per_h/volume_L_per_h
-        acid_M = acid_mol_per_h/volume_L_per_h
-        
-        if base_M > acid_M:
-            hydrogen_ion_M = 10**-14/(base_M-acid_M)
-        elif base_M == acid_M:
-            hydrogen_ion_M = 10**(-7)
-        else:
-            hydrogen_ion_M = acid_M - base_M
-
-        return -log(hydrogen_ion_M, 10)
+        return 7
 
 # =============================================================================
 # CatalyticHydrothermalGasification
@@ -3430,436 +3403,6 @@ class CatalyticHydrothermalGasification(SanUnit):
     @property
     def CHGout_P(self):
         return self.ins[0].imass['P']
-
-# =============================================================================
-# Acid Extraction
-# =============================================================================
-
-class AcidExtraction(Reactor):
-    '''
-    H2SO4 is added to hydrochar from HTL to extract phosphorus.
-    
-    Parameters
-    ----------
-    ins : iterable
-        hydrochar, acid.
-    outs : iterable
-        residual, extracted.
-    
-    See Also
-    --------
-    :class:`exposan.htl._sanunits.AcidExtraction`
-    
-    References
-    ----------
-    .. [1] Zhu, Y.; Schmidt, A.; Valdez, P.; Snowden-Swan, L.; Edmundson, S.
-           Hydrothermal Liquefaction and Upgrading of Wastewater-Grown Microalgae:
-           2021 State of Technology; PNNL-32695, 1855835; 2022; p PNNL-32695, 1855835.
-           https://doi.org/10.2172/1855835.
-    '''
-    _N_ins = 2
-    _N_outs = 2
-    _F_BM_default = {**Reactor._F_BM_default}
-    
-    def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='WasteStream', lifetime=20, acid_vol=7,
-                 P_acid_recovery_ratio=0.8, P=None, tau=2, V_wf=0.8, # tau: [1]
-                 length_to_diameter=2, N=1, V=10, auxiliary=False,
-                 mixing_intensity=None, kW_per_m3=0, # use MixTank default value
-                 wall_thickness_factor=1,
-                 vessel_material='Stainless steel 304', # acid condition
-                 vessel_type='Vertical'):
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
-        self.acid_vol = acid_vol
-        self.P_acid_recovery_ratio = P_acid_recovery_ratio
-        self.P = P
-        self.tau = tau
-        self.V_wf = V_wf
-        self.length_to_diameter = length_to_diameter
-        self.N = N
-        self.V = V
-        self.auxiliary = auxiliary
-        self.mixing_intensity = mixing_intensity
-        self.kW_per_m3 = kW_per_m3
-        self.wall_thickness_factor = wall_thickness_factor
-        self.vessel_material = vessel_material
-        self.vessel_type = vessel_type
-    
-    def _run(self):
-        hydrochar, acid = self.ins
-        residual, extracted = self.outs
-        
-        self.HTL = self.ins[0]._source
-        
-        if hydrochar.F_mass <= 0:
-            pass
-        else:
-            if self.HTL.hydrochar_P <= 0:
-                residual.copy_like(hydrochar)
-            else: 
-                acid.imass['H2SO4'] = hydrochar.F_mass*self.acid_vol*0.5*98.079/1000
-                # 0.5 M H2SO4 acid_vol (10 mL/1 g) hydrochar
-                # 0.5 M H2SO4 density: 1.03 kg/L 
-                # https://www.fishersci.se/shop/products/sulfuric-acid-0-5m-4/11943303 (accessed 2024-08-03)
-                acid.imass['H2O'] = hydrochar.F_mass*self.acid_vol*1.03 -\
-                                    acid.imass['H2SO4']
-                
-                residual.imass['Residual'] = hydrochar.F_mass - self.ins[0]._source.\
-                                             hydrochar_P*self.P_acid_recovery_ratio
-                
-                extracted.copy_like(acid)
-                extracted.imass['P'] = hydrochar.F_mass - residual.F_mass
-                # assume just P can be extracted
-                
-                residual.phase = 's'
-                
-                residual.T = extracted.T = hydrochar.T
-                residual.P = hydrochar.P
-                # H2SO4 reacts with hydrochar to release heat and temperature will increase
-    
-    @property
-    def residual_C(self):
-        return self.ins[0]._source.hydrochar_C
-    
-    @property
-    def residual_P(self):
-        return self.ins[0]._source.hydrochar_P - self.outs[1].imass['P']
-    
-    def _design(self):
-        # conservatively based on the orginal HTL model
-        # assuming 1 unit for 250 kg/h of hydrochar
-        self.N = ceil(self.ins[0].F_mass/250)
-        self.P = self.ins[1].P
-        Reactor._design(self)
-
-# =============================================================================
-# StruvitePrecipitation
-# =============================================================================
-
-class StruvitePrecipitation(Reactor):
-    '''
-    Extracted and HTL aqueous are mixed together before adding MgCl2 for struvite precipitation.
-    If mol(N)<mol(P), add NH4Cl to mol(N):mol(P)=1:1.
-    
-    Parameters
-    ----------
-    ins : iterable
-        mixture, supply_MgCl2, supply_NH4Cl, base.
-    outs : iterable
-        struvite, effluent.
-    
-    See Also
-    --------
-    :class:`exposan.htl._sanunits.StruvitePrecipitation`
-    
-    References
-    ----------
-    .. [1] Zhu, Y.; Schmidt, A.; Valdez, P.; Snowden-Swan, L.; Edmundson, S.
-           Hydrothermal Liquefaction and Upgrading of Wastewater-Grown Microalgae:
-           2021 State of Technology; PNNL-32695, 1855835; 2022; p PNNL-32695, 1855835.
-           https://doi.org/10.2172/1855835.
-    .. [2] Jones, S. B.; Zhu, Y.; Anderson, D. B.; Hallen, R. T.; Elliott, D. C.; 
-           Schmidt, A. J.; Albrecht, K. O.; Hart, T. R.; Butcher, M. G.; Drennan, C.; 
-           Snowden-Swan, L. J.; Davis, R.; Kinchin, C. 
-           Process Design and Economics for the Conversion of Algal Biomass to
-           Hydrocarbons: Whole Algae Hydrothermal Liquefaction and Upgrading;
-           PNNL--23227, 1126336; 2014; https://doi.org/10.2172/1126336.
-    '''
-    _N_ins = 4
-    _N_outs = 2
-    _F_BM_default = {**Reactor._F_BM_default}
-    
-    def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                  init_with='WasteStream', lifetime=20, target_pH = 9,
-                  Mg_P_ratio=1, P_pre_recovery_ratio=0.828, # [1]
-                  HTLaqueous_NH3_N_2_total_N = 0.853, # [2]
-                  P=None, tau=1, # [1]
-                  V_wf=0.8, length_to_diameter=2, N=1, V=20, auxiliary=False,
-                  mixing_intensity=None, kW_per_m3=0, # use MixTank default value
-                  wall_thickness_factor=1, vessel_material='Carbon steel', # basic condition
-                  vessel_type='Vertical'):
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
-        self.target_pH = target_pH
-        self.Mg_P_ratio = Mg_P_ratio
-        self.P_pre_recovery_ratio = P_pre_recovery_ratio
-        self.HTLaqueous_NH3_N_2_total_N = HTLaqueous_NH3_N_2_total_N
-        self.P = P
-        self.tau = tau
-        self.V_wf = V_wf
-        self.length_to_diameter = length_to_diameter
-        self.N = N
-        self.V = V
-        self.auxiliary = auxiliary
-        self.mixing_intensity = mixing_intensity
-        self.kW_per_m3 = kW_per_m3
-        self.wall_thickness_factor = wall_thickness_factor
-        self.vessel_material = vessel_material
-        self.vessel_type = vessel_type
-        
-    def _run(self):
-        mixture, supply_MgCl2, supply_NH4Cl, base = self.ins
-        struvite, effluent = self.outs
-        
-        self.HTLmixer = self.ins[0]._source
-        
-        if self.HTLmixer.outs[0].imass['P'] == 0:
-            effluent.copy_like(mixture)
-        else:
-            old_pH = self.HTLmixer.pH
-            if old_pH > 9:
-                base.imass['MgO'] = 0
-            elif old_pH >= 7:
-                OH_M = 10**(old_pH-14)
-                OH_M_needed = 10**(self.target_pH-14) - OH_M
-                base.imass['MgO'] = OH_M_needed/2 * 40.3044/1000*self.ins[0].F_vol*1000
-            else:
-                neutral_OH_M = 10**(-old_pH)
-                to_target_OH_M = 10**(self.target_pH - 14)
-                OH_M_needed = neutral_OH_M + to_target_OH_M
-                base.imass['MgO'] = OH_M_needed/2 * 40.3044/1000*self.ins[0].F_vol*1000
-            
-            supply_MgCl2.imass['MgCl2'] = max((mixture.imass['P']/30.973762*self.Mg_P_ratio -\
-                                            base.imass['MgO']/40.3044)*95.211, 0)
-            
-            if mixture.imass['P']/30.973762 > mixture.imass['N']*self.HTLaqueous_NH3_N_2_total_N/14.0067:
-            # if P > N, add NH4Cl to make sure N ≥ P
-                supply_NH4Cl.imass['NH4Cl'] = (mixture.imass['P']/30.973762 - mixture.imass['N']*\
-                                                self.HTLaqueous_NH3_N_2_total_N/14.0067)*53.491
-            
-            struvite.imass['Struvite'] = mixture.imass['P']*\
-                                          self.P_pre_recovery_ratio/\
-                                          30.973762*245.41
-            supply_MgCl2.phase = supply_NH4Cl.phase = base.phase = 's'
-            
-            effluent.copy_like(mixture)
-            effluent.imass['P'] -= struvite.imass['Struvite']*30.973762/245.41
-            effluent.imass['N'] += supply_NH4Cl.imass['NH4Cl']*14.0067/53.491 -\
-                                    struvite.imass['Struvite']*14.0067/245.41
-            effluent.imass['H2O'] = self.F_mass_in - struvite.F_mass -\
-                                    effluent.imass['C'] - effluent.imass['N'] -\
-                                    effluent.imass['P']
-            struvite.phase = 's'    
-            
-            struvite.T = mixture.T
-            effluent.T = mixture.T
-    
-    @property
-    def struvite_P(self):
-        return self.outs[0].imass['Struvite']*30.973762/245.41
-    
-    @property
-    def struvite_N(self):
-        return self.struvite_P*14.0067/30.973762
-    
-    def _design(self):
-        # conservatively based on the orginal HTL model
-        # assuming 1 unit for 10 m3/h of hydrochar
-        self.N = ceil(self.ins[0].F_vol/10)
-        self.P = self.ins[0].P
-        Reactor._design(self)
-
-# =============================================================================
-# MembraneDistillation
-# =============================================================================
-
-class MembraneDistillation(SanUnit):
-    '''
-    Membrane distillation recovers nitrogen as ammonia sulfate based on vapor
-    pressure difference across the hydrophobic membrane. Water flux across
-    membrane is ignored.
-    
-    Parameters
-    ----------
-    ins : Iterable(stream)
-        influent, acid, base, mem_in.
-    outs : Iterable(stream)
-        ammonium sulfate, ww, mem_out.
-    
-    See Also
-    --------
-    :class:`qsdsan.sanunits.MembraneDistillation`
-        
-    References
-    ----------
-    [1] Li, Y.; Tarpeh, W. A.; Nelson, K. L.; Strathmann, T. J. 
-        Quantitative Evaluation of an Integrated System for Valorization of
-        Wastewater Algae as Bio-Oil, Fuel Gas, and Fertilizer Products. 
-        Environ. Sci. Technol. 2018, 52 (21), 12717–12727. 
-        https://doi.org/10.1021/acs.est.8b04035.
-    [2] Doran, P. M. Chapter 11 - Unit Operations. In Bioprocess Engineering
-        Principles (Second Edition); Doran, P. M., Ed.; Academic Press: London,
-        2013; pp 445–595. https://doi.org/10.1016/B978-0-12-220851-5.00011-3.
-    [3] Spiller, L. L. Determination of Ammonia/Air Diffusion Coefficient Using
-        Nafion Lined Tube. Analytical Letters 1989, 22 (11–12), 2561–2573.
-        https://doi.org/10.1080/00032718908052375.
-    [4] Scheepers, D. M.; Tahir, A. J.; Brunner, C.; Guillen-Burrieza, E.
-        Vacuum Membrane Distillation Multi-Component Numerical Model for Ammonia
-        Recovery from Liquid Streams. Journal of Membrane Science
-        2020, 614, 118399. https://doi.org/10.1016/j.memsci.2020.118399.
-    [5] Ding, Z.; Liu, L.; Li, Z.; Ma, R.; Yang, Z. Experimental Study of Ammonia
-        Removal from Water by Membrane Distillation (MD): The Comparison of Three
-        Configurations. Journal of Membrane Science 2006, 286 (1), 93–103.
-        https://doi.org/10.1016/j.memsci.2006.09.015.
-    [6] Al-Obaidani, S.; Curcio, E.; Macedonio, F.; Di Profio, G.; Al-Hinai, H.;
-        Drioli, E. Potential of Membrane Distillation in Seawater Desalination:
-        Thermal Efficiency, Sensitivity Study and Cost Estimation.
-        Journal of Membrane Science 2008, 323 (1), 85–98.
-        https://doi.org/10.1016/j.memsci.2008.06.006.
-    [7] Kogler, A.; Farmer, M.; Simon, J. A.; Tilmans, S.; Wells, G. F.;
-        Tarpeh, W. A. Systematic Evaluation of Emerging Wastewater Nutrient Removal
-        and Recovery Technologies to Inform Practice and Advance Resource
-        Efficiency. ACS EST Eng. 2021, 1 (4), 662–684.
-        https://doi.org/10.1021/acsestengg.0c00253.
-    [8] Pikaar, I.; Guest, J.; Ganigue, R.; Jensen, P.; Rabaey, K.; Seviour, T.;
-        Trimmer, J.; van der Kolk, O.; Vaneeckhaute, C.; Verstraete, W.; Resource
-        Recovery from Water: Principles and Applicaiton. IWA 2022.
-    '''
-    _N_ins = 3
-    _N_outs = 3
-    _F_BM_default = {'Membrane': 1}
-    
-    _units = {'Area':'m2',
-              'Total volume':'m3'}
-    
-    def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='WasteStream', lifetime=5,
-                 influent_pH=8.16, # CHG effluent pH: 8.16 ± 0.25 [1]
-                 target_pH=10,
-                 N_S_ratio=2,
-                 # S is excess since not all N can be transferred to form ammonia sulfate
-                 # for now, assume N_S_ratio = 2 is ok
-                 m2_2_m3=1/1200, # specific surface area, for hollow fiber membrane [2]
-                 Dm=2.28*10**(-5), # (2.28 ± 0.12)*10^-5 m^2/s NH3 molecular diffusivity in air [3]
-                 # (underestimate, this value may be at 15 or 25 C, our feed is 60 C, should be higher)
-                 porosity=0.9, # [4]
-                 thickness=7*10**(-5), # m [4]
-                 tortuosity=1.2, # [4]
-                 Henry=1.61*10**(-5), # atm*m3/mol
-                 # https://webwiser.nlm.nih.gov/substance?substanceId=315&identifier=\
-                 # Ammonia&identifierType=name&menuItemId=81&catId=120#:~:text=The%20\
-                 # Henry's%20Law%20constant%20for,m%2Fmole(2). (accessed 2022-11-11)
-                 Ka=1.75*10**(-5), # overall mass transfer coefficient 1.2~2.3*10^-5 m/s [5]
-                 capacity=6.01, # kg/m2/h [6]
-                 # permeate flux, similar values can be found in many other papers ([176], [222] ,[223] in [7])
-                 # [177], [223] in [7] show high nitrogen recovery ratio (>85% under optimal conditions)
-                 membrane_price=90/GDPCTPI[2008]*GDPCTPI[2022]): #[6]
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
-        self.influent_pH = influent_pH
-        self.target_pH = target_pH
-        self.N_S_ratio = N_S_ratio
-        self.m2_2_m3 = m2_2_m3
-        self.Dm = Dm
-        self.porosity = porosity
-        self.thickness = thickness
-        self.tortuosity = tortuosity
-        self.Henry = Henry
-        self.Ka = Ka
-        self.capacity = capacity
-        self.membrane_price = membrane_price
-    
-    def _run(self):
-        influent, acid, base = self.ins
-        ammoniumsulfate, ww, ammoniumsulfatesolution = self.outs
-        
-        self.CHG = self.ins[0]._source.ins[0]._source.ins[0]._source
-        
-        if self.CHG.CHGout_N == 0:
-            ww.copy_like(influent)
-            self.membrane_area = self.F_vol_in*1000/self.capacity
-        else:
-            NaOH_conc = 10**(self.target_pH - 14) - 10**(self.influent_pH - 14)
-            NaOH_mol = NaOH_conc*self.ins[0].F_mass
-            base.imass['NaOH'] = NaOH_mol*39.997/1000
-            
-            # 0.5 M H2SO4 solution, density: 1.03 g/mL (https://www.fishersci.se/shop/products/sulfuric-acid-0-5m-4/11943303, accessed 2024-08-03)
-            acid.imass['H2SO4'] = self.CHG.CHGout_N/14.0067/self.N_S_ratio*98.079
-            acid.imass['H2O'] = acid.imass['H2SO4']*1000/98.079/0.5*1.03 -\
-                                acid.imass['H2SO4']
-            
-            # calculation of pKa under different T follows van't Hoff relationship [8] page 292
-            self.pKa = pKa = -log(exp(52.22/8.3145*1000*(1/298 - 1/self.ins[0].T))*10**(-9.252), 10)
-
-            ammonia_to_ammonium = 10**(-pKa)/10**(-self.target_pH)
-            ammonia = self.CHG.CHGout_N*ammonia_to_ammonium/(1 +\
-                       ammonia_to_ammonium)*17.031/14.0067
-            others = influent.F_mass - ammonia
-            
-            self.membrane_area = self.F_vol_in*1000/self.capacity
-            # N2:O2 = 0.79:0.21 in the air, air density is 1.204 kg/m3
-            # https://en.wikipedia.org/wiki/Density_of_air#:~:text=It%20also%20\
-            # changes%20with%20variation,International%20Standard%20Atmosphere%2\
-            # 0(ISA). (accessed 2022-11-14)
-            N2_in_air = self.membrane_area*self.m2_2_m3*self.porosity*0.79*1.204
-            O2_in_air = self.membrane_area*self.m2_2_m3*self.porosity*0.21*1.204
-            
-            # N2 amount will be changed based on design, maybe also add O2 (N2:O2 = 4:1)
-            imass = indexer.MassFlowIndexer(l=[('H2O', others),
-                                               ('NH3', ammonia),
-                                               ('N2', 0),
-                                               ('O2', 0)],
-                                            g=[('H2O', 0),
-                                               ('NH3', 0), 
-                                               ('N2', N2_in_air),
-                                               ('O2', O2_in_air)])
-            
-            vle = equilibrium.VLE(imass)
-            vle(T=influent.T, P=influent.P)
-            X_NH3_f_m = vle.imol['g','NH3']/(vle.imol['g','H2O'] + vle.imol['g','NH3'])
-            X_NH3_f = vle.imol['l','NH3']/(vle.imol['l','H2O'] + vle.imol['l','NH3'])
-    
-            km = self.Dm*self.porosity/self.tortuosity/self.thickness
-            
-            # https://www.sciencedirect.com/topics/chemistry/henrys-law#:~:text=\
-            # Values%20for%20Henry's%20law%20constants,gas%20constant%20(8.20575%\
-            # 20%C3%97%2010 (accessed 2022-11-11)
-            dimensionless_Henry = self.Henry/8.20575/(10**(-5))/influent.T # H' = H/RT
-            
-            kf = 1/(1/self.Ka - 1/dimensionless_Henry/km*(1 + (10**-14/10**(-pKa))*10**\
-                  (-self.target_pH)/(10**(-14))))
-            
-            J = kf*ammonia/influent.F_mass*1000*log(X_NH3_f_m/X_NH3_f)*3600 # in kg/m2/h
-            
-            NH3_mass_flow = J*self.membrane_area
-            
-            ammonia_transfer_ratio = min(1, NH3_mass_flow/ammonia)
-            
-            ammoniumsulfate.imass['NH42SO4'] = ammonia*ammonia_transfer_ratio/34.062*132.14
-            ammoniumsulfatesolution.imass['H2O'] = acid.imass['H2O']
-            ammoniumsulfatesolution.imass['H2SO4'] = acid.imass['H2SO4'] -\
-                                             ammoniumsulfate.imass['NH42SO4']/\
-                                             132.14*98.079
-            
-            # ww has the same T and P as influent          
-            ww.copy_like(influent)
-            
-            ww.imass['N'] = self.CHG.CHGout_N*(1 - ammonia_to_ammonium/(1 +\
-                             ammonia_to_ammonium)*ammonia_transfer_ratio)
-                                                              
-            ww.imass['C'] = self.CHG.CHGout_C
-                             
-            ww.imass['P'] = self.CHG.CHGout_P
-                       
-            ww.imass['H2O'] -= (ww.imass['C'] + ww.imass['N'] + ww.imass['P'])
-            
-            ww.imass['H2O'] += self.ins[2].F_mass
-            
-            # ammonium sulfate has the same T and P as acid
-            ammoniumsulfate.T = ammoniumsulfatesolution.T = acid.T
-            ammoniumsulfate.P = ammoniumsulfatesolution.P = acid.P
-    
-    @property
-    def N_recovery_ratio(self):
-        return 1 - self.outs[1].imass['N']/self.CHG.CHGout_N
-    
-    def _design(self):
-        Design = self.design_results
-        Design['Area'] = self.membrane_area
-        Design['Total volume'] = Design['Area']*self.m2_2_m3
-    
-    def _cost(self):
-        Design = self.design_results
-        purchase_costs = self.baseline_purchase_costs
-        purchase_costs['Membrane'] = Design['Area']*self.membrane_price
 
 # =============================================================================
 # SupercriticalWaterOxidation

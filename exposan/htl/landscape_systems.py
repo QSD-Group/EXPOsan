@@ -4122,49 +4122,22 @@ def create_T1_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.55):
     # TODO: add carbon sequestration benefits for hydrochar and biochar in LCA of T systems
     # TODO: add transportation of products (and waste disposal, e.g., in landfilling) in all relevant systems
     HTL = lsu.HydrothermalLiquefaction(ID='HTL', ins=Dewatering-0,
-                                       outs=('hydrochar','HTLaqueous','biocrude','offgas_HTL'))
+                                       outs=('hydrochar','HTL_aqueous_undefined','biocrude','offgas_HTL'))
     
-    H2SO4_Tank = qsu.StorageTank(ID='H2SO4_Tank', ins='H2SO4', outs=('H2SO4_out'),
-                                 init_with='WasteStream', tau=24, vessel_material='Stainless steel')
-    # 0.5 M H2SO4: ~5%
-    H2SO4_Tank.ins[0].price = 0.00658 # based on 93% H2SO4 and fresh water (dilute to 5%) price found in Davis 2020$/kg
-    H2SO4_Tank.lifetime = 20
-
-    SP1 = qsu.ReversedSplitter(ID='SP1', ins=H2SO4_Tank-0, outs=('H2SO4_P','H2SO4_N'),
-                               init_with='Stream')
-    # must put after AcidEx and MemDis in path during simulation to ensure input
-    # not empty
-    SP1.lifetime = 20
+    Analyzer = lsu.Analyzer(ID='Analyzer',
+                            ins=HTL-1,
+                            outs='HTL_aqueous_defined')
     
-    AcidEx = lsu.AcidExtraction(ID='AcidEx', ins=(HTL-0, SP1-0),
-                               outs=('residual','extracted'))
-    # AcidEx.outs[0].price = -0.055 # SS 2021 SOT PNNL report page 24 Table 9
-    # not include residual for TEA and LCA for now
-    
-    M1_outs1 = AcidEx.outs[1]
-    M1 = lsu.HTLmixer(ID='M1', ins=(HTL-1, M1_outs1), outs=('mixture',))
-    
-    StruPre = lsu.StruvitePrecipitation(ID='StruPre', ins=(M1-0,'MgCl2','NH4Cl','MgO'),
-                                        outs=('struvite','CHG_feed'))
-    StruPre.ins[1].price = 0.5452
-    StruPre.ins[2].price = 0.13
-    StruPre.ins[3].price = 0.2
-    StruPre.outs[0].price = 0.661
-    
-    CHG = lsu.CatalyticHydrothermalGasification(ID='CHG', ins=(StruPre-1, '7.8%_Ru/C'),
-                                                outs=('CHG_out','7.8%_Ru/C_out'))
-    CHG.ins[1].price = 134.53
+    CHG = lsu.CatalyticHydrothermalGasification(ID='CHG', ins=(Analyzer-0, 'virgin_CHG_catalyst'),
+                                                outs=('CHG_out','used_CHG_catalyst'))
+    # CHG catalyst price, https://doi.org/10.2172/1126336
+    CHG.ins[1].price = 60/_lb_to_kg/GDPCTPI[2011]*GDPCTPI[2023]
     
     V1 = IsenthalpicValve(ID='V1', ins=CHG-0, outs='depressurized_cooled_CHG', P=50*6894.76, vle=True)
     
     F1 = qsu.Flash(ID='F1', ins=V1-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
                    T=60+273.15, P=50*6894.76, thermo=settings.thermo.ideal())
     F1.lifetime = 20
-    
-    MemDis = lsu.MembraneDistillation(ID='MemDis', ins=(F1-1, SP1-1, 'NaOH'),
-                                      outs=('ammonium_sulfate','MemDis_ww','solution'))
-    MemDis.ins[2].price = 0.5256
-    MemDis.outs[0].price = 0.3236
     
     # TODO: just CHG fuel gas to CHP, not HTL; need to add fugitive emissions for both
     CHP = lsu.CombinedHeatPower(ID='CHP', ins=(F1-0, 'natural_gas_CHP', 'air_CHP'),
@@ -4338,49 +4311,24 @@ def create_T2_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.55):
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     HALT = lsu.HydrothermalAlkalineTreatment(ID='HALT', ins=(Dewatering-0, 'sodium_hydroxide', 'hydrochloric_acid'),
-                                             outs=('hydrochar','HTLaqueous','biocrude','offgas_HALT'))
+                                             outs=('hydrochar','HALT_aqueous_undefined','biocrude','offgas_HALT'))
+    # 0.2384 2016$/lb, https://doi.org/10.2172/1483234
+    HALT.ins[1].price = 0.2384/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
-    H2SO4_Tank = qsu.StorageTank(ID='H2SO4_Tank', ins='H2SO4', outs=('H2SO4_out'),
-                                 init_with='WasteStream', tau=24, vessel_material='Stainless steel')
-    # 0.5 M H2SO4: ~5%
-    H2SO4_Tank.ins[0].price = 0.00658 # based on 93% H2SO4 and fresh water (dilute to 5%) price found in Davis 2020$/kg
-    H2SO4_Tank.lifetime = 20
-
-    SP1 = qsu.ReversedSplitter(ID='SP1', ins=H2SO4_Tank-0, outs=('H2SO4_P','H2SO4_N'),
-                               init_with='Stream')
-    # must put after AcidEx and MemDis in path during simulation to ensure input
-    # not empty
-    SP1.lifetime = 20
+    Analyzer = lsu.Analyzer(ID='Analyzer',
+                            ins=HALT-1,
+                            outs='HALT_aqueous_defined')
     
-    AcidEx = lsu.AcidExtraction(ID='AcidEx', ins=(HALT-0, SP1-0),
-                               outs=('residual','extracted'))
-    # AcidEx.outs[0].price = -0.055 # SS 2021 SOT PNNL report page 24 Table 9
-    # not include residual for TEA and LCA for now
-    
-    M1_outs1 = AcidEx.outs[1]
-    M1 = lsu.HTLmixer(ID='M1', ins=(HALT-1, M1_outs1), outs=('mixture',))
-    
-    StruPre = lsu.StruvitePrecipitation(ID='StruPre', ins=(M1-0,'MgCl2','NH4Cl','MgO'),
-                                        outs=('struvite','CHG_feed'))
-    StruPre.ins[1].price = 0.5452
-    StruPre.ins[2].price = 0.13
-    StruPre.ins[3].price = 0.2
-    StruPre.outs[0].price = 0.661
-    
-    CHG = lsu.CatalyticHydrothermalGasification(ID='CHG', ins=(StruPre-1, '7.8%_Ru/C'),
-                                                outs=('CHG_out','7.8%_Ru/C_out'))
-    CHG.ins[1].price = 134.53
+    CHG = lsu.CatalyticHydrothermalGasification(ID='CHG', ins=(Analyzer-0, 'virgin_CHG_catalyst'),
+                                                outs=('CHG_out','used_CHG_catalyst'))
+    # CHG catalyst price, https://doi.org/10.2172/1126336
+    CHG.ins[1].price = 60/_lb_to_kg/GDPCTPI[2011]*GDPCTPI[2023]
     
     V1 = IsenthalpicValve(ID='V1', ins=CHG-0, outs='depressurized_cooled_CHG', P=50*6894.76, vle=True)
     
     F1 = qsu.Flash(ID='F1', ins=V1-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
                    T=60+273.15, P=50*6894.76, thermo=settings.thermo.ideal())
     F1.lifetime = 20
-    
-    MemDis = lsu.MembraneDistillation(ID='MemDis', ins=(F1-1, SP1-1, 'NaOH'),
-                                      outs=('ammonium_sulfate','MemDis_ww','solution'))
-    MemDis.ins[2].price = 0.5256
-    MemDis.outs[0].price = 0.3236
     
     # TODO: just CHG fuel gas to CHP, not HTL; need to add fugitive emissions for both
     CHP = lsu.CombinedHeatPower(ID='CHP', ins=(F1-0, 'natural_gas_CHP', 'air_CHP'),
@@ -4456,6 +4404,8 @@ def create_T2_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.55):
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
+    qs.StreamImpactItem(ID='Sodium_hydroxide', linked_stream=stream.sodium_hydroxide, GlobalWarming=1.2497984)
+    qs.StreamImpactItem(ID='Hydrochloric_acid', linked_stream=stream.hydrochloric_acid, GlobalWarming=0.87476322)
     qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.0082744841)
     
     # fugitive emissions
@@ -5083,46 +5033,21 @@ def create_T6_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.7):
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     HTL = lsu.HydrothermalLiquefaction(ID='HTL', ins=Dewatering-0,
-                                       outs=('hydrochar','HTLaqueous','biocrude','offgas_HTL'))
+                                       outs=('hydrochar','HTL_aqueous_undefined','biocrude','offgas_HTL'))
     
-    H2SO4_Tank = qsu.StorageTank(ID='H2SO4_Tank', ins='H2SO4', outs=('H2SO4_out'),
-                                 init_with='WasteStream', tau=24, vessel_material='Stainless steel')
-    # 0.5 M H2SO4: ~5%
-    H2SO4_Tank.ins[0].price = 0.00658 # based on 93% H2SO4 and fresh water (dilute to 5%) price found in Davis 2020$/kg
-
-    SP1 = qsu.ReversedSplitter(ID='SP1', ins=H2SO4_Tank-0, outs=('H2SO4_P','H2SO4_N'),
-                               init_with='Stream')
-    # must put after AcidEx and MemDis in path during simulation to ensure input
-    # not empty
+    Analyzer = lsu.Analyzer(ID='Analyzer',
+                            ins=HTL-1,
+                            outs='HTL_aqueous_defined')
     
-    AcidEx = lsu.AcidExtraction(ID='AcidEx', ins=(HTL-0, SP1-0),
-                               outs=('residual','extracted'))
-    # AcidEx.outs[0].price = -0.055 # SS 2021 SOT PNNL report page 24 Table 9
-    # not include residual for TEA and LCA for now
-    
-    M1_outs1 = AcidEx.outs[1]
-    M1 = lsu.HTLmixer(ID='M1', ins=(HTL-1, M1_outs1), outs=('mixture',))
-    
-    StruPre = lsu.StruvitePrecipitation(ID='StruPre', ins=(M1-0,'MgCl2','NH4Cl','MgO'),
-                                        outs=('struvite','CHG_feed'))
-    StruPre.ins[1].price = 0.5452
-    StruPre.ins[2].price = 0.13
-    StruPre.ins[3].price = 0.2
-    StruPre.outs[0].price = 0.661
-    
-    CHG = lsu.CatalyticHydrothermalGasification(ID='CHG', ins=(StruPre-1, '7.8%_Ru/C'),
-                                                outs=('CHG_out','7.8%_Ru/C_out'))
-    CHG.ins[1].price = 134.53
+    CHG = lsu.CatalyticHydrothermalGasification(ID='CHG', ins=(Analyzer-0, 'virgin_CHG_catalyst'),
+                                                outs=('CHG_out','used_CHG_catalyst'))
+    # CHG catalyst price, https://doi.org/10.2172/1126336
+    CHG.ins[1].price = 60/_lb_to_kg/GDPCTPI[2011]*GDPCTPI[2023]
     
     V1 = IsenthalpicValve(ID='V1', ins=CHG-0, outs='depressurized_cooled_CHG', P=50*6894.76, vle=True)
     
     F1 = qsu.Flash(ID='F1', ins=V1-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
                    T=60+273.15, P=50*6894.76, thermo=settings.thermo.ideal())
-    
-    MemDis = lsu.MembraneDistillation(ID='MemDis', ins=(F1-1, SP1-1, 'NaOH'),
-                                      outs=('ammonium_sulfate','MemDis_ww','solution'))
-    MemDis.ins[2].price = 0.5256
-    MemDis.outs[0].price = 0.3236
     
     # TODO: just CHG fuel gas to CHP, not HTL; need to add fugitive emissions for both
     CHP = lsu.CombinedHeatPower(ID='CHP', ins=(F1-0, 'natural_gas_CHP', 'air_CHP'),
@@ -5299,46 +5224,23 @@ def create_T7_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.7):
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     HALT = lsu.HydrothermalAlkalineTreatment(ID='HALT', ins=(Dewatering-0, 'sodium_hydroxide', 'hydrochloric_acid'),
-                                             outs=('hydrochar','HTLaqueous','biocrude','offgas_HALT'))
+                                             outs=('hydrochar','HALT_aqueous_undefined','biocrude','offgas_HALT'))
+    # 0.2384 2016$/lb, https://doi.org/10.2172/1483234
+    HALT.ins[1].price = 0.2384/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
-    H2SO4_Tank = qsu.StorageTank(ID='H2SO4_Tank', ins='H2SO4', outs=('H2SO4_out'),
-                                 init_with='WasteStream', tau=24, vessel_material='Stainless steel')
-    # 0.5 M H2SO4: ~5%
-    H2SO4_Tank.ins[0].price = 0.00658 # based on 93% H2SO4 and fresh water (dilute to 5%) price found in Davis 2020$/kg
-
-    SP1 = qsu.ReversedSplitter(ID='SP1', ins=H2SO4_Tank-0, outs=('H2SO4_P','H2SO4_N'),
-                               init_with='Stream')
-    # must put after AcidEx and MemDis in path during simulation to ensure input
-    # not empty
+    Analyzer = lsu.Analyzer(ID='Analyzer',
+                            ins=HALT-1,
+                            outs='HALT_aqueous_defined')
     
-    AcidEx = lsu.AcidExtraction(ID='AcidEx', ins=(HALT-0, SP1-0),
-                               outs=('residual','extracted'))
-    # AcidEx.outs[0].price = -0.055 # SS 2021 SOT PNNL report page 24 Table 9
-    # not include residual for TEA and LCA for now
-    
-    M1_outs1 = AcidEx.outs[1]
-    M1 = lsu.HTLmixer(ID='M1', ins=(HALT-1, M1_outs1), outs=('mixture',))
-    
-    StruPre = lsu.StruvitePrecipitation(ID='StruPre', ins=(M1-0,'MgCl2','NH4Cl','MgO'),
-                                        outs=('struvite','CHG_feed'))
-    StruPre.ins[1].price = 0.5452
-    StruPre.ins[2].price = 0.13
-    StruPre.ins[3].price = 0.2
-    StruPre.outs[0].price = 0.661
-    
-    CHG = lsu.CatalyticHydrothermalGasification(ID='CHG', ins=(StruPre-1, '7.8%_Ru/C'),
-                                                outs=('CHG_out','7.8%_Ru/C_out'))
-    CHG.ins[1].price = 134.53
+    CHG = lsu.CatalyticHydrothermalGasification(ID='CHG', ins=(Analyzer-0, 'virgin_CHG_catalyst'),
+                                                outs=('CHG_out','used_CHG_catalyst'))
+    # CHG catalyst price, https://doi.org/10.2172/1126336
+    CHG.ins[1].price = 60/_lb_to_kg/GDPCTPI[2011]*GDPCTPI[2023]
     
     V1 = IsenthalpicValve(ID='V1', ins=CHG-0, outs='depressurized_cooled_CHG', P=50*6894.76, vle=True)
     
     F1 = qsu.Flash(ID='F1', ins=V1-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
                    T=60+273.15, P=50*6894.76, thermo=settings.thermo.ideal())
-    
-    MemDis = lsu.MembraneDistillation(ID='MemDis', ins=(F1-1, SP1-1, 'NaOH'),
-                                      outs=('ammonium_sulfate','MemDis_ww','solution'))
-    MemDis.ins[2].price = 0.5256
-    MemDis.outs[0].price = 0.3236
     
     # TODO: just CHG fuel gas to CHP, not HTL; need to add fugitive emissions for both
     CHP = lsu.CombinedHeatPower(ID='CHP', ins=(F1-0, 'natural_gas_CHP', 'air_CHP'),
@@ -5414,6 +5316,8 @@ def create_T7_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.7):
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
+    qs.StreamImpactItem(ID='Sodium_hydroxide', linked_stream=stream.sodium_hydroxide, GlobalWarming=1.2497984)
+    qs.StreamImpactItem(ID='Hydrochloric_acid', linked_stream=stream.hydrochloric_acid, GlobalWarming=0.87476322)
     qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.0082744841)
     
     # fugitive emissions
@@ -6051,46 +5955,21 @@ def create_T11_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.7):
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     HTL = lsu.HydrothermalLiquefaction(ID='HTL', ins=Dewatering-0,
-                                       outs=('hydrochar','HTLaqueous','biocrude','offgas_HTL'))
+                                       outs=('hydrochar','HTL_aqueous_undefined','biocrude','offgas_HTL'))
     
-    H2SO4_Tank = qsu.StorageTank(ID='H2SO4_Tank', ins='H2SO4', outs=('H2SO4_out'),
-                                 init_with='WasteStream', tau=24, vessel_material='Stainless steel')
-    # 0.5 M H2SO4: ~5%
-    H2SO4_Tank.ins[0].price = 0.00658 # based on 93% H2SO4 and fresh water (dilute to 5%) price found in Davis 2020$/kg
-
-    SP1 = qsu.ReversedSplitter(ID='SP1', ins=H2SO4_Tank-0, outs=('H2SO4_P','H2SO4_N'),
-                               init_with='Stream')
-    # must put after AcidEx and MemDis in path during simulation to ensure input
-    # not empty
+    Analyzer = lsu.Analyzer(ID='Analyzer',
+                            ins=HTL-1,
+                            outs='HTL_aqueous_defined')
     
-    AcidEx = lsu.AcidExtraction(ID='AcidEx', ins=(HTL-0, SP1-0),
-                               outs=('residual','extracted'))
-    # AcidEx.outs[0].price = -0.055 # SS 2021 SOT PNNL report page 24 Table 9
-    # not include residual for TEA and LCA for now
-    
-    M1_outs1 = AcidEx.outs[1]
-    M1 = lsu.HTLmixer(ID='M1', ins=(HTL-1, M1_outs1), outs=('mixture',))
-    
-    StruPre = lsu.StruvitePrecipitation(ID='StruPre', ins=(M1-0,'MgCl2','NH4Cl','MgO'),
-                                        outs=('struvite','CHG_feed'))
-    StruPre.ins[1].price = 0.5452
-    StruPre.ins[2].price = 0.13
-    StruPre.ins[3].price = 0.2
-    StruPre.outs[0].price = 0.661
-    
-    CHG = lsu.CatalyticHydrothermalGasification(ID='CHG', ins=(StruPre-1, '7.8%_Ru/C'),
-                                                outs=('CHG_out','7.8%_Ru/C_out'))
-    CHG.ins[1].price = 134.53
+    CHG = lsu.CatalyticHydrothermalGasification(ID='CHG', ins=(Analyzer-0, 'virgin_CHG_catalyst'),
+                                                outs=('CHG_out','used_CHG_catalyst'))
+    # CHG catalyst price, https://doi.org/10.2172/1126336
+    CHG.ins[1].price = 60/_lb_to_kg/GDPCTPI[2011]*GDPCTPI[2023]
     
     V1 = IsenthalpicValve(ID='V1', ins=CHG-0, outs='depressurized_cooled_CHG', P=50*6894.76, vle=True)
     
     F1 = qsu.Flash(ID='F1', ins=V1-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
                    T=60+273.15, P=50*6894.76, thermo=settings.thermo.ideal())
-    
-    MemDis = lsu.MembraneDistillation(ID='MemDis', ins=(F1-1, SP1-1, 'NaOH'),
-                                      outs=('ammonium_sulfate','MemDis_ww','solution'))
-    MemDis.ins[2].price = 0.5256
-    MemDis.outs[0].price = 0.3236
     
     GasMixer = qsu.Mixer('GasMixer', ins=(AnaerobicDigestion-1, F1-0),
                          outs=('fuel_gas'), init_with='WasteStream')
@@ -6273,46 +6152,23 @@ def create_T12_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.7):
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     HALT = lsu.HydrothermalAlkalineTreatment(ID='HALT', ins=(Dewatering-0, 'sodium_hydroxide', 'hydrochloric_acid'),
-                                             outs=('hydrochar','HTLaqueous','biocrude','offgas_HALT'))
+                                             outs=('hydrochar','HALT_aqueous_undefined','biocrude','offgas_HALT'))
+    # 0.2384 2016$/lb, https://doi.org/10.2172/1483234
+    HALT.ins[1].price = 0.2384/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
-    H2SO4_Tank = qsu.StorageTank(ID='H2SO4_Tank', ins='H2SO4', outs=('H2SO4_out'),
-                                 init_with='WasteStream', tau=24, vessel_material='Stainless steel')
-    # 0.5 M H2SO4: ~5%
-    H2SO4_Tank.ins[0].price = 0.00658 # based on 93% H2SO4 and fresh water (dilute to 5%) price found in Davis 2020$/kg
-
-    SP1 = qsu.ReversedSplitter(ID='SP1', ins=H2SO4_Tank-0, outs=('H2SO4_P','H2SO4_N'),
-                               init_with='Stream')
-    # must put after AcidEx and MemDis in path during simulation to ensure input
-    # not empty
+    Analyzer = lsu.Analyzer(ID='Analyzer',
+                            ins=HALT-1,
+                            outs='HALT_aqueous_defined')
     
-    AcidEx = lsu.AcidExtraction(ID='AcidEx', ins=(HALT-0, SP1-0),
-                               outs=('residual','extracted'))
-    # AcidEx.outs[0].price = -0.055 # SS 2021 SOT PNNL report page 24 Table 9
-    # not include residual for TEA and LCA for now
-    
-    M1_outs1 = AcidEx.outs[1]
-    M1 = lsu.HTLmixer(ID='M1', ins=(HALT-1, M1_outs1), outs=('mixture',))
-    
-    StruPre = lsu.StruvitePrecipitation(ID='StruPre', ins=(M1-0,'MgCl2','NH4Cl','MgO'),
-                                        outs=('struvite','CHG_feed'))
-    StruPre.ins[1].price = 0.5452
-    StruPre.ins[2].price = 0.13
-    StruPre.ins[3].price = 0.2
-    StruPre.outs[0].price = 0.661
-    
-    CHG = lsu.CatalyticHydrothermalGasification(ID='CHG', ins=(StruPre-1, '7.8%_Ru/C'),
-                                                outs=('CHG_out','7.8%_Ru/C_out'))
-    CHG.ins[1].price = 134.53
+    CHG = lsu.CatalyticHydrothermalGasification(ID='CHG', ins=(Analyzer-0, 'virgin_CHG_catalyst'),
+                                                outs=('CHG_out','used_CHG_catalyst'))
+    # CHG catalyst price, https://doi.org/10.2172/1126336
+    CHG.ins[1].price = 60/_lb_to_kg/GDPCTPI[2011]*GDPCTPI[2023]
     
     V1 = IsenthalpicValve(ID='V1', ins=CHG-0, outs='depressurized_cooled_CHG', P=50*6894.76, vle=True)
     
     F1 = qsu.Flash(ID='F1', ins=V1-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
                    T=60+273.15, P=50*6894.76, thermo=settings.thermo.ideal())
-    
-    MemDis = lsu.MembraneDistillation(ID='MemDis', ins=(F1-1, SP1-1, 'NaOH'),
-                                      outs=('ammonium_sulfate','MemDis_ww','solution'))
-    MemDis.ins[2].price = 0.5256
-    MemDis.outs[0].price = 0.3236
     
     GasMixer = qsu.Mixer('GasMixer', ins=(AnaerobicDigestion-1, F1-0),
                          outs=('fuel_gas'), init_with='WasteStream')
@@ -6391,6 +6247,8 @@ def create_T12_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.7):
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
+    qs.StreamImpactItem(ID='Sodium_hydroxide', linked_stream=stream.sodium_hydroxide, GlobalWarming=1.2497984)
+    qs.StreamImpactItem(ID='Hydrochloric_acid', linked_stream=stream.hydrochloric_acid, GlobalWarming=0.87476322)
     qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.0082744841)
     
     # fugitive emissions
