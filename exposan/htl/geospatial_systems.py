@@ -728,7 +728,7 @@ def create_geospatial_system(test_run=False,
         Biocrude_trucking.add_indicator(GlobalWarming, 0.13004958/1000)
         # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), https://doi.org/10.1016/j.biortech.2010.03.136
         Biocrude_trucking.price = (5.67 + 0.07*BiocrudeTank.biocrude_distance)/BiocrudeTank.biocrude_wet_density/BiocrudeTank.biocrude_distance/GDPCTPI[2008]*GDPCTPI[2022]
-            
+        
         Biocrude_transportation = qs.Transportation('Biocrude_trucking',
                                                     linked_unit=BiocrudeTank,
                                                     item=Biocrude_trucking,

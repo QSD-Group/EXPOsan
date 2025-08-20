@@ -104,7 +104,7 @@ def create_components(set_thermo=True):
     Hydrochar = Component('Hydrochar', phase='s', particle_size='Particulate',
                         degradability='Undegradable', organic=False)
     # TODO: check if this is correct
-    # assume a bulk density of 700 kg/m3; the density does not affect transportation (if any) which is based on weight
+    # assume a bulk density of 700 kg/m3; the density does not affect transportation (if any) which is based on weight; but the density affect the land application diesel usage
     add_V_from_rho(Hydrochar, 700)
     Hydrochar.copy_models_from(Chemical('CaCO3'),('Cn',))
     
@@ -471,7 +471,7 @@ def create_components(set_thermo=True):
     Biochar = Component('Biochar', phase='s', particle_size='Particulate',
                         degradability='Undegradable', organic=False)
     # TODO: check if this is correct
-    # assume a bulk density of 400 kg/m3; the density does not affect transportation (if any) which is based on weight
+    # assume a bulk density of 400 kg/m3; the density does not affect transportation (if any) which is based on weight; but the density affect the land application diesel usage
     add_V_from_rho(Biochar, 400)
     Biochar.copy_models_from(Chemical('CaCO3'),('Cn',))
     
