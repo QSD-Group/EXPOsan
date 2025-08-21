@@ -35,6 +35,7 @@ _mile_to_km = auom('mile').conversion_factor('km')
 _ton_to_tonne = auom('ton').conversion_factor('tonne')
 _lb_to_kg = auom('lb').conversion_factor('kg')
 _gal_to_liter = auom('gallon').conversion_factor('liter')
+_oil_barrel_to_m3 = auom('oil_barrel').conversion_factor('m3')
 
 # TODO: add in writing: use 2023$ (since CEPCI is not available after that, need a fee to access the full 2024 data)
 
@@ -112,7 +113,7 @@ __all__ = (
 
 #%% system C1
 
-def create_C1_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.15):
+def create_C1_system(size=10, operation_hours=8760, LF_distance=100, tipping_fee=0.0626, FTE=0.15):
     flowsheet_ID = 'C1'
     
     # clear flowsheet and registry for reloading
@@ -160,6 +161,9 @@ def create_C1_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.15):
                                   ins=Dewatering-0,
                                   outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'),
                                   solids_distance=LF_distance)
+    # see exposan/htl/data/landfilling_tipping_fee.xlsx
+    # U.S. average: 56.8 $·wet ton-1 ~ 62.6 $·wet tonne-1
+    Landfilling.outs[0].price = -tipping_fee
     
     sys = qs.System.from_units(ID='system_C1',
                                units=list(flowsheet.unit),
@@ -199,7 +203,6 @@ def create_C1_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.15):
     sludge_trucking = qs.ImpactItem(ID='Sludge_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     sludge_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
-    
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -244,7 +247,7 @@ def create_C1_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.15):
 
 #%% system C2
 
-def create_C2_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.2):
+def create_C2_system(size=10, operation_hours=8760, LF_distance=100, tipping_fee=0.0626, FTE=0.2):
     flowsheet_ID = 'C2'
     
     # clear flowsheet and registry for reloading
@@ -299,6 +302,9 @@ def create_C2_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.2):
                                   ins=AlkalineStabilization-0,
                                   outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'),
                                   solids_distance=LF_distance)
+    # see exposan/htl/data/landfilling_tipping_fee.xlsx
+    # U.S. average: 56.8 $·wet ton-1 ~ 62.6 $·wet tonne-1
+    Landfilling.outs[0].price = -tipping_fee
     
     sys = qs.System.from_units(ID='system_C2',
                                units=list(flowsheet.unit),
@@ -342,7 +348,6 @@ def create_C2_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.2):
     sludge_trucking = qs.ImpactItem(ID='Sludge_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     sludge_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
-    
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -388,7 +393,7 @@ def create_C2_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.2):
 
 #%% system C3
 
-def create_C3_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.2):
+def create_C3_system(size=10, operation_hours=8760, LA_distance=100, biosolids_price=0, FTE=0.2):
     flowsheet_ID = 'C3'
     
     # clear flowsheet and registry for reloading
@@ -445,8 +450,7 @@ def create_C3_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.2):
                                           solids_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
-    # TODO: update cost for biosolids_cost with references (should be based on dry weight since heat drying in some systems can reduce moisture)
-    LandApplication.outs[0].price = 10/1000
+    LandApplication.outs[0].price = biosolids_price
     
     sys = qs.System.from_units(ID='system_C3',
                                units=list(flowsheet.unit),
@@ -501,7 +505,6 @@ def create_C3_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.2):
     biosolids_trucking = qs.ImpactItem(ID='Biosolids_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     biosolids_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
-    
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -549,7 +552,7 @@ def create_C3_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.2):
 
 #%% system C4
 
-def create_C4_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.2):
+def create_C4_system(size=10, operation_hours=8760, LA_distance=100, compost_price=0.05, FTE=0.2):
     flowsheet_ID = 'C4'
     
     # clear flowsheet and registry for reloading
@@ -601,8 +604,7 @@ def create_C4_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.2):
     Composting.ins[1].price = 27/1000/GDPCTPI[2005]*GDPCTPI[2023]
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     Composting.ins[2].price = 4.224/_gal_to_liter*1000/diesel_density
-    # TODO: update cost for compost_cost with references
-    Composting.outs[0].price = 10/1000
+    Composting.outs[0].price = compost_price
     
     sys = qs.System.from_units(ID='system_C4',
                                units=list(flowsheet.unit),
@@ -654,7 +656,6 @@ def create_C4_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.2):
     compost_trucking = qs.ImpactItem(ID='Compost_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     compost_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
-    
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -701,7 +702,7 @@ def create_C4_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.2):
 
 #%% system C5
 
-def create_C5_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.3):
+def create_C5_system(size=10, operation_hours=8760, LF_distance=100, tipping_fee=0.0626, FTE=0.3):
     flowsheet_ID = 'C5'
     
     # clear flowsheet and registry for reloading
@@ -754,6 +755,9 @@ def create_C5_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.3):
                                   ins=HeatDrying-0,
                                   outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'),
                                   solids_distance=LF_distance)
+    # see exposan/htl/data/landfilling_tipping_fee.xlsx
+    # U.S. average: 56.8 $·wet ton-1 ~ 62.6 $·wet tonne-1
+    Landfilling.outs[0].price = -tipping_fee
     
     sys = qs.System.from_units(ID='system_C5',
                                units=list(flowsheet.unit),
@@ -796,7 +800,6 @@ def create_C5_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.3):
     sludge_trucking = qs.ImpactItem(ID='Sludge_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     sludge_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
-    
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -842,7 +845,7 @@ def create_C5_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.3):
 
 #%% system C6
 
-def create_C6_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.3):
+def create_C6_system(size=10, operation_hours=8760, LA_distance=100, biosolids_price=0, FTE=0.3):
     flowsheet_ID = 'C6'
     
     # clear flowsheet and registry for reloading
@@ -897,6 +900,7 @@ def create_C6_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.3):
                                           solids_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
+    LandApplication.outs[0].price = biosolids_price
     
     sys = qs.System.from_units(ID='system_C6',
                                units=list(flowsheet.unit),
@@ -950,7 +954,6 @@ def create_C6_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.3):
     biosolids_trucking = qs.ImpactItem(ID='Biosolids_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     biosolids_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
-    
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -1119,7 +1122,7 @@ def create_C7_system(size=10, operation_hours=8760, FTE=0.4):
 
 #%% system C8
 
-def create_C8_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.3):
+def create_C8_system(size=10, operation_hours=8760, LF_distance=100, tipping_fee=0.0626, FTE=0.3):
     flowsheet_ID = 'C8'
     
     # clear flowsheet and registry for reloading
@@ -1169,6 +1172,9 @@ def create_C8_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.3):
                                   ins=Dewatering-0,
                                   outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'),
                                   solids_distance=LF_distance)
+    # see exposan/htl/data/landfilling_tipping_fee.xlsx
+    # U.S. average: 56.8 $·wet ton-1 ~ 62.6 $·wet tonne-1
+    Landfilling.outs[0].price = -tipping_fee
     
     sys = qs.System.from_units(ID='system_C8',
                                units=list(flowsheet.unit),
@@ -1208,7 +1214,6 @@ def create_C8_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.3):
     sludge_trucking = qs.ImpactItem(ID='Sludge_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     sludge_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
-    
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -1253,7 +1258,7 @@ def create_C8_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.3):
 
 #%% system C9
 
-def create_C9_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.3):
+def create_C9_system(size=10, operation_hours=8760, LA_distance=100, biosolids_price=0, FTE=0.3):
     flowsheet_ID = 'C9'
     
     # clear flowsheet and registry for reloading
@@ -1305,6 +1310,7 @@ def create_C9_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.3):
                                           solids_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
+    LandApplication.outs[0].price = biosolids_price
     
     sys = qs.System.from_units(ID='system_C9',
                                units=list(flowsheet.unit),
@@ -1355,7 +1361,6 @@ def create_C9_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.3):
     biosolids_trucking = qs.ImpactItem(ID='Biosolids_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     biosolids_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
-    
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -1402,7 +1407,7 @@ def create_C9_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.3):
 
 #%% system C10
 
-def create_C10_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.35):
+def create_C10_system(size=10, operation_hours=8760, LA_distance=100, compost_price=0.05, FTE=0.35):
     flowsheet_ID = 'C10'
     
     # clear flowsheet and registry for reloading
@@ -1457,8 +1462,7 @@ def create_C10_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.35):
     Composting.ins[1].price = 27/1000/GDPCTPI[2005]*GDPCTPI[2023]
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     Composting.ins[2].price = 4.224/_gal_to_liter*1000/diesel_density
-    # TODO: update cost for compost_cost with references
-    Composting.outs[0].price = 10/1000
+    Composting.outs[0].price = compost_price
     
     sys = qs.System.from_units(ID='system_C10',
                                units=list(flowsheet.unit),
@@ -1510,7 +1514,6 @@ def create_C10_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.35):
     compost_trucking = qs.ImpactItem(ID='Compost_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     compost_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
-    
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -1557,7 +1560,7 @@ def create_C10_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.35):
 
 #%% system C11
 
-def create_C11_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.45):
+def create_C11_system(size=10, operation_hours=8760, LF_distance=100, tipping_fee=0.0626, FTE=0.45):
     flowsheet_ID = 'C11'
     
     # clear flowsheet and registry for reloading
@@ -1613,6 +1616,9 @@ def create_C11_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.45):
                                   ins=HeatDrying-0,
                                   outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'),
                                   solids_distance=LF_distance)
+    # see exposan/htl/data/landfilling_tipping_fee.xlsx
+    # U.S. average: 56.8 $·wet ton-1 ~ 62.6 $·wet tonne-1
+    Landfilling.outs[0].price = -tipping_fee
     
     sys = qs.System.from_units(ID='system_C11',
                                units=list(flowsheet.unit),
@@ -1655,7 +1661,6 @@ def create_C11_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.45):
     sludge_trucking = qs.ImpactItem(ID='Sludge_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     sludge_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
-    
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -1701,7 +1706,7 @@ def create_C11_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.45):
 
 #%% system C12
 
-def create_C12_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.45):
+def create_C12_system(size=10, operation_hours=8760, LA_distance=100, biosolids_price=0, FTE=0.45):
     flowsheet_ID = 'C12'
     
     # clear flowsheet and registry for reloading
@@ -1759,6 +1764,7 @@ def create_C12_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.45):
                                           solids_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
+    LandApplication.outs[0].price = biosolids_price
     
     sys = qs.System.from_units(ID='system_C12',
                                units=list(flowsheet.unit),
@@ -1812,7 +1818,6 @@ def create_C12_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.45):
     biosolids_trucking = qs.ImpactItem(ID='Biosolids_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     biosolids_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
-    
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -1984,7 +1989,7 @@ def create_C13_system(size=10, operation_hours=8760, FTE=0.55):
 
 #%% system C14
 
-def create_C14_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.3):
+def create_C14_system(size=10, operation_hours=8760, LF_distance=100, tipping_fee=0.0626, FTE=0.3):
     flowsheet_ID = 'C14'
     
     # clear flowsheet and registry for reloading
@@ -2039,6 +2044,9 @@ def create_C14_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.3):
                                   ins=Dewatering-0,
                                   outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'),
                                   solids_distance=LF_distance)
+    # see exposan/htl/data/landfilling_tipping_fee.xlsx
+    # U.S. average: 56.8 $·wet ton-1 ~ 62.6 $·wet tonne-1
+    Landfilling.outs[0].price = -tipping_fee
     
     sys = qs.System.from_units(ID='system_C14',
                                units=list(flowsheet.unit),
@@ -2082,7 +2090,6 @@ def create_C14_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.3):
     sludge_trucking = qs.ImpactItem(ID='Sludge_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     sludge_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
-    
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -2128,7 +2135,7 @@ def create_C14_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.3):
 
 #%% system C15
 
-def create_C15_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.3):
+def create_C15_system(size=10, operation_hours=8760, LA_distance=100, biosolids_price=0, FTE=0.3):
     flowsheet_ID = 'C15'
     
     # clear flowsheet and registry for reloading
@@ -2185,6 +2192,7 @@ def create_C15_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.3):
                                           solids_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
+    LandApplication.outs[0].price = biosolids_price
     
     sys = qs.System.from_units(ID='system_C15',
                                units=list(flowsheet.unit),
@@ -2239,7 +2247,6 @@ def create_C15_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.3):
     biosolids_trucking = qs.ImpactItem(ID='Biosolids_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     biosolids_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
-    
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -2287,7 +2294,7 @@ def create_C15_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.3):
 
 #%% system C16
 
-def create_C16_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.35):
+def create_C16_system(size=10, operation_hours=8760, LA_distance=100, compost_price=0.05, FTE=0.35):
     flowsheet_ID = 'C16'
     
     # clear flowsheet and registry for reloading
@@ -2347,8 +2354,7 @@ def create_C16_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.35):
     Composting.ins[1].price = 27/1000/GDPCTPI[2005]*GDPCTPI[2023]
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     Composting.ins[2].price = 4.224/_gal_to_liter*1000/diesel_density
-    # TODO: update cost for compost_cost with references
-    Composting.outs[0].price = 10/1000
+    Composting.outs[0].price = compost_price
     
     sys = qs.System.from_units(ID='system_C16',
                                units=list(flowsheet.unit),
@@ -2404,7 +2410,6 @@ def create_C16_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.35):
     compost_trucking = qs.ImpactItem(ID='Compost_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     compost_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
-    
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -2452,7 +2457,7 @@ def create_C16_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.35):
 
 #%% system C17
 
-def create_C17_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.45):
+def create_C17_system(size=10, operation_hours=8760, LF_distance=100, tipping_fee=0.0626, FTE=0.45):
     flowsheet_ID = 'C17'
     
     # clear flowsheet and registry for reloading
@@ -2513,6 +2518,9 @@ def create_C17_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.45):
                                   ins=HeatDrying-0,
                                   outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'),
                                   solids_distance=LF_distance)
+    # see exposan/htl/data/landfilling_tipping_fee.xlsx
+    # U.S. average: 56.8 $·wet ton-1 ~ 62.6 $·wet tonne-1
+    Landfilling.outs[0].price = -tipping_fee
     
     sys = qs.System.from_units(ID='system_C17',
                                units=list(flowsheet.unit),
@@ -2556,7 +2564,6 @@ def create_C17_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.45):
     sludge_trucking = qs.ImpactItem(ID='Sludge_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     sludge_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
-    
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -2602,7 +2609,7 @@ def create_C17_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.45):
 
 #%% system C18
 
-def create_C18_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.45):
+def create_C18_system(size=10, operation_hours=8760, LA_distance=100, biosolids_price=0, FTE=0.45):
     flowsheet_ID = 'C18'
     
     # clear flowsheet and registry for reloading
@@ -2665,6 +2672,7 @@ def create_C18_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.45):
                                           solids_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
+    LandApplication.outs[0].price = biosolids_price
     
     sys = qs.System.from_units(ID='system_C18',
                                units=list(flowsheet.unit),
@@ -2719,7 +2727,6 @@ def create_C18_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.45):
     biosolids_trucking = qs.ImpactItem(ID='Biosolids_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     biosolids_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
-    
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -2897,7 +2904,7 @@ def create_C19_system(size=10, operation_hours=8760, FTE=0.55):
 
 #%% system C20
 
-def create_C20_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.45):
+def create_C20_system(size=10, operation_hours=8760, LF_distance=100, tipping_fee=0.0626, FTE=0.45):
     flowsheet_ID = 'C20'
     
     # clear flowsheet and registry for reloading
@@ -2949,6 +2956,9 @@ def create_C20_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.45):
                                   ins=Dewatering-0,
                                   outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'),
                                   solids_distance=LF_distance)
+    # see exposan/htl/data/landfilling_tipping_fee.xlsx
+    # U.S. average: 56.8 $·wet ton-1 ~ 62.6 $·wet tonne-1
+    Landfilling.outs[0].price = -tipping_fee
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air'),
                                 outs=('emission','ash_CHP'), supplement_power_utility=False)
@@ -3002,7 +3012,6 @@ def create_C20_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.45):
     sludge_trucking = qs.ImpactItem(ID='Sludge_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     sludge_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
-    
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -3048,7 +3057,7 @@ def create_C20_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.45):
 
 #%% system C21
 
-def create_C21_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.45):
+def create_C21_system(size=10, operation_hours=8760, LA_distance=100, biosolids_price=0, FTE=0.45):
     flowsheet_ID = 'C21'
     
     # clear flowsheet and registry for reloading
@@ -3102,6 +3111,7 @@ def create_C21_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.45):
                                           solids_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
+    LandApplication.outs[0].price = biosolids_price
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air_CHP'),
                                 outs=('emission','ash_CHP'), supplement_power_utility=False)
@@ -3166,7 +3176,6 @@ def create_C21_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.45):
     biosolids_trucking = qs.ImpactItem(ID='Biosolids_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     biosolids_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
-    
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -3214,7 +3223,7 @@ def create_C21_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.45):
 
 #%% system C22
 
-def create_C22_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.5):
+def create_C22_system(size=10, operation_hours=8760, LA_distance=100, compost_price=0.05, FTE=0.5):
     flowsheet_ID = 'C22'
     
     # clear flowsheet and registry for reloading
@@ -3271,8 +3280,7 @@ def create_C22_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.5):
     Composting.ins[1].price = 27/1000/GDPCTPI[2005]*GDPCTPI[2023]
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     Composting.ins[2].price = 4.224/_gal_to_liter*1000/diesel_density
-    # TODO: update cost for compost_cost with references
-    Composting.outs[0].price = 10/1000
+    Composting.outs[0].price = compost_price
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air_CHP'),
                                 outs=('emission','ash_CHP'), supplement_power_utility=False)
@@ -3338,7 +3346,6 @@ def create_C22_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.5):
     compost_trucking = qs.ImpactItem(ID='Compost_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     compost_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
-    
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -3386,7 +3393,7 @@ def create_C22_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.5):
 
 #%% system C23
 
-def create_C23_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.6):
+def create_C23_system(size=10, operation_hours=8760, LF_distance=100, tipping_fee=0.0626, FTE=0.6):
     flowsheet_ID = 'C23'
     
     # clear flowsheet and registry for reloading
@@ -3444,6 +3451,9 @@ def create_C23_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.6):
                                   ins=HeatDrying-0,
                                   outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'),
                                   solids_distance=LF_distance)
+    # see exposan/htl/data/landfilling_tipping_fee.xlsx
+    # U.S. average: 56.8 $·wet ton-1 ~ 62.6 $·wet tonne-1
+    Landfilling.outs[0].price = -tipping_fee
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air_CHP'),
                                 outs=('emission','ash_CHP'), supplement_power_utility=False)
@@ -3497,7 +3507,6 @@ def create_C23_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.6):
     sludge_trucking = qs.ImpactItem(ID='Sludge_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     sludge_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
-    
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -3543,7 +3552,7 @@ def create_C23_system(size=10, operation_hours=8760, LF_distance=100, FTE=0.6):
 
 #%% system C24
 
-def create_C24_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.6):
+def create_C24_system(size=10, operation_hours=8760, LA_distance=100, biosolids_price=0, FTE=0.6):
     flowsheet_ID = 'C24'
     
     # clear flowsheet and registry for reloading
@@ -3603,6 +3612,7 @@ def create_C24_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.6):
                                           solids_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
+    LandApplication.outs[0].price = biosolids_price
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air_CHP'),
                                 outs=('emission','ash_CHP'), supplement_power_utility=False)
@@ -3667,7 +3677,6 @@ def create_C24_system(size=10, operation_hours=8760, LA_distance=100, FTE=0.6):
     biosolids_trucking = qs.ImpactItem(ID='Biosolids_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     biosolids_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
-    
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -3954,6 +3963,11 @@ def create_T1_system(size=10, operation_hours=8760, refinery_distance=100, FTE=0
             
             sys.simulate()
     
+    # biocrude replacing crude oil of the same amount of energy
+    # TODO: may need update the price to a more general number
+    # 76.1 $/barrel crude oil, U.S. EIA, 2023 monthly average
+    HTL.outs[0].price = 76.1/_oil_barrel_to_m3/HTL.crude_oil_density/HTL.crude_oil_HHV*HTL.biocrude_HHV
+    
     GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
                                        method='TRACI',
                                        category='environmental impact',
@@ -3993,7 +4007,7 @@ def create_T1_system(size=10, operation_hours=8760, refinery_distance=100, FTE=0
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
-    # use market for biocrude to offset transportation and then add the transportation part
+    # use market for petroleum to offset transportation and then add the transportation part
     # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
     # assume biocrude is used to produce biofuel for combustion
     # pertoleum is 84% C, https://en.wikipedia.org/wiki/Petroleum
@@ -4155,6 +4169,11 @@ def create_T2_system(size=10, operation_hours=8760, refinery_distance=100, LA_di
             
             sys.simulate()
     
+    # biocrude replacing crude oil of the same amount of energy
+    # TODO: may need update the price to a more general number
+    # 76.1 $/barrel crude oil, U.S. EIA, 2023 monthly average
+    HALT.outs[0].price = 76.1/_oil_barrel_to_m3/HALT.crude_oil_density/HALT.crude_oil_HHV*HALT.biocrude_HHV
+    
     GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
                                        method='TRACI',
                                        category='environmental impact',
@@ -4196,7 +4215,7 @@ def create_T2_system(size=10, operation_hours=8760, refinery_distance=100, LA_di
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
     qs.StreamImpactItem(ID='Sodium_hydroxide', linked_stream=stream.sodium_hydroxide, GlobalWarming=1.2497984)
     qs.StreamImpactItem(ID='Hydrochloric_acid', linked_stream=stream.hydrochloric_acid, GlobalWarming=0.87476322)
-    # use market for biocrude to offset transportation and then add the transportation part
+    # use market for petroleum to offset transportation and then add the transportation part
     # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
     # assume biocrude is used to produce biofuel for combustion
     # pertoleum is 84% C, https://en.wikipedia.org/wiki/Petroleum
@@ -4237,7 +4256,6 @@ def create_T2_system(size=10, operation_hours=8760, refinery_distance=100, LA_di
     hydrochar_trucking = qs.ImpactItem('Hydrochar_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     hydrochar_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
-    
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -4421,7 +4439,7 @@ def create_T3_system(size=10, operation_hours=8760, FTE=0.4):
 
 #%% system T4
 
-def create_T4_system(size=10, operation_hours=8760, refinery_distance=100, FTE=0.7):
+def create_T4_system(size=10, operation_hours=8760, refinery_distance=100, LA_distance=100, FTE=0.7):
     flowsheet_ID = 'T4'
     
     # clear flowsheet and registry for reloading
@@ -4470,11 +4488,15 @@ def create_T4_system(size=10, operation_hours=8760, refinery_distance=100, FTE=0
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
     HeatDrying.ins[1].price = 0.218
     
-    # TODO: use append if there are multiple transportations
     Pyrolysis = lsu.Pyrolysis(ID='Pyrolysis', ins=(HeatDrying-0, 'diesel_pyrolysis'),
-                              outs=('biooil','biochar','pyrogas','methane_pyrolysis','nitrous_oxide_pyrolysis'))
+                              outs=('biooil','biochar','pyrogas','methane_pyrolysis','nitrous_oxide_pyrolysis'),
+                              biooil_distance=refinery_distance, biochar_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     Pyrolysis.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
+    # biooil replacing crude oil of the same amount of energy
+    # TODO: may need update the price to a more general number
+    # 76.1 $/barrel crude oil, U.S. EIA, 2023 monthly average
+    Pyrolysis.outs[0].price = 76.1/_oil_barrel_to_m3/Pyrolysis.crude_oil_density/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV
     # https://cloverly.com/blog/the-ultimate-business-guide-to-biochar-everything-you-need-to-know
     Pyrolysis.outs[1].price = 0.131
     
@@ -4551,6 +4573,11 @@ def create_T4_system(size=10, operation_hours=8760, refinery_distance=100, FTE=0
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
+    # use market for petroleum to offset transportation and then add the transportation part
+    # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
+    # assume biooil is used to produce biofuel for combustion
+    # pertoleum is 84% C, https://en.wikipedia.org/wiki/Petroleum
+    qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.22290007 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
     qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.0082744841)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
@@ -4566,10 +4593,28 @@ def create_T4_system(size=10, operation_hours=8760, refinery_distance=100, FTE=0
     # carbon sequestration credit: 2 kg CO2 eq/kg dry solids, https://www.bioflux.earth/blog/what-is-biochar-carbon-removal
     qs.StreamImpactItem(ID='Biochar', linked_stream=stream.biochar, GlobalWarming=-2)
     
+    biooil_trucking = qs.ImpactItem('Biooil_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    biooil_trucking.add_indicator(GlobalWarming, 0.13004958/1000)
+    # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), https://doi.org/10.1016/j.biortech.2010.03.136
+    biooil_trucking.price = (5.67 + 0.07*Pyrolysis.biooil_distance)/Pyrolysis.biooil_wet_density/Pyrolysis.biooil_distance/GDPCTPI[2008]*GDPCTPI[2023]
+    
+    biooil_transportation = qs.Transportation('Biooil_transportation',
+                                              linked_unit=Pyrolysis,
+                                              item=biooil_trucking,
+                                              load_type='mass',
+                                              load=stream.biooil.F_mass,
+                                              load_unit='kg',
+                                              distance=Pyrolysis.biooil_distance,
+                                              distance_unit='km',
+                                              # set to 1 h since load = kg/h
+                                              interval='1',
+                                              interval_unit='h')
+    Pyrolysis.transportation.append(biooil_transportation)
+    
     biochar_trucking = qs.ImpactItem('Biochar_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     biochar_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
-    
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -4615,7 +4660,7 @@ def create_T4_system(size=10, operation_hours=8760, refinery_distance=100, FTE=0
 
 #%% system T5
 
-def create_T5_system(size=10, operation_hours=8760, refinery_distance=100, FTE=0.7):
+def create_T5_system(size=10, operation_hours=8760, refinery_distance=100, LA_distance=100, FTE=0.7):
     flowsheet_ID = 'T5'
     
     # clear flowsheet and registry for reloading
@@ -4664,11 +4709,15 @@ def create_T5_system(size=10, operation_hours=8760, refinery_distance=100, FTE=0
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
     HeatDrying.ins[1].price = 0.218
     
-    # TODO: use append if there are multiple transportations
     Gasification = lsu.Gasification(ID='Gasification', ins=(HeatDrying-0, 'diesel_gasification'),
-                                    outs=('tar','biochar','syngas','methane_gasification','nitrous_oxide_gasification'))
+                                    outs=('tar','biochar','syngas','methane_gasification','nitrous_oxide_gasification'),
+                                    tar_distance=refinery_distance, biochar_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     Gasification.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
+    # tar replacing crude oil of the same amount of energy
+    # TODO: may need update the price to a more general number
+    # 76.1 $/barrel crude oil, U.S. EIA, 2023 monthly average
+    Gasification.outs[0].price = 76.1/_oil_barrel_to_m3/Gasification.crude_oil_density/Gasification.crude_oil_HHV*Gasification.tar_HHV
     # https://cloverly.com/blog/the-ultimate-business-guide-to-biochar-everything-you-need-to-know
     Gasification.outs[1].price = 0.131
     
@@ -4745,6 +4794,11 @@ def create_T5_system(size=10, operation_hours=8760, refinery_distance=100, FTE=0
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
+    # use market for petroleum to offset transportation and then add the transportation part
+    # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
+    # assume tar is used to produce biofuel for combustion
+    # pertoleum is 84% C, https://en.wikipedia.org/wiki/Petroleum
+    qs.StreamImpactItem(ID='Tar', linked_stream=stream.tar, GlobalWarming=-(0.22290007 + 0.84/12*44)/Gasification.crude_oil_HHV*Gasification.tar_HHV)
     qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.0082744841)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
@@ -4760,10 +4814,28 @@ def create_T5_system(size=10, operation_hours=8760, refinery_distance=100, FTE=0
     # carbon sequestration credit: 2 kg CO2 eq/kg dry solids, https://www.bioflux.earth/blog/what-is-biochar-carbon-removal
     qs.StreamImpactItem(ID='Biochar', linked_stream=stream.biochar, GlobalWarming=-2)
     
+    tar_trucking = qs.ImpactItem('Tar_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    tar_trucking.add_indicator(GlobalWarming, 0.13004958/1000)
+    # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), https://doi.org/10.1016/j.biortech.2010.03.136
+    tar_trucking.price = (5.67 + 0.07*Gasification.tar_distance)/Gasification.tar_wet_density/Gasification.tar_distance/GDPCTPI[2008]*GDPCTPI[2023]
+    
+    tar_transportation = qs.Transportation('Tar_transportation',
+                                           linked_unit=Gasification,
+                                           item=tar_trucking,
+                                           load_type='mass',
+                                           load=stream.tar.F_mass,
+                                           load_unit='kg',
+                                           distance=Gasification.tar_distance,
+                                           distance_unit='km',
+                                           # set to 1 h since load = kg/h
+                                           interval='1',
+                                           interval_unit='h')
+    Gasification.transportation.append(tar_transportation)
+    
     biochar_trucking = qs.ImpactItem('Biochar_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     biochar_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
-    
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -4910,6 +4982,11 @@ def create_T6_system(size=10, operation_hours=8760, refinery_distance=100, FTE=0
             
             sys.simulate()
     
+    # biocrude replacing crude oil of the same amount of energy
+    # TODO: may need update the price to a more general number
+    # 76.1 $/barrel crude oil, U.S. EIA, 2023 monthly average
+    HTL.outs[0].price = 76.1/_oil_barrel_to_m3/HTL.crude_oil_density/HTL.crude_oil_HHV*HTL.biocrude_HHV
+    
     GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
                                        method='TRACI',
                                        category='environmental impact',
@@ -4949,7 +5026,7 @@ def create_T6_system(size=10, operation_hours=8760, refinery_distance=100, FTE=0
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
-    # use market for biocrude to offset transportation and then add the transportation part
+    # use market for petroleum to offset transportation and then add the transportation part
     # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
     # assume biocrude is used to produce biofuel for combustion
     # pertoleum is 84% C, https://en.wikipedia.org/wiki/Petroleum
@@ -5113,6 +5190,11 @@ def create_T7_system(size=10, operation_hours=8760, refinery_distance=100, LA_di
             
             sys.simulate()
     
+    # biocrude replacing crude oil of the same amount of energy
+    # TODO: may need update the price to a more general number
+    # 76.1 $/barrel crude oil, U.S. EIA, 2023 monthly average
+    HALT.outs[0].price = 76.1/_oil_barrel_to_m3/HALT.crude_oil_density/HALT.crude_oil_HHV*HALT.biocrude_HHV
+    
     GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
                                        method='TRACI',
                                        category='environmental impact',
@@ -5154,7 +5236,7 @@ def create_T7_system(size=10, operation_hours=8760, refinery_distance=100, LA_di
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
     qs.StreamImpactItem(ID='Sodium_hydroxide', linked_stream=stream.sodium_hydroxide, GlobalWarming=1.2497984)
     qs.StreamImpactItem(ID='Hydrochloric_acid', linked_stream=stream.hydrochloric_acid, GlobalWarming=0.87476322)
-    # use market for biocrude to offset transportation and then add the transportation part
+    # use market for petroleum to offset transportation and then add the transportation part
     # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
     # assume biocrude is used to produce biofuel for combustion
     # pertoleum is 84% C, https://en.wikipedia.org/wiki/Petroleum
@@ -5195,7 +5277,6 @@ def create_T7_system(size=10, operation_hours=8760, refinery_distance=100, LA_di
     hydrochar_trucking = qs.ImpactItem('Hydrochar_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     hydrochar_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
-    
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -5382,7 +5463,7 @@ def create_T8_system(size=10, operation_hours=8760, FTE=0.55):
 
 #%% system T9
 
-def create_T9_system(size=10, operation_hours=8760, refinery_distance=100, FTE=0.85):
+def create_T9_system(size=10, operation_hours=8760, refinery_distance=100, LA_distance=100, FTE=0.85):
     flowsheet_ID = 'T9'
     
     # clear flowsheet and registry for reloading
@@ -5434,11 +5515,15 @@ def create_T9_system(size=10, operation_hours=8760, refinery_distance=100, FTE=0
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
     HeatDrying.ins[1].price = 0.218
     
-    # TODO: use append if there are multiple transportations
     Pyrolysis = lsu.Pyrolysis(ID='Pyrolysis', ins=(HeatDrying-0, 'diesel_pyrolysis'),
-                              outs=('biooil','biochar','pyrogas','methane_pyrolysis','nitrous_oxide_pyrolysis'))
+                              outs=('biooil','biochar','pyrogas','methane_pyrolysis','nitrous_oxide_pyrolysis'),
+                              biooil_distance=refinery_distance, biochar_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     Pyrolysis.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
+    # biooil replacing crude oil of the same amount of energy
+    # TODO: may need update the price to a more general number
+    # 76.1 $/barrel crude oil, U.S. EIA, 2023 monthly average
+    Pyrolysis.outs[0].price = 76.1/_oil_barrel_to_m3/Pyrolysis.crude_oil_density/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV
     # https://cloverly.com/blog/the-ultimate-business-guide-to-biochar-everything-you-need-to-know
     Pyrolysis.outs[1].price = 0.131
     
@@ -5515,6 +5600,11 @@ def create_T9_system(size=10, operation_hours=8760, refinery_distance=100, FTE=0
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
+    # use market for petroleum to offset transportation and then add the transportation part
+    # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
+    # assume biooil is used to produce biofuel for combustion
+    # pertoleum is 84% C, https://en.wikipedia.org/wiki/Petroleum
+    qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.22290007 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
     qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.0082744841)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
@@ -5530,10 +5620,28 @@ def create_T9_system(size=10, operation_hours=8760, refinery_distance=100, FTE=0
     # carbon sequestration credit: 2 kg CO2 eq/kg dry solids, https://www.bioflux.earth/blog/what-is-biochar-carbon-removal
     qs.StreamImpactItem(ID='Biochar', linked_stream=stream.biochar, GlobalWarming=-2)
     
+    biooil_trucking = qs.ImpactItem('Biooil_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    biooil_trucking.add_indicator(GlobalWarming, 0.13004958/1000)
+    # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), https://doi.org/10.1016/j.biortech.2010.03.136
+    biooil_trucking.price = (5.67 + 0.07*Pyrolysis.biooil_distance)/Pyrolysis.biooil_wet_density/Pyrolysis.biooil_distance/GDPCTPI[2008]*GDPCTPI[2023]
+    
+    biooil_transportation = qs.Transportation('Biooil_transportation',
+                                              linked_unit=Pyrolysis,
+                                              item=biooil_trucking,
+                                              load_type='mass',
+                                              load=stream.biooil.F_mass,
+                                              load_unit='kg',
+                                              distance=Pyrolysis.biooil_distance,
+                                              distance_unit='km',
+                                              # set to 1 h since load = kg/h
+                                              interval='1',
+                                              interval_unit='h')
+    Pyrolysis.transportation.append(biooil_transportation)
+    
     biochar_trucking = qs.ImpactItem('Biochar_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     biochar_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
-    
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -5579,7 +5687,7 @@ def create_T9_system(size=10, operation_hours=8760, refinery_distance=100, FTE=0
 
 #%% system T10
 
-def create_T10_system(size=10, operation_hours=8760, refinery_distance=100, FTE=0.85):
+def create_T10_system(size=10, operation_hours=8760, refinery_distance=100, LA_distance=100, FTE=0.85):
     flowsheet_ID = 'T10'
     
     # clear flowsheet and registry for reloading
@@ -5631,11 +5739,15 @@ def create_T10_system(size=10, operation_hours=8760, refinery_distance=100, FTE=
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
     HeatDrying.ins[1].price = 0.218
     
-    # TODO: use append if there are multiple transportations
     Gasification = lsu.Gasification(ID='Gasification', ins=(HeatDrying-0, 'diesel_gasification'),
-                                    outs=('tar','biochar','syngas','methane_gasification','nitrous_oxide_gasification'))
+                                    outs=('tar','biochar','syngas','methane_gasification','nitrous_oxide_gasification'),
+                                    tar_distance=refinery_distance, biochar_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     Gasification.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
+    # tar replacing crude oil of the same amount of energy
+    # TODO: may need update the price to a more general number
+    # 76.1 $/barrel crude oil, U.S. EIA, 2023 monthly average
+    Gasification.outs[0].price = 76.1/_oil_barrel_to_m3/Gasification.crude_oil_density/Gasification.crude_oil_HHV*Gasification.tar_HHV
     # https://cloverly.com/blog/the-ultimate-business-guide-to-biochar-everything-you-need-to-know
     Gasification.outs[1].price = 0.131
     
@@ -5712,6 +5824,11 @@ def create_T10_system(size=10, operation_hours=8760, refinery_distance=100, FTE=
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
+    # use market for petroleum to offset transportation and then add the transportation part
+    # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
+    # assume tar is used to produce biofuel for combustion
+    # pertoleum is 84% C, https://en.wikipedia.org/wiki/Petroleum
+    qs.StreamImpactItem(ID='Tar', linked_stream=stream.tar, GlobalWarming=-(0.22290007 + 0.84/12*44)/Gasification.crude_oil_HHV*Gasification.tar_HHV)
     qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.0082744841)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
@@ -5727,10 +5844,28 @@ def create_T10_system(size=10, operation_hours=8760, refinery_distance=100, FTE=
     # carbon sequestration credit: 2 kg CO2 eq/kg dry solids, https://www.bioflux.earth/blog/what-is-biochar-carbon-removal
     qs.StreamImpactItem(ID='Biochar', linked_stream=stream.biochar, GlobalWarming=-2)
     
+    tar_trucking = qs.ImpactItem('Tar_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    tar_trucking.add_indicator(GlobalWarming, 0.13004958/1000)
+    # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), https://doi.org/10.1016/j.biortech.2010.03.136
+    tar_trucking.price = (5.67 + 0.07*Gasification.tar_distance)/Gasification.tar_wet_density/Gasification.tar_distance/GDPCTPI[2008]*GDPCTPI[2023]
+    
+    tar_transportation = qs.Transportation('Tar_transportation',
+                                           linked_unit=Gasification,
+                                           item=tar_trucking,
+                                           load_type='mass',
+                                           load=stream.tar.F_mass,
+                                           load_unit='kg',
+                                           distance=Gasification.tar_distance,
+                                           distance_unit='km',
+                                           # set to 1 h since load = kg/h
+                                           interval='1',
+                                           interval_unit='h')
+    Gasification.transportation.append(tar_transportation)
+    
     biochar_trucking = qs.ImpactItem('Biochar_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     biochar_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
-    
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -5882,6 +6017,11 @@ def create_T11_system(size=10, operation_hours=8760, refinery_distance=100, FTE=
             
             sys.simulate()
     
+    # biocrude replacing crude oil of the same amount of energy
+    # TODO: may need update the price to a more general number
+    # 76.1 $/barrel crude oil, U.S. EIA, 2023 monthly average, may need to update this to a more general number
+    HTL.outs[0].price = 76.1/_oil_barrel_to_m3/HTL.crude_oil_density/HTL.crude_oil_HHV*HTL.biocrude_HHV
+    
     GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
                                        method='TRACI',
                                        category='environmental impact',
@@ -5921,7 +6061,7 @@ def create_T11_system(size=10, operation_hours=8760, refinery_distance=100, FTE=
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
-    # use market for biocrude to offset transportation and then add the transportation part
+    # use market for petroleum to offset transportation and then add the transportation part
     # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
     # assume biocrude is used to produce biofuel for combustion
     # pertoleum is 84% C, https://en.wikipedia.org/wiki/Petroleum
@@ -6091,6 +6231,11 @@ def create_T12_system(size=10, operation_hours=8760, refinery_distance=100, LA_d
             
             sys.simulate()
     
+    # biocrude replacing crude oil of the same amount of energy
+    # TODO: may need update the price to a more general number
+    # 76.1 $/barrel crude oil, U.S. EIA, 2023 monthly average
+    HALT.outs[0].price = 76.1/_oil_barrel_to_m3/HALT.crude_oil_density/HALT.crude_oil_HHV*HALT.biocrude_HHV
+    
     GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
                                        method='TRACI',
                                        category='environmental impact',
@@ -6132,7 +6277,7 @@ def create_T12_system(size=10, operation_hours=8760, refinery_distance=100, LA_d
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
     qs.StreamImpactItem(ID='Sodium_hydroxide', linked_stream=stream.sodium_hydroxide, GlobalWarming=1.2497984)
     qs.StreamImpactItem(ID='Hydrochloric_acid', linked_stream=stream.hydrochloric_acid, GlobalWarming=0.87476322)
-    # use market for biocrude to offset transportation and then add the transportation part
+    # use market for petroleum to offset transportation and then add the transportation part
     # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
     # assume biocrude is used to produce biofuel for combustion
     # pertoleum is 84% C, https://en.wikipedia.org/wiki/Petroleum
@@ -6174,7 +6319,6 @@ def create_T12_system(size=10, operation_hours=8760, refinery_distance=100, LA_d
     hydrochar_trucking = qs.ImpactItem('Hydrochar_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     hydrochar_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
-    
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -6377,7 +6521,7 @@ def create_T13_system(size=10, operation_hours=8760, FTE=0.55):
 
 #%% system T14
 
-def create_T14_system(size=10, operation_hours=8760, refinery_distance=100, FTE=0.85):
+def create_T14_system(size=10, operation_hours=8760, refinery_distance=100, LA_distance=100, FTE=0.85):
     flowsheet_ID = 'T14'
     
     # clear flowsheet and registry for reloading
@@ -6431,11 +6575,15 @@ def create_T14_system(size=10, operation_hours=8760, refinery_distance=100, FTE=
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
     HeatDrying.ins[1].price = 0.218
     
-    # TODO: use append if there are multiple transportations
     Pyrolysis = lsu.Pyrolysis(ID='Pyrolysis', ins=(HeatDrying-0, 'diesel_pyrolysis'),
-                              outs=('biooil','biochar','pyrogas','methane_pyrolysis','nitrous_oxide_pyrolysis'))
+                              outs=('biooil','biochar','pyrogas','methane_pyrolysis','nitrous_oxide_pyrolysis'),
+                              biooil_distance=refinery_distance, biochar_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     Pyrolysis.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
+    # biooil replacing crude oil of the same amount of energy
+    # TODO: may need update the price to a more general number
+    # 76.1 $/barrel crude oil, U.S. EIA, 2023 monthly average
+    Pyrolysis.outs[0].price = 76.1/_oil_barrel_to_m3/Pyrolysis.crude_oil_density/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV
     # https://cloverly.com/blog/the-ultimate-business-guide-to-biochar-everything-you-need-to-know
     Pyrolysis.outs[1].price = 0.131
     
@@ -6515,6 +6663,11 @@ def create_T14_system(size=10, operation_hours=8760, refinery_distance=100, FTE=
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
+    # use market for petroleum to offset transportation and then add the transportation part
+    # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
+    # assume biooil is used to produce biofuel for combustion
+    # pertoleum is 84% C, https://en.wikipedia.org/wiki/Petroleum
+    qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.22290007 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
     qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.0082744841)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
@@ -6531,10 +6684,28 @@ def create_T14_system(size=10, operation_hours=8760, refinery_distance=100, FTE=
     # carbon sequestration credit: 2 kg CO2 eq/kg dry solids, https://www.bioflux.earth/blog/what-is-biochar-carbon-removal
     qs.StreamImpactItem(ID='Biochar', linked_stream=stream.biochar, GlobalWarming=-2)
     
+    biooil_trucking = qs.ImpactItem('Biooil_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    biooil_trucking.add_indicator(GlobalWarming, 0.13004958/1000)
+    # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), https://doi.org/10.1016/j.biortech.2010.03.136
+    biooil_trucking.price = (5.67 + 0.07*Pyrolysis.biooil_distance)/Pyrolysis.biooil_wet_density/Pyrolysis.biooil_distance/GDPCTPI[2008]*GDPCTPI[2023]
+    
+    biooil_transportation = qs.Transportation('Biooil_transportation',
+                                              linked_unit=Pyrolysis,
+                                              item=biooil_trucking,
+                                              load_type='mass',
+                                              load=stream.biooil.F_mass,
+                                              load_unit='kg',
+                                              distance=Pyrolysis.biooil_distance,
+                                              distance_unit='km',
+                                              # set to 1 h since load = kg/h
+                                              interval='1',
+                                              interval_unit='h')
+    Pyrolysis.transportation.append(biooil_transportation)
+    
     biochar_trucking = qs.ImpactItem('Biochar_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     biochar_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
-    
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -6580,7 +6751,7 @@ def create_T14_system(size=10, operation_hours=8760, refinery_distance=100, FTE=
 
 #%% system T15
 
-def create_T15_system(size=10, operation_hours=8760, refinery_distance=100, FTE=0.85):
+def create_T15_system(size=10, operation_hours=8760, refinery_distance=100, LA_distance=100, FTE=0.85):
     flowsheet_ID = 'T15'
     
     # clear flowsheet and registry for reloading
@@ -6634,11 +6805,15 @@ def create_T15_system(size=10, operation_hours=8760, refinery_distance=100, FTE=
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
     HeatDrying.ins[1].price = 0.218
     
-    # TODO: use append if there are multiple transportations
     Gasification = lsu.Gasification(ID='Gasification', ins=(HeatDrying-0, 'diesel_gasification'),
-                                    outs=('tar','biochar','syngas','methane_gasification','nitrous_oxide_gasification'))
+                                    outs=('tar','biochar','syngas','methane_gasification','nitrous_oxide_gasification'),
+                                    tar_distance=refinery_distance, biochar_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     Gasification.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
+    # tar replacing crude oil of the same amount of energy
+    # TODO: may need update the price to a more general number
+    # 76.1 $/barrel crude oil, U.S. EIA, 2023 monthly average
+    Gasification.outs[0].price = 76.1/_oil_barrel_to_m3/Gasification.crude_oil_density/Gasification.crude_oil_HHV*Gasification.tar_HHV
     # https://cloverly.com/blog/the-ultimate-business-guide-to-biochar-everything-you-need-to-know
     Gasification.outs[1].price = 0.131
     
@@ -6718,6 +6893,11 @@ def create_T15_system(size=10, operation_hours=8760, refinery_distance=100, FTE=
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
+    # use market for petroleum to offset transportation and then add the transportation part
+    # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
+    # assume tar is used to produce biofuel for combustion
+    # pertoleum is 84% C, https://en.wikipedia.org/wiki/Petroleum
+    qs.StreamImpactItem(ID='Tar', linked_stream=stream.tar, GlobalWarming=-(0.22290007 + 0.84/12*44)/Gasification.crude_oil_HHV*Gasification.tar_HHV)
     qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.0082744841)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
@@ -6734,10 +6914,28 @@ def create_T15_system(size=10, operation_hours=8760, refinery_distance=100, FTE=
     # carbon sequestration credit: 2 kg CO2 eq/kg dry solids, https://www.bioflux.earth/blog/what-is-biochar-carbon-removal
     qs.StreamImpactItem(ID='Biochar', linked_stream=stream.biochar, GlobalWarming=-2)
     
+    tar_trucking = qs.ImpactItem('Tar_trucking', functional_unit='kg*km')
+    # based on one-way distance, empty return trips included
+    tar_trucking.add_indicator(GlobalWarming, 0.13004958/1000)
+    # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), https://doi.org/10.1016/j.biortech.2010.03.136
+    tar_trucking.price = (5.67 + 0.07*Gasification.tar_distance)/Gasification.tar_wet_density/Gasification.tar_distance/GDPCTPI[2008]*GDPCTPI[2023]
+    
+    tar_transportation = qs.Transportation('Tar_transportation',
+                                           linked_unit=Gasification,
+                                           item=tar_trucking,
+                                           load_type='mass',
+                                           load=stream.tar.F_mass,
+                                           load_unit='kg',
+                                           distance=Gasification.tar_distance,
+                                           distance_unit='km',
+                                           # set to 1 h since load = kg/h
+                                           interval='1',
+                                           interval_unit='h')
+    Gasification.transportation.append(tar_transportation)
+    
     biochar_trucking = qs.ImpactItem('Biochar_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
     biochar_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
-    
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km

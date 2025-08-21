@@ -1780,6 +1780,15 @@ class Pyrolysis(SanUnit):
         load frequency, [load/h].
     tractor_fuel : float
         tractor fuel, [L diesel/h].
+    crude_oil_density : float
+        density of crude oil, [kg/m3].
+    crude_oil_HHV : float
+        HHV of crude oil, [MJ/kg].
+    # TODO: check if the cited source reported wet density, if not, what is the impact of the accuracy of this parameter
+    biooil_wet_density : float
+        dnsity of biooil, [kg/m3].
+    biooil_HHV : float
+        HHV of biooil, [MJ/kg].
     biooil_distance : float
         distance between WRRFs and oil refineries, [km].
     biochar_distance : float
@@ -1800,6 +1809,14 @@ class Pyrolysis(SanUnit):
                  unit_fugitive_methane=2.65, unit_fugitive_nitrous_oxide=5.23,
                  unit_electricity=123.424, T=600 + _C_to_K, eff_T=60 + _C_to_K,
                  load_size=13, load_frequency=3, tractor_fuel=25,
+                 # https://www.transmountain.com/about-petroleum-liquids (accessed 2025-02-05)
+                 crude_oil_density=850,
+                 # crude oil HHV: https://world-nuclear.org/information-library/facts-and-figures/heat-values-of-various-fuels
+                 crude_oil_HHV=44.5,
+                 # average, https://doi.org/10.1039/D4EW00278D
+                 biooil_HHV=33.7,
+                 # average, https://doi.org/10.1039/D4EW00278D
+                 biooil_wet_density=1072.5,
                  biooil_distance=100, biochar_distance=100):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
         self.biooil_yield = biooil_yield
@@ -1824,6 +1841,10 @@ class Pyrolysis(SanUnit):
         self.load_size = load_size
         self.load_frequency = load_frequency
         self.tractor_fuel = tractor_fuel
+        self.crude_oil_density = crude_oil_density
+        self.crude_oil_HHV = crude_oil_HHV
+        self.biooil_HHV = biooil_HHV
+        self.biooil_wet_density = biooil_wet_density
         self.biooil_distance = biooil_distance
         self.biochar_distance = biochar_distance
     
@@ -1964,7 +1985,16 @@ class Gasification(SanUnit):
         load frequency, [load/h].
     tractor_fuel : float
         tractor fuel, [L diesel/h].
-    biooil_distance : float
+    crude_oil_density : float
+        density of crude oil, [kg/m3].
+    crude_oil_HHV : float
+        HHV of crude oil, [MJ/kg].
+    # TODO: check if the cited source reported wet density, if not, what is the impact of the accuracy of this parameter
+    tar_wet_density : float
+        dnsity of tar, [kg/m3].
+    tar_HHV : float
+        HHV of tar, [MJ/kg].
+    tar_distance : float
         distance between WRRFs and oil refineries, [km].
     biochar_distance : float
         distance between WRRFs and land application sites, [km].
@@ -1988,7 +2018,15 @@ class Gasification(SanUnit):
                  # TODO: this is for pyrolysis, gasification may have a higher value
                  unit_electricity=123.424, T=900 + _C_to_K, eff_T=60 + _C_to_K,
                  load_size=13, load_frequency=3, tractor_fuel=25,
-                 biooil_distance=100, biochar_distance=100):
+                 # https://www.transmountain.com/about-petroleum-liquids (accessed 2025-02-05)
+                 crude_oil_density=850,
+                 # crude oil HHV: https://world-nuclear.org/information-library/facts-and-figures/heat-values-of-various-fuels
+                 crude_oil_HHV=44.5,
+                 # TODO: assume to be the same as biooil from pyrolysis for now, update with citations
+                 tar_HHV=33.7,
+                 # TODO: assume to be the same as biooil from pyrolysis for now, update with citations 
+                 tar_wet_density=1072.5,
+                 tar_distance=100, biochar_distance=100):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
         self.VS_to_tar = VS_to_tar
         self.syngas_composition = syngas_composition
@@ -2011,7 +2049,11 @@ class Gasification(SanUnit):
         self.load_size = load_size
         self.load_frequency = load_frequency
         self.tractor_fuel = tractor_fuel
-        self.biooil_distance = biooil_distance
+        self.crude_oil_density = crude_oil_density
+        self.crude_oil_HHV = crude_oil_HHV
+        self.tar_HHV = tar_HHV
+        self.tar_wet_density = tar_wet_density
+        self.tar_distance = tar_distance
         self.biochar_distance = biochar_distance
     
     def _run(self):
@@ -2174,10 +2216,6 @@ class Landfilling(SanUnit):
         convert BTU to kWh but considering loss, [kWh/BTU].
     net_capacity_factor : float
         actual electricity generated to the theoretical maximum, [-].
-    tipping_fee : float
-        tipping fee, [$·wet tonne-1].
-        see exposan/htl/data/landfilling_tipping_fee.xlsx.
-        U.S. average: 56.8 $·wet ton-1 ~ 62.6 $·wet tonne-1.
     solids_distance : float
         distance between WRRFs and landfills, [km].
     '''
@@ -2191,7 +2229,7 @@ class Landfilling(SanUnit):
                  k_decay=0.06, flare_fugitive_ratio=0.01, C_N_cutoff=30,
                  N2O_N_landfilling=0.015, methane_electricity=0.5,
                  BTU_to_kWh_with_efficiency=0.0000854, net_capacity_factor=0.85,
-                 tipping_fee=62.6, solids_distance=100):
+                 solids_distance=100):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.lipid_2_C = lipid_2_C
         self.protein_2_C = protein_2_C
@@ -2207,7 +2245,6 @@ class Landfilling(SanUnit):
         self.methane_electricity = methane_electricity
         self.BTU_to_kWh_with_efficiency = BTU_to_kWh_with_efficiency
         self.net_capacity_factor = net_capacity_factor
-        self.tipping_fee = tipping_fee
         self.solids_distance = solids_distance
     
     def _run(self):
@@ -2297,10 +2334,6 @@ class Landfilling(SanUnit):
         
         # TODO: add CI; any price?
         sequestered_carbon_dioxide.imass['CO2'] = -OC_mass_flow*(1 - self.OC_decomposition_ratio)*_C_to_CO2
-    
-    def _cost(self):
-        landfilled_solids = self.outs[0]
-        landfilled_solids.price = -self.tipping_fee/1000
     
     @property
     def electricity_kW(self):
@@ -2592,10 +2625,12 @@ class HydrothermalLiquefaction(SanUnit):
         P to N ratio, [-].
     eff_P : float
         HTL effluent pressure, [Pa].
+    crude_oil_density : float
+        density of crude oil, [kg/m3].
     crude_oil_HHV : float
         HHV of crude oil, [MJ/kg].
     biocrude_wet_density : float
-        Density of biocrude, [kg/m3].
+        density of biocrude, [kg/m3].
     biocrude_distance : float
         distance between WRRFs and oil refineries, [km].
     
@@ -2637,6 +2672,8 @@ class HydrothermalLiquefaction(SanUnit):
                  gas_composition={'CH4': 0.050, 'C2H6': 0.032, 'CO2': 0.918},
                  T=350 + _C_to_K, P=3049.7*_psi_to_Pa, eff_T=60 + _C_to_K,
                  eff_P=30*_psi_to_Pa,
+                 # https://www.transmountain.com/about-petroleum-liquids (accessed 2025-02-05)
+                 crude_oil_density=850,
                  # crude oil HHV: https://world-nuclear.org/information-library/facts-and-figures/heat-values-of-various-fuels
                  crude_oil_HHV=44.5,
                  # https://doi.org/10.2172/1897670
@@ -2685,6 +2722,7 @@ class HydrothermalLiquefaction(SanUnit):
         self._eff_at_temp = Stream(f'{ID}_eff_at_temp')
         eff_hx_out = Stream(f'{ID}_eff_hx_out')
         self.eff_hx = HXutility(ID=f'.{ID}_eff_hx', ins=eff_after_hx, outs=eff_hx_out, T=eff_T, rigorous=True)
+        self.crude_oil_density = crude_oil_density
         self.crude_oil_HHV = crude_oil_HHV
         self.biocrude_wet_density = biocrude_wet_density
         self.biocrude_distance = biocrude_distance
@@ -2926,10 +2964,12 @@ class HydrothermalAlkalineTreatment(SanUnit):
         load frequency, [load/h].
     tractor_fuel : float
         tractor fuel, [L diesel/h].
+    crude_oil_density : float
+        density of crude oil, [kg/m3].
     crude_oil_HHV : float
         HHV of crude oil, [MJ/kg].
     biocrude_wet_density : float
-        Density of biocrude, [kg/m3].
+        density of biocrude, [kg/m3].
     biocrude_distance : float
         distance between WRRFs and oil refineries, [km].
     hydrochar_distance : float
@@ -2967,6 +3007,8 @@ class HydrothermalAlkalineTreatment(SanUnit):
                  T=350 + _C_to_K, P=3049.7*_psi_to_Pa, eff_T=60 + _C_to_K,
                  eff_P=30*_psi_to_Pa, load_size=13, load_frequency=3,
                  tractor_fuel=25, unit_carbon_sequestration=0.745,
+                 # https://www.transmountain.com/about-petroleum-liquids (accessed 2025-02-05)
+                 crude_oil_density=850,
                  # crude oil HHV: https://world-nuclear.org/information-library/facts-and-figures/heat-values-of-various-fuels
                  crude_oil_HHV=44.5,
                  # https://doi.org/10.2172/1897670
@@ -3022,6 +3064,7 @@ class HydrothermalAlkalineTreatment(SanUnit):
         self.load_size = load_size
         self.load_frequency = load_frequency
         self.tractor_fuel = tractor_fuel
+        self.crude_oil_density = crude_oil_density
         self.crude_oil_HHV = crude_oil_HHV
         self.biocrude_wet_density = biocrude_wet_density
         self.biocrude_distance = biocrude_distance
@@ -3558,6 +3601,7 @@ class SupercriticalWaterOxidation(SanUnit):
         ash.phase = 's'
         offgas.phase = 'g'
         
+        # TODO: check whether ash in other T units / systems is properly handled
         ash.imass['Sludge_ash'] = dewatered_solids.imass['Sludge_ash']
         
         # kg OC/h

@@ -304,6 +304,9 @@ def create_geospatial_system(test_run=False,
                                    crude_oil_HHV=44.5,
                                    biocrude_wet_density=983,
                                    vessel_material='Carbon steel')
+    # !!! could move this to after sys.simulate() and use HTL.biocrude_HHV instead of 35
+    # !!! this would select the same 577 candidate WRRFs (including the one that cannot run uncertainty) and
+    # !!! change saving slightly to the optimal side (the current way is conservative)
     # assume biocrude replace crude oil of the same amount of energy
     # assume biocrude has an HHV of 35 MJ/kg
     # in the model, biocrude HHV will be calculated as HTL.biocrude_HHV
@@ -775,7 +778,7 @@ def create_geospatial_system(test_run=False,
     
     if biocrude_transportation:
         # !!! this allocates the benefit of biogenic carbon in biocrude to oil refineries
-        # use market or market group for biocrude to offset transportation and then add the transportation part
+        # use market or market group for petroleum to offset transportation and then add the transportation part
         # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
         impact_items['biocrude'] = [stream.biocrude, -0.22290007/BiocrudeTank.crude_oil_HHV*HTL.biocrude_HHV]
     
