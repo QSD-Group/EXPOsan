@@ -265,18 +265,18 @@ plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 fig, ax = plt.subplots(figsize=(14, 12))
 
 ax = plt.gca()
-ax.set_xlim(0, 3500)
+ax.set_xlim(0, 4000)
 ax.set_ylim(-1000, 2500)
 
 ax.tick_params(direction='inout', length=20, width=3,
                 bottom=True, top=False, left=True, right=False)
 
-plt.xticks(np.arange(0, 4000, 500), fontname='Arial')
+plt.xticks(np.arange(0, 4500, 500), fontname='Arial')
 plt.yticks(np.arange(-1000, 3000, 500), fontname='Arial')
 
 ax_top = ax.twiny()
 ax_top.set_xlim(ax.get_xlim())
-plt.xticks(np.arange(0, 4000, 500), fontname='Arial')
+plt.xticks(np.arange(0, 4500, 500), fontname='Arial')
 
 ax_top.tick_params(direction='in', length=10, width=3,
                    bottom=False, top=True, left=False, right=False,
@@ -284,7 +284,7 @@ ax_top.tick_params(direction='in', length=10, width=3,
 
 ax_bottom = ax.twinx()
 ax_bottom.set_ylim(ax.get_ylim())
-plt.xticks(np.arange(0, 4000, 500), fontname='Arial')
+plt.xticks(np.arange(0, 4500, 500), fontname='Arial')
 
 ax_bottom.tick_params(direction='in', length=10, width=3,
                       bottom=False, top=False, left=False, right=True,

@@ -14,6 +14,12 @@ for license details.
 
 #%% housekeeping
 
+# TODO: use an on-stream factor of 90% in nth plant scenarios (yearly operating time = 24*365*0.9 h)
+
+# TODO: adjust the on-stream factor for T systems based on plant_performance_factor
+
+# TODO: need to decide how to integrate the following TODO into the roadmap analysis
+# TODO: consider update TEA parameters for pioneer T systems based on the suggestions in Poddar, T. K.; Scown, C. D. Technoeconomic Analysis for Near-Term Scale-up of Bioprocesses. Current Opinion in Biotechnology 2025, 92, 103258. https://doi.org/10.1016/j.copbio.2025.103258
 
 #%% initialization
 
@@ -36,8 +42,6 @@ _ton_to_tonne = auom('ton').conversion_factor('tonne')
 _lb_to_kg = auom('lb').conversion_factor('kg')
 _gal_to_liter = auom('gallon').conversion_factor('liter')
 _oil_barrel_to_m3 = auom('oil_barrel').conversion_factor('m3')
-
-# TODO: add in writing: use 2023$ (since CEPCI is not available after that, need a fee to access the full 2024 data)
 
 # GDPCTPI (Gross Domestic Product: Chain-type Price Index)
 # https://fred.stlouisfed.org/series/GDPCTPI (accessed 2024-05-20)
@@ -63,8 +67,6 @@ GDPCTPI = {2005: 81.537,
            2024: 125.231}	
 
 labor_index = tea_indices['labor']
-
-# TODO: no HXN in all systems
 
 # TODO: address all warnings (especially in T pathways)
 
@@ -124,8 +126,10 @@ def create_C1_system(size=10, operation_hours=8760, LF_distance=100, tipping_fee
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: https://www.globalpetrolprices.com/electricity_prices/ also has prices for electricty, diesel, natural gas, etc.
+    # TODO: make sure to use the price for the industrial sector
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -258,8 +262,8 @@ def create_C2_system(size=10, operation_hours=8760, LF_distance=100, tipping_fee
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -291,12 +295,9 @@ def create_C2_system(size=10, operation_hours=8760, LF_distance=100, tipping_fee
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     AlkalineStabilization = lsu.AlkalineStabilization(ID='AlkalineStabilization',
-                                                      ins=(Dewatering-0, 'lime', 'natural_gas_lime'),
+                                                      ins=(Dewatering-0, 'lime'),
                                                       outs='stabilized_solids')
     AlkalineStabilization.ins[1].price = 0.1189/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
-    # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
-    # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    AlkalineStabilization.ins[2].price = 0.218
     
     Landfilling = lsu.Landfilling(ID='Landfilling',
                                   ins=AlkalineStabilization-0,
@@ -326,9 +327,6 @@ def create_C2_system(size=10, operation_hours=8760, LF_distance=100, tipping_fee
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
     Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
-    
-    Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.47016123 + natural_gas_density/16*44)
     
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.065877932)
@@ -372,7 +370,6 @@ def create_C2_system(size=10, operation_hours=8760, LF_distance=100, tipping_fee
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production()-sys.flowsheet.Landfilling.electricity_kW*operation_hours)*20,
            Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
            Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Natural_gas_V=lambda:sys.flowsheet.AlkalineStabilization.ins[2].F_vol*operation_hours*20,
            Cooling=lambda:sys.get_cooling_duty()/1000*20,
            )
     
@@ -404,8 +401,8 @@ def create_C3_system(size=10, operation_hours=8760, LA_distance=100, biosolids_p
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -437,12 +434,9 @@ def create_C3_system(size=10, operation_hours=8760, LA_distance=100, biosolids_p
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     AlkalineStabilization = lsu.AlkalineStabilization(ID='AlkalineStabilization',
-                                                      ins=(Dewatering-0, 'lime', 'natural_gas_lime'),
+                                                      ins=(Dewatering-0, 'lime'),
                                                       outs='stabilized_solids')
     AlkalineStabilization.ins[1].price = 0.1189/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
-    # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
-    # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    AlkalineStabilization.ins[2].price = 0.218
     
     LandApplication = lsu.LandApplication(ID='LandApplication',
                                           ins=(AlkalineStabilization-0, 'diesel_LA'),
@@ -480,9 +474,6 @@ def create_C3_system(size=10, operation_hours=8760, LA_distance=100, biosolids_p
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
     Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
-    
-    Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.47016123 + natural_gas_density/16*44)
     
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.065877932)
@@ -531,7 +522,6 @@ def create_C3_system(size=10, operation_hours=8760, LA_distance=100, biosolids_p
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*20,
            Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
            Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Natural_gas_V=lambda:sys.flowsheet.AlkalineStabilization.ins[2].F_vol*operation_hours*20,
            Cooling=lambda:sys.get_cooling_duty()/1000*20,
            )
     
@@ -563,8 +553,8 @@ def create_C4_system(size=10, operation_hours=8760, LA_distance=100, compost_pri
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -713,8 +703,8 @@ def create_C5_system(size=10, operation_hours=8760, LF_distance=100, tipping_fee
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -856,8 +846,8 @@ def create_C6_system(size=10, operation_hours=8760, LA_distance=100, biosolids_p
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -1012,8 +1002,8 @@ def create_C7_system(size=10, operation_hours=8760, FTE=0.4):
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -1133,8 +1123,8 @@ def create_C8_system(size=10, operation_hours=8760, LF_distance=100, tipping_fee
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -1269,8 +1259,8 @@ def create_C9_system(size=10, operation_hours=8760, LA_distance=100, biosolids_p
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -1418,8 +1408,8 @@ def create_C10_system(size=10, operation_hours=8760, LA_distance=100, compost_pr
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -1571,8 +1561,8 @@ def create_C11_system(size=10, operation_hours=8760, LF_distance=100, tipping_fe
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -1717,8 +1707,8 @@ def create_C12_system(size=10, operation_hours=8760, LA_distance=100, biosolids_
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -1876,8 +1866,8 @@ def create_C13_system(size=10, operation_hours=8760, FTE=0.55):
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -2000,8 +1990,8 @@ def create_C14_system(size=10, operation_hours=8760, LF_distance=100, tipping_fe
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -2029,7 +2019,7 @@ def create_C14_system(size=10, operation_hours=8760, LF_distance=100, tipping_fe
     
     # TODO: consider replacing natural_gas with biogas (CH4 + CO2) or create a stream for CO2
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
-                                                outs=('digested_sludge','natural_gas_AD','methane_AD'),
+                                                outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
                                                 biogas_CHP_ratio=0, biogas_RNG_ratio=0.9)
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
@@ -2146,8 +2136,8 @@ def create_C15_system(size=10, operation_hours=8760, LA_distance=100, biosolids_
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -2175,7 +2165,7 @@ def create_C15_system(size=10, operation_hours=8760, LA_distance=100, biosolids_
     
     # TODO: consider replacing natural_gas with biogas (CH4 + CO2) or create a stream for CO2
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
-                                                outs=('digested_sludge','natural_gas_AD','methane_AD'),
+                                                outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
                                                 biogas_CHP_ratio=0, biogas_RNG_ratio=0.9)
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
@@ -2305,8 +2295,8 @@ def create_C16_system(size=10, operation_hours=8760, LA_distance=100, compost_pr
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -2334,7 +2324,7 @@ def create_C16_system(size=10, operation_hours=8760, LA_distance=100, compost_pr
     
     # TODO: consider replacing natural_gas with biogas (CH4 + CO2) or create a stream for CO2
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
-                                                outs=('digested_sludge','natural_gas_AD','methane_AD'),
+                                                outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
                                                 biogas_CHP_ratio=0, biogas_RNG_ratio=0.9)
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
@@ -2468,8 +2458,8 @@ def create_C17_system(size=10, operation_hours=8760, LF_distance=100, tipping_fe
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -2497,7 +2487,7 @@ def create_C17_system(size=10, operation_hours=8760, LF_distance=100, tipping_fe
     
     # TODO: consider replacing natural_gas with biogas (CH4 + CO2) or create a stream for CO2
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
-                                                outs=('digested_sludge','natural_gas_AD','methane_AD'),
+                                                outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
                                                 biogas_CHP_ratio=0, biogas_RNG_ratio=0.9)
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
@@ -2620,8 +2610,8 @@ def create_C18_system(size=10, operation_hours=8760, LA_distance=100, biosolids_
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -2649,7 +2639,7 @@ def create_C18_system(size=10, operation_hours=8760, LA_distance=100, biosolids_
     
     # TODO: consider replacing natural_gas with biogas (CH4 + CO2) or create a stream for CO2
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
-                                                outs=('digested_sludge','natural_gas_AD','methane_AD'),
+                                                outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
                                                 biogas_CHP_ratio=0, biogas_RNG_ratio=0.9)
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
@@ -2785,8 +2775,8 @@ def create_C19_system(size=10, operation_hours=8760, FTE=0.55):
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -2814,7 +2804,7 @@ def create_C19_system(size=10, operation_hours=8760, FTE=0.55):
     
     # TODO: consider replacing natural_gas with biogas (CH4 + CO2) or create a stream for CO2
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
-                                                outs=('digested_sludge','natural_gas_AD','methane_AD'),
+                                                outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
                                                 biogas_CHP_ratio=0, biogas_RNG_ratio=0.9)
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
@@ -2915,8 +2905,8 @@ def create_C20_system(size=10, operation_hours=8760, LF_distance=100, tipping_fe
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -2944,7 +2934,7 @@ def create_C20_system(size=10, operation_hours=8760, LF_distance=100, tipping_fe
     
     # TODO: consider replacing natural_gas with biogas (CH4 + CO2) or create a stream for CO2
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
-                                                outs=('digested_sludge','natural_gas_AD','methane_AD'),
+                                                outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
                                                 biogas_CHP_ratio=0.9, biogas_RNG_ratio=0)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
@@ -3068,8 +3058,8 @@ def create_C21_system(size=10, operation_hours=8760, LA_distance=100, biosolids_
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -3097,7 +3087,7 @@ def create_C21_system(size=10, operation_hours=8760, LA_distance=100, biosolids_
     
     # TODO: consider replacing natural_gas with biogas (CH4 + CO2) or create a stream for CO2
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
-                                                outs=('digested_sludge','natural_gas_AD','methane_AD'),
+                                                outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
                                                 biogas_CHP_ratio=0.9, biogas_RNG_ratio=0)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
@@ -3234,8 +3224,8 @@ def create_C22_system(size=10, operation_hours=8760, LA_distance=100, compost_pr
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -3263,7 +3253,7 @@ def create_C22_system(size=10, operation_hours=8760, LA_distance=100, compost_pr
     
     # TODO: consider replacing natural_gas with biogas (CH4 + CO2) or create a stream for CO2
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
-                                                outs=('digested_sludge','natural_gas_AD','methane_AD'),
+                                                outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
                                                 biogas_CHP_ratio=0.9, biogas_RNG_ratio=0)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
@@ -3404,8 +3394,8 @@ def create_C23_system(size=10, operation_hours=8760, LF_distance=100, tipping_fe
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -3433,7 +3423,7 @@ def create_C23_system(size=10, operation_hours=8760, LF_distance=100, tipping_fe
     
     # TODO: consider replacing natural_gas with biogas (CH4 + CO2) or create a stream for CO2
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
-                                                outs=('digested_sludge','natural_gas_AD','methane_AD'),
+                                                outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
                                                 biogas_CHP_ratio=0.9, biogas_RNG_ratio=0)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
@@ -3563,8 +3553,8 @@ def create_C24_system(size=10, operation_hours=8760, LA_distance=100, biosolids_
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -3592,7 +3582,7 @@ def create_C24_system(size=10, operation_hours=8760, LA_distance=100, biosolids_
     
     # TODO: consider replacing natural_gas with biogas (CH4 + CO2) or create a stream for CO2
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
-                                                outs=('digested_sludge','natural_gas_AD','methane_AD'),
+                                                outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
                                                 biogas_CHP_ratio=0.9, biogas_RNG_ratio=0)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
@@ -3735,8 +3725,8 @@ def create_C25_system(size=10, operation_hours=8760, FTE=0.7):
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -3764,7 +3754,7 @@ def create_C25_system(size=10, operation_hours=8760, FTE=0.7):
     
     # TODO: consider replacing natural_gas with biogas (CH4 + CO2) or create a stream for CO2
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
-                                                outs=('digested_sludge','natural_gas_AD','methane_AD'),
+                                                outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
                                                 biogas_CHP_ratio=0.9, biogas_RNG_ratio=0)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
@@ -3873,8 +3863,8 @@ def create_T1_system(size=10, operation_hours=8760, refinery_distance=100, FTE=0
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -3939,7 +3929,6 @@ def create_T1_system(size=10, operation_hours=8760, refinery_distance=100, FTE=0
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: check: construction cost for CT is based on the flow rate of cooling_tower_chemicals in the current version of BioSTEAM
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
     CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
@@ -4076,8 +4065,8 @@ def create_T2_system(size=10, operation_hours=8760, refinery_distance=100, LA_di
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -4145,7 +4134,6 @@ def create_T2_system(size=10, operation_hours=8760, refinery_distance=100, LA_di
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: check: construction cost for CT is based on the flow rate of cooling_tower_chemicals in the current version of BioSTEAM
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
     CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
@@ -4312,8 +4300,8 @@ def create_T3_system(size=10, operation_hours=8760, FTE=0.4):
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -4348,7 +4336,6 @@ def create_T3_system(size=10, operation_hours=8760, FTE=0.4):
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     SCWO.outs[0].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: check: construction cost for CT is based on the flow rate of cooling_tower_chemicals in the current version of BioSTEAM
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
     CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
@@ -4450,8 +4437,8 @@ def create_T4_system(size=10, operation_hours=8760, refinery_distance=100, LA_di
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -4510,7 +4497,6 @@ def create_T4_system(size=10, operation_hours=8760, refinery_distance=100, LA_di
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: check: construction cost for CT is based on the flow rate of cooling_tower_chemicals in the current version of BioSTEAM
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
     CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
@@ -4671,8 +4657,8 @@ def create_T5_system(size=10, operation_hours=8760, refinery_distance=100, LA_di
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -4731,7 +4717,6 @@ def create_T5_system(size=10, operation_hours=8760, refinery_distance=100, LA_di
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: check: construction cost for CT is based on the flow rate of cooling_tower_chemicals in the current version of BioSTEAM
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
     CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
@@ -4892,8 +4877,8 @@ def create_T6_system(size=10, operation_hours=8760, refinery_distance=100, FTE=0
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -4958,7 +4943,6 @@ def create_T6_system(size=10, operation_hours=8760, refinery_distance=100, FTE=0
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: check: construction cost for CT is based on the flow rate of cooling_tower_chemicals in the current version of BioSTEAM
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
     CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
@@ -5095,8 +5079,8 @@ def create_T7_system(size=10, operation_hours=8760, refinery_distance=100, LA_di
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -5166,7 +5150,6 @@ def create_T7_system(size=10, operation_hours=8760, refinery_distance=100, LA_di
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: check: construction cost for CT is based on the flow rate of cooling_tower_chemicals in the current version of BioSTEAM
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
     CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
@@ -5333,8 +5316,8 @@ def create_T8_system(size=10, operation_hours=8760, FTE=0.55):
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -5372,7 +5355,6 @@ def create_T8_system(size=10, operation_hours=8760, FTE=0.55):
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     SCWO.outs[0].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: check: construction cost for CT is based on the flow rate of cooling_tower_chemicals in the current version of BioSTEAM
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
     CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
@@ -5474,8 +5456,8 @@ def create_T9_system(size=10, operation_hours=8760, refinery_distance=100, LA_di
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -5537,7 +5519,6 @@ def create_T9_system(size=10, operation_hours=8760, refinery_distance=100, LA_di
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: check: construction cost for CT is based on the flow rate of cooling_tower_chemicals in the current version of BioSTEAM
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
     CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
@@ -5698,8 +5679,8 @@ def create_T10_system(size=10, operation_hours=8760, refinery_distance=100, LA_d
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -5761,7 +5742,6 @@ def create_T10_system(size=10, operation_hours=8760, refinery_distance=100, LA_d
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: check: construction cost for CT is based on the flow rate of cooling_tower_chemicals in the current version of BioSTEAM
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
     CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
@@ -5922,8 +5902,8 @@ def create_T11_system(size=10, operation_hours=8760, refinery_distance=100, FTE=
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -5951,7 +5931,7 @@ def create_T11_system(size=10, operation_hours=8760, refinery_distance=100, FTE=
     
     # TODO: consider replacing natural_gas with biogas (CH4 + CO2) or create a stream for CO2
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
-                                                outs=('digested_sludge','natural_gas_AD','methane_AD'),
+                                                outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
                                                 biogas_CHP_ratio=0.9, biogas_RNG_ratio=0)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
@@ -5993,7 +5973,6 @@ def create_T11_system(size=10, operation_hours=8760, refinery_distance=100, FTE=
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: check: construction cost for CT is based on the flow rate of cooling_tower_chemicals in the current version of BioSTEAM
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
     CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
@@ -6131,8 +6110,8 @@ def create_T12_system(size=10, operation_hours=8760, refinery_distance=100, LA_d
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -6160,7 +6139,7 @@ def create_T12_system(size=10, operation_hours=8760, refinery_distance=100, LA_d
     
     # TODO: consider replacing natural_gas with biogas (CH4 + CO2) or create a stream for CO2
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
-                                                outs=('digested_sludge','natural_gas_AD','methane_AD'),
+                                                outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
                                                 biogas_CHP_ratio=0.9, biogas_RNG_ratio=0)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
@@ -6207,7 +6186,6 @@ def create_T12_system(size=10, operation_hours=8760, refinery_distance=100, LA_d
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: check: construction cost for CT is based on the flow rate of cooling_tower_chemicals in the current version of BioSTEAM
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
     CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
@@ -6375,8 +6353,8 @@ def create_T13_system(size=10, operation_hours=8760, FTE=0.55):
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -6404,7 +6382,7 @@ def create_T13_system(size=10, operation_hours=8760, FTE=0.55):
     
     # TODO: consider replacing natural_gas with biogas (CH4 + CO2) or create a stream for CO2
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
-                                                outs=('digested_sludge','natural_gas_AD','methane_AD'),
+                                                outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
                                                 biogas_CHP_ratio=0.9, biogas_RNG_ratio=0)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
@@ -6425,7 +6403,6 @@ def create_T13_system(size=10, operation_hours=8760, FTE=0.55):
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: check: construction cost for CT is based on the flow rate of cooling_tower_chemicals in the current version of BioSTEAM
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
     CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
@@ -6532,8 +6509,8 @@ def create_T14_system(size=10, operation_hours=8760, refinery_distance=100, LA_d
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -6561,7 +6538,7 @@ def create_T14_system(size=10, operation_hours=8760, refinery_distance=100, LA_d
     
     # TODO: consider replacing natural_gas with biogas (CH4 + CO2) or create a stream for CO2
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
-                                                outs=('digested_sludge','natural_gas_AD','methane_AD'),
+                                                outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
                                                 biogas_CHP_ratio=0.9, biogas_RNG_ratio=0)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
@@ -6600,7 +6577,6 @@ def create_T14_system(size=10, operation_hours=8760, refinery_distance=100, LA_d
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: check: construction cost for CT is based on the flow rate of cooling_tower_chemicals in the current version of BioSTEAM
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
     CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
@@ -6762,8 +6738,8 @@ def create_T15_system(size=10, operation_hours=8760, refinery_distance=100, LA_d
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.155 is the average of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-    bst.PowerUtility.price = 0.155
+    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+    bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -6791,7 +6767,7 @@ def create_T15_system(size=10, operation_hours=8760, refinery_distance=100, LA_d
     
     # TODO: consider replacing natural_gas with biogas (CH4 + CO2) or create a stream for CO2
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
-                                                outs=('digested_sludge','natural_gas_AD','methane_AD'),
+                                                outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
                                                 biogas_CHP_ratio=0.9, biogas_RNG_ratio=0)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
@@ -6830,7 +6806,6 @@ def create_T15_system(size=10, operation_hours=8760, refinery_distance=100, LA_d
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: check: construction cost for CT is based on the flow rate of cooling_tower_chemicals in the current version of BioSTEAM
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
     CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
