@@ -14,16 +14,14 @@ for license details.
 
 #%% housekeeping
 
-# TODO: use an on-stream factor of 90% in nth plant scenarios (yearly operating time = 24*365*0.9 h)
-
-# TODO: adjust the on-stream factor for T systems based on plant_performance_factor
+# TODO: TODOs in _components.py (and maybe others as well)
 
 # TODO: need to decide how to integrate the following TODO into the roadmap analysis
 # TODO: consider update TEA parameters for pioneer T systems based on the suggestions in Poddar, T. K.; Scown, C. D. Technoeconomic Analysis for Near-Term Scale-up of Bioprocesses. Current Opinion in Biotechnology 2025, 92, 103258. https://doi.org/10.1016/j.copbio.2025.103258
 
 #%% initialization
 
-import qsdsan as qs, biosteam as bst
+import numpy as np, qsdsan as qs, biosteam as bst
 from qsdsan import sanunits as qsu
 from biosteam import settings
 from qsdsan.utils import auom, clear_lca_registries, tea_indices
@@ -68,7 +66,7 @@ GDPCTPI = {2005: 81.537,
 
 labor_index = tea_indices['labor']
 
-# TODO: address all warnings (especially in T pathways)
+# TODO: try addressing all warnings (especially in T pathways)
 
 __all__ = (
     'create_C1_system',
@@ -115,7 +113,7 @@ __all__ = (
 
 #%% system C1
 
-def create_C1_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.15):
+def create_C1_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.15, lifetime=20):
     flowsheet_ID = 'C1'
     
     # clear flowsheet and registry for reloading
@@ -227,12 +225,11 @@ def create_C1_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production()-sys.flowsheet.Landfilling.electricity_kW*operation_hours)*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
-           )
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production()-sys.flowsheet.Landfilling.electricity_kW*operation_hours)*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
@@ -241,7 +238,7 @@ def create_C1_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -251,7 +248,7 @@ def create_C1_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
 
 #%% system C2
 
-def create_C2_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.2):
+def create_C2_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.2, lifetime=20):
     flowsheet_ID = 'C2'
     
     # clear flowsheet and registry for reloading
@@ -333,7 +330,7 @@ def create_C2_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
-    # include the CO2 emission from limestone decomposition
+    # TODO: discuss with J.S.G.: whehter the CO2 emission from limestone decomposition is fossil-origin
     qs.StreamImpactItem(ID='Lime', linked_stream=stream.lime, GlobalWarming=0.04261602+44/56)
     
     # fugitive emissions
@@ -367,12 +364,11 @@ def create_C2_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production()-sys.flowsheet.Landfilling.electricity_kW*operation_hours)*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
-           )
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production()-sys.flowsheet.Landfilling.electricity_kW*operation_hours)*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
@@ -381,7 +377,7 @@ def create_C2_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -391,7 +387,7 @@ def create_C2_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
 
 #%% system C3
 
-def create_C3_system(size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.2):
+def create_C3_system(size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.2, lifetime=20):
     flowsheet_ID = 'C3'
     
     # clear flowsheet and registry for reloading
@@ -481,7 +477,7 @@ def create_C3_system(size=10, operation_hours=7884, LA_distance=100, biosolids_p
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
-    # include the CO2 emission from limestone decomposition
+    # TODO: discuss with J.S.G.: whehter the CO2 emission from limestone decomposition is fossil-origin
     qs.StreamImpactItem(ID='Lime', linked_stream=stream.lime, GlobalWarming=0.04261602+44/56)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
@@ -518,14 +514,13 @@ def create_C3_system(size=10, operation_hours=7884, LA_distance=100, biosolids_p
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           N_fertilizer=lambda:sys.flowsheet.LandApplication.nitrogen_mass_flow*operation_hours*20,
-           P_fertilizer=lambda:sys.flowsheet.LandApplication.phosphorus_mass_flow*operation_hours*20,
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
-           )
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           N_fertilizer=lambda:sys.flowsheet.LandApplication.nitrogen_mass_flow*operation_hours*lifetime,
+           P_fertilizer=lambda:sys.flowsheet.LandApplication.phosphorus_mass_flow*operation_hours*lifetime,
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
@@ -534,7 +529,7 @@ def create_C3_system(size=10, operation_hours=7884, LA_distance=100, biosolids_p
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -544,7 +539,7 @@ def create_C3_system(size=10, operation_hours=7884, LA_distance=100, biosolids_p
 
 #%% system C4
 
-def create_C4_system(size=10, operation_hours=7884, LA_distance=100, compost_price=0.05, FTE=0.2):
+def create_C4_system(size=10, operation_hours=7884, LA_distance=100, compost_price=0.05, FTE=0.2, lifetime=20):
     flowsheet_ID = 'C4'
     
     # clear flowsheet and registry for reloading
@@ -587,11 +582,9 @@ def create_C4_system(size=10, operation_hours=7884, LA_distance=100, compost_pri
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: make sure the Composting unit is composting + land application
     Composting = lsu.Composting(ID='Composting', ins=(Dewatering-0, 'bulking_agent', 'diesel_composting'),
                                 outs=('compost_cost','methane_composting','nitrous_oxide_composting','sequestered_carbon_dioxide_composting'),
                                 feedstock_digested=False, solids_distance=LA_distance)
-    # TODO: need to decide how to deal with the bulking_agent in composting and its costing
     # TODO: uncertainty range (uniform) 18-36 2005$/tonne
     Composting.ins[1].price = 27/1000/GDPCTPI[2005]*GDPCTPI[2023]
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
@@ -670,15 +663,14 @@ def create_C4_system(size=10, operation_hours=7884, LA_distance=100, compost_pri
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           Bulking_agent=lambda:sys.flowsheet.Composting.ins[1].imass['Sawdust']*operation_hours*20,
-           N_fertilizer=lambda:sys.flowsheet.Composting.nitrogen_mass_flow*operation_hours*20,
-           P_fertilizer=lambda:sys.flowsheet.Composting.phosphorus_mass_flow*operation_hours*20,
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
-           )
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           Bulking_agent=lambda:sys.flowsheet.Composting.ins[1].imass['Sawdust']*operation_hours*lifetime,
+           N_fertilizer=lambda:sys.flowsheet.Composting.nitrogen_mass_flow*operation_hours*lifetime,
+           P_fertilizer=lambda:sys.flowsheet.Composting.phosphorus_mass_flow*operation_hours*lifetime,
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
@@ -687,7 +679,7 @@ def create_C4_system(size=10, operation_hours=7884, LA_distance=100, compost_pri
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -697,7 +689,7 @@ def create_C4_system(size=10, operation_hours=7884, LA_distance=100, compost_pri
 
 #%% system C5
 
-def create_C5_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.3):
+def create_C5_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.3, lifetime=20):
     flowsheet_ID = 'C5'
     
     # clear flowsheet and registry for reloading
@@ -815,13 +807,12 @@ def create_C5_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production()-sys.flowsheet.Landfilling.electricity_kW*operation_hours)*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Natural_gas_V=lambda:sys.flowsheet.HeatDrying.ins[1].F_vol*operation_hours*20,
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
-           )
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production()-sys.flowsheet.Landfilling.electricity_kW*operation_hours)*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Natural_gas_V=lambda:sys.flowsheet.HeatDrying.ins[1].F_vol*operation_hours*lifetime,
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
@@ -830,7 +821,7 @@ def create_C5_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -840,7 +831,7 @@ def create_C5_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
 
 #%% system C6
 
-def create_C6_system(size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.3):
+def create_C6_system(size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.3, lifetime=20):
     flowsheet_ID = 'C6'
     
     # clear flowsheet and registry for reloading
@@ -969,15 +960,14 @@ def create_C6_system(size=10, operation_hours=7884, LA_distance=100, biosolids_p
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           N_fertilizer=lambda:sys.flowsheet.LandApplication.nitrogen_mass_flow*operation_hours*20,
-           P_fertilizer=lambda:sys.flowsheet.LandApplication.phosphorus_mass_flow*operation_hours*20,
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Natural_gas_V=lambda:sys.flowsheet.HeatDrying.ins[1].F_vol*operation_hours*20,
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
-           )
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           N_fertilizer=lambda:sys.flowsheet.LandApplication.nitrogen_mass_flow*operation_hours*lifetime,
+           P_fertilizer=lambda:sys.flowsheet.LandApplication.phosphorus_mass_flow*operation_hours*lifetime,
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Natural_gas_V=lambda:sys.flowsheet.HeatDrying.ins[1].F_vol*operation_hours*lifetime,
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
@@ -986,7 +976,7 @@ def create_C6_system(size=10, operation_hours=7884, LA_distance=100, biosolids_p
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -996,7 +986,7 @@ def create_C6_system(size=10, operation_hours=7884, LA_distance=100, biosolids_p
 
 #%% system C7
 
-def create_C7_system(size=10, operation_hours=7884, FTE=0.4):
+def create_C7_system(size=10, operation_hours=7884, FTE=0.4, lifetime=20):
     flowsheet_ID = 'C7'
     
     # clear flowsheet and registry for reloading
@@ -1092,13 +1082,12 @@ def create_C7_system(size=10, operation_hours=7884, FTE=0.4):
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Natural_gas_V=lambda:(sys.flowsheet.HeatDrying.ins[1].F_vol+sys.flowsheet.Incineration.ins[1].F_vol)*operation_hours*20,
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
-           )
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Natural_gas_V=lambda:(sys.flowsheet.HeatDrying.ins[1].F_vol+sys.flowsheet.Incineration.ins[1].F_vol)*operation_hours*lifetime,
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
@@ -1107,7 +1096,7 @@ def create_C7_system(size=10, operation_hours=7884, FTE=0.4):
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -1117,7 +1106,7 @@ def create_C7_system(size=10, operation_hours=7884, FTE=0.4):
 
 #%% system C8
 
-def create_C8_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.3):
+def create_C8_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.3, lifetime=20):
     flowsheet_ID = 'C8'
     
     # clear flowsheet and registry for reloading
@@ -1229,12 +1218,11 @@ def create_C8_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production()-sys.flowsheet.Landfilling.electricity_kW*operation_hours)*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
-           )
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production()-sys.flowsheet.Landfilling.electricity_kW*operation_hours)*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
@@ -1243,7 +1231,7 @@ def create_C8_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -1253,7 +1241,7 @@ def create_C8_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
 
 #%% system C9
 
-def create_C9_system(size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.3):
+def create_C9_system(size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.3, lifetime=20):
     flowsheet_ID = 'C9'
     
     # clear flowsheet and registry for reloading
@@ -1376,14 +1364,13 @@ def create_C9_system(size=10, operation_hours=7884, LA_distance=100, biosolids_p
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           N_fertilizer=lambda:sys.flowsheet.LandApplication.nitrogen_mass_flow*operation_hours*20,
-           P_fertilizer=lambda:sys.flowsheet.LandApplication.phosphorus_mass_flow*operation_hours*20,
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
-           )
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           N_fertilizer=lambda:sys.flowsheet.LandApplication.nitrogen_mass_flow*operation_hours*lifetime,
+           P_fertilizer=lambda:sys.flowsheet.LandApplication.phosphorus_mass_flow*operation_hours*lifetime,
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
@@ -1392,7 +1379,7 @@ def create_C9_system(size=10, operation_hours=7884, LA_distance=100, biosolids_p
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -1402,7 +1389,7 @@ def create_C9_system(size=10, operation_hours=7884, LA_distance=100, biosolids_p
 
 #%% system C10
 
-def create_C10_system(size=10, operation_hours=7884, LA_distance=100, compost_price=0.05, FTE=0.35):
+def create_C10_system(size=10, operation_hours=7884, LA_distance=100, compost_price=0.05, FTE=0.35, lifetime=20):
     flowsheet_ID = 'C10'
     
     # clear flowsheet and registry for reloading
@@ -1448,11 +1435,9 @@ def create_C10_system(size=10, operation_hours=7884, LA_distance=100, compost_pr
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: make sure the Composting unit is composting + land application
     Composting = lsu.Composting(ID='Composting', ins=(Dewatering-0, 'bulking_agent', 'diesel_composting'),
                                 outs=('compost_cost','methane_composting','nitrous_oxide_composting','sequestered_carbon_dioxide_composting'),
                                 feedstock_digested=True, solids_distance=LA_distance)
-    # TODO: need to decide how to deal with the bulking_agent in composting and its costing
     # TODO: uncertainty range (uniform) 18-36 2005$/tonne
     Composting.ins[1].price = 27/1000/GDPCTPI[2005]*GDPCTPI[2023]
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
@@ -1531,15 +1516,14 @@ def create_C10_system(size=10, operation_hours=7884, LA_distance=100, compost_pr
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           Bulking_agent=lambda:sys.flowsheet.Composting.ins[1].imass['Sawdust']*operation_hours*20,
-           N_fertilizer=lambda:sys.flowsheet.Composting.nitrogen_mass_flow*operation_hours*20,
-           P_fertilizer=lambda:sys.flowsheet.Composting.phosphorus_mass_flow*operation_hours*20,
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
-           )
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           Bulking_agent=lambda:sys.flowsheet.Composting.ins[1].imass['Sawdust']*operation_hours*lifetime,
+           N_fertilizer=lambda:sys.flowsheet.Composting.nitrogen_mass_flow*operation_hours*lifetime,
+           P_fertilizer=lambda:sys.flowsheet.Composting.phosphorus_mass_flow*operation_hours*lifetime,
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
@@ -1548,7 +1532,7 @@ def create_C10_system(size=10, operation_hours=7884, LA_distance=100, compost_pr
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -1558,7 +1542,7 @@ def create_C10_system(size=10, operation_hours=7884, LA_distance=100, compost_pr
 
 #%% system C11
 
-def create_C11_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.45):
+def create_C11_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.45, lifetime=20):
     flowsheet_ID = 'C11'
     
     # clear flowsheet and registry for reloading
@@ -1679,13 +1663,12 @@ def create_C11_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production()-sys.flowsheet.Landfilling.electricity_kW*operation_hours)*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Natural_gas_V=lambda:sys.flowsheet.HeatDrying.ins[1].F_vol*operation_hours*20,
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
-           )
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production()-sys.flowsheet.Landfilling.electricity_kW*operation_hours)*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Natural_gas_V=lambda:sys.flowsheet.HeatDrying.ins[1].F_vol*operation_hours*lifetime,
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
@@ -1694,7 +1677,7 @@ def create_C11_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -1704,7 +1687,7 @@ def create_C11_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
 
 #%% system C12
 
-def create_C12_system(size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.45):
+def create_C12_system(size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.45, lifetime=20):
     flowsheet_ID = 'C12'
     
     # clear flowsheet and registry for reloading
@@ -1836,15 +1819,14 @@ def create_C12_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           N_fertilizer=lambda:sys.flowsheet.LandApplication.nitrogen_mass_flow*operation_hours*20,
-           P_fertilizer=lambda:sys.flowsheet.LandApplication.phosphorus_mass_flow*operation_hours*20,
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Natural_gas_V=lambda:sys.flowsheet.HeatDrying.ins[1].F_vol*operation_hours*20,
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
-           )
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           N_fertilizer=lambda:sys.flowsheet.LandApplication.nitrogen_mass_flow*operation_hours*lifetime,
+           P_fertilizer=lambda:sys.flowsheet.LandApplication.phosphorus_mass_flow*operation_hours*lifetime,
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Natural_gas_V=lambda:sys.flowsheet.HeatDrying.ins[1].F_vol*operation_hours*lifetime,
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
@@ -1853,7 +1835,7 @@ def create_C12_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -1863,7 +1845,7 @@ def create_C12_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
 
 #%% system C13
 
-def create_C13_system(size=10, operation_hours=7884, FTE=0.55):
+def create_C13_system(size=10, operation_hours=7884, FTE=0.55, lifetime=20):
     flowsheet_ID = 'C13'
     
     # clear flowsheet and registry for reloading
@@ -1962,13 +1944,12 @@ def create_C13_system(size=10, operation_hours=7884, FTE=0.55):
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Natural_gas_V=lambda:(sys.flowsheet.HeatDrying.ins[1].F_vol+sys.flowsheet.Incineration.ins[1].F_vol)*operation_hours*20,
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
-           )
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Natural_gas_V=lambda:(sys.flowsheet.HeatDrying.ins[1].F_vol+sys.flowsheet.Incineration.ins[1].F_vol)*operation_hours*lifetime,
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
@@ -1977,7 +1958,7 @@ def create_C13_system(size=10, operation_hours=7884, FTE=0.55):
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -1987,7 +1968,7 @@ def create_C13_system(size=10, operation_hours=7884, FTE=0.55):
 
 #%% system C14
 
-def create_C14_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.3):
+def create_C14_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.3, lifetime=20):
     flowsheet_ID = 'C14'
     
     # clear flowsheet and registry for reloading
@@ -2107,13 +2088,12 @@ def create_C14_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production()-sys.flowsheet.Landfilling.electricity_kW*operation_hours)*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Natural_gas_V=lambda:-sys.flowsheet.AnaerobicDigestion.outs[1].F_vol*operation_hours*20,
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
-           )
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production()-sys.flowsheet.Landfilling.electricity_kW*operation_hours)*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Natural_gas_V=lambda:-sys.flowsheet.AnaerobicDigestion.outs[1].F_vol*operation_hours*lifetime,
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
@@ -2122,7 +2102,7 @@ def create_C14_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -2132,7 +2112,7 @@ def create_C14_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
 
 #%% system C15
 
-def create_C15_system(size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.3):
+def create_C15_system(size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.3, lifetime=20):
     flowsheet_ID = 'C15'
     
     # clear flowsheet and registry for reloading
@@ -2263,15 +2243,14 @@ def create_C15_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           N_fertilizer=lambda:sys.flowsheet.LandApplication.nitrogen_mass_flow*operation_hours*20,
-           P_fertilizer=lambda:sys.flowsheet.LandApplication.phosphorus_mass_flow*operation_hours*20,
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Natural_gas_V=lambda:-sys.flowsheet.AnaerobicDigestion.outs[1].F_vol*operation_hours*20,
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
-           )
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           N_fertilizer=lambda:sys.flowsheet.LandApplication.nitrogen_mass_flow*operation_hours*lifetime,
+           P_fertilizer=lambda:sys.flowsheet.LandApplication.phosphorus_mass_flow*operation_hours*lifetime,
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Natural_gas_V=lambda:-sys.flowsheet.AnaerobicDigestion.outs[1].F_vol*operation_hours*lifetime,
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
@@ -2280,7 +2259,7 @@ def create_C15_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -2290,7 +2269,7 @@ def create_C15_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
 
 #%% system C16
 
-def create_C16_system(size=10, operation_hours=7884, LA_distance=100, compost_price=0.05, FTE=0.35):
+def create_C16_system(size=10, operation_hours=7884, LA_distance=100, compost_price=0.05, FTE=0.35, lifetime=20):
     flowsheet_ID = 'C16'
     
     # clear flowsheet and registry for reloading
@@ -2340,11 +2319,9 @@ def create_C16_system(size=10, operation_hours=7884, LA_distance=100, compost_pr
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: make sure the Composting unit is composting + land application
     Composting = lsu.Composting(ID='Composting', ins=(Dewatering-0, 'bulking_agent', 'diesel_composting'),
                                 outs=('compost_cost','methane_composting','nitrous_oxide_composting','sequestered_carbon_dioxide_composting'),
                                 feedstock_digested=True, solids_distance=LA_distance)
-    # TODO: need to decide how to deal with the bulking_agent in composting and its costing
     # TODO: uncertainty range (uniform) 18-36 2005$/tonne
     Composting.ins[1].price = 27/1000/GDPCTPI[2005]*GDPCTPI[2023]
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
@@ -2427,16 +2404,15 @@ def create_C16_system(size=10, operation_hours=7884, LA_distance=100, compost_pr
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           Bulking_agent=lambda:sys.flowsheet.Composting.ins[1].imass['Sawdust']*operation_hours*20,
-           N_fertilizer=lambda:sys.flowsheet.Composting.nitrogen_mass_flow*operation_hours*20,
-           P_fertilizer=lambda:sys.flowsheet.Composting.phosphorus_mass_flow*operation_hours*20,
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Natural_gas_V=lambda:-sys.flowsheet.AnaerobicDigestion.outs[1].F_vol*operation_hours*20,
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
-           )
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           Bulking_agent=lambda:sys.flowsheet.Composting.ins[1].imass['Sawdust']*operation_hours*lifetime,
+           N_fertilizer=lambda:sys.flowsheet.Composting.nitrogen_mass_flow*operation_hours*lifetime,
+           P_fertilizer=lambda:sys.flowsheet.Composting.phosphorus_mass_flow*operation_hours*lifetime,
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Natural_gas_V=lambda:-sys.flowsheet.AnaerobicDigestion.outs[1].F_vol*operation_hours*lifetime,
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
@@ -2445,7 +2421,7 @@ def create_C16_system(size=10, operation_hours=7884, LA_distance=100, compost_pr
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -2455,7 +2431,7 @@ def create_C16_system(size=10, operation_hours=7884, LA_distance=100, compost_pr
 
 #%% system C17
 
-def create_C17_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.45):
+def create_C17_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.45, lifetime=20):
     flowsheet_ID = 'C17'
     
     # clear flowsheet and registry for reloading
@@ -2581,13 +2557,12 @@ def create_C17_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production()-sys.flowsheet.Landfilling.electricity_kW*operation_hours)*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Natural_gas_V=lambda:(-sys.flowsheet.AnaerobicDigestion.outs[1].F_vol+sys.flowsheet.HeatDrying.ins[1].F_vol)*operation_hours*20,
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
-           )
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production()-sys.flowsheet.Landfilling.electricity_kW*operation_hours)*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Natural_gas_V=lambda:(-sys.flowsheet.AnaerobicDigestion.outs[1].F_vol+sys.flowsheet.HeatDrying.ins[1].F_vol)*operation_hours*lifetime,
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
@@ -2596,7 +2571,7 @@ def create_C17_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -2606,7 +2581,7 @@ def create_C17_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
 
 #%% system C18
 
-def create_C18_system(size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.45):
+def create_C18_system(size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.45, lifetime=20):
     flowsheet_ID = 'C18'
     
     # clear flowsheet and registry for reloading
@@ -2743,15 +2718,14 @@ def create_C18_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           N_fertilizer=lambda:sys.flowsheet.LandApplication.nitrogen_mass_flow*operation_hours*20,
-           P_fertilizer=lambda:sys.flowsheet.LandApplication.phosphorus_mass_flow*operation_hours*20,
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Natural_gas_V=lambda:(-sys.flowsheet.AnaerobicDigestion.outs[1].F_vol+sys.flowsheet.HeatDrying.ins[1].F_vol)*operation_hours*20,
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
-           )
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           N_fertilizer=lambda:sys.flowsheet.LandApplication.nitrogen_mass_flow*operation_hours*lifetime,
+           P_fertilizer=lambda:sys.flowsheet.LandApplication.phosphorus_mass_flow*operation_hours*lifetime,
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Natural_gas_V=lambda:(-sys.flowsheet.AnaerobicDigestion.outs[1].F_vol+sys.flowsheet.HeatDrying.ins[1].F_vol)*operation_hours*lifetime,
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
@@ -2760,7 +2734,7 @@ def create_C18_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -2770,7 +2744,7 @@ def create_C18_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
 
 #%% system C19
 
-def create_C19_system(size=10, operation_hours=7884, FTE=0.55):
+def create_C19_system(size=10, operation_hours=7884, FTE=0.55, lifetime=20):
     flowsheet_ID = 'C19'
     
     # clear flowsheet and registry for reloading
@@ -2874,13 +2848,12 @@ def create_C19_system(size=10, operation_hours=7884, FTE=0.55):
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Natural_gas_V=lambda:(-sys.flowsheet.AnaerobicDigestion.outs[1].F_vol+sys.flowsheet.HeatDrying.ins[1].F_vol+sys.flowsheet.Incineration.ins[1].F_vol)*operation_hours*20,
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
-           )
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Natural_gas_V=lambda:(-sys.flowsheet.AnaerobicDigestion.outs[1].F_vol+sys.flowsheet.HeatDrying.ins[1].F_vol+sys.flowsheet.Incineration.ins[1].F_vol)*operation_hours*lifetime,
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
@@ -2889,7 +2862,7 @@ def create_C19_system(size=10, operation_hours=7884, FTE=0.55):
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -2899,7 +2872,7 @@ def create_C19_system(size=10, operation_hours=7884, FTE=0.55):
 
 #%% system C20
 
-def create_C20_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.45):
+def create_C20_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.45, lifetime=20):
     flowsheet_ID = 'C20'
     
     # clear flowsheet and registry for reloading
@@ -3026,13 +2999,12 @@ def create_C20_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production()-sys.flowsheet.Landfilling.electricity_kW*operation_hours)*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Natural_gas_V=lambda:(sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*20,
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
-           )
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production()-sys.flowsheet.Landfilling.electricity_kW*operation_hours)*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Natural_gas_V=lambda:(sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*lifetime,
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
@@ -3041,7 +3013,7 @@ def create_C20_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -3051,7 +3023,7 @@ def create_C20_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
 
 #%% system C21
 
-def create_C21_system(size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.45):
+def create_C21_system(size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.45, lifetime=20):
     flowsheet_ID = 'C21'
     
     # clear flowsheet and registry for reloading
@@ -3189,15 +3161,14 @@ def create_C21_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           N_fertilizer=lambda:sys.flowsheet.LandApplication.nitrogen_mass_flow*operation_hours*20,
-           P_fertilizer=lambda:sys.flowsheet.LandApplication.phosphorus_mass_flow*operation_hours*20,
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Natural_gas_V=lambda:(sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*20,
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
-           )
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           N_fertilizer=lambda:sys.flowsheet.LandApplication.nitrogen_mass_flow*operation_hours*lifetime,
+           P_fertilizer=lambda:sys.flowsheet.LandApplication.phosphorus_mass_flow*operation_hours*lifetime,
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Natural_gas_V=lambda:(sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*lifetime,
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
@@ -3206,7 +3177,7 @@ def create_C21_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -3216,7 +3187,7 @@ def create_C21_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
 
 #%% system C22
 
-def create_C22_system(size=10, operation_hours=7884, LA_distance=100, compost_price=0.05, FTE=0.5):
+def create_C22_system(size=10, operation_hours=7884, LA_distance=100, compost_price=0.05, FTE=0.5, lifetime=20):
     flowsheet_ID = 'C22'
     
     # clear flowsheet and registry for reloading
@@ -3263,11 +3234,9 @@ def create_C22_system(size=10, operation_hours=7884, LA_distance=100, compost_pr
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
-    # TODO: make sure the Composting unit is composting + land application
     Composting = lsu.Composting(ID='Composting', ins=(Dewatering-0, 'bulking_agent', 'diesel_composting'),
                                 outs=('compost_cost','methane_composting','nitrous_oxide_composting','sequestered_carbon_dioxide_composting'),
                                 feedstock_digested=True, solids_distance=LA_distance)
-    # TODO: need to decide how to deal with the bulking_agent in composting and its costing
     # TODO: uncertainty range (uniform) 18-36 2005$/tonne
     Composting.ins[1].price = 27/1000/GDPCTPI[2005]*GDPCTPI[2023]
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
@@ -3360,16 +3329,15 @@ def create_C22_system(size=10, operation_hours=7884, LA_distance=100, compost_pr
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           Bulking_agent=lambda:sys.flowsheet.Composting.ins[1].imass['Sawdust']*operation_hours*20,
-           N_fertilizer=lambda:sys.flowsheet.Composting.nitrogen_mass_flow*operation_hours*20,
-           P_fertilizer=lambda:sys.flowsheet.Composting.phosphorus_mass_flow*operation_hours*20,
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Natural_gas_V=lambda:(sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*20,
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
-           )
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           Bulking_agent=lambda:sys.flowsheet.Composting.ins[1].imass['Sawdust']*operation_hours*lifetime,
+           N_fertilizer=lambda:sys.flowsheet.Composting.nitrogen_mass_flow*operation_hours*lifetime,
+           P_fertilizer=lambda:sys.flowsheet.Composting.phosphorus_mass_flow*operation_hours*lifetime,
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Natural_gas_V=lambda:(sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*lifetime,
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
@@ -3378,7 +3346,7 @@ def create_C22_system(size=10, operation_hours=7884, LA_distance=100, compost_pr
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -3388,7 +3356,7 @@ def create_C22_system(size=10, operation_hours=7884, LA_distance=100, compost_pr
 
 #%% system C23
 
-def create_C23_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.6):
+def create_C23_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.6, lifetime=20):
     flowsheet_ID = 'C23'
     
     # clear flowsheet and registry for reloading
@@ -3521,13 +3489,12 @@ def create_C23_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production()-sys.flowsheet.Landfilling.electricity_kW*operation_hours)*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Natural_gas_V=lambda:(sys.flowsheet.HeatDrying.ins[1].F_vol+sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*20,
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
-           )
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production()-sys.flowsheet.Landfilling.electricity_kW*operation_hours)*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Natural_gas_V=lambda:(sys.flowsheet.HeatDrying.ins[1].F_vol+sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*lifetime,
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
@@ -3536,7 +3503,7 @@ def create_C23_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -3546,7 +3513,7 @@ def create_C23_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
 
 #%% system C24
 
-def create_C24_system(size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.6):
+def create_C24_system(size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.6, lifetime=20):
     flowsheet_ID = 'C24'
     
     # clear flowsheet and registry for reloading
@@ -3690,15 +3657,14 @@ def create_C24_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           N_fertilizer=lambda:sys.flowsheet.LandApplication.nitrogen_mass_flow*operation_hours*20,
-           P_fertilizer=lambda:sys.flowsheet.LandApplication.phosphorus_mass_flow*operation_hours*20,
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Natural_gas_V=lambda:(sys.flowsheet.HeatDrying.ins[1].F_vol+sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*20,
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
-           )
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           N_fertilizer=lambda:sys.flowsheet.LandApplication.nitrogen_mass_flow*operation_hours*lifetime,
+           P_fertilizer=lambda:sys.flowsheet.LandApplication.phosphorus_mass_flow*operation_hours*lifetime,
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Natural_gas_V=lambda:(sys.flowsheet.HeatDrying.ins[1].F_vol+sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*lifetime,
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
@@ -3707,7 +3673,7 @@ def create_C24_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -3717,7 +3683,7 @@ def create_C24_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
 
 #%% system C25
 
-def create_C25_system(size=10, operation_hours=7884, FTE=0.7):
+def create_C25_system(size=10, operation_hours=7884, FTE=0.7, lifetime=20):
     flowsheet_ID = 'C25'
     
     # clear flowsheet and registry for reloading
@@ -3828,13 +3794,12 @@ def create_C25_system(size=10, operation_hours=7884, FTE=0.7):
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Natural_gas_V=lambda:(sys.flowsheet.HeatDrying.ins[1].F_vol+sys.flowsheet.Incineration.ins[1].F_vol+sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*20,
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
-           )
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Natural_gas_V=lambda:(sys.flowsheet.HeatDrying.ins[1].F_vol+sys.flowsheet.Incineration.ins[1].F_vol+sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*lifetime,
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
@@ -3843,7 +3808,7 @@ def create_C25_system(size=10, operation_hours=7884, FTE=0.7):
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -3853,7 +3818,7 @@ def create_C25_system(size=10, operation_hours=7884, FTE=0.7):
 
 #%% system T1
 
-def create_T1_system(size=10, operation_hours=7884, refinery_distance=100, FTE=0.55):
+def create_T1_system(size=10, operation_hours=7884, refinery_distance=100, FOAK=True, FTE=0.55, lifetime=20):
     flowsheet_ID = 'T1'
     
     # clear flowsheet and registry for reloading
@@ -3898,10 +3863,16 @@ def create_T1_system(size=10, operation_hours=7884, refinery_distance=100, FTE=0
     
     HTL = lsu.HydrothermalLiquefaction(ID='HTL', ins=Dewatering-0,
                                        outs=('biocrude','HTL_aqueous_undefined','hydrochar','offgas_HTL'),
-                                       biocrude_distance=refinery_distance)
+                                       biocrude_distance=refinery_distance, FOAK=FOAK)
     # assume hydrochar from HTL is disposed of by sending it to landfills
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     HTL.outs[2].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    
+    first_year_factor = HTL.plant_performance_factor/100
+    
+    performance_factor_list = [min(first_year_factor*(1.2)**i, 1) for i in range(0, lifetime)]
+    
+    operation_hours *= np.mean(performance_factor_list)
     
     Analyzer = lsu.Analyzer(ID='Analyzer',
                             ins=HTL-1,
@@ -3929,6 +3900,8 @@ def create_T1_system(size=10, operation_hours=7884, refinery_distance=100, FTE=0
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
     
+    # treatment of CT residual is not considerd (since it is not in the model)
+    # but ecoinvent has it and indicates it might be disposed of through landfilling
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
     CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
@@ -3983,11 +3956,11 @@ def create_T1_system(size=10, operation_hours=7884, refinery_distance=100, FTE=0
     
     def deionized_water_quantity():
         try:
-            # TODO: is there a direct number or a better way for cooling tower chemicals
+            # the cooling_tower_chemicals is a mix of chemicals, therefore, the following approach is used to approximate the CI of the cooling_tower_chemicals
             # assume the ratio between the CI of the cooling_tower_chemicals and the CI of cooling_tower_makeup_water is the same as the ratio of the prices of these two streams
             # note LCA for water_steam, cooling_tower_makeup_water, and cooling_tower_chemicals were included in the 'Other' category while it should be in the 'Stream' category
             # the effect is minimal since (i) this part of LCA is small and (ii) we do not use LCA breakdown results in the HTL geospatial analysis
-            result = (sys.flowsheet.CT.ins[1].F_mass+sys.flowsheet.CT.ins[2].F_mass*1.7842/0.0002)*operation_hours*20
+            result = (sys.flowsheet.CT.ins[1].F_mass+sys.flowsheet.CT.ins[2].F_mass*1.7842/0.0002)*operation_hours*lifetime
         except AttributeError as e:
             if 'no registered item' in str(e) and 'CT' in str(e):
                 result = 0
@@ -4028,12 +4001,12 @@ def create_T1_system(size=10, operation_hours=7884, refinery_distance=100, FTE=0
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Natural_gas_V=lambda:(sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*20,
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Natural_gas_V=lambda:(sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*lifetime,
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
            Deionized_water=lambda:deionized_water_quantity())
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
@@ -4043,7 +4016,7 @@ def create_T1_system(size=10, operation_hours=7884, refinery_distance=100, FTE=0
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -4053,7 +4026,7 @@ def create_T1_system(size=10, operation_hours=7884, refinery_distance=100, FTE=0
 
 #%% system T2
 
-def create_T2_system(size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FTE=0.55):
+def create_T2_system(size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FOAK=True, FTE=0.55, lifetime=20):
     flowsheet_ID = 'T2'
     
     # clear flowsheet and registry for reloading
@@ -4098,7 +4071,7 @@ def create_T2_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     
     HALT = lsu.HydrothermalAlkalineTreatment(ID='HALT', ins=(Dewatering-0, 'sodium_hydroxide', 'hydrochloric_acid', 'diesel_HALT'),
                                              outs=('biocrude','HALT_aqueous_undefined','hydrochar','offgas_HALT'),
-                                             biocrude_distance=refinery_distance, hydrochar_distance=LA_distance)
+                                             biocrude_distance=refinery_distance, hydrochar_distance=LA_distance, FOAK=FOAK)
     # 0.2384 2016$/lb, https://doi.org/10.2172/1483234
     HALT.ins[1].price = 0.2384/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     # 0.49 2020$/lb, from A.J.K. HALT model
@@ -4107,6 +4080,12 @@ def create_T2_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     HALT.ins[3].price = 4.224/_gal_to_liter*1000/diesel_density
     # 0 - 0.093 2018$, Figure 6 in https://www.sciencedirect.com/science/article/pii/S0306261919318021?via%3Dihub
     HALT.outs[2].price = 0.0465/GDPCTPI[2018]*GDPCTPI[2023]
+    
+    first_year_factor = HALT.plant_performance_factor/100
+    
+    performance_factor_list = [min(first_year_factor*(1.2)**i, 1) for i in range(0, lifetime)]
+    
+    operation_hours *= np.mean(performance_factor_list)
     
     Analyzer = lsu.Analyzer(ID='Analyzer',
                             ins=HALT-1,
@@ -4134,6 +4113,8 @@ def create_T2_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
     
+    # treatment of CT residual is not considerd (since it is not in the model)
+    # but ecoinvent has it and indicates it might be disposed of through landfilling
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
     CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
@@ -4188,11 +4169,11 @@ def create_T2_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     
     def deionized_water_quantity():
         try:
-            # TODO: is there a direct number or a better way for cooling tower chemicals
+            # the cooling_tower_chemicals is a mix of chemicals, therefore, the following approach is used to approximate the CI of the cooling_tower_chemicals
             # assume the ratio between the CI of the cooling_tower_chemicals and the CI of cooling_tower_makeup_water is the same as the ratio of the prices of these two streams
             # note LCA for water_steam, cooling_tower_makeup_water, and cooling_tower_chemicals were included in the 'Other' category while it should be in the 'Stream' category
             # the effect is minimal since (i) this part of LCA is small and (ii) we do not use LCA breakdown results in the HTL geospatial analysis
-            result = (sys.flowsheet.CT.ins[1].F_mass+sys.flowsheet.CT.ins[2].F_mass*1.7842/0.0002)*operation_hours*20
+            result = (sys.flowsheet.CT.ins[1].F_mass+sys.flowsheet.CT.ins[2].F_mass*1.7842/0.0002)*operation_hours*lifetime
         except AttributeError as e:
             if 'no registered item' in str(e) and 'CT' in str(e):
                 result = 0
@@ -4263,12 +4244,12 @@ def create_T2_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Natural_gas_V=lambda:(sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*20,
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Natural_gas_V=lambda:(sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*lifetime,
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
            Deionized_water=lambda:deionized_water_quantity())
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
@@ -4278,7 +4259,7 @@ def create_T2_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -4288,7 +4269,7 @@ def create_T2_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
 
 #%% system T3
 
-def create_T3_system(size=10, operation_hours=7884, FTE=0.4):
+def create_T3_system(size=10, operation_hours=7884, FOAK=True, FTE=0.4, lifetime=20):
     flowsheet_ID = 'T3'
     
     # clear flowsheet and registry for reloading
@@ -4331,10 +4312,18 @@ def create_T3_system(size=10, operation_hours=7884, FTE=0.4):
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
-    SCWO = lsu.SupercriticalWaterOxidation(ID='SCWO', ins=Dewatering-0, outs=('ash_SCWO','offgas_SCWO'))
+    SCWO = lsu.SupercriticalWaterOxidation(ID='SCWO', ins=Dewatering-0, outs=('ash_SCWO','offgas_SCWO'), FOAK=FOAK)
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     SCWO.outs[0].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
     
+    first_year_factor = SCWO.plant_performance_factor/100
+    
+    performance_factor_list = [min(first_year_factor*(1.2)**i, 1) for i in range(0, lifetime)]
+    
+    operation_hours *= np.mean(performance_factor_list)
+    
+    # treatment of CT residual is not considerd (since it is not in the model)
+    # but ecoinvent has it and indicates it might be disposed of through landfilling
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
     CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
@@ -4381,11 +4370,11 @@ def create_T3_system(size=10, operation_hours=7884, FTE=0.4):
     
     def deionized_water_quantity():
         try:
-            # TODO: is there a direct number or a better way for cooling tower chemicals
+            # the cooling_tower_chemicals is a mix of chemicals, therefore, the following approach is used to approximate the CI of the cooling_tower_chemicals
             # assume the ratio between the CI of the cooling_tower_chemicals and the CI of cooling_tower_makeup_water is the same as the ratio of the prices of these two streams
             # note LCA for water_steam, cooling_tower_makeup_water, and cooling_tower_chemicals were included in the 'Other' category while it should be in the 'Stream' category
             # the effect is minimal since (i) this part of LCA is small and (ii) we do not use LCA breakdown results in the HTL geospatial analysis
-            result = (sys.flowsheet.CT.ins[1].F_mass+sys.flowsheet.CT.ins[2].F_mass*1.7842/0.0002)*operation_hours*20
+            result = (sys.flowsheet.CT.ins[1].F_mass+sys.flowsheet.CT.ins[2].F_mass*1.7842/0.0002)*operation_hours*lifetime
         except AttributeError as e:
             if 'no registered item' in str(e) and 'CT' in str(e):
                 result = 0
@@ -4400,11 +4389,11 @@ def create_T3_system(size=10, operation_hours=7884, FTE=0.4):
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
            Deionized_water=lambda:deionized_water_quantity())
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
@@ -4414,7 +4403,7 @@ def create_T3_system(size=10, operation_hours=7884, FTE=0.4):
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -4424,7 +4413,7 @@ def create_T3_system(size=10, operation_hours=7884, FTE=0.4):
 
 #%% system T4
 
-def create_T4_system(size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FTE=0.7):
+def create_T4_system(size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FOAK=True, FTE=0.7, lifetime=20):
     flowsheet_ID = 'T4'
     
     # clear flowsheet and registry for reloading
@@ -4475,7 +4464,7 @@ def create_T4_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     
     Pyrolysis = lsu.Pyrolysis(ID='Pyrolysis', ins=(HeatDrying-0, 'diesel_pyrolysis'),
                               outs=('biooil','biochar','pyrogas'),
-                              biooil_distance=refinery_distance, biochar_distance=LA_distance)
+                              biooil_distance=refinery_distance, biochar_distance=LA_distance, FOAK=FOAK)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     Pyrolysis.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
     # biooil replacing crude oil of the same amount of energy
@@ -4484,6 +4473,12 @@ def create_T4_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     Pyrolysis.outs[0].price = 76.1/_oil_barrel_to_m3/Pyrolysis.crude_oil_density/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV
     # https://cloverly.com/blog/the-ultimate-business-guide-to-biochar-everything-you-need-to-know
     Pyrolysis.outs[1].price = 0.131
+    
+    first_year_factor = Pyrolysis.plant_performance_factor/100
+    
+    performance_factor_list = [min(first_year_factor*(1.2)**i, 1) for i in range(0, lifetime)]
+    
+    operation_hours *= np.mean(performance_factor_list)
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(Pyrolysis-2, 'natural_gas_CHP', 'air_CHP'),
                                 outs=('emission','ash_CHP'), supplement_power_utility=False)
@@ -4494,6 +4489,8 @@ def create_T4_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
     
+    # treatment of CT residual is not considerd (since it is not in the model)
+    # but ecoinvent has it and indicates it might be disposed of through landfilling
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
     CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
@@ -4543,11 +4540,11 @@ def create_T4_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     
     def deionized_water_quantity():
         try:
-            # TODO: is there a direct number or a better way for cooling tower chemicals
+            # the cooling_tower_chemicals is a mix of chemicals, therefore, the following approach is used to approximate the CI of the cooling_tower_chemicals
             # assume the ratio between the CI of the cooling_tower_chemicals and the CI of cooling_tower_makeup_water is the same as the ratio of the prices of these two streams
             # note LCA for water_steam, cooling_tower_makeup_water, and cooling_tower_chemicals were included in the 'Other' category while it should be in the 'Stream' category
             # the effect is minimal since (i) this part of LCA is small and (ii) we do not use LCA breakdown results in the HTL geospatial analysis
-            result = (sys.flowsheet.CT.ins[1].F_mass+sys.flowsheet.CT.ins[2].F_mass*1.7842/0.0002)*operation_hours*20
+            result = (sys.flowsheet.CT.ins[1].F_mass+sys.flowsheet.CT.ins[2].F_mass*1.7842/0.0002)*operation_hours*lifetime
         except AttributeError as e:
             if 'no registered item' in str(e) and 'CT' in str(e):
                 result = 0
@@ -4616,12 +4613,12 @@ def create_T4_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Natural_gas_V=lambda:(sys.flowsheet.HeatDrying.ins[1].F_vol+sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*20,
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Natural_gas_V=lambda:(sys.flowsheet.HeatDrying.ins[1].F_vol+sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*lifetime,
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
            Deionized_water=lambda:deionized_water_quantity())
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
@@ -4631,7 +4628,7 @@ def create_T4_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -4641,7 +4638,7 @@ def create_T4_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
 
 #%% system T5
 
-def create_T5_system(size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FTE=0.7):
+def create_T5_system(size=10, operation_hours=7884, FOAK=True, FTE=0.7, lifetime=20):
     flowsheet_ID = 'T5'
     
     # clear flowsheet and registry for reloading
@@ -4690,17 +4687,18 @@ def create_T5_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
     HeatDrying.ins[1].price = 0.218
     
-    Gasification = lsu.Gasification(ID='Gasification', ins=(HeatDrying-0, 'diesel_gasification'),
-                                    outs=('tar','biochar','syngas'),
-                                    tar_distance=refinery_distance, biochar_distance=LA_distance)
-    # 2023 weekly average from U.S. EIA: 4.224 $/gallon
-    Gasification.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
-    # tar replacing crude oil of the same amount of energy
-    # TODO: may need update the price to a more general number
-    # 76.1 $/barrel crude oil, U.S. EIA, 2023 monthly average
-    Gasification.outs[0].price = 76.1/_oil_barrel_to_m3/Gasification.crude_oil_density/Gasification.crude_oil_HHV*Gasification.tar_HHV
-    # https://cloverly.com/blog/the-ultimate-business-guide-to-biochar-everything-you-need-to-know
-    Gasification.outs[1].price = 0.131
+    Gasification = lsu.Gasification(ID='Gasification', ins=HeatDrying-0, outs=('tar','ash_gasification','syngas'), FOAK=FOAK)
+    # 300 to 510 $·tonne-1, including removal, transport, and disposal as a Resource Conservation and Recovery Act (RCRA) permitted facility
+    # https://www.profitableventure.com/cost-dispose-hazardous-waste-per-ton/
+    Gasification.outs[0].price = -0.405
+    # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
+    Gasification.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    
+    first_year_factor = Gasification.plant_performance_factor/100
+    
+    performance_factor_list = [min(first_year_factor*(1.2)**i, 1) for i in range(0, lifetime)]
+    
+    operation_hours *= np.mean(performance_factor_list)
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(Gasification-2, 'natural_gas_CHP', 'air_CHP'),
                                 outs=('emission','ash_CHP'), supplement_power_utility=False)
@@ -4711,6 +4709,8 @@ def create_T5_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
     
+    # treatment of CT residual is not considerd (since it is not in the model)
+    # but ecoinvent has it and indicates it might be disposed of through landfilling
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
     CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
@@ -4760,11 +4760,11 @@ def create_T5_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     
     def deionized_water_quantity():
         try:
-            # TODO: is there a direct number or a better way for cooling tower chemicals
+            # the cooling_tower_chemicals is a mix of chemicals, therefore, the following approach is used to approximate the CI of the cooling_tower_chemicals
             # assume the ratio between the CI of the cooling_tower_chemicals and the CI of cooling_tower_makeup_water is the same as the ratio of the prices of these two streams
             # note LCA for water_steam, cooling_tower_makeup_water, and cooling_tower_chemicals were included in the 'Other' category while it should be in the 'Stream' category
             # the effect is minimal since (i) this part of LCA is small and (ii) we do not use LCA breakdown results in the HTL geospatial analysis
-            result = (sys.flowsheet.CT.ins[1].F_mass+sys.flowsheet.CT.ins[2].F_mass*1.7842/0.0002)*operation_hours*20
+            result = (sys.flowsheet.CT.ins[1].F_mass+sys.flowsheet.CT.ins[2].F_mass*1.7842/0.0002)*operation_hours*lifetime
         except AttributeError as e:
             if 'no registered item' in str(e) and 'CT' in str(e):
                 result = 0
@@ -4772,73 +4772,21 @@ def create_T5_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
-    # use market for petroleum to offset transportation and then add the transportation part
-    # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
-    # assume tar is used to produce biofuel for combustion
-    # pertoleum is 84% C, https://en.wikipedia.org/wiki/Petroleum
-    qs.StreamImpactItem(ID='Tar', linked_stream=stream.tar, GlobalWarming=-(0.22290007 + 0.84/12*44)/Gasification.crude_oil_HHV*Gasification.tar_HHV)
+    qs.StreamImpactItem(ID='Tar', linked_stream=stream.tar, GlobalWarming=0.69976007)
+    qs.StreamImpactItem(ID='Ash_gasification', linked_stream=stream.ash_gasification, GlobalWarming=0.0082744841)
     qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.0082744841)
-    # diesel average chemical formula: C12H23
-    # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_gasification', linked_stream=stream.diesel_gasification, GlobalWarming=0.4776041 + 44*12/(12*12 + 23*1))
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
     
-    # carbon sequestration
-    # the following number is consistent with the best guess from Table SI-12 in the SI of https://pubs.acs.org/doi/full/10.1021/acs.est.2c06083 (assuming 60% biochar is C)
-    # directly using biochar, unlike landfilling, land application, and composting which have carbon dioxide as fake streams
-    # carbon sequestration credit: 2 kg CO2 eq/kg dry solids, https://www.bioflux.earth/blog/what-is-biochar-carbon-removal
-    qs.StreamImpactItem(ID='Biochar', linked_stream=stream.biochar, GlobalWarming=-2)
-    
-    tar_trucking = qs.ImpactItem('Tar_trucking', functional_unit='kg*km')
-    # based on one-way distance, empty return trips included
-    tar_trucking.add_indicator(GlobalWarming, 0.13004958/1000)
-    # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), https://doi.org/10.1016/j.biortech.2010.03.136
-    tar_trucking.price = (5.67 + 0.07*Gasification.tar_distance)/Gasification.tar_density/Gasification.tar_distance/GDPCTPI[2008]*GDPCTPI[2023]
-    
-    tar_transportation = qs.Transportation('Tar_transportation',
-                                           linked_unit=Gasification,
-                                           item=tar_trucking,
-                                           load_type='mass',
-                                           load=stream.tar.F_mass,
-                                           load_unit='kg',
-                                           distance=Gasification.tar_distance,
-                                           distance_unit='km',
-                                           # set to 1 h since load = kg/h
-                                           interval='1',
-                                           interval_unit='h')
-    Gasification.transportation.append(tar_transportation)
-    
-    biochar_trucking = qs.ImpactItem('Biochar_trucking', functional_unit='kg*km')
-    # based on one-way distance, empty return trips included
-    biochar_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
-    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
-    # https://doi.org/10.1016/j.tra.2015.02.001
-    # converted to 2023$/kg/km
-    biochar_trucking.price = (0.00551 + 0.0000541*Gasification.biochar_distance)/Gasification.biochar_distance
-    
-    bioochar_transportation = qs.Transportation('Bioochar_transportation',
-                                                linked_unit=Gasification,
-                                                item=biochar_trucking,
-                                                load_type='mass',
-                                                load=stream.biochar.F_mass,
-                                                load_unit='kg',
-                                                distance=Gasification.biochar_distance,
-                                                distance_unit='km',
-                                                # set to 1 h since load = kg/h
-                                                interval='1',
-                                                interval_unit='h')
-    Gasification.transportation.append(bioochar_transportation)
-    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Natural_gas_V=lambda:(sys.flowsheet.HeatDrying.ins[1].F_vol+sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*20,
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Natural_gas_V=lambda:(sys.flowsheet.HeatDrying.ins[1].F_vol+sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*lifetime,
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
            Deionized_water=lambda:deionized_water_quantity())
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
@@ -4848,7 +4796,7 @@ def create_T5_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -4858,7 +4806,7 @@ def create_T5_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
 
 #%% system T6
 
-def create_T6_system(size=10, operation_hours=7884, refinery_distance=100, FTE=0.7):
+def create_T6_system(size=10, operation_hours=7884, refinery_distance=100, FOAK=True, FTE=0.7, lifetime=20):
     flowsheet_ID = 'T6'
     
     # clear flowsheet and registry for reloading
@@ -4906,10 +4854,16 @@ def create_T6_system(size=10, operation_hours=7884, refinery_distance=100, FTE=0
     
     HTL = lsu.HydrothermalLiquefaction(ID='HTL', ins=Dewatering-0,
                                        outs=('biocrude','HTL_aqueous_undefined','hydrochar','offgas_HTL'),
-                                       biocrude_distance=refinery_distance)
+                                       biocrude_distance=refinery_distance, FOAK=FOAK)
     # assume hydrochar from HTL is disposed of by sending it to landfills
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     HTL.outs[2].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    
+    first_year_factor = HTL.plant_performance_factor/100
+    
+    performance_factor_list = [min(first_year_factor*(1.2)**i, 1) for i in range(0, lifetime)]
+    
+    operation_hours *= np.mean(performance_factor_list)
     
     Analyzer = lsu.Analyzer(ID='Analyzer',
                             ins=HTL-1,
@@ -4936,6 +4890,8 @@ def create_T6_system(size=10, operation_hours=7884, refinery_distance=100, FTE=0
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
     
+    # treatment of CT residual is not considerd (since it is not in the model)
+    # but ecoinvent has it and indicates it might be disposed of through landfilling
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
     CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
@@ -4990,11 +4946,11 @@ def create_T6_system(size=10, operation_hours=7884, refinery_distance=100, FTE=0
     
     def deionized_water_quantity():
         try:
-            # TODO: is there a direct number or a better way for cooling tower chemicals
+            # the cooling_tower_chemicals is a mix of chemicals, therefore, the following approach is used to approximate the CI of the cooling_tower_chemicals
             # assume the ratio between the CI of the cooling_tower_chemicals and the CI of cooling_tower_makeup_water is the same as the ratio of the prices of these two streams
             # note LCA for water_steam, cooling_tower_makeup_water, and cooling_tower_chemicals were included in the 'Other' category while it should be in the 'Stream' category
             # the effect is minimal since (i) this part of LCA is small and (ii) we do not use LCA breakdown results in the HTL geospatial analysis
-            result = (sys.flowsheet.CT.ins[1].F_mass+sys.flowsheet.CT.ins[2].F_mass*1.7842/0.0002)*operation_hours*20
+            result = (sys.flowsheet.CT.ins[1].F_mass+sys.flowsheet.CT.ins[2].F_mass*1.7842/0.0002)*operation_hours*lifetime
         except AttributeError as e:
             if 'no registered item' in str(e) and 'CT' in str(e):
                 result = 0
@@ -5035,12 +4991,12 @@ def create_T6_system(size=10, operation_hours=7884, refinery_distance=100, FTE=0
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Natural_gas_V=lambda:(sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*20,
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Natural_gas_V=lambda:(sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*lifetime,
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
            Deionized_water=lambda:deionized_water_quantity())
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
@@ -5050,7 +5006,7 @@ def create_T6_system(size=10, operation_hours=7884, refinery_distance=100, FTE=0
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -5060,7 +5016,7 @@ def create_T6_system(size=10, operation_hours=7884, refinery_distance=100, FTE=0
 
 #%% system T7
 
-def create_T7_system(size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FTE=0.7):
+def create_T7_system(size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FOAK=True, FTE=0.7, lifetime=20):
     flowsheet_ID = 'T7'
     
     # clear flowsheet and registry for reloading
@@ -5108,7 +5064,7 @@ def create_T7_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     
     HALT = lsu.HydrothermalAlkalineTreatment(ID='HALT', ins=(Dewatering-0, 'sodium_hydroxide', 'hydrochloric_acid', 'diesel_HALT'),
                                              outs=('biocrude','HALT_aqueous_undefined','hydrochar','offgas_HALT'),
-                                             biocrude_distance=refinery_distance, hydrochar_distance=LA_distance)
+                                             biocrude_distance=refinery_distance, hydrochar_distance=LA_distance, FOAK=FOAK)
     # 0.2384 2016$/lb, https://doi.org/10.2172/1483234
     HALT.ins[1].price = 0.2384/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     # 0.49 2020$/lb, from A.J.K. HALT model
@@ -5117,6 +5073,12 @@ def create_T7_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     HALT.ins[3].price = 4.224/_gal_to_liter*1000/diesel_density
     # 0 - 0.093 2018$, Figure 6 in https://www.sciencedirect.com/science/article/pii/S0306261919318021?via%3Dihub
     HALT.outs[2].price = 0.0465/GDPCTPI[2018]*GDPCTPI[2023]
+    
+    first_year_factor = HALT.plant_performance_factor/100
+    
+    performance_factor_list = [min(first_year_factor*(1.2)**i, 1) for i in range(0, lifetime)]
+    
+    operation_hours *= np.mean(performance_factor_list)
     
     Analyzer = lsu.Analyzer(ID='Analyzer',
                             ins=HALT-1,
@@ -5143,6 +5105,8 @@ def create_T7_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
     
+    # treatment of CT residual is not considerd (since it is not in the model)
+    # but ecoinvent has it and indicates it might be disposed of through landfilling
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
     CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
@@ -5197,11 +5161,11 @@ def create_T7_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     
     def deionized_water_quantity():
         try:
-            # TODO: is there a direct number or a better way for cooling tower chemicals
+            # the cooling_tower_chemicals is a mix of chemicals, therefore, the following approach is used to approximate the CI of the cooling_tower_chemicals
             # assume the ratio between the CI of the cooling_tower_chemicals and the CI of cooling_tower_makeup_water is the same as the ratio of the prices of these two streams
             # note LCA for water_steam, cooling_tower_makeup_water, and cooling_tower_chemicals were included in the 'Other' category while it should be in the 'Stream' category
             # the effect is minimal since (i) this part of LCA is small and (ii) we do not use LCA breakdown results in the HTL geospatial analysis
-            result = (sys.flowsheet.CT.ins[1].F_mass+sys.flowsheet.CT.ins[2].F_mass*1.7842/0.0002)*operation_hours*20
+            result = (sys.flowsheet.CT.ins[1].F_mass+sys.flowsheet.CT.ins[2].F_mass*1.7842/0.0002)*operation_hours*lifetime
         except AttributeError as e:
             if 'no registered item' in str(e) and 'CT' in str(e):
                 result = 0
@@ -5272,12 +5236,12 @@ def create_T7_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Natural_gas_V=lambda:(sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*20,
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Natural_gas_V=lambda:(sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*lifetime,
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
            Deionized_water=lambda:deionized_water_quantity())
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
@@ -5287,7 +5251,7 @@ def create_T7_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -5297,7 +5261,7 @@ def create_T7_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
 
 #%% system T8
 
-def create_T8_system(size=10, operation_hours=7884, FTE=0.55):
+def create_T8_system(size=10, operation_hours=7884, FOAK=True, FTE=0.55, lifetime=20):
     flowsheet_ID = 'T8'
     
     # clear flowsheet and registry for reloading
@@ -5343,10 +5307,18 @@ def create_T8_system(size=10, operation_hours=7884, FTE=0.55):
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
-    SCWO = lsu.SupercriticalWaterOxidation(ID='SCWO', ins=Dewatering-0, outs=('ash_SCWO','offgas_SCWO'))
+    SCWO = lsu.SupercriticalWaterOxidation(ID='SCWO', ins=Dewatering-0, outs=('ash_SCWO','offgas_SCWO'), FOAK=FOAK)
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     SCWO.outs[0].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
     
+    first_year_factor = SCWO.plant_performance_factor/100
+    
+    performance_factor_list = [min(first_year_factor*(1.2)**i, 1) for i in range(0, lifetime)]
+    
+    operation_hours *= np.mean(performance_factor_list)
+    
+    # treatment of CT residual is not considerd (since it is not in the model)
+    # but ecoinvent has it and indicates it might be disposed of through landfilling
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
     CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
@@ -5393,11 +5365,11 @@ def create_T8_system(size=10, operation_hours=7884, FTE=0.55):
     
     def deionized_water_quantity():
         try:
-            # TODO: is there a direct number or a better way for cooling tower chemicals
+            # the cooling_tower_chemicals is a mix of chemicals, therefore, the following approach is used to approximate the CI of the cooling_tower_chemicals
             # assume the ratio between the CI of the cooling_tower_chemicals and the CI of cooling_tower_makeup_water is the same as the ratio of the prices of these two streams
             # note LCA for water_steam, cooling_tower_makeup_water, and cooling_tower_chemicals were included in the 'Other' category while it should be in the 'Stream' category
             # the effect is minimal since (i) this part of LCA is small and (ii) we do not use LCA breakdown results in the HTL geospatial analysis
-            result = (sys.flowsheet.CT.ins[1].F_mass+sys.flowsheet.CT.ins[2].F_mass*1.7842/0.0002)*operation_hours*20
+            result = (sys.flowsheet.CT.ins[1].F_mass+sys.flowsheet.CT.ins[2].F_mass*1.7842/0.0002)*operation_hours*lifetime
         except AttributeError as e:
             if 'no registered item' in str(e) and 'CT' in str(e):
                 result = 0
@@ -5412,11 +5384,11 @@ def create_T8_system(size=10, operation_hours=7884, FTE=0.55):
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
            Deionized_water=lambda:deionized_water_quantity())
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
@@ -5426,7 +5398,7 @@ def create_T8_system(size=10, operation_hours=7884, FTE=0.55):
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -5436,7 +5408,7 @@ def create_T8_system(size=10, operation_hours=7884, FTE=0.55):
 
 #%% system T9
 
-def create_T9_system(size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FTE=0.85):
+def create_T9_system(size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FOAK=True, FTE=0.85, lifetime=20):
     flowsheet_ID = 'T9'
     
     # clear flowsheet and registry for reloading
@@ -5490,7 +5462,7 @@ def create_T9_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     
     Pyrolysis = lsu.Pyrolysis(ID='Pyrolysis', ins=(HeatDrying-0, 'diesel_pyrolysis'),
                               outs=('biooil','biochar','pyrogas'),
-                              biooil_distance=refinery_distance, biochar_distance=LA_distance)
+                              biooil_distance=refinery_distance, biochar_distance=LA_distance, FOAK=FOAK)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     Pyrolysis.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
     # biooil replacing crude oil of the same amount of energy
@@ -5499,6 +5471,12 @@ def create_T9_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     Pyrolysis.outs[0].price = 76.1/_oil_barrel_to_m3/Pyrolysis.crude_oil_density/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV
     # https://cloverly.com/blog/the-ultimate-business-guide-to-biochar-everything-you-need-to-know
     Pyrolysis.outs[1].price = 0.131
+    
+    first_year_factor = Pyrolysis.plant_performance_factor/100
+    
+    performance_factor_list = [min(first_year_factor*(1.2)**i, 1) for i in range(0, lifetime)]
+    
+    operation_hours *= np.mean(performance_factor_list)
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(Pyrolysis-2, 'natural_gas_CHP', 'air_CHP'),
                                 outs=('emission','ash_CHP'), supplement_power_utility=False)
@@ -5509,6 +5487,8 @@ def create_T9_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
     
+    # treatment of CT residual is not considerd (since it is not in the model)
+    # but ecoinvent has it and indicates it might be disposed of through landfilling
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
     CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
@@ -5558,11 +5538,11 @@ def create_T9_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     
     def deionized_water_quantity():
         try:
-            # TODO: is there a direct number or a better way for cooling tower chemicals
+            # the cooling_tower_chemicals is a mix of chemicals, therefore, the following approach is used to approximate the CI of the cooling_tower_chemicals
             # assume the ratio between the CI of the cooling_tower_chemicals and the CI of cooling_tower_makeup_water is the same as the ratio of the prices of these two streams
             # note LCA for water_steam, cooling_tower_makeup_water, and cooling_tower_chemicals were included in the 'Other' category while it should be in the 'Stream' category
             # the effect is minimal since (i) this part of LCA is small and (ii) we do not use LCA breakdown results in the HTL geospatial analysis
-            result = (sys.flowsheet.CT.ins[1].F_mass+sys.flowsheet.CT.ins[2].F_mass*1.7842/0.0002)*operation_hours*20
+            result = (sys.flowsheet.CT.ins[1].F_mass+sys.flowsheet.CT.ins[2].F_mass*1.7842/0.0002)*operation_hours*lifetime
         except AttributeError as e:
             if 'no registered item' in str(e) and 'CT' in str(e):
                 result = 0
@@ -5631,12 +5611,12 @@ def create_T9_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Natural_gas_V=lambda:(sys.flowsheet.HeatDrying.ins[1].F_vol+sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*20,
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Natural_gas_V=lambda:(sys.flowsheet.HeatDrying.ins[1].F_vol+sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*lifetime,
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
            Deionized_water=lambda:deionized_water_quantity())
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
@@ -5646,7 +5626,7 @@ def create_T9_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -5656,7 +5636,7 @@ def create_T9_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
 
 #%% system T10
 
-def create_T10_system(size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FTE=0.85):
+def create_T10_system(size=10, operation_hours=7884, FOAK=True, FTE=0.85, lifetime=20):
     flowsheet_ID = 'T10'
     
     # clear flowsheet and registry for reloading
@@ -5708,17 +5688,18 @@ def create_T10_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
     HeatDrying.ins[1].price = 0.218
     
-    Gasification = lsu.Gasification(ID='Gasification', ins=(HeatDrying-0, 'diesel_gasification'),
-                                    outs=('tar','biochar','syngas'),
-                                    tar_distance=refinery_distance, biochar_distance=LA_distance)
-    # 2023 weekly average from U.S. EIA: 4.224 $/gallon
-    Gasification.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
-    # tar replacing crude oil of the same amount of energy
-    # TODO: may need update the price to a more general number
-    # 76.1 $/barrel crude oil, U.S. EIA, 2023 monthly average
-    Gasification.outs[0].price = 76.1/_oil_barrel_to_m3/Gasification.crude_oil_density/Gasification.crude_oil_HHV*Gasification.tar_HHV
-    # https://cloverly.com/blog/the-ultimate-business-guide-to-biochar-everything-you-need-to-know
-    Gasification.outs[1].price = 0.131
+    Gasification = lsu.Gasification(ID='Gasification', ins=HeatDrying-0, outs=('tar','ash_gasification','syngas'), FOAK=FOAK)
+    # 300 to 510 $·tonne-1, including removal, transport, and disposal as a Resource Conservation and Recovery Act (RCRA) permitted facility
+    # https://www.profitableventure.com/cost-dispose-hazardous-waste-per-ton/
+    Gasification.outs[0].price = -0.405
+    # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
+    Gasification.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    
+    first_year_factor = Gasification.plant_performance_factor/100
+    
+    performance_factor_list = [min(first_year_factor*(1.2)**i, 1) for i in range(0, lifetime)]
+    
+    operation_hours *= np.mean(performance_factor_list)
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(Gasification-2, 'natural_gas_CHP', 'air_CHP'),
                                 outs=('emission','ash_CHP'), supplement_power_utility=False)
@@ -5729,6 +5710,8 @@ def create_T10_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
     
+    # treatment of CT residual is not considerd (since it is not in the model)
+    # but ecoinvent has it and indicates it might be disposed of through landfilling
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
     CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
@@ -5778,11 +5761,11 @@ def create_T10_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
     
     def deionized_water_quantity():
         try:
-            # TODO: is there a direct number or a better way for cooling tower chemicals
+            # the cooling_tower_chemicals is a mix of chemicals, therefore, the following approach is used to approximate the CI of the cooling_tower_chemicals
             # assume the ratio between the CI of the cooling_tower_chemicals and the CI of cooling_tower_makeup_water is the same as the ratio of the prices of these two streams
             # note LCA for water_steam, cooling_tower_makeup_water, and cooling_tower_chemicals were included in the 'Other' category while it should be in the 'Stream' category
             # the effect is minimal since (i) this part of LCA is small and (ii) we do not use LCA breakdown results in the HTL geospatial analysis
-            result = (sys.flowsheet.CT.ins[1].F_mass+sys.flowsheet.CT.ins[2].F_mass*1.7842/0.0002)*operation_hours*20
+            result = (sys.flowsheet.CT.ins[1].F_mass+sys.flowsheet.CT.ins[2].F_mass*1.7842/0.0002)*operation_hours*lifetime
         except AttributeError as e:
             if 'no registered item' in str(e) and 'CT' in str(e):
                 result = 0
@@ -5790,73 +5773,21 @@ def create_T10_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
-    # use market for petroleum to offset transportation and then add the transportation part
-    # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
-    # assume tar is used to produce biofuel for combustion
-    # pertoleum is 84% C, https://en.wikipedia.org/wiki/Petroleum
-    qs.StreamImpactItem(ID='Tar', linked_stream=stream.tar, GlobalWarming=-(0.22290007 + 0.84/12*44)/Gasification.crude_oil_HHV*Gasification.tar_HHV)
+    qs.StreamImpactItem(ID='Tar', linked_stream=stream.tar, GlobalWarming=0.69976007)
+    qs.StreamImpactItem(ID='Ash_gasification', linked_stream=stream.ash_gasification, GlobalWarming=0.0082744841)
     qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.0082744841)
-    # diesel average chemical formula: C12H23
-    # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_gasification', linked_stream=stream.diesel_gasification, GlobalWarming=0.4776041 + 44*12/(12*12 + 23*1))
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
     
-    # carbon sequestration
-    # the following number is consistent with the best guess from Table SI-12 in the SI of https://pubs.acs.org/doi/full/10.1021/acs.est.2c06083 (assuming 60% biochar is C)
-    # directly using biochar, unlike landfilling, land application, and composting which have carbon dioxide as fake streams
-    # carbon sequestration credit: 2 kg CO2 eq/kg dry solids, https://www.bioflux.earth/blog/what-is-biochar-carbon-removal
-    qs.StreamImpactItem(ID='Biochar', linked_stream=stream.biochar, GlobalWarming=-2)
-    
-    tar_trucking = qs.ImpactItem('Tar_trucking', functional_unit='kg*km')
-    # based on one-way distance, empty return trips included
-    tar_trucking.add_indicator(GlobalWarming, 0.13004958/1000)
-    # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), https://doi.org/10.1016/j.biortech.2010.03.136
-    tar_trucking.price = (5.67 + 0.07*Gasification.tar_distance)/Gasification.tar_density/Gasification.tar_distance/GDPCTPI[2008]*GDPCTPI[2023]
-    
-    tar_transportation = qs.Transportation('Tar_transportation',
-                                           linked_unit=Gasification,
-                                           item=tar_trucking,
-                                           load_type='mass',
-                                           load=stream.tar.F_mass,
-                                           load_unit='kg',
-                                           distance=Gasification.tar_distance,
-                                           distance_unit='km',
-                                           # set to 1 h since load = kg/h
-                                           interval='1',
-                                           interval_unit='h')
-    Gasification.transportation.append(tar_transportation)
-    
-    biochar_trucking = qs.ImpactItem('Biochar_trucking', functional_unit='kg*km')
-    # based on one-way distance, empty return trips included
-    biochar_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
-    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
-    # https://doi.org/10.1016/j.tra.2015.02.001
-    # converted to 2023$/kg/km
-    biochar_trucking.price = (0.00551 + 0.0000541*Gasification.biochar_distance)/Gasification.biochar_distance
-    
-    bioochar_transportation = qs.Transportation('Bioochar_transportation',
-                                                linked_unit=Gasification,
-                                                item=biochar_trucking,
-                                                load_type='mass',
-                                                load=stream.biochar.F_mass,
-                                                load_unit='kg',
-                                                distance=Gasification.biochar_distance,
-                                                distance_unit='km',
-                                                # set to 1 h since load = kg/h
-                                                interval='1',
-                                                interval_unit='h')
-    Gasification.transportation.append(bioochar_transportation)
-    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Natural_gas_V=lambda:(sys.flowsheet.HeatDrying.ins[1].F_vol+sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*20,
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Natural_gas_V=lambda:(sys.flowsheet.HeatDrying.ins[1].F_vol+sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*lifetime,
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
            Deionized_water=lambda:deionized_water_quantity())
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
@@ -5866,7 +5797,7 @@ def create_T10_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -5876,7 +5807,7 @@ def create_T10_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
 
 #%% system T11
 
-def create_T11_system(size=10, operation_hours=7884, refinery_distance=100, FTE=0.7):
+def create_T11_system(size=10, operation_hours=7884, refinery_distance=100, FOAK=True, FTE=0.7, lifetime=20):
     flowsheet_ID = 'T11'
     
     # clear flowsheet and registry for reloading
@@ -5925,10 +5856,16 @@ def create_T11_system(size=10, operation_hours=7884, refinery_distance=100, FTE=
     
     HTL = lsu.HydrothermalLiquefaction(ID='HTL', ins=Dewatering-0,
                                        outs=('biocrude','HTL_aqueous_undefined','hydrochar','offgas_HTL'),
-                                       biocrude_distance=refinery_distance)
+                                       biocrude_distance=refinery_distance, FOAK=FOAK)
     # assume hydrochar from HTL is disposed of by sending it to landfills
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     HTL.outs[2].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    
+    first_year_factor = HTL.plant_performance_factor/100
+    
+    performance_factor_list = [min(first_year_factor*(1.2)**i, 1) for i in range(0, lifetime)]
+    
+    operation_hours *= np.mean(performance_factor_list)
     
     Analyzer = lsu.Analyzer(ID='Analyzer',
                             ins=HTL-1,
@@ -5956,6 +5893,8 @@ def create_T11_system(size=10, operation_hours=7884, refinery_distance=100, FTE=
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
     
+    # treatment of CT residual is not considerd (since it is not in the model)
+    # but ecoinvent has it and indicates it might be disposed of through landfilling
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
     CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
@@ -6010,11 +5949,11 @@ def create_T11_system(size=10, operation_hours=7884, refinery_distance=100, FTE=
     
     def deionized_water_quantity():
         try:
-            # TODO: is there a direct number or a better way for cooling tower chemicals
+            # the cooling_tower_chemicals is a mix of chemicals, therefore, the following approach is used to approximate the CI of the cooling_tower_chemicals
             # assume the ratio between the CI of the cooling_tower_chemicals and the CI of cooling_tower_makeup_water is the same as the ratio of the prices of these two streams
             # note LCA for water_steam, cooling_tower_makeup_water, and cooling_tower_chemicals were included in the 'Other' category while it should be in the 'Stream' category
             # the effect is minimal since (i) this part of LCA is small and (ii) we do not use LCA breakdown results in the HTL geospatial analysis
-            result = (sys.flowsheet.CT.ins[1].F_mass+sys.flowsheet.CT.ins[2].F_mass*1.7842/0.0002)*operation_hours*20
+            result = (sys.flowsheet.CT.ins[1].F_mass+sys.flowsheet.CT.ins[2].F_mass*1.7842/0.0002)*operation_hours*lifetime
         except AttributeError as e:
             if 'no registered item' in str(e) and 'CT' in str(e):
                 result = 0
@@ -6056,12 +5995,12 @@ def create_T11_system(size=10, operation_hours=7884, refinery_distance=100, FTE=
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Natural_gas_V=lambda:(sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*20,
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Natural_gas_V=lambda:(sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*lifetime,
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
            Deionized_water=lambda:deionized_water_quantity())
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
@@ -6071,7 +6010,7 @@ def create_T11_system(size=10, operation_hours=7884, refinery_distance=100, FTE=
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -6081,7 +6020,7 @@ def create_T11_system(size=10, operation_hours=7884, refinery_distance=100, FTE=
 
 #%% system T12
 
-def create_T12_system(size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FTE=0.7):
+def create_T12_system(size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FOAK=True, FTE=0.7, lifetime=20):
     flowsheet_ID = 'T12'
     
     # clear flowsheet and registry for reloading
@@ -6130,7 +6069,7 @@ def create_T12_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
     
     HALT = lsu.HydrothermalAlkalineTreatment(ID='HALT', ins=(Dewatering-0, 'sodium_hydroxide', 'hydrochloric_acid', 'diesel_HALT'),
                                              outs=('biocrude','HALT_aqueous_undefined','hydrochar','offgas_HALT'),
-                                             biocrude_distance=refinery_distance, hydrochar_distance=LA_distance)
+                                             biocrude_distance=refinery_distance, hydrochar_distance=LA_distance, FOAK=FOAK)
     # 0.2384 2016$/lb, https://doi.org/10.2172/1483234
     HALT.ins[1].price = 0.2384/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     # 0.49 2020$/lb, from A.J.K. HALT model
@@ -6139,6 +6078,12 @@ def create_T12_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
     HALT.ins[3].price = 4.224/_gal_to_liter*1000/diesel_density
     # 0 - 0.093 2018$, Figure 6 in https://www.sciencedirect.com/science/article/pii/S0306261919318021?via%3Dihub
     HALT.outs[2].price = 0.0465/GDPCTPI[2018]*GDPCTPI[2023]
+    
+    first_year_factor = HALT.plant_performance_factor/100
+    
+    performance_factor_list = [min(first_year_factor*(1.2)**i, 1) for i in range(0, lifetime)]
+    
+    operation_hours *= np.mean(performance_factor_list)
     
     Analyzer = lsu.Analyzer(ID='Analyzer',
                             ins=HALT-1,
@@ -6166,6 +6111,8 @@ def create_T12_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
     
+    # treatment of CT residual is not considerd (since it is not in the model)
+    # but ecoinvent has it and indicates it might be disposed of through landfilling
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
     CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
@@ -6220,11 +6167,11 @@ def create_T12_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
     
     def deionized_water_quantity():
         try:
-            # TODO: is there a direct number or a better way for cooling tower chemicals
+            # the cooling_tower_chemicals is a mix of chemicals, therefore, the following approach is used to approximate the CI of the cooling_tower_chemicals
             # assume the ratio between the CI of the cooling_tower_chemicals and the CI of cooling_tower_makeup_water is the same as the ratio of the prices of these two streams
             # note LCA for water_steam, cooling_tower_makeup_water, and cooling_tower_chemicals were included in the 'Other' category while it should be in the 'Stream' category
             # the effect is minimal since (i) this part of LCA is small and (ii) we do not use LCA breakdown results in the HTL geospatial analysis
-            result = (sys.flowsheet.CT.ins[1].F_mass+sys.flowsheet.CT.ins[2].F_mass*1.7842/0.0002)*operation_hours*20
+            result = (sys.flowsheet.CT.ins[1].F_mass+sys.flowsheet.CT.ins[2].F_mass*1.7842/0.0002)*operation_hours*lifetime
         except AttributeError as e:
             if 'no registered item' in str(e) and 'CT' in str(e):
                 result = 0
@@ -6296,12 +6243,12 @@ def create_T12_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Natural_gas_V=lambda:(sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*20,
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Natural_gas_V=lambda:(sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*lifetime,
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
            Deionized_water=lambda:deionized_water_quantity())
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
@@ -6311,7 +6258,7 @@ def create_T12_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -6321,7 +6268,7 @@ def create_T12_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
 
 #%% system T13
 
-def create_T13_system(size=10, operation_hours=7884, FTE=0.55):
+def create_T13_system(size=10, operation_hours=7884, FOAK=True, FTE=0.55, lifetime=20):
     flowsheet_ID = 'T13'
     
     # clear flowsheet and registry for reloading
@@ -6368,9 +6315,15 @@ def create_T13_system(size=10, operation_hours=7884, FTE=0.55):
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
-    SCWO = lsu.SupercriticalWaterOxidation(ID='SCWO', ins=Dewatering-0, outs=('ash_SCWO','offgas_SCWO'))
+    SCWO = lsu.SupercriticalWaterOxidation(ID='SCWO', ins=Dewatering-0, outs=('ash_SCWO','offgas_SCWO'), FOAK=FOAK)
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     SCWO.outs[0].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    
+    first_year_factor = SCWO.plant_performance_factor/100
+    
+    performance_factor_list = [min(first_year_factor*(1.2)**i, 1) for i in range(0, lifetime)]
+    
+    operation_hours *= np.mean(performance_factor_list)
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air_CHP'),
                                 outs=('emission','ash_CHP'), supplement_power_utility=False)
@@ -6381,6 +6334,8 @@ def create_T13_system(size=10, operation_hours=7884, FTE=0.55):
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
     
+    # treatment of CT residual is not considerd (since it is not in the model)
+    # but ecoinvent has it and indicates it might be disposed of through landfilling
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
     CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
@@ -6429,11 +6384,11 @@ def create_T13_system(size=10, operation_hours=7884, FTE=0.55):
     
     def deionized_water_quantity():
         try:
-            # TODO: is there a direct number or a better way for cooling tower chemicals
+            # the cooling_tower_chemicals is a mix of chemicals, therefore, the following approach is used to approximate the CI of the cooling_tower_chemicals
             # assume the ratio between the CI of the cooling_tower_chemicals and the CI of cooling_tower_makeup_water is the same as the ratio of the prices of these two streams
             # note LCA for water_steam, cooling_tower_makeup_water, and cooling_tower_chemicals were included in the 'Other' category while it should be in the 'Stream' category
             # the effect is minimal since (i) this part of LCA is small and (ii) we do not use LCA breakdown results in the HTL geospatial analysis
-            result = (sys.flowsheet.CT.ins[1].F_mass+sys.flowsheet.CT.ins[2].F_mass*1.7842/0.0002)*operation_hours*20
+            result = (sys.flowsheet.CT.ins[1].F_mass+sys.flowsheet.CT.ins[2].F_mass*1.7842/0.0002)*operation_hours*lifetime
         except AttributeError as e:
             if 'no registered item' in str(e) and 'CT' in str(e):
                 result = 0
@@ -6450,12 +6405,12 @@ def create_T13_system(size=10, operation_hours=7884, FTE=0.55):
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Natural_gas_V=lambda:(sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*20,
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Natural_gas_V=lambda:(sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*lifetime,
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
            Deionized_water=lambda:deionized_water_quantity())
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
@@ -6465,7 +6420,7 @@ def create_T13_system(size=10, operation_hours=7884, FTE=0.55):
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -6475,7 +6430,7 @@ def create_T13_system(size=10, operation_hours=7884, FTE=0.55):
 
 #%% system T14
 
-def create_T14_system(size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FTE=0.85):
+def create_T14_system(size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FOAK=True, FTE=0.85, lifetime=20):
     flowsheet_ID = 'T14'
     
     # clear flowsheet and registry for reloading
@@ -6530,7 +6485,7 @@ def create_T14_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
     
     Pyrolysis = lsu.Pyrolysis(ID='Pyrolysis', ins=(HeatDrying-0, 'diesel_pyrolysis'),
                               outs=('biooil','biochar','pyrogas'),
-                              biooil_distance=refinery_distance, biochar_distance=LA_distance)
+                              biooil_distance=refinery_distance, biochar_distance=LA_distance, FOAK=FOAK)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     Pyrolysis.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
     # biooil replacing crude oil of the same amount of energy
@@ -6539,6 +6494,12 @@ def create_T14_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
     Pyrolysis.outs[0].price = 76.1/_oil_barrel_to_m3/Pyrolysis.crude_oil_density/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV
     # https://cloverly.com/blog/the-ultimate-business-guide-to-biochar-everything-you-need-to-know
     Pyrolysis.outs[1].price = 0.131
+    
+    first_year_factor = Pyrolysis.plant_performance_factor/100
+    
+    performance_factor_list = [min(first_year_factor*(1.2)**i, 1) for i in range(0, lifetime)]
+    
+    operation_hours *= np.mean(performance_factor_list)
     
     GasMixer = qsu.Mixer('GasMixer', ins=(AnaerobicDigestion-1, Pyrolysis-2),
                          outs=('fuel_gas'), init_with='WasteStream')
@@ -6552,6 +6513,8 @@ def create_T14_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
     
+    # treatment of CT residual is not considerd (since it is not in the model)
+    # but ecoinvent has it and indicates it might be disposed of through landfilling
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
     CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
@@ -6601,11 +6564,11 @@ def create_T14_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
     
     def deionized_water_quantity():
         try:
-            # TODO: is there a direct number or a better way for cooling tower chemicals
+            # the cooling_tower_chemicals is a mix of chemicals, therefore, the following approach is used to approximate the CI of the cooling_tower_chemicals
             # assume the ratio between the CI of the cooling_tower_chemicals and the CI of cooling_tower_makeup_water is the same as the ratio of the prices of these two streams
             # note LCA for water_steam, cooling_tower_makeup_water, and cooling_tower_chemicals were included in the 'Other' category while it should be in the 'Stream' category
             # the effect is minimal since (i) this part of LCA is small and (ii) we do not use LCA breakdown results in the HTL geospatial analysis
-            result = (sys.flowsheet.CT.ins[1].F_mass+sys.flowsheet.CT.ins[2].F_mass*1.7842/0.0002)*operation_hours*20
+            result = (sys.flowsheet.CT.ins[1].F_mass+sys.flowsheet.CT.ins[2].F_mass*1.7842/0.0002)*operation_hours*lifetime
         except AttributeError as e:
             if 'no registered item' in str(e) and 'CT' in str(e):
                 result = 0
@@ -6675,12 +6638,12 @@ def create_T14_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
     
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Natural_gas_V=lambda:(sys.flowsheet.HeatDrying.ins[1].F_vol+sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*20,
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Natural_gas_V=lambda:(sys.flowsheet.HeatDrying.ins[1].F_vol+sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*lifetime,
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
            Deionized_water=lambda:deionized_water_quantity())
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
@@ -6690,7 +6653,7 @@ def create_T14_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
@@ -6700,7 +6663,7 @@ def create_T14_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
 
 #%% system T15
 
-def create_T15_system(size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FTE=0.85):
+def create_T15_system(size=10, operation_hours=7884, FOAK=True, FTE=0.85, lifetime=20):
     flowsheet_ID = 'T15'
     
     # clear flowsheet and registry for reloading
@@ -6753,17 +6716,18 @@ def create_T15_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
     HeatDrying.ins[1].price = 0.218
     
-    Gasification = lsu.Gasification(ID='Gasification', ins=(HeatDrying-0, 'diesel_gasification'),
-                                    outs=('tar','biochar','syngas'),
-                                    tar_distance=refinery_distance, biochar_distance=LA_distance)
-    # 2023 weekly average from U.S. EIA: 4.224 $/gallon
-    Gasification.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
-    # tar replacing crude oil of the same amount of energy
-    # TODO: may need update the price to a more general number
-    # 76.1 $/barrel crude oil, U.S. EIA, 2023 monthly average
-    Gasification.outs[0].price = 76.1/_oil_barrel_to_m3/Gasification.crude_oil_density/Gasification.crude_oil_HHV*Gasification.tar_HHV
-    # https://cloverly.com/blog/the-ultimate-business-guide-to-biochar-everything-you-need-to-know
-    Gasification.outs[1].price = 0.131
+    Gasification = lsu.Gasification(ID='Gasification', ins=HeatDrying-0, outs=('tar','ash_gasification','syngas'), FOAK=FOAK)
+    # 300 to 510 $·tonne-1, including removal, transport, and disposal as a Resource Conservation and Recovery Act (RCRA) permitted facility
+    # https://www.profitableventure.com/cost-dispose-hazardous-waste-per-ton/
+    Gasification.outs[0].price = -0.405
+    # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
+    Gasification.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    
+    first_year_factor = Gasification.plant_performance_factor/100
+    
+    performance_factor_list = [min(first_year_factor*(1.2)**i, 1) for i in range(0, lifetime)]
+    
+    operation_hours *= np.mean(performance_factor_list)
     
     GasMixer = qsu.Mixer('GasMixer', ins=(AnaerobicDigestion-1, Gasification-2),
                          outs=('fuel_gas'), init_with='WasteStream')
@@ -6777,6 +6741,8 @@ def create_T15_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
     CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
     
+    # treatment of CT residual is not considerd (since it is not in the model)
+    # but ecoinvent has it and indicates it might be disposed of through landfilling
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
     CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
@@ -6826,11 +6792,11 @@ def create_T15_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
     
     def deionized_water_quantity():
         try:
-            # TODO: is there a direct number or a better way for cooling tower chemicals
+            # the cooling_tower_chemicals is a mix of chemicals, therefore, the following approach is used to approximate the CI of the cooling_tower_chemicals
             # assume the ratio between the CI of the cooling_tower_chemicals and the CI of cooling_tower_makeup_water is the same as the ratio of the prices of these two streams
             # note LCA for water_steam, cooling_tower_makeup_water, and cooling_tower_chemicals were included in the 'Other' category while it should be in the 'Stream' category
             # the effect is minimal since (i) this part of LCA is small and (ii) we do not use LCA breakdown results in the HTL geospatial analysis
-            result = (sys.flowsheet.CT.ins[1].F_mass+sys.flowsheet.CT.ins[2].F_mass*1.7842/0.0002)*operation_hours*20
+            result = (sys.flowsheet.CT.ins[1].F_mass+sys.flowsheet.CT.ins[2].F_mass*1.7842/0.0002)*operation_hours*lifetime
         except AttributeError as e:
             if 'no registered item' in str(e) and 'CT' in str(e):
                 result = 0
@@ -6838,74 +6804,22 @@ def create_T15_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
-    # use market for petroleum to offset transportation and then add the transportation part
-    # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
-    # assume tar is used to produce biofuel for combustion
-    # pertoleum is 84% C, https://en.wikipedia.org/wiki/Petroleum
-    qs.StreamImpactItem(ID='Tar', linked_stream=stream.tar, GlobalWarming=-(0.22290007 + 0.84/12*44)/Gasification.crude_oil_HHV*Gasification.tar_HHV)
+    qs.StreamImpactItem(ID='Tar', linked_stream=stream.tar, GlobalWarming=0.69976007)
+    qs.StreamImpactItem(ID='Ash_gasification', linked_stream=stream.ash_gasification, GlobalWarming=0.0082744841)
     qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.0082744841)
-    # diesel average chemical formula: C12H23
-    # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_gasification', linked_stream=stream.diesel_gasification, GlobalWarming=0.4776041 + 44*12/(12*12 + 23*1))
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
     
-    # carbon sequestration
-    # the following number is consistent with the best guess from Table SI-12 in the SI of https://pubs.acs.org/doi/full/10.1021/acs.est.2c06083 (assuming 60% biochar is C)
-    # directly using biochar, unlike landfilling, land application, and composting which have carbon dioxide as fake streams
-    # carbon sequestration credit: 2 kg CO2 eq/kg dry solids, https://www.bioflux.earth/blog/what-is-biochar-carbon-removal
-    qs.StreamImpactItem(ID='Biochar', linked_stream=stream.biochar, GlobalWarming=-2)
-    
-    tar_trucking = qs.ImpactItem('Tar_trucking', functional_unit='kg*km')
-    # based on one-way distance, empty return trips included
-    tar_trucking.add_indicator(GlobalWarming, 0.13004958/1000)
-    # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), https://doi.org/10.1016/j.biortech.2010.03.136
-    tar_trucking.price = (5.67 + 0.07*Gasification.tar_distance)/Gasification.tar_density/Gasification.tar_distance/GDPCTPI[2008]*GDPCTPI[2023]
-    
-    tar_transportation = qs.Transportation('Tar_transportation',
-                                           linked_unit=Gasification,
-                                           item=tar_trucking,
-                                           load_type='mass',
-                                           load=stream.tar.F_mass,
-                                           load_unit='kg',
-                                           distance=Gasification.tar_distance,
-                                           distance_unit='km',
-                                           # set to 1 h since load = kg/h
-                                           interval='1',
-                                           interval_unit='h')
-    Gasification.transportation.append(tar_transportation)
-    
-    biochar_trucking = qs.ImpactItem('Biochar_trucking', functional_unit='kg*km')
-    # based on one-way distance, empty return trips included
-    biochar_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
-    # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
-    # https://doi.org/10.1016/j.tra.2015.02.001
-    # converted to 2023$/kg/km
-    biochar_trucking.price = (0.00551 + 0.0000541*Gasification.biochar_distance)/Gasification.biochar_distance
-    
-    bioochar_transportation = qs.Transportation('Bioochar_transportation',
-                                                linked_unit=Gasification,
-                                                item=biochar_trucking,
-                                                load_type='mass',
-                                                load=stream.biochar.F_mass,
-                                                load_unit='kg',
-                                                distance=Gasification.biochar_distance,
-                                                distance_unit='km',
-                                                # set to 1 h since load = kg/h
-                                                interval='1',
-                                                interval_unit='h')
-    Gasification.transportation.append(bioochar_transportation)
-    
     # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
     # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
-    qs.LCA(system=sys, lifetime=20, lifetime_unit='yr',
-           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*20,
-           Steam=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if 'steam' in i.ID)),
-           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*20 for i in sys.heat_utilities if i.ID == 'natural_gas')),
-           Natural_gas_V=lambda:(sys.flowsheet.HeatDrying.ins[1].F_vol+sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*20,
-           Cooling=lambda:sys.get_cooling_duty()/1000*20,
+    qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
+           Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
+           Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
+           Natural_gas_E=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if i.ID == 'natural_gas')),
+           Natural_gas_V=lambda:(sys.flowsheet.HeatDrying.ins[1].F_vol+sys.flowsheet.CHP.ins[1].F_vol)*operation_hours*lifetime,
+           Cooling=lambda:sys.get_cooling_duty()/1000*lifetime,
            Deionized_water=lambda:deionized_water_quantity())
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
@@ -6915,7 +6829,7 @@ def create_T15_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
     # TODO: consider adding IRR as a WRRF typology parameter?
     # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
-               duration=(2023, 2043),
+               duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,

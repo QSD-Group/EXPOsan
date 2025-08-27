@@ -81,7 +81,7 @@ typology_keys = list(typology_bounds.keys())
 
 # Latin Hypercube Sampling
 sampler = qmc.LatinHypercube(d=len(typology_keys), seed=3221)
-# TODO: decide the sample size based on the computation requirement
+# TODO: decide the sample size to balance the sample representativeness and the computation burden
 LHS_unit = sampler.random(n=10000)
 
 typology_mins = np.array([typology_bounds[key][0] for key in typology_keys])
@@ -90,6 +90,7 @@ LHS_samples = qmc.scale(LHS_unit, typology_mins, typology_maxs)
 
 typology = {key: LHS_samples[:, i] for i, key in enumerate(typology_keys)}
 
+# the biochemical composition parameters here not only affect HTL/HALT, but other through affecting the volatile solids content
 lipid = typology['solids_afdw_lipid']
 protein = typology['solids_afdw_protein']
 carbohydrate = 1 - lipid - protein
@@ -160,7 +161,20 @@ for function in (create_C1_system, create_C2_system, create_C3_system,
     print(-sys.TEA.solve_price(sys.flowsheet.raw_wastewater)*3785411.78)
     
     TEA_results.append(-sys.TEA.solve_price(sys.flowsheet.raw_wastewater)*3785411.78)
+
+for function in (create_T1_system, create_T2_system, create_T3_system,
+                 create_T4_system, create_T5_system, create_T6_system,
+                 create_T7_system, create_T8_system, create_T9_system,
+                 create_T10_system, create_T11_system, create_T12_system,
+                 create_T13_system, create_T14_system, create_T15_system):
+    sys = function(size=10, FOAK=False)
     
+    print('\n' + sys.ID + ' nth plant')
+    
+    print(-sys.TEA.solve_price(sys.flowsheet.raw_wastewater)*3785411.78)
+    
+    TEA_results.append(-sys.TEA.solve_price(sys.flowsheet.raw_wastewater)*3785411.78)
+
 print(np.quantile(TEA_results[0:25], 0.05))
 print(np.quantile(TEA_results[0:25], 0.5))
 print(np.quantile(TEA_results[0:25], 0.95))
@@ -169,7 +183,11 @@ print(np.quantile(TEA_results[25:40], 0.05))
 print(np.quantile(TEA_results[25:40], 0.5))
 print(np.quantile(TEA_results[25:40], 0.95))
 
-plt.boxplot((TEA_results[0:25], TEA_results[25:40]))
+print(np.quantile(TEA_results[40:55], 0.05))
+print(np.quantile(TEA_results[40:55], 0.5))
+print(np.quantile(TEA_results[40:55], 0.95))
+
+plt.boxplot((TEA_results[0:25], TEA_results[25:40], TEA_results[40:55]), whis=[5, 95], showfliers=False)
 
 #%% preliminary LCA check
 
@@ -199,7 +217,24 @@ for function in (create_C1_system, create_C2_system, create_C3_system,
     LCA_results.append(sys.LCA.get_total_impacts(operation_only=True,
                                                  exclude=(sys.flowsheet.raw_wastewater,),
                                                  annual=True)['GlobalWarming']/sys.flowsheet.raw_wastewater.F_vol/2.3141471786573806)
+
+for function in (create_T1_system, create_T2_system, create_T3_system,
+                 create_T4_system, create_T5_system, create_T6_system,
+                 create_T7_system, create_T8_system, create_T9_system,
+                 create_T10_system, create_T11_system, create_T12_system,
+                 create_T13_system, create_T14_system, create_T15_system):
+    sys = function(size=10, FOAK=False)
     
+    print('\n' + sys.ID + ' nth plant')
+    
+    print(sys.LCA.get_total_impacts(operation_only=True,
+                                                 exclude=(sys.flowsheet.raw_wastewater,),
+                                                 annual=True)['GlobalWarming']/sys.flowsheet.raw_wastewater.F_vol/2.3141471786573806)
+    
+    LCA_results.append(sys.LCA.get_total_impacts(operation_only=True,
+                                                 exclude=(sys.flowsheet.raw_wastewater,),
+                                                 annual=True)['GlobalWarming']/sys.flowsheet.raw_wastewater.F_vol/2.3141471786573806)
+
 print(np.quantile(LCA_results[0:25], 0.05))
 print(np.quantile(LCA_results[0:25], 0.5))
 print(np.quantile(LCA_results[0:25], 0.95))
@@ -208,7 +243,12 @@ print(np.quantile(LCA_results[25:40], 0.05))
 print(np.quantile(LCA_results[25:40], 0.5))
 print(np.quantile(LCA_results[25:40], 0.95))
 
-plt.boxplot((LCA_results[0:25], LCA_results[25:40]))
+print(np.quantile(LCA_results[40:55], 0.05))
+print(np.quantile(LCA_results[40:55], 0.5))
+print(np.quantile(LCA_results[40:55], 0.95))
+
+# TODO: LCA_results[25:40] and LCA_results[40:55] may have differences after the parameter plant_performance_factor is implemented
+plt.boxplot((LCA_results[0:25], LCA_results[25:40], LCA_results[40:55]), whis=[5, 95], showfliers=False)
 
 #%% preliminary TEA and LCA animation
 

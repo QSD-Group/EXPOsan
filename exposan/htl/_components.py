@@ -462,9 +462,8 @@ def create_components(set_thermo=True):
                        particle_size='Soluble', degradability='Slowly',
                        organic=True)
     
-    # TODO: when calculating price using HHV (check if tar is a product or waste or a neutral output), use a separate HHV value but not directly from this Componenet
-    # assume Biooil is the same as Biocrude, use palmitamide to represent both
-    Tar = Component('Tar', search_ID='629-54-9',
+    # use anthracene to represent it
+    Tar = Component('Tar', search_ID='120-12-7',
                     particle_size='Soluble', degradability='Slowly',
                     organic=True)
     

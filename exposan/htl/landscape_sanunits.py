@@ -138,9 +138,7 @@ class WRRF(SanUnit):
     protein_2_N : float
         Protein to nitrogen factor.
     N_2_P : float
-        Nitrogen to phosphorus factor. 
-    operation_hours : float
-        Plant yearly operation hour, [hr/yr].
+        Nitrogen to phosphorus factor.
     sludge_wet_density : float
         The density of sludge of 80% moisture content, [kg/m3].
     sludge_distance : float
@@ -169,19 +167,15 @@ class WRRF(SanUnit):
                  init_with='WasteStream', 
                  ww_2_dry_sludge=1, # [1]
                  sludge_moisture=0.99, sludge_dw_ash=0.257, 
-                 sludge_afdw_lipid=0.204, sludge_afdw_protein=0.463, 
-                 operation_hours=None,
+                 sludge_afdw_lipid=0.204, sludge_afdw_protein=0.463,
                  sludge_wet_density=1040, # [2]
-                 sludge_distance=100,
-                 wage_adjustment=1):
-        
+                 sludge_distance=100, wage_adjustment=1):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.ww_2_dry_sludge = ww_2_dry_sludge
         self.sludge_moisture = sludge_moisture
         self.sludge_dw_ash = sludge_dw_ash
         self.sludge_afdw_lipid = sludge_afdw_lipid
         self.sludge_afdw_protein = sludge_afdw_protein
-        self.operation_hours = operation_hours
         self.sludge_wet_density = sludge_wet_density
         self.sludge_distance = sludge_distance
         self.wage_adjustment = wage_adjustment
@@ -1207,7 +1201,6 @@ class Composting(SanUnit):
         protein to C ratio, [-].
     carbo_2_C : float
         carbohydrate to C ratio, [-].
-    # TODO: what if there is N loss before composting, is protein_2_N here still accurate?
     protein_2_N, float
         N to protein ratio, [-].
     N_2_P, float
@@ -1507,7 +1500,6 @@ class Landfilling(SanUnit):
         protein to C ratio, [-].
     carbo_2_C : float
         carbohydrate to C ratio, [-].
-    # TODO: what if there is N loss before landfilling, is protein_2_N here still accurate?
     protein_2_N, float
         N to protein ratio, [-].
     methane_landfilling_gas : float
@@ -1684,6 +1676,13 @@ class LandApplication(SanUnit):
     application of biosolids, not including the transportation of biosolids
     from the WRRF to the land application site.
     
+    # TODO: discuss with J.S.G.: whehter the CO2 emission from limestone decomposition is fossil-origin; if it is, the following statement is OK; if not, update the specific part of the following statement to 'CO2 emission during limestone decompoistion is considered as biogenic' and also update the CI of 'lime' in landscape_systems.py
+    Carbon debit due to the lime in the wastewater residual solids is not
+    included (CO2 emission during limestone decompoistion is considered in the
+    chemical 'lime' in AlkalineStabilization and any CO2 combined with lime
+    during other processes should be biogenic), while the BEAM model does
+    (though the contribution is limited).
+    
     scope 1 emission: diesel, fugitive methane, fugitive nitrous oxide, carbon sequestration, CaCO3
     scope 2 emission: N/A
     scope 3 emission: nitrogen, phosphorus
@@ -1700,7 +1699,6 @@ class LandApplication(SanUnit):
         protein to C ratio, [-].
     carbo_2_C : float
         carbohydrate to C ratio, [-].
-    # TODO: what if there is N loss before land application, is protein_2_N here still accurate?
     protein_2_N, float
         N to protein ratio, [-].
     N_2_P, float
@@ -2136,7 +2134,6 @@ class HydrothermalLiquefaction(SanUnit):
         protein to H ratio, [-].
     carbo_2_H : float
         carbohydrate to H ratio, [-].
-    # TODO: what if there is N loss before HTL, is protein_2_N here still accurate?
     protein_2_N : float
         N to protein ratio, [-].
     N_2_P : float
@@ -2151,6 +2148,8 @@ class HydrothermalLiquefaction(SanUnit):
         density of biocrude, [kg/m3].
     biocrude_distance : float
         distance between WRRFs and oil refineries, [km].
+    FOAK : bool
+        whether the facility is first-of-a-king, [True, False].
     pctnew : float
         percentage of capital cost of commercially undemonstrated equipment, [%].
     impurities : int (float)
@@ -2213,8 +2212,8 @@ class HydrothermalLiquefaction(SanUnit):
                  # crude oil HHV: https://world-nuclear.org/information-library/facts-and-figures/heat-values-of-various-fuels
                  crude_oil_HHV=44.5,
                  # https://doi.org/10.2172/1897670
-                 biocrude_density=983, biocrude_distance=100, pctnew=41,
-                 impurities=4, complexity=6, inclusiveness=33,
+                 biocrude_density=983, biocrude_distance=100, FOAK=True,
+                 pctnew=41, impurities=4, complexity=6, inclusiveness=33,
                  project_definition=5, newsteps=3, baleqs=0, waste=2,
                  solids_handling=True):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
@@ -2264,6 +2263,7 @@ class HydrothermalLiquefaction(SanUnit):
         self.crude_oil_HHV = crude_oil_HHV
         self.biocrude_density = biocrude_density
         self.biocrude_distance = biocrude_distance
+        self.FOAK = FOAK
         self.pctnew = pctnew
         self.impurities = impurities
         self.complexity = complexity
@@ -2273,6 +2273,11 @@ class HydrothermalLiquefaction(SanUnit):
         self.baleqs = baleqs
         self.waste = waste
         self.solids_handling = solids_handling
+        if self.FOAK:
+            self.plant_performance_factor = 85.77 - 9.69*self.newsteps + 0.33*self.baleqs -\
+                                            4.12*self.waste - 17.91*self.solids_handling
+        else:
+            self.plant_performance_factor = 100
     
     def _run(self):
         dewatered_solids = self.ins[0]
@@ -2347,10 +2352,6 @@ class HydrothermalLiquefaction(SanUnit):
                         self.solids_H - self.solids_N
         self.AOSc = (3*self.solids_N/14.0067 + 2*self.solids_O/15.999 -\
                      self.solids_H/1.00784)/(self.solids_C/12.011)
-        
-        # TODO: adjust the on-steam factor (operation hours)
-        self.plant_performance_factor = 85.77 - 9.69*self.newsteps + 0.33*self.baleqs -\
-                                        4.12*self.waste - 17.91*self.solids_handling
     
     def _design(self):
         D = self.design_results
@@ -2399,9 +2400,12 @@ class HydrothermalLiquefaction(SanUnit):
     def _cost(self):
         self._decorated_cost()
         
-        self.cost_growth_factor = 1.12196 - 0.00297*self.pctnew -\
-                                  0.02125*self.impurities - 0.01137*self.complexity +\
-                                  0.00111*self.inclusiveness - 0.06361*self.project_definition
+        if self.FOAK:
+            self.cost_growth_factor = 1.12196 - 0.00297*self.pctnew -\
+                                      0.02125*self.impurities - 0.01137*self.complexity +\
+                                      0.00111*self.inclusiveness - 0.06361*self.project_definition
+        else:
+            self.cost_growth_factor = 1
         
         for C in [self.baseline_purchase_costs] + [unit.baseline_purchase_costs for unit in self.auxiliary_units]:
             for item in C.keys():
@@ -2534,6 +2538,8 @@ class HydrothermalAlkalineTreatment(SanUnit):
         distance between WRRFs and oil refineries, [km].
     hydrochar_distance : float
         distance between WRRFs and land application sites, [km].
+    FOAK : bool
+        whether the facility is first-of-a-king, [True, False].
     pctnew : float
         percentage of capital cost of commercially undemonstrated equipment, [%].
     impurities : int (float)
@@ -2591,9 +2597,9 @@ class HydrothermalAlkalineTreatment(SanUnit):
                  crude_oil_HHV=44.5,
                  # https://doi.org/10.2172/1897670
                  biocrude_density=983,  biocrude_distance=100,
-                 hydrochar_distance=100, pctnew=55, impurities=5, complexity=7,
-                 inclusiveness=33, project_definition=6, newsteps=5, baleqs=0,
-                 waste=2, solids_handling=True):
+                 hydrochar_distance=100, FOAK=True, pctnew=55, impurities=5,
+                 complexity=7, inclusiveness=33, project_definition=6,
+                 newsteps=5, baleqs=0, waste=2, solids_handling=True):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
         self.NaOH_conc = NaOH_conc
         self.lipid_2_C = lipid_2_C
@@ -2648,6 +2654,7 @@ class HydrothermalAlkalineTreatment(SanUnit):
         self.biocrude_density = biocrude_density
         self.biocrude_distance = biocrude_distance
         self.hydrochar_distance = hydrochar_distance
+        self.FOAK = FOAK
         self.pctnew = pctnew
         self.impurities = impurities
         self.complexity = complexity
@@ -2657,6 +2664,11 @@ class HydrothermalAlkalineTreatment(SanUnit):
         self.baleqs = baleqs
         self.waste = waste
         self.solids_handling = solids_handling
+        if self.FOAK:
+            self.plant_performance_factor = 85.77 - 9.69*self.newsteps + 0.33*self.baleqs -\
+                                            4.12*self.waste - 17.91*self.solids_handling
+        else:
+            self.plant_performance_factor = 100
     
     def _run(self):
         dewatered_solids, sodium_hydroxide, hydrochloric_acid, diesel = self.ins
@@ -2746,10 +2758,6 @@ class HydrothermalAlkalineTreatment(SanUnit):
                         self.solids_H - self.solids_N
         self.AOSc = (3*self.solids_N/14.0067 + 2*self.solids_O/15.999 -\
                      self.solids_H/1.00784)/(self.solids_C/12.011)
-        
-        # TODO: adjust the on-steam factor (operation hours)
-        self.plant_performance_factor = 85.77 - 9.69*self.newsteps + 0.33*self.baleqs -\
-                                        4.12*self.waste - 17.91*self.solids_handling
     
     def _design(self):
         D = self.design_results
@@ -2798,9 +2806,12 @@ class HydrothermalAlkalineTreatment(SanUnit):
     def _cost(self):
         self._decorated_cost()
         
-        self.cost_growth_factor = 1.12196 - 0.00297*self.pctnew -\
-                                  0.02125*self.impurities - 0.01137*self.complexity +\
-                                  0.00111*self.inclusiveness - 0.06361*self.project_definition
+        if self.FOAK:
+            self.cost_growth_factor = 1.12196 - 0.00297*self.pctnew -\
+                                      0.02125*self.impurities - 0.01137*self.complexity +\
+                                      0.00111*self.inclusiveness - 0.06361*self.project_definition
+        else:
+            self.cost_growth_factor = 1
         
         for C in [self.baseline_purchase_costs] + [unit.baseline_purchase_costs for unit in self.auxiliary_units]:
             for item in C.keys():
@@ -2965,6 +2976,8 @@ class CatalyticHydrothermalGasification(SanUnit):
         HTL effluent temperature, [K].
     eff_P : float
         HTL effluent pressure, [Pa].
+    FOAK : bool
+        whether the facility is first-of-a-king, [True, False].
     pctnew : float
         percentage of capital cost of commercially undemonstrated equipment, [%].
     impurities : int (float)
@@ -3011,9 +3024,9 @@ class CatalyticHydrothermalGasification(SanUnit):
                                   'C3H8': 0.030, 'H2': 0.0001},
                  WHSV=3.562, catalyst_lifetime=7920, T=350 + _C_to_K,
                  P=3089.7*_psi_to_Pa, eff_T=60 + _C_to_K,
-                 eff_P=3089.7*_psi_to_Pa, pctnew=50, impurities=4, complexity=6,
-                 inclusiveness=33, project_definition=5, newsteps=4, baleqs=0,
-                 waste=2, solids_handling=False):
+                 eff_P=3089.7*_psi_to_Pa, FOAK=True, pctnew=50, impurities=4,
+                 complexity=6, inclusiveness=33, project_definition=5,
+                 newsteps=4, baleqs=0, waste=2, solids_handling=False):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
         self.gas_C_2_total_C = gas_C_2_total_C
         self.gas_composition = gas_composition
@@ -3037,6 +3050,7 @@ class CatalyticHydrothermalGasification(SanUnit):
         self._eff_at_temp = Stream(f'{ID}_eff_at_temp')
         eff_hx_out = Stream(f'{ID}_eff_hx_out')
         self.eff_hx = HXutility(ID=f'.{ID}_eff_hx', ins=eff_after_hx, outs=eff_hx_out, T=eff_T, rigorous=True)
+        self.FOAK = FOAK
         self.pctnew = pctnew
         self.impurities = impurities
         self.complexity = complexity
@@ -3046,6 +3060,11 @@ class CatalyticHydrothermalGasification(SanUnit):
         self.baleqs = baleqs
         self.waste = waste
         self.solids_handling = solids_handling
+        if self.FOAK:
+            self.plant_performance_factor = 85.77 - 9.69*self.newsteps + 0.33*self.baleqs -\
+                                            4.12*self.waste - 17.91*self.solids_handling
+        else:
+            self.plant_performance_factor = 100
     
     def _run(self):
         chg_in, catalyst_in = self.ins
@@ -3081,10 +3100,6 @@ class CatalyticHydrothermalGasification(SanUnit):
         for attr, val in zip(('T','P'), (self.eff_T, self.eff_P)):
             if val:
                 for i in self.outs: setattr(i, attr, val)
-        
-        # TODO: adjust the on-steam factor (operation hours)
-        self.plant_performance_factor = 85.77 - 9.69*self.newsteps + 0.33*self.baleqs -\
-                                        4.12*self.waste - 17.91*self.solids_handling
     
     def _design(self):
         D = self.design_results
@@ -3133,9 +3148,12 @@ class CatalyticHydrothermalGasification(SanUnit):
     def _cost(self):
         self._decorated_cost()
         
-        self.cost_growth_factor = 1.12196 - 0.00297*self.pctnew -\
-                                  0.02125*self.impurities - 0.01137*self.complexity +\
-                                  0.00111*self.inclusiveness - 0.06361*self.project_definition
+        if self.FOAK:
+            self.cost_growth_factor = 1.12196 - 0.00297*self.pctnew -\
+                                      0.02125*self.impurities - 0.01137*self.complexity +\
+                                      0.00111*self.inclusiveness - 0.06361*self.project_definition
+        else:
+            self.cost_growth_factor = 1
         
         for C in [self.baseline_purchase_costs] + [unit.baseline_purchase_costs for unit in self.auxiliary_units]:
             for item in C.keys():
@@ -3186,9 +3204,9 @@ class Pyrolysis(SanUnit):
     Parameters
     ----------
     ins : iterable
-        dried_solids.
+        dried_solids, diesel.
     outs : iterable
-        biooil, biochar, pyrogas, fugitive_methane, fugitive_nitrous_oxide.
+        biooil, biochar, pyrogas.
     biooil_yield : float
         biooil yield on a dry weight basis, [-].
     pyrogas_yield : float
@@ -3215,6 +3233,8 @@ class Pyrolysis(SanUnit):
         distance between WRRFs and oil refineries, [km].
     biochar_distance : float
         distance between WRRFs and land application sites, [km].
+    FOAK : bool
+        whether the facility is first-of-a-king, [True, False].
     pctnew : float
         percentage of capital cost of commercially undemonstrated equipment, [%].
     impurities : int (float)
@@ -3269,9 +3289,9 @@ class Pyrolysis(SanUnit):
                  biooil_HHV=33.7,
                  # average, https://doi.org/10.1039/D4EW00278D
                  biooil_density=1072.5, biooil_distance=100,
-                 biochar_distance=100, pctnew=19, impurities=4, complexity=6,
-                 inclusiveness=33, project_definition=3, newsteps=2, baleqs=0,
-                 waste=2, solids_handling=True):
+                 biochar_distance=100, FOAK=True, pctnew=19, impurities=4,
+                 complexity=6, inclusiveness=33, project_definition=3,
+                 newsteps=2, baleqs=0, waste=2, solids_handling=True):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
         self.biooil_yield = biooil_yield
         self.pyrogas_yield = pyrogas_yield
@@ -3299,6 +3319,7 @@ class Pyrolysis(SanUnit):
         self.biooil_density = biooil_density
         self.biooil_distance = biooil_distance
         self.biochar_distance = biochar_distance
+        self.FOAK = FOAK
         self.pctnew = pctnew
         self.impurities = impurities
         self.complexity = complexity
@@ -3308,6 +3329,11 @@ class Pyrolysis(SanUnit):
         self.baleqs = baleqs
         self.waste = waste
         self.solids_handling = solids_handling
+        if self.FOAK:
+            self.plant_performance_factor = 85.77 - 9.69*self.newsteps + 0.33*self.baleqs -\
+                                            4.12*self.waste - 17.91*self.solids_handling
+        else:
+            self.plant_performance_factor = 100
     
     def _run(self):
         dried_solids, diesel = self.ins
@@ -3341,10 +3367,6 @@ class Pyrolysis(SanUnit):
         
         for i in self.outs:
             i.T = self.eff_T
-        
-        # TODO: adjust the on-steam factor (operation hours)
-        self.plant_performance_factor = 85.77 - 9.69*self.newsteps + 0.33*self.baleqs -\
-                                        4.12*self.waste - 17.91*self.solids_handling
     
     def _design(self):
         D = self.design_results
@@ -3390,9 +3412,12 @@ class Pyrolysis(SanUnit):
         self.eff_hx.baseline_purchase_costs.clear()
         self._decorated_cost()
         
-        self.cost_growth_factor = 1.12196 - 0.00297*self.pctnew -\
-                                  0.02125*self.impurities - 0.01137*self.complexity +\
-                                  0.00111*self.inclusiveness - 0.04011*self.project_definition
+        if self.FOAK:
+            self.cost_growth_factor = 1.12196 - 0.00297*self.pctnew -\
+                                      0.02125*self.impurities - 0.01137*self.complexity +\
+                                      0.00111*self.inclusiveness - 0.04011*self.project_definition
+        else:
+            self.cost_growth_factor = 1
         
         for C in [self.baseline_purchase_costs] + [unit.baseline_purchase_costs for unit in self.auxiliary_units]:
             for item in C.keys():
@@ -3431,13 +3456,16 @@ class Gasification(SanUnit):
     ins : iterable
         dried_solids.
     outs : iterable
-        biooil, biochar, pyrogas, fugitive_methane, fugitive_nitrous_oxide.
+        tar, ash, syngas.
     VS_to_tar : float
         tar yield from volatile solids, [-].
+        16 datapoints, min: 0.00396, average: 0.0190, max: 0.0319, [2]
     syngas_composition : dict
         syngas composition, [-].
     unit_electricity : float
-        electricity for pyrolysis, [kWh/dry tonne solids].
+        electricity for gasification, [kWh/dry tonne solids].
+        based on [3], average of high-termperature (34.8 MW) and low-termperature
+        (24.4 MW) gasification, 2000 dry tonne/day, 7446 hours/year.
     load_size : float
         size of loads per truck, [m3/load].
     load_frequency : float
@@ -3456,6 +3484,8 @@ class Gasification(SanUnit):
         distance between WRRFs and oil refineries, [km].
     biochar_distance : float
         distance between WRRFs and land application sites, [km].
+    FOAK : bool
+        whether the facility is first-of-a-king, [True, False].
     pctnew : float
         percentage of capital cost of commercially undemonstrated equipment, [%].
     impurities : int (float)
@@ -3480,8 +3510,14 @@ class Gasification(SanUnit):
     [1] Clack, K.; Rajagopal, D.; Hoek, E. M. V. Life Cycle and Techno-Economic
         Assessment of Bioresource Production from Wastewater. npj Clean Water
         2024, 7 (1), 1–17. https://doi.org/10.1038/s41545-024-00314-9.
+    [2] Adegoroye, A.; Paterson, N.; Li, X.; Morgan, T.; Herod, A. A.; Dugwell, D. R.;
+        Kandiyoti, R. The Characterisation of Tars Produced during the Gasification of
+        Sewage Sludge in a Spouted Bed Reactor. Fuel 2004, 83 (14), 1949–1960.
+        https://doi.org/10.1016/j.fuel.2004.04.006.
+    [3] Swanson, R. M.; Platon, A.; Satrio, J. A.; Brown, R. C.; Hsu, D. D.
+        Techno-Economic Analysis of Biofuels Production Based on Gasification; 2010.
     '''
-    _N_ins = 2
+    _N_ins = 1
     _N_outs = 3
     
     _units= {'Half dry mass flowrate':'tonne/day'}
@@ -3489,24 +3525,12 @@ class Gasification(SanUnit):
     auxiliary_unit_names = ('hx','inf_hx','eff_hx')
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='WasteStream', lifetime=20,
-                 # TODO: if there is data, replace 0.1 with citations
-                 VS_to_tar=0.1,
+                 init_with='WasteStream', lifetime=20, VS_to_tar=0.0190,
                  syngas_composition={'H2': 0.04, 'CH4': 0.02, 'CO': 0.58, 'CO2': 0.36},
-                 # TODO: this is for pyrolysis, gasification may have a higher value
-                 unit_electricity=123.424, T=900 + _C_to_K, eff_T=60 + _C_to_K,
-                 load_size=13, load_frequency=3, tractor_fuel=25,
-                 # https://www.transmountain.com/about-petroleum-liquids (accessed 2025-02-05)
-                 crude_oil_density=850,
-                 # crude oil HHV: https://world-nuclear.org/information-library/facts-and-figures/heat-values-of-various-fuels
-                 crude_oil_HHV=44.5,
-                 # TODO: assume to be the same as biooil from pyrolysis for now, update with citations
-                 tar_HHV=33.7,
-                 # TODO: assume to be the same as biooil from pyrolysis for now, update with citations 
-                 tar_density=1072.5, tar_distance=100, biochar_distance=100,
-                 pctnew=19, impurities=4, complexity=6, inclusiveness=33,
-                 project_definition=3, newsteps=2, baleqs=0, waste=2,
-                 solids_handling=True):
+                 unit_electricity=301.92, T=900 + _C_to_K, eff_T=60 + _C_to_K,
+                 FOAK=True, pctnew=19, impurities=4, complexity=6,
+                 inclusiveness=33, project_definition=3, newsteps=2, baleqs=0,
+                 waste=2, solids_handling=True):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
         self.VS_to_tar = VS_to_tar
         self.syngas_composition = syngas_composition
@@ -3524,15 +3548,7 @@ class Gasification(SanUnit):
         self._eff_at_temp = Stream(f'{ID}_eff_at_temp')
         eff_hx_out = Stream(f'{ID}_eff_hx_out')
         self.eff_hx = HXutility(ID=f'.{ID}_eff_hx', ins=eff_after_hx, outs=eff_hx_out, T=eff_T, rigorous=True)
-        self.load_size = load_size
-        self.load_frequency = load_frequency
-        self.tractor_fuel = tractor_fuel
-        self.crude_oil_density = crude_oil_density
-        self.crude_oil_HHV = crude_oil_HHV
-        self.tar_HHV = tar_HHV
-        self.tar_density = tar_density
-        self.tar_distance = tar_distance
-        self.biochar_distance = biochar_distance
+        self.FOAK = FOAK
         self.pctnew = pctnew
         self.impurities = impurities
         self.complexity = complexity
@@ -3542,27 +3558,27 @@ class Gasification(SanUnit):
         self.baleqs = baleqs
         self.waste = waste
         self.solids_handling = solids_handling
+        if self.FOAK:
+            self.plant_performance_factor = 85.77 - 9.69*self.newsteps + 0.33*self.baleqs -\
+                                            4.12*self.waste - 17.91*self.solids_handling
+        else:
+            self.plant_performance_factor = 100
     
     def _run(self):
-        # TODO: but may need a blower? (the cost may also be included; electricity may not)
-        # TODO: add an air stream (is using free air, may not need this stream)
-        dried_solids, diesel = self.ins
-        tar, biochar, syngas = self.outs
+        dried_solids = self.ins[0]
+        tar, ash, syngas = self.outs
         
         tar.phase = 'l'
-        biochar.phase = 's'
+        ash.phase = 's'
         syngas.phase = 'g'
-        
-        # this just includes the land application onsite spreading and does not include the transporation from WRRFs to land application sites
-        diesel.imass['Diesel'] = (self.ins[0].F_vol/self.load_size/self.load_frequency*self.tractor_fuel)/1000*diesel_density
         
         # dry tonne/h
         self.dry_solids = (dried_solids.F_mass - dried_solids.imass['H2O'])/1000
         
-        # TODO: not reasonable, consider add parameters for yields like what have been done for pyrolysis
-        biochar.imass['Biochar'] = dried_solids.imass['Sludge_ash']
+        ash.imass['Sludge_ash'] = dried_solids.imass['Sludge_ash']
         
         VS = dried_solids.F_mass - dried_solids.imass['H2O'] - dried_solids.imass['Sludge_ash']
+        
         tar.imass['Tar'] = VS*self.VS_to_tar
         
         gas_mass_flow = VS*(1 - self.VS_to_tar)
@@ -3579,10 +3595,6 @@ class Gasification(SanUnit):
         
         for i in self.outs:
             i.T = self.eff_T
-        
-        # TODO: adjust the on-steam factor (operation hours)
-        self.plant_performance_factor = 85.77 - 9.69*self.newsteps + 0.33*self.baleqs -\
-                                        4.12*self.waste - 17.91*self.solids_handling
     
     def _design(self):
         D = self.design_results
@@ -3628,9 +3640,12 @@ class Gasification(SanUnit):
         self.eff_hx.baseline_purchase_costs.clear()
         self._decorated_cost()
         
-        self.cost_growth_factor = 1.12196 - 0.00297*self.pctnew -\
-                                  0.02125*self.impurities - 0.01137*self.complexity +\
-                                  0.00111*self.inclusiveness - 0.04011*self.project_definition
+        if self.FOAK:
+            self.cost_growth_factor = 1.12196 - 0.00297*self.pctnew -\
+                                      0.02125*self.impurities - 0.01137*self.complexity +\
+                                      0.00111*self.inclusiveness - 0.04011*self.project_definition
+        else:
+            self.cost_growth_factor = 1
         
         for C in [self.baseline_purchase_costs] + [unit.baseline_purchase_costs for unit in self.auxiliary_units]:
             for item in C.keys():
@@ -3681,6 +3696,8 @@ class SupercriticalWaterOxidation(SanUnit):
         SCWO effluent temperature, [K].
     eff_P : float
         SCWO effluent pressure, [Pa].
+    FOAK : bool
+        whether the facility is first-of-a-king, [True, False].
     pctnew : float
         percentage of capital cost of commercially undemonstrated equipment, [%].
     impurities : int (float)
@@ -3724,7 +3741,7 @@ class SupercriticalWaterOxidation(SanUnit):
                  # T and P, [2]
                  T=550 + _C_to_K, P=3e7,
                  # assume to be the same as HTL
-                 eff_T=60 + _C_to_K, eff_P=30*_psi_to_Pa, pctnew=50,
+                 eff_T=60 + _C_to_K, eff_P=30*_psi_to_Pa, FOAK=True, pctnew=50,
                  impurities=5, complexity=6, inclusiveness=33,
                  project_definition=5, newsteps=4, baleqs=0, waste=2,
                  solids_handling=True):
@@ -3750,6 +3767,7 @@ class SupercriticalWaterOxidation(SanUnit):
         self._eff_at_temp = Stream(f'{ID}_eff_at_temp')
         eff_hx_out = Stream(f'{ID}_eff_hx_out')
         self.eff_hx = HXutility(ID=f'.{ID}_eff_hx', ins=eff_after_hx, outs=eff_hx_out, T=eff_T, rigorous=True)
+        self.FOAK = FOAK
         self.pctnew = pctnew
         self.impurities = impurities
         self.complexity = complexity
@@ -3759,6 +3777,11 @@ class SupercriticalWaterOxidation(SanUnit):
         self.baleqs = baleqs
         self.waste = waste
         self.solids_handling = solids_handling
+        if self.FOAK:
+            self.plant_performance_factor = 85.77 - 9.69*self.newsteps + 0.33*self.baleqs -\
+                                            4.12*self.waste - 17.91*self.solids_handling
+        else:
+            self.plant_performance_factor = 100
     
     def _run(self):
         dewatered_solids = self.ins[0]
@@ -3787,10 +3810,6 @@ class SupercriticalWaterOxidation(SanUnit):
         for attr, val in zip(('T','P'), (self.eff_T, self.eff_P)):
             if val:
                 for i in self.outs: setattr(i, attr, val)
-        
-        # TODO: adjust the on-steam factor (operation hours)
-        self.plant_performance_factor = 85.77 - 9.69*self.newsteps + 0.33*self.baleqs -\
-                                        4.12*self.waste - 17.91*self.solids_handling
     
     def _design(self):
         D = self.design_results
@@ -3841,9 +3860,12 @@ class SupercriticalWaterOxidation(SanUnit):
         self.eff_hx.baseline_purchase_costs.clear()
         self._decorated_cost()
         
-        self.cost_growth_factor = 1.12196 - 0.00297*self.pctnew -\
-                                  0.02125*self.impurities - 0.01137*self.complexity +\
-                                  0.00111*self.inclusiveness - 0.06361*self.project_definition
+        if self.FOAK:
+            self.cost_growth_factor = 1.12196 - 0.00297*self.pctnew -\
+                                      0.02125*self.impurities - 0.01137*self.complexity +\
+                                      0.00111*self.inclusiveness - 0.06361*self.project_definition
+        else:
+            self.cost_growth_factor = 1
         
         for C in [self.baseline_purchase_costs] + [unit.baseline_purchase_costs for unit in self.auxiliary_units]:
             for item in C.keys():
