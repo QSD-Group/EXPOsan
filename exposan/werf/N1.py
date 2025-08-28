@@ -51,7 +51,7 @@ def create_n1_system(flowsheet=None, default_init_conds=True):
     #     )
     rww = default_rww()
     carb = WasteStream('carbon', T=Temp, units='kg/hr', 
-                       S_A=130) # how much it takes to reduce eff TP to <= 2 mg/L
+                       S_A=122) # how much it takes to reduce eff TP to <= 2 mg/L
     thermo_asm = qs.get_thermo()
     
     PC = su.PrimaryClarifier(
@@ -64,8 +64,8 @@ def create_n1_system(flowsheet=None, default_init_conds=True):
     
     n_zones = 5
     V_tot = 2.61 * MGD2cmd
-    # fr_V = [0.12, 0.18, 0.24, 0.24, 0.18, 0.04]
-    fr_V = [0.14, 0.16, 0.24, 0.24, 0.18, 0.04]     # larger anaerobic zone seems better for EBPR
+    fr_V = [0.12, 0.18, 0.24, 0.24, 0.18, 0.04]
+    # fr_V = [0.14, 0.16, 0.24, 0.24, 0.18, 0.04]     # larger anaerobic zone seems better for EBPR
     Vs = [V_tot*f for f in fr_V]
     Q_was = 0.17 * MGD2cmd
     Q_intr = 40 * MGD2cmd
@@ -81,12 +81,12 @@ def create_n1_system(flowsheet=None, default_init_conds=True):
             ],
         internal_recycles=[
             (1,0,10*MGD2cmd), 
-            # (3,1,40*MGD2cmd)],
-            (3,1,30*MGD2cmd)],    # lower NOx recirculation seems better for EBPR
+            (3,1,40*MGD2cmd)],
+            # (3,1,30*MGD2cmd)],    # lower NOx recirculation seems better for EBPR
         DO_ID='S_O2',
         kLa=[0, 0, 50, 50, 0], 
-        # DO_setpoints=[0, 0, 3.0, 3.0, 0],
-        DO_setpoints=[0, 0, 2.0, 1.0, 0],
+        DO_setpoints=[0, 0, 3.0, 3.0, 0],
+        # DO_setpoints=[0, 0, 2.0, 1.0, 0],
         suspended_growth_model=asm,
         gas_stripping=True
         )
@@ -111,7 +111,7 @@ def create_n1_system(flowsheet=None, default_init_conds=True):
     
     GT = su.IdealClarifier(
         'GT', ins=[PC-1, S1-1], outs=['', 'thickened_sludge'],
-        sludge_flow_rate=0.0506*MGD2cmd,     # aim for 5% TS
+        sludge_flow_rate=0.0475*MGD2cmd,     # aim for 5% TS
         solids_removal_efficiency=0.85
         )
 
@@ -136,7 +136,7 @@ def create_n1_system(flowsheet=None, default_init_conds=True):
 
     DW = su.IdealClarifier(
         'DW', J2-0, outs=('', 'cake'),
-        sludge_flow_rate=0.00703*MGD2cmd,   # aim for 18% TS
+        sludge_flow_rate=0.0069*MGD2cmd,   # aim for 18% TS
         solids_removal_efficiency=0.9
         )
     MX = su.Mixer('MX', ins=[GT-0, DW-0])

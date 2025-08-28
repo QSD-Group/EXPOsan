@@ -58,8 +58,8 @@ def create_n2_system(flowsheet=None, default_init_conds=True):
     V_tot = 2.61 * MGD2cmd
     fr_V = [0.12, 0.18, 0.24, 0.24, 0.18, 0.04]
     Vs = [V_tot*f for f in fr_V]
-    # Q_was = 0.17 * MGD2cmd      # SRT = 10.71 d
-    Q_was = 0.25 * MGD2cmd   # shorter SRT seems better for EBPR
+    Q_was = 0.17 * MGD2cmd      # SRT = 10.71 d
+    # Q_was = 0.25 * MGD2cmd   # shorter SRT seems better for EBPR
     Q_intr = 40 * MGD2cmd
     
     ASR = su.PFR(
@@ -77,8 +77,8 @@ def create_n2_system(flowsheet=None, default_init_conds=True):
             (3,1,20*MGD2cmd)], 
         DO_ID='S_O2',
         kLa=[0, 0, 50, 50, 0], 
-        # DO_setpoints=[0, 0, 3.0, 3.0, 0],
-        DO_setpoints=[0, 0, 2.0, 1.0, 0],   # lower DO setpoints seems better for P removal
+        DO_setpoints=[0, 0, 3.0, 3.0, 0],
+        # DO_setpoints=[0, 0, 2.0, 1.0, 0],   # lower DO setpoints seems better for P removal
         suspended_growth_model=asm,
         gas_stripping=True
         )
@@ -101,14 +101,14 @@ def create_n2_system(flowsheet=None, default_init_conds=True):
         
     MT = su.IdealClarifier(
         'MT', S1-1, outs=['', 'thickened_WAS'],
-        sludge_flow_rate=0.0413*MGD2cmd,    # aim for 5% TS
+        sludge_flow_rate=0.0379*MGD2cmd,    # aim for 5% TS
         solids_removal_efficiency=0.95
         )
     
     #!!! AED seems to significantly increase the NO3- concentrations in reject 
     # -- mixed RWW and reject water has a 4-5 mg/L S_NO3, could be why EBPR is failing?
     asm2 = pc.mASM2d(electron_acceptor_dependent_decay=True, b_PP=0.05, q_PHA=6.0,
-                     mmp_kinetics='KM', pH_ctrl=5.6)
+                     mmp_kinetics='KM', pH_ctrl=6.0)
     AED = su.AerobicDigester(
         'AED', ins=MT-1, outs='digestate',
         V_max=2.4*MGD2cmd, activated_sludge_model=asm2,
@@ -116,7 +116,7 @@ def create_n2_system(flowsheet=None, default_init_conds=True):
 
     DW = su.IdealClarifier(
         'DW', AED-0, outs=('', 'cake'),
-        sludge_flow_rate=0.00363*MGD2cmd,    # aim for 17% TS
+        sludge_flow_rate=0.00342*MGD2cmd,    # aim for 17% TS
         solids_removal_efficiency=0.9
         )
     MX = su.Mixer('MX', ins=[MT-0, DW-0])
