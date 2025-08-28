@@ -19,6 +19,16 @@ for license details.
 # TODO: need to decide how to integrate the following TODO into the roadmap analysis
 # TODO: consider update TEA parameters for pioneer T systems based on the suggestions in Poddar, T. K.; Scown, C. D. Technoeconomic Analysis for Near-Term Scale-up of Bioprocesses. Current Opinion in Biotechnology 2025, 92, 103258. https://doi.org/10.1016/j.copbio.2025.103258
 
+# TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
+
+# TODO: https://www.globalpetrolprices.com/electricity_prices/ also has prices for electricty, diesel, natural gas, etc.
+# TODO: make sure to use the price for the industrial sector
+# TODO: 0.16 is the median electricity of of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
+
+# TODO: check all parameters in TEA, especially the ones listed here
+# TODO: consider adding IRR as a WRRF typology parameter?
+# TODO: income tax may be found in Steward et al. ES&T, 2023
+
 #%% initialization
 
 import numpy as np, qsdsan as qs, biosteam as bst
@@ -124,9 +134,6 @@ def create_C1_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: https://www.globalpetrolprices.com/electricity_prices/ also has prices for electricty, diesel, natural gas, etc.
-    # TODO: make sure to use the price for the industrial sector
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -223,8 +230,6 @@ def create_C1_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
                                               interval_unit='h')
     Landfilling.transportation.append(sludge_transportation)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production()-sys.flowsheet.Landfilling.electricity_kW*operation_hours)*lifetime,
            Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
@@ -234,9 +239,6 @@ def create_C1_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -259,7 +261,6 @@ def create_C2_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -362,8 +363,6 @@ def create_C2_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
                                               interval_unit='h')
     Landfilling.transportation.append(sludge_transportation)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production()-sys.flowsheet.Landfilling.electricity_kW*operation_hours)*lifetime,
            Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
@@ -373,9 +372,6 @@ def create_C2_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -398,7 +394,6 @@ def create_C3_system(size=10, operation_hours=7884, LA_distance=100, biosolids_p
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -512,8 +507,6 @@ def create_C3_system(size=10, operation_hours=7884, LA_distance=100, biosolids_p
                                                  interval_unit='h')
     LandApplication.transportation.append(biosolids_transportation)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            N_fertilizer=lambda:sys.flowsheet.LandApplication.nitrogen_mass_flow*operation_hours*lifetime,
            P_fertilizer=lambda:sys.flowsheet.LandApplication.phosphorus_mass_flow*operation_hours*lifetime,
@@ -525,9 +518,6 @@ def create_C3_system(size=10, operation_hours=7884, LA_distance=100, biosolids_p
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -550,7 +540,6 @@ def create_C4_system(size=10, operation_hours=7884, LA_distance=100, compost_pri
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -661,8 +650,6 @@ def create_C4_system(size=10, operation_hours=7884, LA_distance=100, compost_pri
                                                interval_unit='h')
     Composting.transportation.append(compost_transportation)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Bulking_agent=lambda:sys.flowsheet.Composting.ins[1].imass['Sawdust']*operation_hours*lifetime,
            N_fertilizer=lambda:sys.flowsheet.Composting.nitrogen_mass_flow*operation_hours*lifetime,
@@ -675,9 +662,6 @@ def create_C4_system(size=10, operation_hours=7884, LA_distance=100, compost_pri
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -700,7 +684,6 @@ def create_C5_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -805,8 +788,6 @@ def create_C5_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
                                               interval_unit='h')
     Landfilling.transportation.append(sludge_transportation)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production()-sys.flowsheet.Landfilling.electricity_kW*operation_hours)*lifetime,
            Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
@@ -817,9 +798,6 @@ def create_C5_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -842,7 +820,6 @@ def create_C6_system(size=10, operation_hours=7884, LA_distance=100, biosolids_p
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -958,8 +935,6 @@ def create_C6_system(size=10, operation_hours=7884, LA_distance=100, biosolids_p
                                                  interval_unit='h')
     LandApplication.transportation.append(biosolids_transportation)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            N_fertilizer=lambda:sys.flowsheet.LandApplication.nitrogen_mass_flow*operation_hours*lifetime,
            P_fertilizer=lambda:sys.flowsheet.LandApplication.phosphorus_mass_flow*operation_hours*lifetime,
@@ -972,9 +947,6 @@ def create_C6_system(size=10, operation_hours=7884, LA_distance=100, biosolids_p
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -997,7 +969,6 @@ def create_C7_system(size=10, operation_hours=7884, FTE=0.4, lifetime=20):
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -1080,8 +1051,6 @@ def create_C7_system(size=10, operation_hours=7884, FTE=0.4, lifetime=20):
     qs.StreamImpactItem(ID='Methane_IN', linked_stream=stream.methane_IN, GlobalWarming=29.8)
     qs.StreamImpactItem(ID='Nitrous_oxide_IN', linked_stream=stream.nitrous_oxide_IN, GlobalWarming=273)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
            Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
@@ -1092,9 +1061,6 @@ def create_C7_system(size=10, operation_hours=7884, FTE=0.4, lifetime=20):
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -1117,7 +1083,6 @@ def create_C8_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -1216,8 +1181,6 @@ def create_C8_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
                                               interval_unit='h')
     Landfilling.transportation.append(sludge_transportation)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production()-sys.flowsheet.Landfilling.electricity_kW*operation_hours)*lifetime,
            Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
@@ -1227,9 +1190,6 @@ def create_C8_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -1252,7 +1212,6 @@ def create_C9_system(size=10, operation_hours=7884, LA_distance=100, biosolids_p
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -1362,8 +1321,6 @@ def create_C9_system(size=10, operation_hours=7884, LA_distance=100, biosolids_p
                                                  interval_unit='h')
     LandApplication.transportation.append(biosolids_transportation)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            N_fertilizer=lambda:sys.flowsheet.LandApplication.nitrogen_mass_flow*operation_hours*lifetime,
            P_fertilizer=lambda:sys.flowsheet.LandApplication.phosphorus_mass_flow*operation_hours*lifetime,
@@ -1375,9 +1332,6 @@ def create_C9_system(size=10, operation_hours=7884, LA_distance=100, biosolids_p
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -1400,7 +1354,6 @@ def create_C10_system(size=10, operation_hours=7884, LA_distance=100, compost_pr
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -1514,8 +1467,6 @@ def create_C10_system(size=10, operation_hours=7884, LA_distance=100, compost_pr
                                                interval_unit='h')
     Composting.transportation.append(compost_transportation)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Bulking_agent=lambda:sys.flowsheet.Composting.ins[1].imass['Sawdust']*operation_hours*lifetime,
            N_fertilizer=lambda:sys.flowsheet.Composting.nitrogen_mass_flow*operation_hours*lifetime,
@@ -1528,9 +1479,6 @@ def create_C10_system(size=10, operation_hours=7884, LA_distance=100, compost_pr
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -1553,7 +1501,6 @@ def create_C11_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -1661,8 +1608,6 @@ def create_C11_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
                                               interval_unit='h')
     Landfilling.transportation.append(sludge_transportation)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production()-sys.flowsheet.Landfilling.electricity_kW*operation_hours)*lifetime,
            Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
@@ -1673,9 +1618,6 @@ def create_C11_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -1698,7 +1640,6 @@ def create_C12_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -1817,8 +1758,6 @@ def create_C12_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
                                                  interval_unit='h')
     LandApplication.transportation.append(biosolids_transportation)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            N_fertilizer=lambda:sys.flowsheet.LandApplication.nitrogen_mass_flow*operation_hours*lifetime,
            P_fertilizer=lambda:sys.flowsheet.LandApplication.phosphorus_mass_flow*operation_hours*lifetime,
@@ -1831,9 +1770,6 @@ def create_C12_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -1856,7 +1792,6 @@ def create_C13_system(size=10, operation_hours=7884, FTE=0.55, lifetime=20):
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -1942,8 +1877,6 @@ def create_C13_system(size=10, operation_hours=7884, FTE=0.55, lifetime=20):
     qs.StreamImpactItem(ID='Methane_IN', linked_stream=stream.methane_IN, GlobalWarming=29.8)
     qs.StreamImpactItem(ID='Nitrous_oxide_IN', linked_stream=stream.nitrous_oxide_IN, GlobalWarming=273)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
            Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
@@ -1954,9 +1887,6 @@ def create_C13_system(size=10, operation_hours=7884, FTE=0.55, lifetime=20):
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -1979,7 +1909,6 @@ def create_C14_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -2086,8 +2015,6 @@ def create_C14_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
                                               interval_unit='h')
     Landfilling.transportation.append(sludge_transportation)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production()-sys.flowsheet.Landfilling.electricity_kW*operation_hours)*lifetime,
            Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
@@ -2098,9 +2025,6 @@ def create_C14_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -2123,7 +2047,6 @@ def create_C15_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -2241,8 +2164,6 @@ def create_C15_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
                                                  interval_unit='h')
     LandApplication.transportation.append(biosolids_transportation)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            N_fertilizer=lambda:sys.flowsheet.LandApplication.nitrogen_mass_flow*operation_hours*lifetime,
            P_fertilizer=lambda:sys.flowsheet.LandApplication.phosphorus_mass_flow*operation_hours*lifetime,
@@ -2255,9 +2176,6 @@ def create_C15_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -2280,7 +2198,6 @@ def create_C16_system(size=10, operation_hours=7884, LA_distance=100, compost_pr
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -2402,8 +2319,6 @@ def create_C16_system(size=10, operation_hours=7884, LA_distance=100, compost_pr
                                                interval_unit='h')
     Composting.transportation.append(compost_transportation)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Bulking_agent=lambda:sys.flowsheet.Composting.ins[1].imass['Sawdust']*operation_hours*lifetime,
            N_fertilizer=lambda:sys.flowsheet.Composting.nitrogen_mass_flow*operation_hours*lifetime,
@@ -2417,9 +2332,6 @@ def create_C16_system(size=10, operation_hours=7884, LA_distance=100, compost_pr
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -2442,7 +2354,6 @@ def create_C17_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -2555,8 +2466,6 @@ def create_C17_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
                                               interval_unit='h')
     Landfilling.transportation.append(sludge_transportation)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production()-sys.flowsheet.Landfilling.electricity_kW*operation_hours)*lifetime,
            Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
@@ -2567,9 +2476,6 @@ def create_C17_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -2592,7 +2498,6 @@ def create_C18_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -2716,8 +2621,6 @@ def create_C18_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
                                                  interval_unit='h')
     LandApplication.transportation.append(biosolids_transportation)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            N_fertilizer=lambda:sys.flowsheet.LandApplication.nitrogen_mass_flow*operation_hours*lifetime,
            P_fertilizer=lambda:sys.flowsheet.LandApplication.phosphorus_mass_flow*operation_hours*lifetime,
@@ -2730,9 +2633,6 @@ def create_C18_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -2755,7 +2655,6 @@ def create_C19_system(size=10, operation_hours=7884, FTE=0.55, lifetime=20):
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -2846,8 +2745,6 @@ def create_C19_system(size=10, operation_hours=7884, FTE=0.55, lifetime=20):
     qs.StreamImpactItem(ID='Methane_IN', linked_stream=stream.methane_IN, GlobalWarming=29.8)
     qs.StreamImpactItem(ID='Nitrous_oxide_IN', linked_stream=stream.nitrous_oxide_IN, GlobalWarming=273)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
            Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
@@ -2858,9 +2755,6 @@ def create_C19_system(size=10, operation_hours=7884, FTE=0.55, lifetime=20):
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -2883,7 +2777,6 @@ def create_C20_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -2997,8 +2890,6 @@ def create_C20_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
                                               interval_unit='h')
     Landfilling.transportation.append(sludge_transportation)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production()-sys.flowsheet.Landfilling.electricity_kW*operation_hours)*lifetime,
            Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
@@ -3009,9 +2900,6 @@ def create_C20_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -3034,7 +2922,6 @@ def create_C21_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -3159,8 +3046,6 @@ def create_C21_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
                                                  interval_unit='h')
     LandApplication.transportation.append(biosolids_transportation)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            N_fertilizer=lambda:sys.flowsheet.LandApplication.nitrogen_mass_flow*operation_hours*lifetime,
            P_fertilizer=lambda:sys.flowsheet.LandApplication.phosphorus_mass_flow*operation_hours*lifetime,
@@ -3173,9 +3058,6 @@ def create_C21_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -3198,7 +3080,6 @@ def create_C22_system(size=10, operation_hours=7884, LA_distance=100, compost_pr
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -3327,8 +3208,6 @@ def create_C22_system(size=10, operation_hours=7884, LA_distance=100, compost_pr
                                                interval_unit='h')
     Composting.transportation.append(compost_transportation)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Bulking_agent=lambda:sys.flowsheet.Composting.ins[1].imass['Sawdust']*operation_hours*lifetime,
            N_fertilizer=lambda:sys.flowsheet.Composting.nitrogen_mass_flow*operation_hours*lifetime,
@@ -3342,9 +3221,6 @@ def create_C22_system(size=10, operation_hours=7884, LA_distance=100, compost_pr
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -3367,7 +3243,6 @@ def create_C23_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -3487,8 +3362,6 @@ def create_C23_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
                                               interval_unit='h')
     Landfilling.transportation.append(sludge_transportation)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production()-sys.flowsheet.Landfilling.electricity_kW*operation_hours)*lifetime,
            Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
@@ -3499,9 +3372,6 @@ def create_C23_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -3524,7 +3394,6 @@ def create_C24_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -3655,8 +3524,6 @@ def create_C24_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
                                                  interval_unit='h')
     LandApplication.transportation.append(biosolids_transportation)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            N_fertilizer=lambda:sys.flowsheet.LandApplication.nitrogen_mass_flow*operation_hours*lifetime,
            P_fertilizer=lambda:sys.flowsheet.LandApplication.phosphorus_mass_flow*operation_hours*lifetime,
@@ -3669,9 +3536,6 @@ def create_C24_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -3694,7 +3558,6 @@ def create_C25_system(size=10, operation_hours=7884, FTE=0.7, lifetime=20):
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -3792,8 +3655,6 @@ def create_C25_system(size=10, operation_hours=7884, FTE=0.7, lifetime=20):
     qs.StreamImpactItem(ID='Methane_IN', linked_stream=stream.methane_IN, GlobalWarming=29.8)
     qs.StreamImpactItem(ID='Nitrous_oxide_IN', linked_stream=stream.nitrous_oxide_IN, GlobalWarming=273)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
            Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
@@ -3804,9 +3665,6 @@ def create_C25_system(size=10, operation_hours=7884, FTE=0.7, lifetime=20):
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -3829,7 +3687,6 @@ def create_T1_system(size=10, operation_hours=7884, refinery_distance=100, FOAK=
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -3999,8 +3856,6 @@ def create_T1_system(size=10, operation_hours=7884, refinery_distance=100, FOAK=
                                                 interval_unit='h')
     HTL.transportation.append(biocrude_transportation)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
            Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
@@ -4012,9 +3867,6 @@ def create_T1_system(size=10, operation_hours=7884, refinery_distance=100, FOAK=
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -4037,7 +3889,6 @@ def create_T2_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -4242,8 +4093,6 @@ def create_T2_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
                                                  interval_unit='h')
     HALT.transportation.append(hydrochar_transportation)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
            Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
@@ -4255,9 +4104,6 @@ def create_T2_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -4280,7 +4126,6 @@ def create_T3_system(size=10, operation_hours=7884, FOAK=True, FTE=0.4, lifetime
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -4387,8 +4232,6 @@ def create_T3_system(size=10, operation_hours=7884, FOAK=True, FTE=0.4, lifetime
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
            Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
@@ -4399,9 +4242,6 @@ def create_T3_system(size=10, operation_hours=7884, FOAK=True, FTE=0.4, lifetime
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -4424,7 +4264,6 @@ def create_T4_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -4611,8 +4450,6 @@ def create_T4_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
                                                 interval_unit='h')
     Pyrolysis.transportation.append(bioochar_transportation)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
            Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
@@ -4624,9 +4461,6 @@ def create_T4_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -4649,7 +4483,6 @@ def create_T5_system(size=10, operation_hours=7884, FOAK=True, FTE=0.7, lifetime
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -4779,8 +4612,6 @@ def create_T5_system(size=10, operation_hours=7884, FOAK=True, FTE=0.7, lifetime
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
            Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
@@ -4792,9 +4623,6 @@ def create_T5_system(size=10, operation_hours=7884, FOAK=True, FTE=0.7, lifetime
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -4817,7 +4645,6 @@ def create_T6_system(size=10, operation_hours=7884, refinery_distance=100, FOAK=
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -4989,8 +4816,6 @@ def create_T6_system(size=10, operation_hours=7884, refinery_distance=100, FOAK=
                                                 interval_unit='h')
     HTL.transportation.append(biocrude_transportation)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
            Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
@@ -5002,9 +4827,6 @@ def create_T6_system(size=10, operation_hours=7884, refinery_distance=100, FOAK=
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -5027,7 +4849,6 @@ def create_T7_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -5234,8 +5055,6 @@ def create_T7_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
                                                  interval_unit='h')
     HALT.transportation.append(hydrochar_transportation)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
            Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
@@ -5247,9 +5066,6 @@ def create_T7_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -5272,7 +5088,6 @@ def create_T8_system(size=10, operation_hours=7884, FOAK=True, FTE=0.55, lifetim
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -5382,8 +5197,6 @@ def create_T8_system(size=10, operation_hours=7884, FOAK=True, FTE=0.55, lifetim
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
            Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
@@ -5394,9 +5207,6 @@ def create_T8_system(size=10, operation_hours=7884, FOAK=True, FTE=0.55, lifetim
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -5419,7 +5229,6 @@ def create_T9_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -5609,8 +5418,6 @@ def create_T9_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
                                                 interval_unit='h')
     Pyrolysis.transportation.append(bioochar_transportation)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
            Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
@@ -5622,9 +5429,6 @@ def create_T9_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -5647,7 +5451,6 @@ def create_T10_system(size=10, operation_hours=7884, FOAK=True, FTE=0.85, lifeti
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -5780,8 +5583,6 @@ def create_T10_system(size=10, operation_hours=7884, FOAK=True, FTE=0.85, lifeti
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
            Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
@@ -5793,9 +5594,6 @@ def create_T10_system(size=10, operation_hours=7884, FOAK=True, FTE=0.85, lifeti
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -5818,7 +5616,6 @@ def create_T11_system(size=10, operation_hours=7884, refinery_distance=100, FOAK
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -5993,8 +5790,6 @@ def create_T11_system(size=10, operation_hours=7884, refinery_distance=100, FOAK
                                                 interval_unit='h')
     HTL.transportation.append(biocrude_transportation)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
            Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
@@ -6006,9 +5801,6 @@ def create_T11_system(size=10, operation_hours=7884, refinery_distance=100, FOAK
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -6031,7 +5823,6 @@ def create_T12_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -6241,8 +6032,6 @@ def create_T12_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
                                                  interval_unit='h')
     HALT.transportation.append(hydrochar_transportation)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
            Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
@@ -6254,9 +6043,6 @@ def create_T12_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -6279,7 +6065,6 @@ def create_T13_system(size=10, operation_hours=7884, FOAK=True, FTE=0.55, lifeti
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -6403,8 +6188,6 @@ def create_T13_system(size=10, operation_hours=7884, FOAK=True, FTE=0.55, lifeti
     qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
            Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
@@ -6416,9 +6199,6 @@ def create_T13_system(size=10, operation_hours=7884, FOAK=True, FTE=0.55, lifeti
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -6441,7 +6221,6 @@ def create_T14_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -6636,8 +6415,6 @@ def create_T14_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
                                                 interval_unit='h')
     Pyrolysis.transportation.append(bioochar_transportation)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
            Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
@@ -6649,9 +6426,6 @@ def create_T14_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
@@ -6674,7 +6448,6 @@ def create_T15_system(size=10, operation_hours=7884, FOAK=True, FTE=0.85, lifeti
     
     bst.CE = qs.CEPCI_by_year[2023]
     
-    # TODO: 0.16 is the median of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
     bst.PowerUtility.price = 0.16
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
@@ -6812,8 +6585,6 @@ def create_T15_system(size=10, operation_hours=7884, FOAK=True, FTE=0.85, lifeti
     qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
     
-    # TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
-    # TODO: when calculate the total quantity of LCA items, make sure the lifetime is consistent with TEA and LCA
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
            Steam=lambda:abs(sum(i.duty/1000*operation_hours*lifetime for i in sys.heat_utilities if 'steam' in i.ID)),
@@ -6825,9 +6596,6 @@ def create_T15_system(size=10, operation_hours=7884, FOAK=True, FTE=0.85, lifeti
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
                       0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
     
-    # TODO: check all parameters in TEA, especially the ones listed here
-    # TODO: consider adding IRR as a WRRF typology parameter?
-    # TODO: income tax may be found in Steward et al. ES&T, 2023
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
