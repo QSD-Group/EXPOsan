@@ -18,7 +18,7 @@ from qsdsan import (
     sanunits as su,
     )
 from qsdsan.utils import ospath, time_printer, load_data, get_SRT
-from exposan.werf import data_path#, default_fctss_init
+from exposan.werf import data_path, default_rww#, default_fctss_init
 
 __all__ = ('create_h1_system',)
 
@@ -43,11 +43,12 @@ def create_h1_system(flowsheet=None, default_init_conds=True):
     
     pc.create_masm2d_cmps()
     asm = pc.mASM2d(electron_acceptor_dependent_decay=True, b_PP=0.05, q_PHA=6.0)
-    rww = pc.create_masm2d_inf(
-        'RWW', 10, 'MGD', T=Temp, 
-        COD=358, NH4_N=25.91, PO4_P=5,
-        fr_SI=0.05, fr_SF=0.16, fr_SA=0.024, fr_XI=0.2,
-        )
+    # rww = pc.create_masm2d_inf(
+    #     'RWW', 10, 'MGD', T=Temp, 
+    #     COD=358, NH4_N=25.91, PO4_P=5,
+    #     fr_SI=0.05, fr_SF=0.16, fr_SA=0.024, fr_XI=0.2,
+    #     )
+    rww = default_rww()
     carb = WasteStream(
         'carbon', T=Temp, units='kg/hr', 
         S_A=80,
@@ -57,7 +58,7 @@ def create_h1_system(flowsheet=None, default_init_conds=True):
     
     MD = su.MetalDosage.from_mASM2d(
         'MD', ins=rww, model=asm,
-        metal_ID='X_AlOH', metal_dosage=10
+        metal_ID='X_AlOH', metal_dosage=19
         )
     PC = su.PrimaryClarifier(
         'PC', ins=[MD-0, 'reject'],     # metal coagulants only dosed to rww not reject water to prevent numerical oscillation 

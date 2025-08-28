@@ -114,6 +114,16 @@ opt_underflows = dict(
     N2=(155.39, 13.66),
     )
 
+# %%
+from qsdsan.processes import create_masm2d_inf
+def default_rww(Q=10, T=20):
+    rww = create_masm2d_inf(
+        'RWW', 10, 'MGD', T=T+273.15, 
+        COD=358, NH4_N=25.91, PO4_P=5,
+        fr_SI=0.05, fr_SF=0.31, fr_SA=0.024, fr_XI=0.2,
+        )
+    return rww
+
 from . import (
     _units,
     B1, B2, B3, 

@@ -26,8 +26,8 @@ from qsdsan import get_thermo, WasteStream, Model, System, processes as pc
 from qsdsan.utils import get_SRT, ospath, load_data
 from biosteam.evaluation._utils import var_columns
 
-import warnings
-warnings.filterwarnings("ignore")
+# import warnings
+# warnings.filterwarnings("ignore")
 
 MGD2cmd = 3785.412
 f_rmv = 0.7 # (0.5, 0.8)
@@ -48,6 +48,11 @@ def load_system_with_upstream_uncertainty(ID='F1'):
     cmps.S_I.f_Vmass_Totmass = cmps.X_I.f_Vmass_Totmass = 0.6
     cmps.X_S.i_mass = cmps.X_I.i_mass = 0.63
     cmps.refresh_constants()
+    u = sys.flowsheet.unit
+    if 'AD' in u:
+        u.J1._compile_reactions()
+        u.J2._compile_reactions()
+        
     fr_orgs = dict(fr_SI=0.075, fr_SF=0.24, fr_SA=0.05, fr_XI=0.3)
     wws = {}
     wws['low'] = pc.create_masm2d_inf(
