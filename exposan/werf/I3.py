@@ -44,7 +44,8 @@ def create_i3_system(flowsheet=None, default_init_conds=True):
     rww = default_rww()
     
     n_zones = 6
-    Vs = [0.63, 1.5, 2.0, 2.0, 2.3, 0.21] # MG
+    # Vs = [0.63, 1.5, 2.0, 2.0, 2.3, 0.21] # MG
+    Vs = [0.33, 1.5, 2.1, 2.1, 2.3, 0.31] # Anaerobic zone must be smaller to achieve nitrification
     
     # ae_kwargs = dict(aeration=2.0, DO_ID='S_O2', suspended_growth_model=asm, gas_stripping=True)
     # an_kwargs = dict(aeration=None, DO_ID='S_O2', suspended_growth_model=asm, gas_stripping=True)
