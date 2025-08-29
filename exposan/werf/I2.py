@@ -29,7 +29,6 @@ dfs = load_data(
     )
 asinit = dfs[ID]
 fcinit = asinit.iloc[-1].to_dict()
-# default_fctss_init = [10, 12, 20, 40, 100, 500, 500, 500, 550, 1e4]
 default_fctss_init = [8, 12, 20, 30, 100, 300, 300, 300, 300, 6000]
 aedinit = dfs['AED'].loc[ID].to_dict()
 
@@ -41,12 +40,7 @@ def create_i2_system(flowsheet=None, default_init_conds=True):
     qs.main_flowsheet.set_flowsheet(flowsheet)
     
     pc.create_masm2d_cmps()
-    asm = pc.mASM2d(electron_acceptor_dependent_decay=True, b_PP=0.05, q_PHA=6.0)
-    # rww = pc.create_masm2d_inf(
-    #     'RWW', 10, 'MGD', T=Temp, 
-    #     COD=358, NH4_N=25.91, PO4_P=5,
-    #     fr_SI=0.05, fr_SF=0.16, fr_SA=0.024, fr_XI=0.2,
-    #     )
+    asm = pc.mASM2d(electron_acceptor_dependent_decay=True)
     rww = default_rww()
     
     n_zones = 6
@@ -90,7 +84,7 @@ def create_i2_system(flowsheet=None, default_init_conds=True):
         solids_removal_efficiency=0.95
         )
     
-    asm2 = pc.mASM2d(electron_acceptor_dependent_decay=True, b_PP=0.05, q_PHA=6.0,
+    asm2 = pc.mASM2d(electron_acceptor_dependent_decay=True, 
                      mmp_kinetics='KM', pH_ctrl=5.6)
     AED = su.AerobicDigester(
         'AED', ins=MT-1, outs='digestate',

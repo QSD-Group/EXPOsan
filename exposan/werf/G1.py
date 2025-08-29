@@ -43,14 +43,9 @@ def create_g1_system(flowsheet=None, default_init_conds=True):
     qs.main_flowsheet.set_flowsheet(flowsheet)
     
     pc.create_masm2d_cmps()
-    asm = pc.mASM2d(electron_acceptor_dependent_decay=True, b_PP=0.05, q_PHA=6.0)
+    asm = pc.mASM2d(electron_acceptor_dependent_decay=True)
     thermo_asm = qs.get_thermo()
     
-    # rww = pc.create_masm2d_inf(
-    #     'RWW', 10, 'MGD', T=Temp, 
-    #     COD=358, NH4_N=25.91, PO4_P=5,
-    #     fr_SI=0.05, fr_SF=0.16, fr_SA=0.024, fr_XI=0.2,
-    #     )
     rww = default_rww()
     carb = WasteStream('carbon', T=Temp, units='kg/hr', S_A=85)
 
@@ -121,7 +116,7 @@ def create_g1_system(flowsheet=None, default_init_conds=True):
         
     pc.create_adm1p_cmps()
     thermo_adm = qs.get_thermo()
-    adm = pc.ADM1p(kLa=10.0, b_PP=0.05, q_PHA=6.0)
+    adm = pc.ADM1p(kLa=10.0)
     
     J1 = su.mASM2dtoADM1p('J1', upstream=M1-0, thermo=thermo_adm, isdynamic=True, 
                           adm1_model=adm, asm2d_model=asm)

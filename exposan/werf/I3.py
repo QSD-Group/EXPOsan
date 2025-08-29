@@ -24,8 +24,8 @@ __all__ = ('create_i3_system',)
 ID = 'I3'
 #%%
 dfs = load_data(
-    # ospath.join(data_path, 'initial_conditions.xlsx'), 
-    ospath.join(data_path, 'ic.xlsx'), 
+    ospath.join(data_path, 'initial_conditions.xlsx'), 
+    # ospath.join(data_path, 'ic.xlsx'), 
     sheet=None,
     )
 asinit = dfs[ID]
@@ -41,11 +41,6 @@ def create_i3_system(flowsheet=None, default_init_conds=True):
     
     pc.create_masm2d_cmps()
     asm = pc.mASM2d(electron_acceptor_dependent_decay=True)
-    # rww = pc.create_masm2d_inf(
-    #     'RWW', 10, 'MGD', T=Temp, 
-    #     COD=358, NH4_N=25.91, PO4_P=5,
-    #     fr_SI=0.05, fr_SF=0.16, fr_SA=0.024, fr_XI=0.2,
-    #     )
     rww = default_rww()
     
     n_zones = 6
@@ -153,8 +148,8 @@ if __name__ == '__main__':
     # biomass_IDs = ('X_H', 'X_PAO', 'X_AUT')
     # srt = get_SRT(sys, biomass_IDs,
     #               wastage=[WAS],
-    #               active_unit_IDs=('A1', 'A2', 'O3', 'O4', 'A5', 'O6'))
-    #               # active_unit_IDs=('ASR'))
+    #               # active_unit_IDs=('A1', 'A2', 'O3', 'O4', 'A5', 'O6'))
+    #               active_unit_IDs=('ASR'))
     # if srt: print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days')
     
     # from exposan.werf import figures_path
