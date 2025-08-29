@@ -13,7 +13,7 @@ for license details.
 
 import numpy as np, qsdsan as qs
 from qsdsan import WasteStream, sanunits as su
-from qsdsan.utils import AttrGetter, auom, load_data, ospath
+from qsdsan.utils import AttrGetter, auom, load_data, ospath, get_SRT
 from . import data_path
 from ._units import SelectiveRecovery
 from exposan.werf.utils import plantwide_aeration_demand, plantwide_aeration_energy
@@ -28,7 +28,7 @@ __all__ = (
     )
 
 #%%
-def add_performance_metrics(model, effluent_quality=True, biogas=True,
+def add_performance_metrics(model, effluent_quality=True, SRT=True, biogas=True,
                             sludge=True, aeration=False, aeration_energy=False):
     
     metric = model.metric
@@ -58,6 +58,14 @@ def add_performance_metrics(model, effluent_quality=True, biogas=True,
             return s.SE.iconc['S_PO4']
         
         metric(getter=AttrGetter(s.SE, 'TOC'), name='TOC', **kwargs)
+    
+    if SRT:
+        @metric(name='SRT', units='d', element='SRT')
+        def get_srt():
+            return get_SRT(
+                sys, ('X_H', 'X_PAO', 'X_AUT'), wastage=[s.WAS],
+                active_unit_IDs=('A1', 'A2', 'A3', 'A4', 'O5', 'O6', 'ASR', 'MBR')
+                )
     
     if biogas:
         @metric(name='CH4 production', units='kg/hr', element='Biogas')

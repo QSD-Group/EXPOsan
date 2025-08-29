@@ -29,14 +29,14 @@ kwargs = dict(
 metrics = {}
 
 for ID in (
-        # 'B1', 'B2', 'B3', 
-        # 'C1', 'C2', 'C3', 
-        # 'E2', 'E2P', 
-        # 'F1', 
-        'G1', #'G2', 'G3', 
-        # 'H1', 
-        # 'I1', 'I2', 'I3', 
-        # 'N1', 'N2'
+        'B1', 'B2', 'B3', 
+        'C1', 'C2', 'C3', 
+        'E2', 'E2P', 
+        'F1', 
+        'G1', 'G2', 'G3', 
+        'H1', 
+        'I1', 'I2', 'I3', 
+        'N1', 'N2',
         ):
     print(f"System {ID}")
     print("="*30)
@@ -60,7 +60,7 @@ for ID in (
     else: 
         thickened = s.thickened_sludge
         thickener = u.GT
-    thickener.sludge_flow_rate, u.DW.sludge_flow_rate = baseline_underflows[ID]
+    # thickener.sludge_flow_rate, u.DW.sludge_flow_rate = baseline_underflows[ID]
 
     try:
         start = tm.time()
@@ -95,12 +95,12 @@ for ID in (
     except Exception as exc:
         print(exc, '\n')
     
-    kwargs['mode'] = 'a'
-    kwargs['if_sheet_exists'] = 'replace'
+    # kwargs['mode'] = 'a'
+    # kwargs['if_sheet_exists'] = 'replace'
     sys.flowsheet.clear()
     del sys
     
 #%%
 metrics = pd.DataFrame.from_dict(metrics, orient='index', columns=var_columns(mdl.metrics))
-# metrics.to_excel(os.path.join(results_path, 'baseline_unopt_performance.xlsx'))
+# metrics.to_excel(os.path.join(results_path, '_baseline_unopt_performance.xlsx'))
 metrics.to_clipboard()

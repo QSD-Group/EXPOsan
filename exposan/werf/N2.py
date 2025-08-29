@@ -53,8 +53,7 @@ def create_n2_system(flowsheet=None, default_init_conds=True):
     V_tot = 2.61 * MGD2cmd
     fr_V = [0.12, 0.18, 0.24, 0.24, 0.18, 0.04]
     Vs = [V_tot*f for f in fr_V]
-    Q_was = 0.17 * MGD2cmd      # SRT = 10.71 d
-    # Q_was = 0.25 * MGD2cmd   # shorter SRT seems better for EBPR
+    Q_was = 0.3 * MGD2cmd   # SRT = 6 d
     Q_intr = 40 * MGD2cmd
     
     ASR = su.PFR(
