@@ -196,7 +196,8 @@ def create_system(
         outs=('crude_medium','char'),
         LHK=CrudeSplitter.keys[1],
         P=50*_psi_to_Pa,
-        Lr=0.9, Hr=0.9, # (0.8, 0.85)
+        Lr=0.91, # 0.8
+        Hr=0.91, # 0.85
         k=2, is_divided=True)
 
     ratio0 = CrudeSplitter.cutoff_fracs[1]/sum(CrudeSplitter.cutoff_fracs[1:])
@@ -228,8 +229,9 @@ def create_system(
     CrudeHeavyDis.add_specification(screen_results)
     CrudeHeavyDis.run_after_specifications = True
     
-    # Lr_range = Hr_range = np.arange(0.7, 0.99, 0.05)
-    # results = find_Lr_Hr(CrudeHeavyDis, Lr_trial_range=Lr_range, Hr_trial_range=Hr_range)
+    # Lr_range = Hr_range = np.arange(0.85, 0.96, 0.01)
+    # ratio0 = CrudeSplitter.cutoff_fracs[1]/sum(CrudeSplitter.cutoff_fracs[1:])
+    # results = find_Lr_Hr(CrudeHeavyDis, target_light_frac=ratio0, Lr_trial_range=Lr_range, Hr_trial_range=Hr_range)
     # results_df, Lr, Hr = results
     
     # =========================================================================
