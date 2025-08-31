@@ -32,6 +32,7 @@ db = Guest.dblue.HEX
 #%%
 plt.rcParams['font.sans-serif'] = 'Arial'
 plt.rcParams["figure.autolayout"] = False
+plt.rcParams['mathtext.fontset'] = 'custom'
 
 categories = ['Aeration', 'Pumping', 'Mechanical mixing', 
               'External carbon', 'Coagulant', 'Lime stabilization', 
@@ -79,6 +80,50 @@ def compile_opex():
     opex.drop(columns=['Lime stablization energy', 'Total OPEX [USD/d]'], inplace=True)
     return opex
 
+# %%
+MGD2cmd = 3785.412
+
+def single_scenario_stacked_bar(opex=None, scenario='Baseline', save_as=''):
+    plt.rcParams['xtick.minor.visible'] = False
+    plt.rcParams['ytick.minor.visible'] = True
+    if opex is None: 
+        opex = compile_opex()
+        opex = opex.loc[scenario] / (10*MGD2cmd)
+    
+    fig, ax = plt.subplots(figsize=(6.5, 4))
+    handles = []
+
+    x = np.arange(opex.shape[0])
+    y_offset = np.zeros(len(x))
+    for cat, style in patch_dct.items():
+        c, hat = style
+        y = opex.loc[:,cat].to_numpy()
+        patch = ax.bar(x, y, bottom=y_offset, width=0.65, 
+                       color=c, hatch=hat, hatch_linewidth=0.5)
+        handles.append(patch)
+        y_offset += y
+
+    ax.set_xlim((-0.75, opex.shape[0]-0.25))
+    ax.set_xticks(x, opex.index.values)
+    ax.set_xlabel('WRRF configuration', fontname='Arial', weight='bold', fontsize=12)
+    ax.set_ylabel('$\mathbf{OPEX}$ [USD·m${^{-3}}$]', fontname='Arial', fontsize=12)
+    ax.tick_params(axis='y', which='major', direction='inout', length=8, labelsize=11)
+    ax.tick_params(axis='y', which='minor', direction='inout', length=5)
+    ax.tick_params(axis='x', which='major', direction='out', length=4, labelsize=11)
+    ax2y = ax.secondary_yaxis('right')
+    ax2y.tick_params(axis='y', which='major', direction='in', length=4)
+    ax2y.tick_params(axis='y', which='minor', direction='in', length=2.5)
+    ax2y.yaxis.set_major_formatter(plt.NullFormatter())
+    
+    fig.legend(handles=handles, labels=categories, reverse=True,
+               bbox_to_anchor=(0.163, 0.93), loc='upper left', 
+               framealpha=1, fontsize=11)
+    fig.subplots_adjust(left=0.15, right=0.95, bottom=0.15, top=0.95)
+    if save_as:
+        fig.savefig(ospath.join(figures_path, 'baseline_vs_gpsx/'+save_as),
+                    dpi=300, transparent=True)
+    else:
+        return fig, ax
 #%%
 def stacked_bar(opex=None, save_as=''):
     plt.rcParams['xtick.minor.visible'] = False
@@ -187,3 +232,4 @@ if __name__ == '__main__':
     stacked_bar(opex, save_as='opex.png')
     # stacked_bar(opex, save_as='opex_wrrfs.png')
     horizontal_stacked_bar(opex, save_as='opexh.png')
+    single_scenario_stacked_bar(opex, save_as='opex.tif')

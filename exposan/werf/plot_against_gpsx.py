@@ -117,9 +117,7 @@ def plot():
         fig.savefig(ospath.join(figures_path, f'baseline_vs_gpsx/{var.replace(" ", "_")}.tif'),
                     dpi=300, transparent=True)
 
-# %%
     fig, ax = plt.subplots(figsize=(6.5,3.5))
-
 
     yy = data[['CH4 production', 'CH4 content']].dropna()
     xx = np.arange(len(yy)) + 1
