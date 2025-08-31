@@ -21,10 +21,10 @@ import warnings
 warnings.filterwarnings("ignore")
 
 kwargs = dict(
-    # mode = 'w',
-    # if_sheet_exists=None
-    mode = 'a',
-    if_sheet_exists='replace'
+    mode = 'w',
+    if_sheet_exists=None
+    # mode = 'a',
+    # if_sheet_exists='replace'
     )
 metrics = {}
 
@@ -95,12 +95,12 @@ for ID in (
     except Exception as exc:
         print(exc, '\n')
     
-    # kwargs['mode'] = 'a'
-    # kwargs['if_sheet_exists'] = 'replace'
+    kwargs['mode'] = 'a'
+    kwargs['if_sheet_exists'] = 'replace'
     sys.flowsheet.clear()
     del sys
     
 #%%
 metrics = pd.DataFrame.from_dict(metrics, orient='index', columns=var_columns(mdl.metrics))
-# metrics.to_excel(os.path.join(results_path, '_baseline_unopt_performance.xlsx'))
-metrics.to_clipboard()
+metrics.to_excel(os.path.join(results_path, '_baseline_unopt_performance.xlsx'))
+# metrics.to_clipboard()

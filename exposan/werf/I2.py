@@ -88,8 +88,8 @@ def create_i2_system(flowsheet=None, default_init_conds=True):
                      mmp_kinetics='KM', pH_ctrl=5.6)
     AED = su.AerobicDigester(
         'AED', ins=MT-1, outs='digestate',
-        # V_max=2.4*MGD2cmd, activated_sludge_model=asm2,
-        V_max=0.0294*60*MGD2cmd, activated_sludge_model=asm2,  # aim for 40-60d SRT, 38-50% VSS reduction, 1.6-4.8 kg VSS/m3/d solids loading rate
+        V_max=2.4*MGD2cmd, activated_sludge_model=asm2,
+        # V_max=0.0294*60*MGD2cmd, activated_sludge_model=asm2,  # aim for 40-60d SRT, 38-50% VSS reduction, 1.6-4.8 kg VSS/m3/d solids loading rate
         aeration=1.0, DO_ID='S_O2', gas_stripping=True)
     # AED.organic_particulate_inert_degradation_process.set_parameters(k_dig=0.03)
     
