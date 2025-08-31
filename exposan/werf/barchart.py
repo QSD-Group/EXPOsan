@@ -228,8 +228,8 @@ def horizontal_stacked_bar(opex=None, save_as=''):
 
 #%%
 if __name__ == '__main__':
-    opex = compile_opex()
-    stacked_bar(opex, save_as='opex.png')
+    # opex = compile_opex()
+    # stacked_bar(opex, save_as='opex.png')
     # stacked_bar(opex, save_as='opex_wrrfs.png')
-    horizontal_stacked_bar(opex, save_as='opexh.png')
-    single_scenario_stacked_bar(opex, save_as='opex.tif')
+    # horizontal_stacked_bar(opex, save_as='opexh.png')
+    single_scenario_stacked_bar(save_as='opex.tif')
