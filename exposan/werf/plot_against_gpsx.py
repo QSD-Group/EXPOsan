@@ -112,6 +112,7 @@ def plot():
         ax2y = ax.secondary_yaxis('right')
         ax2y.tick_params(axis='y', which='major', direction='in', length=4)
         ax2y.tick_params(axis='y', which='minor', direction='in', length=2.5)
+        ax2y.set_yticks(ax.get_yticks())
         ax2y.yaxis.set_major_formatter(plt.NullFormatter())
         fig.subplots_adjust(bottom=0.15)
         fig.savefig(ospath.join(figures_path, f'baseline_vs_gpsx/{var.replace(" ", "_")}.tif'),
