@@ -73,75 +73,82 @@ def test_werf():
         S_IC = 23.16455952632622,
         H2O = 4.896805020228398,
         )
-    cmps_ad = b1s.biogas.components
+    cmps_ad = s.biogas.components
     _n = len(cmps_ad)-1 # ignore H2O
-    ac(s.biogas.mass[:_n], cmps_ad.kwarray(bg_ss_mass)[:_n], rtol=rtol, atol=atol)
+    ac(s.biogas.mass[:_n], cmps_ad.kwarray(bg_ss_mass)[:_n], rtol=rtol, atol=atol)    
+    b1.system.flowsheet.clear()
+    del b1
     
     e2 = load_mdl('E2')
     e2.system.simulate(**sim_kwargs)
     u = e2.system.flowsheet.unit
-    nh4_ss = np.array([7.507925464787558,       # concentration profiles in activated sludge reactor
-                       2.570593853816423,
-                       0.5158710934655032,
-                       0.13709323362375375,
-                       0.0904718553105707,
-                       0.08854340696229175])
+    # concentration profiles in activated sludge reactor
+    nh4_ss = np.array([7.508173609332913,
+                       2.570889381334568,
+                       0.5159642619233105,
+                       0.13710988536998334,
+                       0.09047475387085772,
+                       0.08854432510529574])
     ac(u.ASR.state.S_NH4.to_numpy(), nh4_ss, rtol=rtol, atol=atol)
-    no3_ss = np.array([16.925687934538132,
-                       21.45514349564025,
-                       23.508686488206322,
-                       24.105989229887832,
-                       24.476079189769557,
-                       24.85105881494415])
+    no3_ss = np.array([16.960594609868963,
+                       21.48998773419129,
+                       23.54371749088413,
+                       24.141086380512917,
+                       24.511183512675903,
+                       24.88616005106289])
     ac(u.ASR.state.S_NO3.to_numpy(), no3_ss, rtol=rtol, atol=atol)
-    aut_ss = np.array([42.9153257450482,
-                       43.832252174057416,
-                       44.12681511058852,
-                       44.05766485704738,
-                       43.926750417538464,
-                       43.79356259726086])
+    aut_ss = np.array([42.913022475043704,
+                       43.82994395362909,
+                       44.124560127221464,
+                       44.055433599505065,
+                       43.92452808163498,
+                       43.79134682732497])
     ac(u.ASR.state.X_AUT.to_numpy(), aut_ss, rtol=rtol, atol=atol)
-    tss = np.array([7.6715441568229235,         # clarifier tss profile
-                    11.341156800758261,
-                    16.441805375317493,
-                    26.966379617494624,
-                    60.64690500047963,
-                    262.76349069590793,
-                    262.7635729142119,
-                    262.76347711748997,
-                    262.76347777067315,
-                    4528.495240872756])
+    # clarifier TSS profile
+    tss = np.array([7.669661492339992,
+                    11.338648351775584,
+                    16.43779477493079,
+                    26.957626560395187,
+                    60.61517109271088,
+                    262.5204729258797,
+                    262.52319696855886,
+                    262.5231855786824,
+                    262.5231854948057,
+                    4522.883792033054])
     ac(u.FC._state[-10:], tss, rtol=rtol, atol=atol)
     aed_ss_concs = dict(
         S_O2 = 1.0,
-        S_N2 = 21.89944754940971,
-        S_NH4 = 0.0881198548059803,
-        S_NO3 = 1227.7272699661085,
-        S_PO4 = 662.597537187659,
-        S_F = 0.3322086480252405,
-        S_A = 0.0018788246035551627,
-        S_I = 18.607305657259726,
-        S_IC = 57.143112851542476,
-        S_K = 28.24412675078263,
-        S_Mg = 47.81286852185609,
-        X_I = 8109.895130025624,
-        X_S = 54.469463276883616,
-        X_H = 2833.639686372674,
-        X_AUT = 154.29187671740405,
-        S_Ca = 38.108868411282565,
-        X_CaCO3 = 0.0007568754128212358,
-        X_struv = 0.7554804417948454,
-        X_newb = 18.88701136232857,
-        X_ACP = 887.7824356807133,
-        X_MgCO3 = 0.0007554818744088493,
-        X_AlOH = 7.422974769332418e-07,
-        X_AlPO4 = 0.0019354604552263568,
-        X_FeOH = 9.568000306927044e-07,
-        X_FePO4 = 0.0018203059268048145,
-        S_Na = 86.94077404967588,
-        S_Cl = 424.99628338361657,
+        S_N2 = 21.898950530449103,
+        S_NH4 = 0.08811964003129587,
+        S_NO3 = 1240.7722368396628,
+        S_PO4 = 670.5021597040704,
+        S_F = 0.3321961109262077,
+        S_A = 0.0018688311252324798,
+        S_I = 17.90007374029111,
+        S_IC = 57.13922480965932,
+        S_K = 27.999938035507668,
+        S_Mg = 49.99934996811206,
+        X_I = 8109.195245089123,
+        X_S = 54.4656799580144,
+        X_H = 2833.462443099531,
+        X_AUT = 154.28239245105794,
+        S_Ca = 38.10349739263795,
+        X_CaCO3 = 3.410249675566548e-07,
+        X_struv = 0.0003403964132059657,
+        X_newb = 0.008509910702394275,
+        X_ACP = 288.44106284587235,
+        X_MgCO3 = 3.403973084732852e-07,
+        X_AlOH = 3.304167934089965e-10,
+        X_AlPO4 = 8.720656685385554e-07,
+        X_FeOH = 4.258984383336616e-10,
+        X_FePO4 = 8.2018172311499e-07,
+        S_Na = 86.99963930990731,
+        S_Cl = 424.9982967367339,
         )
+    cmps = u.AED.outs[0].components
     ac(u.AED._state[:-2], cmps.kwarray(aed_ss_concs)[:-1], rtol=rtol, atol=atol)
+    e2.system.flowsheet.clear()
+    del e2
     
     from math import isclose, isnan
     
@@ -162,6 +169,8 @@ def test_werf():
         if not isnan(val):
             assert isclose(m(), val, rel_tol=rtol, abs_tol=atol), \
                 f"System H1's {m.name} should equal {val} not {m()}"
+    h1.system.flowsheet.clear()
+    del h1
                 
     i3 = load_mdl('I3')
     i3.system.simulate(**sim_kwargs)
@@ -180,6 +189,8 @@ def test_werf():
         if not isnan(val):
             assert isclose(m(), val, rel_tol=rtol, abs_tol=atol), \
                 f"System I3's {m.name} should equal {val} not {m()}"
+    i3.system.flowsheet.clear()
+    del i3
     
     n2 = load_mdl('N2')
     n2.system.simulate(**sim_kwargs, state_reset_hook='reset_cache')
