@@ -1,0 +1,204 @@
+# -*- coding: utf-8 -*-
+'''
+EXPOsan: Exposition of sanitation and resource recovery systems
+
+This module is developed by:
+
+    Joy Zhang <joycheung1994@gmail.com>
+
+This module is under the University of Illinois/NCSA Open Source License.
+Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
+for license details.
+'''
+
+def load_mdl(ID):
+    from exposan.werf import create_system, baseline_underflows, add_performance_metrics, add_OPEX_metrics
+    from exposan.werf.utils import load_state
+    from qsdsan import Model
+    sys = create_system(ID)
+    u = sys.flowsheet.unit
+    
+    if 'MT' in u: thickener = u.MT
+    else: thickener = u.GT
+    thickener.sludge_flow_rate, u.DW.sludge_flow_rate = baseline_underflows[ID]
+    load_state(sys, folder='steady_states/baseline_unopt')
+
+    mdl = Model(sys)
+    add_performance_metrics(mdl)
+    add_OPEX_metrics(mdl)
+    
+    return mdl
+    
+# %%
+
+def test_werf():
+    import numpy as np
+    from numpy.testing import assert_allclose as ac
+
+    rtol = 1e-3
+    atol = 1e-6
+    sim_kwargs = dict(t_span=(0,300), method='BDF')
+    
+    b1 = load_mdl('B1')
+    b1.system.simulate(**sim_kwargs)
+    s = b1.system.flowsheet.stream
+    cmps = s.SE.components
+    n_cmps = len(cmps)-1 # ignore H2O
+    eff_ss_concs = dict(
+        S_O2 = 2.0,
+        S_N2 = 14.705720402898551,
+        S_NH4 = 4.210823229298282,
+        S_NO3 = 23.680363157704974,
+        S_PO4 = 5.100695912463844,
+        S_F = 0.2929010469348792,
+        S_A = 0.008593462912639268,
+        S_I = 17.89701276071496,
+        S_IC = 8.13746567555504,
+        S_K = 27.99532722346303,
+        S_Mg = 49.8103924923869,
+        X_I = 6.6670127467992035,
+        X_S = 0.4083150425105007,
+        X_H = 15.133064776319413,
+        X_AUT = 0.8758301733140433,
+        S_Ca = 139.47267909982796,
+        X_struv = 0.014186836918775132,
+        X_ACP = 0.010077701517909736,
+        S_Na = 86.98548101575692,
+        S_Cl = 424.929073927556,
+        )
+    ac(s.SE.conc[:n_cmps], cmps.kwarray(eff_ss_concs)[:n_cmps], rtol=rtol, atol=atol)
+    bg_ss_mass = dict(
+        S_h2 = 0.00026464719739745007,
+        S_ch4 = 190.57491717665997,
+        S_IC = 23.16455952632622,
+        H2O = 4.896805020228398,
+        )
+    cmps_ad = b1s.biogas.components
+    _n = len(cmps_ad)-1 # ignore H2O
+    ac(s.biogas.mass[:_n], cmps_ad.kwarray(bg_ss_mass)[:_n], rtol=rtol, atol=atol)
+    
+    e2 = load_mdl('E2')
+    e2.system.simulate(**sim_kwargs)
+    u = e2.system.flowsheet.unit
+    nh4_ss = np.array([7.507925464787558,       # concentration profiles in activated sludge reactor
+                       2.570593853816423,
+                       0.5158710934655032,
+                       0.13709323362375375,
+                       0.0904718553105707,
+                       0.08854340696229175])
+    ac(u.ASR.state.S_NH4.to_numpy(), nh4_ss, rtol=rtol, atol=atol)
+    no3_ss = np.array([16.925687934538132,
+                       21.45514349564025,
+                       23.508686488206322,
+                       24.105989229887832,
+                       24.476079189769557,
+                       24.85105881494415])
+    ac(u.ASR.state.S_NO3.to_numpy(), no3_ss, rtol=rtol, atol=atol)
+    aut_ss = np.array([42.9153257450482,
+                       43.832252174057416,
+                       44.12681511058852,
+                       44.05766485704738,
+                       43.926750417538464,
+                       43.79356259726086])
+    ac(u.ASR.state.X_AUT.to_numpy(), aut_ss, rtol=rtol, atol=atol)
+    tss = np.array([7.6715441568229235,         # clarifier tss profile
+                    11.341156800758261,
+                    16.441805375317493,
+                    26.966379617494624,
+                    60.64690500047963,
+                    262.76349069590793,
+                    262.7635729142119,
+                    262.76347711748997,
+                    262.76347777067315,
+                    4528.495240872756])
+    ac(u.FC._state[-10:], tss, rtol=rtol, atol=atol)
+    aed_ss_concs = dict(
+        S_O2 = 1.0,
+        S_N2 = 21.89944754940971,
+        S_NH4 = 0.0881198548059803,
+        S_NO3 = 1227.7272699661085,
+        S_PO4 = 662.597537187659,
+        S_F = 0.3322086480252405,
+        S_A = 0.0018788246035551627,
+        S_I = 18.607305657259726,
+        S_IC = 57.143112851542476,
+        S_K = 28.24412675078263,
+        S_Mg = 47.81286852185609,
+        X_I = 8109.895130025624,
+        X_S = 54.469463276883616,
+        X_H = 2833.639686372674,
+        X_AUT = 154.29187671740405,
+        S_Ca = 38.108868411282565,
+        X_CaCO3 = 0.0007568754128212358,
+        X_struv = 0.7554804417948454,
+        X_newb = 18.88701136232857,
+        X_ACP = 887.7824356807133,
+        X_MgCO3 = 0.0007554818744088493,
+        X_AlOH = 7.422974769332418e-07,
+        X_AlPO4 = 0.0019354604552263568,
+        X_FeOH = 9.568000306927044e-07,
+        X_FePO4 = 0.0018203059268048145,
+        S_Na = 86.94077404967588,
+        S_Cl = 424.99628338361657,
+        )
+    ac(u.AED._state[:-2], cmps.kwarray(aed_ss_concs)[:-1], rtol=rtol, atol=atol)
+    
+    from math import isclose, isnan
+    
+    h1 = load_mdl('H1')
+    h1.system.simulate(**sim_kwargs)
+    metrics_ss = [21.964757971468394, 2.78300193174046, 8.007124655120837,
+                  7.541028943961043, 0.1264223633457642, 1.7588373988576718,
+                  1.3451256754322871, 7.952053512713743, 10.707765002030902,
+                  43.51524011275996, 59.083695567070684, 25.36464254464812,
+                  350358.4514610429, np.nan, 292.900827831498, 292.900827831498,
+                  67.34442096121754, 17.83573101535616, 1.4859344331495183,
+                  67.46251823857952, 0, 0.38707533711568903, 0.35882473670880044,
+                  0.5056013448620468, 14.339519197200003, 12.4918596,
+                  549.7162736741556, 291.6173830665255, 50.35713172658497,
+                  1713.816948635574, 1708.6678372150877, 0,
+                  0, 1737.4780143083963, 6051.653588626324]
+    for m, val in zip(h1.metrics, metrics_ss):
+        if not isnan(val):
+            assert isclose(m(), val, rel_tol=rtol, abs_tol=atol), \
+                f"System H1's {m.name} should equal {val} not {m()}"
+                
+    i3 = load_mdl('I3')
+    i3.system.simulate(**sim_kwargs)
+    metrics_ss = [27.134694762854124, 2.3923400803895634, 8.067051949396125,
+                  4.407792093009145, 0.2528977058283219, 0.9957580441871827,
+                  0.5337430428853317, 9.822474460391645, 12.7116403614637,
+                  np.nan, np.nan, 32.8011474266346,
+                  398235.2881234985, np.nan, 332.9260221258218, 332.9260221258218,
+                  67.34442096121754, 28.768572979845928, 3.2087257952996944,
+                  67.46251823857952, 0, 0, 0.571297748361826, 
+                  0, 46.901254679999994, 0, 
+                  624.8355583257423, 314.0928694454979, 88.02427478342399,
+                  0, 0, 175.38995883385218,
+                  12.440491184499706, 2246.87859872447, 3461.6617512974863]
+    for m, val in zip(i3.metrics, metrics_ss):
+        if not isnan(val):
+            assert isclose(m(), val, rel_tol=rtol, abs_tol=atol), \
+                f"System I3's {m.name} should equal {val} not {m()}"
+    
+    n2 = load_mdl('N2')
+    n2.system.simulate(**sim_kwargs, state_reset_hook='reset_cache')
+    metrics_ss = [19.08888104713469, 0.5350746339774913, 0.850918927266344,
+                  5.1963865008605366, 0.2786375777769878, 0.3827746543974357,
+                  0.21021289924642703, 6.893598008850556, 6.0612436387383,
+                  np.nan, np.nan, 17.74962722779321,
+                  1274336.5442744389, 429437.4019113503, 1065.3495789737399, 1494.7259104759896,
+                  67.34442096121754, 89.950024318106, 3.3745616645195047,
+                  67.46251823857952, 22.48429392933781, 0, 0.9113430564608498,
+                  0, 14.227092460799996, 0,
+                  2805.3015887813376, 472.0661779573176, 26.701407130429438,
+                  7971.24162156081, 0, 0,
+                  0, 1215.8494651038347, 12491.160260533728]
+    for m, val in zip(n2.metrics, metrics_ss):
+        if not isnan(val):
+            assert isclose(m(), val, rel_tol=rtol, abs_tol=atol), \
+                f"System N2's {m.name} should equal {val} not {m()}"
+
+# %%
+if __name__ == '__main__':
+    test_werf()

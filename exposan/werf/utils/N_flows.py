@@ -50,6 +50,22 @@ def plantwide_N_mass_flows(system, save_as=None):
     save_as : str, optional
         File name to save the data frame as a csv. The default is None.
 
+    Example
+    -------
+    >>> from exposan.werf import create_system
+    >>> from exposan.werf.utils import plantwide_N_mass_flows, load_state
+    >>> sys = create_system('I3')
+    >>> load_state(sys, folder='steady_states/baseline_unopt')
+    >>> sys.simulate(t_span=(0,300), method='BDF')
+    >>> df = plantwide_N_mass_flows(sys)
+    >>> df.head()
+        stream source  sink       TN  NOx_N  NH4_N    org_N       N2      TKN
+    0      RWW   None   ASR 1.51e+03      0    981      533      681 1.51e+03
+    1      RAS     FC   ASR 1.15e+04   61.7   6.41 1.14e+04      399 1.14e+04
+    2   reject     HD   ASR     58.6   2.52  0.261     55.8     16.3     56.1
+    3  treated    ASR    FC 1.22e+04    156   16.2  1.2e+04 1.01e+03  1.2e+04
+    4       SE     FC  None      167     92   9.57     65.1      595     74.7
+
     '''
     fs = system.flowsheet.stream
     data = []

@@ -63,6 +63,22 @@ def plantwide_P_mass_flows(system, save_as=None):
     save_as : str, optional
         File name to save the data frame as a csv. The default is None.
 
+    Example
+    -------
+    >>> from exposan.werf import create_system
+    >>> from exposan.werf.utils import plantwide_P_mass_flows, load_state
+    >>> sys = create_system('H1')
+    >>> load_state(sys, folder='steady_states/baseline_unopt')
+    >>> sys.simulate(t_span=(0,300), method='BDF')
+    >>> df = plantwide_P_mass_flows(sys)
+    >>> df.head()
+        stream source sink   TP  PO4-P  mineral_P  bio_P  other_organic_P
+     0     RWW   None   MD  266    189          0      0               77
+     1  carbon   None  ASR    0      0          0      0                0
+     2     ws1     MD   PC  266   97.6       91.7      0               77
+     3  reject     HD   PC 62.7   31.1       23.9   1.96             5.72
+     4      PE     PC  ASR  223    128       45.9  0.779             48.3
+    
     '''
     fs = system.flowsheet.stream
     data = []
