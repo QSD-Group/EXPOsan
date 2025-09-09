@@ -30,7 +30,7 @@ __all__ = (
 modified_pm2_kwargs = dict(
     a_c=0.049, I_n=1500, arr_a=1.8e10, arr_e=6842, beta_1=2.90,
     beta_2=3.50, b_reactor=0.03, I_opt=2000, k_gamma=1e-5,
-    K_N=0.1, K_P=1.0, K_A=6.3, K_F=6.3, rho=1.186, K_STO=1.566,
+    K_N=0.1, K_P=1.0, K_A=6.3, K_G=6.3, rho=1.186, K_STO=1.566,
     f_CH_max=0.819, f_LI_max=3.249, m_ATP=10,
     mu_max=1.969, q_CH=1.928, q_LI=26.154,
     Q_N_max=0.417, Q_N_min=0.082, Q_P_max=0.092, Q_P_min=0.0163,
@@ -97,7 +97,7 @@ def create_model(system=None, flowsheet=None):
 
     ##### Add universal evaluation metrics #####
 
-    idx_vss = cmps.indices(['X_ALG', 'X_CH', 'X_LI', 'X_N_ALG', 'X_P_ALG'])
+    idx_vss = cmps.indices(['X_ALG', 'X_PG', 'X_TAG', 'X_N_ALG', 'X_P_ALG'])
     idx_snh = cmps.indices(['S_NH'])
     idx_sp = cmps.indices(['S_P'])
 
@@ -119,7 +119,7 @@ def create_model(system=None, flowsheet=None):
         result_simul_vss = RET.scope.record[:,idx_vss]
 
         vss = np.sum(result_simul_vss * imass, axis = 1)
-        # vss = result_simul[:,0] * cmps.X_ALG.i_mass + result_simul[0:,1] * cmps.X_CH.i_mass + result_simul[0:,2] * cmps.X_LI.i_mass + result_simul[0:,3] + result_simul[0:,4]
+        # vss = result_simul[:,0] * cmps.X_ALG.i_mass + result_simul[0:,1] * cmps.X_PG.i_mass + result_simul[0:,2] * cmps.X_TAG.i_mass + result_simul[0:,3] + result_simul[0:,4]
 
         f = interp1d(t_simul, vss)
         vss_simul = f(t_scada)
