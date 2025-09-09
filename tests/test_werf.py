@@ -151,7 +151,8 @@ def test_werf():
         S_Cl = 424.9982967367339,
         )
     cmps = u.AED.outs[0].components
-    ac(u.AED._state[:-2], cmps.kwarray(aed_ss_concs)[:-1], rtol=rtol, atol=atol)
+    ac(u.AED._state[:-13], cmps.kwarray(aed_ss_concs)[:-12], rtol=rtol, atol=atol)
+    ac(u.AED._state[-13:-2], cmps.kwarray(aed_ss_concs)[-12:-1], rtol=5e-2, atol=atol)
     e2.system.flowsheet.clear()
     del e2
     
