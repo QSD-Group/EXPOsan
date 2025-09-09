@@ -12,7 +12,10 @@ for license details.
 '''
 
 def load_mdl(ID):
-    from exposan.werf import create_system, baseline_underflows, add_performance_metrics, add_OPEX_metrics
+    import os
+    from numpy import load
+    from exposan.werf import create_system, baseline_underflows, \
+        add_performance_metrics, add_OPEX_metrics, data_path
     from exposan.werf.utils import load_state
     from qsdsan import Model
     sys = create_system(ID)
@@ -21,7 +24,9 @@ def load_mdl(ID):
     if 'MT' in u: thickener = u.MT
     else: thickener = u.GT
     thickener.sludge_flow_rate, u.DW.sludge_flow_rate = baseline_underflows[ID]
-    load_state(sys, folder='steady_states/baseline_unopt')
+    
+    state_arr = load(os.path.join(data_path, f'ss/baseline_unopt/{sys.ID}.npy'))
+    load_state(sys, state_arr=state_arr)
 
     mdl = Model(sys)
     add_performance_metrics(mdl)
