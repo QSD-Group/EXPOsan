@@ -50,7 +50,7 @@ ylabels = {
     'BOD': '$\mathbf{BOD}$ [mg·L$^{-1}$]', 
     'TSS': '$\mathbf{TSS}$ [mg·L$^{-1}$]', 
     'TN': '$\mathbf{TN}$ [mg·L$^{-1}$]', 
-    'NH4 N': '$\mathbf{NH_4-N}$ [mg·L$^{-1}$]', 
+    'NH4 N': '$\mathbf{NH_4^+-N}$ [mg·L$^{-1}$]', 
     'TP': '$\mathbf{TP}$ [mg·L$^{-1}$]', 
     'Ortho P': '$\mathbf{Ortho-P}$ [mg·L$^{-1}$]', 
     'SRT': '$\mathbf{SRT}$ [d]', 
@@ -101,7 +101,7 @@ def plot():
         if var in gpsx:
             ax.plot(x, gpsx[var], marker='D', ls='', 
                     mec='black', mfc='white', ms=3.5, zorder=2)
-        ax.bar(x, data[var], width=0.4, color=db, zorder=1)
+        ax.bar(x, data[var], width=0.4, color=db, ec='black', lw=0.25, zorder=1)
         ax.set_xticks(x, data.index.values)     
         ax.set_xlim((0, len(x)+1))
         ax.set_xlabel('WRRF configuration', fontname='Arial', weight='bold', fontsize=12)
@@ -119,14 +119,25 @@ def plot():
                     dpi=300, transparent=True)
 
     fig, ax = plt.subplots(figsize=(6.5,3.5))
+    ax.axes.yaxis.set_visible(False)
+    ax.set_xticks(x, data.index.values)     
+    ax.set_xlim((0, len(x)+1))
+    ax.set_xlabel('WRRF configuration', fontname='Arial', weight='bold', fontsize=12)
+    fig.subplots_adjust(bottom=0.5)
+    fig.savefig(ospath.join(figures_path, 'baseline_vs_gpsx/legend.tif'),
+                dpi=300, transparent=True)
+    
+
+    fig, ax = plt.subplots(figsize=(6.5,3.5))
 
     yy = data[['CH4 production', 'CH4 content']].dropna()
     xx = np.arange(len(yy)) + 1
     ax.plot(xx-0.15, gpsx['CH4 production'][yy.index], marker='D', ls='', 
             mec=db, mfc='white', ms=4, zorder=2)
-    ax.bar(xx-0.15, yy['CH4 production'], width=0.3, color=db, zorder=1)
+    ax.bar(xx-0.15, yy['CH4 production'], width=0.3, color=db, ec='black', lw=0.25, zorder=1)
     ax.set_xticks(xx, yy.index.values)
     ax.set_xlim((0.3, len(xx)+0.7))
+    ax.set_ylim((0, 1.4))
     ax.set_xlabel('WRRF configuration', fontname='Arial', weight='bold', fontsize=12)
     ax.set_ylabel(ylabels['CH4 production'], fontname='Arial', fontsize=12, color=db)
     ax.tick_params(axis='y', which='major', direction='inout', length=8, 
@@ -137,7 +148,8 @@ def plot():
     ax2 = ax.twinx()
     ax2.plot(xx+0.15, gpsx['CH4 content'][yy.index], marker='D', ls='', 
             mec=o, mfc='white', ms=4, zorder=2)
-    ax2.bar(xx+0.15, yy['CH4 content'], width=0.3, color=o, zorder=1)
+    ax2.bar(xx+0.15, yy['CH4 content'], width=0.3, color=o, ec='black', lw=0.25, zorder=1)
+    ax2.set_ylim((0, 70))
     ax2.set_ylabel(ylabels['CH4 content'], fontname='Arial', fontsize=12, rotation=-90,
                    rotation_mode='anchor', va='bottom', color=o)
     ax2.tick_params(axis='y', which='major', direction='inout', length=8, 

@@ -44,8 +44,8 @@ patch_dct = {
     'External carbon': (r, ''),
     'Coagulant': (o, '/////'),
     'Lime stabilization': (g, '|||||'),
-    'Sludge disposal': (db, ''),
-    # 'Sludge disposal': (a, ''),    
+    # 'Sludge disposal': (db, ''),
+    'Sludge disposal': (a, ''),    
     }
 
 configs=('B1', 'B2', 'B3', 'C1', 'C2', 'C3', 'E2', 'E2P', 'F1', 
@@ -103,6 +103,7 @@ def single_scenario_stacked_bar(opex=None, scenario='Baseline', save_as=''):
         handles.append(patch)
         y_offset += y
 
+    ax.bar(x, y_offset, width=0.65, ec='black', fc=(1,1,1,0), lw=0.25)
     ax.set_xlim((-0.75, opex.shape[0]-0.25))
     ax.set_xticks(x, opex.index.values)
     ax.set_xlabel('WRRF configuration', fontname='Arial', weight='bold', fontsize=12)
