@@ -39,11 +39,13 @@ def load_mdl(ID):
 def test_werf():
     import numpy as np
     from numpy.testing import assert_allclose as ac
+    from qsdsan import PowerUtility
 
     rtol = 1e-3
     atol = 1e-6
     sim_kwargs = dict(t_span=(0,300), method='BDF')
-    
+    PowerUtility.price = 0.0782
+
     b1 = load_mdl('B1')
     try: b1.system.simulate(**sim_kwargs)
     except: b1.system.simulate(**sim_kwargs, state_reset_hook='reset_cache')

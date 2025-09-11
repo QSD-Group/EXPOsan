@@ -65,10 +65,12 @@ def plantwide_P_mass_flows(system, save_as=None):
 
     Example
     -------
-    >>> from exposan.werf import create_system
+    >>> import os, numpy as np
+    >>> from exposan.werf import create_system, data_path
     >>> from exposan.werf.utils import plantwide_P_mass_flows, load_state
     >>> sys = create_system('H1')
-    >>> load_state(sys, folder='steady_states/baseline_unopt')
+    >>> state_arr = np.load(os.path.join(data_path, f'ss/baseline_unopt/{sys.ID}.npy'))
+    >>> load_state(sys, state_arr=state_arr)
     >>> sys.simulate(t_span=(0,300), method='BDF')
     >>> df = plantwide_P_mass_flows(sys)
     >>> df.head()
