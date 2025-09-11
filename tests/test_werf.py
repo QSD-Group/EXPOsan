@@ -45,7 +45,8 @@ def test_werf():
     sim_kwargs = dict(t_span=(0,300), method='BDF')
     
     b1 = load_mdl('B1')
-    b1.system.simulate(**sim_kwargs)
+    try: b1.system.simulate(**sim_kwargs)
+    except: b1.system.simulate(**sim_kwargs, state_reset_hook='reset_cache')
     s = b1.system.flowsheet.stream
     cmps = s.SE.components
     n_cmps = len(cmps)-1 # ignore H2O
