@@ -16,12 +16,13 @@ for license details.
 
 #%% initialization
 
-import numpy as np, pandas as pd, geopandas as gpd, matplotlib.pyplot as plt
+import numpy as np, pandas as pd, geopandas as gpd, matplotlib.pyplot as plt, matplotlib.colors as colors
 from matplotlib.animation import FuncAnimation
 from matplotlib.mathtext import _mathtext as mathtext
 from colorpalette import Color
 from scipy.stats import qmc
 from warnings import filterwarnings
+from datetime import date
 from qsdsan.utils import auom
 from exposan.htl import (create_C1_system, create_C2_system, create_C3_system,
                          create_C4_system, create_C5_system, create_C6_system,
@@ -74,15 +75,18 @@ WRRF['dry_solids_tonne_per_day'] = WRRF['WASTE_DIS']/_MMgal_to_m3*ww_2_dry_solid
 # models will not be accurate when the WWRS mass flow rate is < 1 dry tonne/day (in reality, those WRRFs may use other WRRS treatment methods, e.g., lagoon, wetland, etc.)
 # only keep WRRFs with ≥ 1 tonne dry solids per day
 WRRF_filtered = WRRF[WRRF['dry_solids_tonne_per_day'] >= 1]
+WRRF_filtered.reset_index(inplace=True)
 # TODO: mention this in the manuscript or SI
 print(f"{WRRF_filtered['dry_solids_tonne_per_day'].sum()/WRRF['dry_solids_tonne_per_day'].sum()*100:.1f}% global WWRS are included." )
+print(f"{len(set(WRRF_filtered['COUNTRY']))} countires are included." )
+
 WRRF_filtered = gpd.GeoDataFrame(WRRF_filtered, crs='EPSG:4269',
                                  geometry=gpd.points_from_xy(x=WRRF_filtered.LON_WWTP,
                                                              y=WRRF_filtered.LAT_WWTP))
 
 HDI = pd.read_excel(folder + 'HDR25_Statistical_Annex_HDI_Table.xlsx')
 
-#%% Figure 1a
+#%% MPs
 
 fig, ax = plt.subplots(figsize=(25, 5))
 
@@ -173,9 +177,9 @@ ax.bar(4,
        linewidth=3,
        bottom=np.log10(2.70e-4))
 
-# plt.savefig('/Users/jiananfeng/Desktop/Figure_1a.pdf', transparent=True, bbox_inches='tight')
+# plt.savefig('/Users/jiananfeng/Desktop/MPs.pdf', transparent=True, bbox_inches='tight')
 
-#%% Figure 1b
+#%% PFAS
 
 fig, ax = plt.subplots(figsize=(25, 5))
 
@@ -266,9 +270,195 @@ ax.bar(4,
        linewidth=3,
        bottom=np.log10(2.03304E-07))
 
-# plt.savefig('/Users/jiananfeng/Desktop/Figure_1b.pdf', transparent=True, bbox_inches='tight')
+# plt.savefig('/Users/jiananfeng/Desktop/PFAS.pdf', transparent=True, bbox_inches='tight')
 
-#%% Figure 1e
+#%% pesticide
+
+fig, ax = plt.subplots(figsize=(25, 5))
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 36
+plt.rcParams['ytick.labelsize'] = 36
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+
+ax = plt.gca()
+
+ax.set_ylim([-2, 6])
+
+ax.tick_params(direction='out', length=10, width=3,
+               bottom=True, top=False, left=True, right=False, pad=0)
+
+plt.xticks([0, 1, 2, 3, 4], ['WWRS','soil/agricultural land','air','sediment','water'], fontname='Arial')
+plt.yticks(np.arange(-2, 8, 2), fontname='Arial')
+
+ax_left = ax.twinx()
+ax_left.set_ylim(ax.get_ylim())
+plt.yticks(np.arange(-2, 8, 2), fontname='Arial')
+
+ax_left.tick_params(direction='inout', length=20, width=3,
+                    bottom=False, top=False, left=True, right=False,
+                    labelcolor='none')
+
+ax_right = ax.twinx()
+ax_right.set_ylim(ax.get_ylim())
+plt.yticks(np.arange(-2, 8, 2), fontname='Arial')
+
+ax_right.tick_params(direction='in', length=10, width=3,
+                     bottom=False, top=False, left=False, right=True,
+                     labelcolor='none')
+
+ax_right.tick_params(direction='in', length=10, width=3,
+                     bottom=False, top=False, left=False, right=True, pad=0)
+
+ax.set_ylabel('$\mathbf{log_{10}C}$\n[ng·${g^{-1}}$]',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=13,
+              linespacing=0.8)
+
+ax.bar(0,
+       np.log10(90210)-np.log10(0.0000000001),
+       width=0.8,
+       color=b,
+       edgecolor='k',
+       linewidth=3,
+       bottom=np.log10(0.0000000001))
+
+ax.bar(1,
+       np.log10(12700)-np.log10(0.0000000001),
+       width=0.8,
+       color=b,
+       edgecolor='k',
+       linewidth=3,
+       bottom=np.log10(0.0000000001))
+
+ax.bar(2,
+       np.log10(340.4081633)-np.log10(0.0000000001),
+       width=0.8,
+       color=b,
+       edgecolor='k',
+       linewidth=3,
+       bottom=np.log10(0.0000000001))
+
+ax.bar(3,
+       np.log10(1200)-np.log10(0.0000000001),
+       width=0.8,
+       color=b,
+       edgecolor='k',
+       linewidth=3,
+       bottom=np.log10(0.0000000001))
+
+ax.bar(4,
+       np.log10(17163)-np.log10(0.0000000001),
+       width=0.8,
+       color=b,
+       edgecolor='k',
+       linewidth=3,
+       bottom=np.log10(0.0000000001))
+
+# plt.savefig('/Users/jiananfeng/Desktop/pesticide.pdf', transparent=True, bbox_inches='tight')
+
+#%% PhACs
+
+fig, ax = plt.subplots(figsize=(25, 5))
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 36
+plt.rcParams['ytick.labelsize'] = 36
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+
+ax = plt.gca()
+
+ax.set_ylim([-2, 6])
+
+ax.tick_params(direction='out', length=10, width=3,
+               bottom=True, top=False, left=True, right=False, pad=0)
+
+plt.xticks([0, 1, 2, 3, 4], ['WWRS','soil/agricultural land','air','sediment','water'], fontname='Arial')
+plt.yticks(np.arange(-2, 8, 2), fontname='Arial')
+
+ax_left = ax.twinx()
+ax_left.set_ylim(ax.get_ylim())
+plt.yticks(np.arange(-2, 8, 2), fontname='Arial')
+
+ax_left.tick_params(direction='inout', length=20, width=3,
+                    bottom=False, top=False, left=True, right=False,
+                    labelcolor='none')
+
+ax_right = ax.twinx()
+ax_right.set_ylim(ax.get_ylim())
+plt.yticks(np.arange(-2, 8, 2), fontname='Arial')
+
+ax_right.tick_params(direction='in', length=10, width=3,
+                     bottom=False, top=False, left=False, right=True,
+                     labelcolor='none')
+
+ax_right.tick_params(direction='in', length=10, width=3,
+                     bottom=False, top=False, left=False, right=True, pad=0)
+
+ax.set_ylabel('$\mathbf{log_{10}C}$\n[ng·${g^{-1}}$]',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=13,
+              linespacing=0.8)
+
+ax.bar(0,
+       np.log10(24760)-np.log10(0.0000000001),
+       width=0.8,
+       color=o,
+       edgecolor='k',
+       linewidth=3,
+       bottom=np.log10(0.0000000001))
+
+ax.bar(1,
+       np.log10(178000)-np.log10(0.0000000001),
+       width=0.8,
+       color=o,
+       edgecolor='k',
+       linewidth=3,
+       bottom=np.log10(0.0000000001))
+
+# ax.bar(2,
+#        np.log10(0)-np.log10(0),
+#        width=0.8,
+#        color=g,
+#        edgecolor='k',
+#        linewidth=3,
+#        bottom=np.log10(0))
+
+ax.bar(3,
+       np.log10(3111)-np.log10(0.01),
+       width=0.8,
+       color=o,
+       edgecolor='k',
+       linewidth=3,
+       bottom=np.log10(0.01))
+
+ax.bar(4,
+       np.log10(297)-np.log10(0.0000000001),
+       width=0.8,
+       color=o,
+       edgecolor='k',
+       linewidth=3,
+       bottom=np.log10(0.0000000001))
+
+# plt.savefig('/Users/jiananfeng/Desktop/PhACs.pdf', transparent=True, bbox_inches='tight')
+
+#%% BPA
 
 fig, ax = plt.subplots(figsize=(25, 5))
 
@@ -359,11 +549,11 @@ ax.bar(4,
        linewidth=3,
        bottom=np.log10(0.00003))
 
-# plt.savefig('/Users/jiananfeng/Desktop/Figure_1e.pdf', transparent=True, bbox_inches='tight')
+# plt.savefig('/Users/jiananfeng/Desktop/BPA.pdf', transparent=True, bbox_inches='tight')
 
 #%% country average
 
-# TODO: assign electricity price and CI for each country
+# TODO: assign electricity price and CI (any other parameters?) for each country
 
 filterwarnings('ignore')
 
@@ -374,7 +564,12 @@ T_CI_FOAK_mean = []
 T_cost_NOAK_mean = []
 T_CI_NOAK_mean = []
 
-for i in range(len(WRRF_filtered)):
+# run in different consoles to speed up
+# do not round all together since the application memory is not enough
+# first round: 3000 and 6000
+# second round: 9000 and 12000
+# last round: 14000 and len(WRRF_filtered)
+for i in range(0, len(WRRF_filtered)):
     if i%100 == 0:
         print(i)
     
@@ -433,13 +628,58 @@ for i in range(len(WRRF_filtered)):
     T_cost_NOAK_mean.append(np.median(T_NOAK_TEA))
     T_CI_NOAK_mean.append(np.median(T_NOAK_LCA))
 
-#%% global equity
+country_result = pd.DataFrame({'C_cost_mean': C_cost_mean,
+                               'C_CI_mean': C_CI_mean,
+                               'T_cost_FOAK_mean': T_cost_FOAK_mean,
+                               'T_CI_FOAK_mean': T_CI_FOAK_mean,
+                               'T_cost_NOAK_mean': T_cost_NOAK_mean,
+                               'T_CI_NOAK_mean': T_CI_NOAK_mean,})
 
-country_average_solids = WRRF.groupby('COUNTRY').mean('dry_solids_tonne_per_day')
+country_result.to_excel(folder + f'results/country_results_{date.today()}_{i}.xlsx')
 
-country_average_solids_HDI = country_average_solids.merge(HDI, how='inner', left_on='COUNTRY', right_on='Country')
+#%% merge country results
 
-fig, ax = plt.subplots(figsize=(12, 10))
+country_result_1 = pd.read_excel(folder + 'results/country_results_2025-09-15_2999.xlsx')
+country_result_2 = pd.read_excel(folder + 'results/country_results_2025-09-15_5999.xlsx')
+country_result_3 = pd.read_excel(folder + 'results/country_results_2025-09-15_8999.xlsx')
+country_result_4 = pd.read_excel(folder + 'results/country_results_2025-09-15_11999.xlsx')
+country_result_5 = pd.read_excel(folder + 'results/country_results_2025-09-15_13999.xlsx')
+country_result_6 = pd.read_excel(folder + 'results/country_results_2025-09-15_15964.xlsx')
+
+integrated_country_result = pd.concat([country_result_1, country_result_2, country_result_3, country_result_4, country_result_5, country_result_6])
+integrated_country_result.reset_index(inplace=True)
+integrated_country_result = integrated_country_result[['C_cost_mean','C_CI_mean','T_cost_FOAK_mean','T_CI_FOAK_mean','T_cost_NOAK_mean','T_CI_NOAK_mean']]
+
+WRRF_result = pd.concat([WRRF_filtered, integrated_country_result], axis=1)
+
+WRRF_result['C_cost_times_mass_flow'] = WRRF_result['C_cost_mean']*WRRF_result['dry_solids_tonne_per_day']
+WRRF_result['C_CI_times_mass_flow'] = WRRF_result['C_CI_mean']*WRRF_result['dry_solids_tonne_per_day']
+WRRF_result['T_cost_FOAK_times_mass_flow'] = WRRF_result['T_cost_FOAK_mean']*WRRF_result['dry_solids_tonne_per_day']
+WRRF_result['T_CI_FOAK_times_mass_flow'] = WRRF_result['T_CI_FOAK_mean']*WRRF_result['dry_solids_tonne_per_day']
+WRRF_result['T_cost_NOAK_times_mass_flow'] = WRRF_result['T_cost_NOAK_mean']*WRRF_result['dry_solids_tonne_per_day']
+WRRF_result['T_CI_NOAK_times_mass_flow'] = WRRF_result['T_CI_NOAK_mean']*WRRF_result['dry_solids_tonne_per_day']
+
+WRRF_result = WRRF_result[['COUNTRY','dry_solids_tonne_per_day','C_cost_times_mass_flow','C_CI_times_mass_flow','T_cost_FOAK_times_mass_flow','T_CI_FOAK_times_mass_flow','T_cost_NOAK_times_mass_flow','T_CI_NOAK_times_mass_flow']]
+
+WRRF_result = WRRF_result.groupby('COUNTRY').sum()
+
+WRRF_result['C_cost_weighted_average'] = WRRF_result['C_cost_times_mass_flow']/WRRF_result['dry_solids_tonne_per_day']
+WRRF_result['C_CI_weighted_average'] = WRRF_result['C_CI_times_mass_flow']/WRRF_result['dry_solids_tonne_per_day']
+WRRF_result['T_cost_FOAK_weighted_average'] = WRRF_result['T_cost_FOAK_times_mass_flow']/WRRF_result['dry_solids_tonne_per_day']
+WRRF_result['T_CI_FOAK_weighted_average'] = WRRF_result['T_CI_FOAK_times_mass_flow']/WRRF_result['dry_solids_tonne_per_day']
+WRRF_result['T_cost_NOAK_weighted_average'] = WRRF_result['T_cost_NOAK_times_mass_flow']/WRRF_result['dry_solids_tonne_per_day']
+WRRF_result['T_CI_NOAK_weighted_average'] = WRRF_result['T_CI_NOAK_times_mass_flow']/WRRF_result['dry_solids_tonne_per_day']
+
+WRRF_result = WRRF_result[['C_cost_weighted_average','C_CI_weighted_average','T_cost_FOAK_weighted_average',
+                           'T_CI_FOAK_weighted_average', 'T_cost_NOAK_weighted_average', 'T_CI_NOAK_weighted_average']]
+
+WRRF_result.reset_index(inplace=True)
+
+WRRF_result = WRRF_result.merge(WRRF_filtered[['COUNTRY','CNTRY_ISO']].drop_duplicates(), how='left', on='COUNTRY')
+
+world_result = world.merge(WRRF_result, how='left', left_on='ISO_A3', right_on='CNTRY_ISO')
+
+#%% world map visualization - C cost
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
@@ -452,6 +692,84 @@ plt.rcParams['ps.fonttype'] = 42
 plt.rcParams.update({'mathtext.fontset':'custom'})
 plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+
+fig, ax = plt.subplots(figsize=(30, 30))
+
+color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['w',b,db])
+
+world_result.plot(column='C_cost_weighted_average', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, vmin=0, vmax=3500)
+
+world.plot(ax=ax, color='none', edgecolor='k', linewidth=1)
+
+fig.axes[1].set_ylabel('$\mathbf{Cost}$' + '\n[\$·${tonne^{−1}}$]', fontname='Arial', fontsize=35, linespacing=0.8)
+fig.axes[1].tick_params(length=10, width=3)
+
+pos1 = fig.axes[1].get_position()
+pos2 = [pos1.x0-0.035, pos1.y0, pos1.width, pos1.height] 
+fig.axes[1].set_position(pos2)
+
+# comment out the following line if the colorbar is needed
+# fig.delaxes(fig.axes[1])
+
+ax.set_aspect(1)
+
+ax.set_axis_off()
+
+#%% world map visualization - T NOAK cost
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 36
+plt.rcParams['ytick.labelsize'] = 36
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+
+fig, ax = plt.subplots(figsize=(30, 30))
+
+color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['w',b,db])
+
+world_result.plot(column='T_cost_NOAK_weighted_average', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, vmin=0, vmax=3500)
+
+world.plot(ax=ax, color='none', edgecolor='k', linewidth=1)
+
+fig.axes[1].set_ylabel('$\mathbf{Cost}$' + '\n[\$·${tonne^{−1}}$]', fontname='Arial', fontsize=35, linespacing=0.8)
+fig.axes[1].tick_params(length=10, width=3)
+
+pos1 = fig.axes[1].get_position()
+pos2 = [pos1.x0-0.035, pos1.y0, pos1.width, pos1.height] 
+fig.axes[1].set_position(pos2)
+
+# comment out the following line if the colorbar is needed
+# fig.delaxes(fig.axes[1])
+
+ax.set_aspect(1)
+
+ax.set_axis_off()
+
+#%% global equity
+
+country_average_solids = WRRF.groupby('COUNTRY').mean('dry_solids_tonne_per_day')
+
+country_average_solids_HDI = country_average_solids.merge(HDI, how='inner', left_on='COUNTRY', right_on='Country')
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 36
+plt.rcParams['ytick.labelsize'] = 36
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+
+fig, ax = plt.subplots(figsize=(12, 10))
 
 ax = plt.gca()
 
@@ -517,16 +835,6 @@ ax.plot([0.8, 0.8],
 
 # TODO: update
 # plt.savefig('/Users/jiananfeng/Desktop/Figure_XXX.pdf', transparent=True, bbox_inches='tight')
-
-#%% world map visualization
-
-fig, ax = plt.subplots(figsize=(30, 30))
-
-world.plot(ax=ax, color='w', edgecolor='k', linewidth=1)
-
-ax.set_aspect(1)
-
-ax.set_axis_off()
 
 #%% WWTP random sampling
 
@@ -771,8 +1079,12 @@ animation_data = pd.DataFrame({'system_ID': system_ID_list,
                                'CI': LCA_result_list})
 
 plt.rcParams['axes.linewidth'] = 3
-plt.rcParams['xtick.labelsize'] = 38
-plt.rcParams['ytick.labelsize'] = 38
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 36
+plt.rcParams['ytick.labelsize'] = 36
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
 
 plt.rcParams.update({'mathtext.fontset':'custom'})
 plt.rcParams.update({'mathtext.default':'regular'})
