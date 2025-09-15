@@ -85,7 +85,7 @@ x_test_multi, y_test_multi = multivariate_data(X_scaled, y_scaled,
                                                future_target, step)
 
 #%% LSTM & RNN Hyperparameter tuning
-seed = 42  
+seed = 33  
 tf.random.set_seed(seed)
 np.random.seed(seed)
 random.seed(seed)
