@@ -39,11 +39,15 @@ V_ae = 3000 # aerated zone tank volume
 # O2 saturation concentration at 15 degC
 SOSAT1 = 8
 
+# mmp kinetics
+# mmp = 'Musvoto'
+mmp = 'KM'
+
 # Default initial conditions
 dfs = load_data(ospath.join(data_path, 'bsm2p_init.xlsx'), sheet=None)
 inf_concs = dfs['asm'].iloc[0].to_dict()
 c1init = dfs['asm'].iloc[1].to_dict()
-asinit = dfs['asm2'].iloc[2:]
+asinit = dfs['asm'].iloc[2:]
 adinit = dfs['adm'].iloc[0].to_dict()
 c2init = dfs['settler'].to_dict('index')
 c2init['s'] = {k:v for k,v in c2init['s'].items() if v>0}
@@ -120,7 +124,6 @@ def create_system(flowsheet=None, default_init_conds=True):
                 N_tanks_in_series=7,
                 V_tanks=[V_anae]*2+[V_anox]*2+[V_ae]*3,
                 influent_fractions=[[1]+[0]*6]*2 + [[0,0,1,0,0,0,0]],
-                # influent_fractions=[[1]+[0]*6]*2,
                 internal_recycles=[(6,2,Q_intr*1.1)],
                 # kLa=[0]*4+[120,120,60], 
                 # DO_setpoints=[0,0,0,0,2.0,2.0,2.0], 
@@ -147,6 +150,7 @@ def create_system(flowsheet=None, default_init_conds=True):
     adm = pc.ADM1p(
         f_bu_su=0.1328, f_pro_su=0.2691, f_ac_su=0.4076,
         q_ch_hyd=0.3, q_pr_hyd=0.3, q_li_hyd=0.3, 
+        mmp_kinetics=mmp,
         )
     
     # breakpoint()
@@ -156,6 +160,7 @@ def create_system(flowsheet=None, default_init_conds=True):
                            V_liq=3400, V_gas=300, T=T_ad, model=adm,
                            pH_ctrl=7.0,)
     AD.algebraic_h2 = False
+    # AD.algebraic_h2 = True
     J2 = su.ADM1ptomASM2d('J2', upstream=AD-1, thermo=thermo_asm, isdynamic=True, 
                           adm1_model=adm, asm2d_model=asm)
     # Switch back to ASM1 components
@@ -307,7 +312,7 @@ if __name__ == '__main__':
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     
-    t = 100
+    t = 300
     t_step = 0.1
     # method = 'RK45'
     # method = 'RK23'
