@@ -32,9 +32,8 @@ References
 
 '''
 
-# !!! Temporarily ignoring warnings
-import warnings
-warnings.filterwarnings('ignore')
+# import warnings
+# warnings.filterwarnings('ignore')
 
 import os, numpy as np, biosteam as bst, qsdsan as qs
 from biosteam import IsenthalpicValve
@@ -216,7 +215,7 @@ def create_system(
             try:
                 CrudeHeavyDis._run()
                 ratio = get_ratio()
-                # assert(lb<=ratio<=ub) #!!! needs to be added back after fixing the convergence issue
+                assert(lb<=ratio<=ub) #!!! needs to be added back after fixing the convergence issue
                 CrudeHeavyDis._design()
                 CrudeHeavyDis._cost()
                 assert(all([v>0 for v in CrudeHeavyDis.baseline_purchase_costs.values()]))
