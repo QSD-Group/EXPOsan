@@ -73,7 +73,7 @@ def plantwide_P_mass_flows(system, save_as=None):
     >>> load_state(sys, state_arr=state_arr)
     >>> sys.simulate(t_span=(0,300), method='BDF')
     >>> df = plantwide_P_mass_flows(sys)
-    >>> df.head()
+    >>> df.iloc[:, 3:].head()
         TP  PO4-P  mineral_P  bio_P  other_organic_P
     0  266    189          0      0               77
     1    0      0          0      0                0
