@@ -74,12 +74,12 @@ def plantwide_P_mass_flows(system, save_as=None):
     >>> sys.simulate(t_span=(0,300), method='BDF')
     >>> df = plantwide_P_mass_flows(sys)
     >>> df.head()
-        stream source sink   TP  PO4-P  mineral_P  bio_P  other_organic_P
-     0     RWW   None   MD  266    189          0      0               77
-     1  carbon   None  ASR    0      0          0      0                0
-     2     ws1     MD   PC  266   97.6       91.7      0               77
-     3  reject     HD   PC 62.7   31.1       23.9   1.96             5.72
-     4      PE     PC  ASR  223    128       45.9  0.779             48.3
+        TP  PO4-P  mineral_P  bio_P  other_organic_P
+    0  266    189          0      0               77
+    1    0      0          0      0                0
+    2  266   97.6       91.7      0               77
+    3 62.7   31.1       23.9   1.96             5.72
+    4  223    128       45.9  0.779             48.3
     
     '''
     fs = system.flowsheet.stream

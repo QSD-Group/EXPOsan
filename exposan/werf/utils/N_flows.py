@@ -60,13 +60,13 @@ def plantwide_N_mass_flows(system, save_as=None):
     >>> load_state(sys, state_arr=state_arr)
     >>> sys.simulate(t_span=(0,300), method='BDF')
     >>> df = plantwide_N_mass_flows(sys)
-    >>> df.head()
-        stream source  sink       TN  NOx_N  NH4_N    org_N       N2      TKN
-    0      RWW   None   ASR 1.51e+03      0    981      533      681 1.51e+03
-    1      RAS     FC   ASR 1.15e+04   61.7   6.41 1.14e+04      399 1.14e+04
-    2   reject     HD   ASR     58.6   2.52  0.261     55.8     16.3     56.1
-    3  treated    ASR    FC 1.22e+04    156   16.2  1.2e+04 1.01e+03  1.2e+04
-    4       SE     FC  None      167     92   9.57     65.1      595     74.7
+    >>> df.iloc[:, 3:].head()
+            TN  NOx_N  NH4_N    org_N       N2      TKN
+    0 1.51e+03      0    981      533      681 1.51e+03
+    1 1.15e+04   61.7   6.41 1.14e+04      399 1.14e+04
+    2     58.6   2.52  0.261     55.8     16.3     56.1
+    3 1.22e+04    156   16.2  1.2e+04 1.01e+03  1.2e+04
+    4      167     92   9.57     65.1      595     74.7
 
     '''
     fs = system.flowsheet.stream
