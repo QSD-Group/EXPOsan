@@ -67,6 +67,10 @@ setup(
             'reclaimer/data/*',
             'saf/*',
             'saf/data/*',
+            'werf/*',
+            'werf/data/*',
+            'werf/systems/*',
+            'werf/utils/*',
         ]},
     classifiers=[
         'License :: OSI Approved :: University of Illinois/NCSA Open Source License',
