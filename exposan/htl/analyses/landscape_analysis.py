@@ -72,6 +72,7 @@ WRRF = pd.read_csv(folder + 'HydroWASTE_v10/HydroWASTE_v10.csv', encoding='latin
 WRRF = WRRF[WRRF['WASTE_DIS'] != 0]
 WRRF = WRRF[~WRRF['STATUS'].isin(['Closed','Decommissioned','Non-Operational'])]
 WRRF['dry_solids_tonne_per_day'] = WRRF['WASTE_DIS']/_MMgal_to_m3*ww_2_dry_solids
+# TODO: mention this in the manuscript or SI
 # models will not be accurate when the WWRS mass flow rate is < 1 dry tonne/day (in reality, those WRRFs may use other WRRS treatment methods, e.g., lagoon, wetland, etc.)
 # only keep WRRFs with ≥ 1 tonne dry solids per day
 WRRF_filtered = WRRF[WRRF['dry_solids_tonne_per_day'] >= 1]
@@ -85,6 +86,22 @@ WRRF_filtered = gpd.GeoDataFrame(WRRF_filtered, crs='EPSG:4269',
                                                              y=WRRF_filtered.LAT_WWTP))
 
 HDI = pd.read_excel(folder + 'HDR25_Statistical_Annex_HDI_Table.xlsx')
+
+# electricity price
+electricity_price = pd.read_excel(folder + 'P_Electric Prices by Country.xlsx')
+electricity_price.rename(columns={'Country Name':'country',
+                                  'Country Code':'country_code',
+                                  'Time':'year',
+                                  'Getting electricity: Price of electricity (US cents per kWh) (DB16-20 methodology) [IC.ELC.PRI.KH.DB1619]':'US_cents_per_kWh'},
+                         inplace=True)
+electricity_price = electricity_price[electricity_price['US_cents_per_kWh'] != '..']
+electricity_price = electricity_price[electricity_price['US_cents_per_kWh'].notna()]
+electricity_price = electricity_price.loc[electricity_price.groupby('country')['year'].idxmax()].reset_index(drop=True)
+electricity_price = electricity_price[['country','country_code','year','US_cents_per_kWh']]
+
+# TODO: for countries w/o country data, use regional or global data
+# electricity CI
+# electriicty_CI = 
 
 #%% MPs
 
@@ -104,17 +121,17 @@ plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 ax = plt.gca()
 
-ax.set_ylim([-4, 8])
+ax.set_ylim([-7, 5])
 
 ax.tick_params(direction='out', length=10, width=3,
                bottom=True, top=False, left=True, right=False, pad=0)
 
 plt.xticks([0, 1, 2, 3, 4], ['WWRS','soil/agricultural land','air','sediment','water'], fontname='Arial')
-plt.yticks(np.arange(-4, 11, 3), fontname='Arial')
+plt.yticks(np.arange(-7, 8, 3), fontname='Arial')
 
 ax_left = ax.twinx()
 ax_left.set_ylim(ax.get_ylim())
-plt.yticks(np.arange(-4, 11, 3), fontname='Arial')
+plt.yticks(np.arange(-7, 8, 3), fontname='Arial')
 
 ax_left.tick_params(direction='inout', length=20, width=3,
                     bottom=False, top=False, left=True, right=False,
@@ -122,7 +139,7 @@ ax_left.tick_params(direction='inout', length=20, width=3,
 
 ax_right = ax.twinx()
 ax_right.set_ylim(ax.get_ylim())
-plt.yticks(np.arange(-4, 11, 3), fontname='Arial')
+plt.yticks(np.arange(-7, 8, 3), fontname='Arial')
 
 ax_right.tick_params(direction='in', length=10, width=3,
                      bottom=False, top=False, left=False, right=True,
@@ -131,51 +148,51 @@ ax_right.tick_params(direction='in', length=10, width=3,
 ax_right.tick_params(direction='in', length=10, width=3,
                      bottom=False, top=False, left=False, right=True, pad=0)
 
-ax.set_ylabel('$\mathbf{log_{10}C}$\n[particle·${kg^{-1}}$]',
+ax.set_ylabel('$\mathbf{log_{10}C}$\n[particle·${g^{-1}}$]',
               fontname='Arial',
               fontsize=45,
               labelpad=13,
               linespacing=0.8)
 
 ax.bar(0,
-       np.log10(24000000)-np.log10(1565),
+       np.log10(24000)-np.log10(1.565),
        width=0.8,
        color=r,
        edgecolor='k',
        linewidth=3,
-       bottom=np.log10(1565))
+       bottom=np.log10(1.565))
 
 ax.bar(1,
-       np.log10(2830)-np.log10(88),
+       np.log10(2.83)-np.log10(0.088),
        width=0.8,
        color=r,
        edgecolor='k',
        linewidth=3,
-       bottom=np.log10(88))
+       bottom=np.log10(0.088))
 
 ax.bar(2,
-       np.log10(2256.326531)-np.log10(0.816326531),
+       np.log10(2.256326531)-np.log10(0.000816327),
        width=0.8,
        color=r,
        edgecolor='k',
        linewidth=3,
-       bottom=np.log10(0.816326531))
+       bottom=np.log10(0.000816327))
 
 ax.bar(3,
-       np.log10(470.5882353)-np.log10(16.47058824),
+       np.log10(0.470588235)-np.log10(0.016470588),
        width=0.8,
        color=r,
        edgecolor='k',
        linewidth=3,
-       bottom=np.log10(16.47058824))
+       bottom=np.log10(0.016470588))
 
 ax.bar(4,
-       np.log10(3.20e-1)-np.log10(2.70e-4),
+       np.log10(3.20E-04)-np.log10(2.70E-07),
        width=0.8,
        color=r,
        edgecolor='k',
        linewidth=3,
-       bottom=np.log10(2.70e-4))
+       bottom=np.log10(2.70E-07))
 
 # plt.savefig('/Users/jiananfeng/Desktop/MPs.pdf', transparent=True, bbox_inches='tight')
 
@@ -695,7 +712,7 @@ plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 fig, ax = plt.subplots(figsize=(30, 30))
 
-color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['w',b,db])
+color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', [b, g, y, o, r])
 
 world_result.plot(column='C_cost_weighted_average', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, vmin=0, vmax=3500)
 
@@ -731,7 +748,7 @@ plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 fig, ax = plt.subplots(figsize=(30, 30))
 
-color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['w',b,db])
+color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', [b, g, y, o, r])
 
 world_result.plot(column='T_cost_NOAK_weighted_average', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, vmin=0, vmax=3500)
 

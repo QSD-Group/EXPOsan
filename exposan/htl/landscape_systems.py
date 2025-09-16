@@ -14,6 +14,17 @@ for license details.
 
 #%% housekeeping
 
+# TODO: LCA data update
+# TODO 1: update lime LCA data from ecoinvent 3.8 to 3.11
+# TODO 2: check why the previous code has different CI for transporting sludge and biooils
+# TODO 3: country-level electricty CI data need more digits (use the code below to process ecoinvent data)
+# =============================================================================
+# data = pd.read_excel('/Users/jiananfeng/Desktop/XXX.xlsx')
+# data['country_code'] = data['country'].str.extract(r'\((.*?)\)')
+# data['country'] = data['country'].str.replace(r"\s*\(.*?\)", "", regex=True)
+# data.to_excel('/Users/jiananfeng/Desktop/XXX.xlsx')
+# =============================================================================
+
 # TODO: TODOs in _components.py (and maybe others as well)
 
 # TODO: need to decide how to integrate the following TODO into the roadmap analysis
@@ -187,19 +198,19 @@ def create_C1_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
@@ -211,7 +222,7 @@ def create_C1_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
     
     sludge_trucking = qs.ImpactItem(ID='Sludge_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    sludge_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    sludge_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -318,19 +329,19 @@ def create_C2_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # TODO: discuss with J.S.G.: whehter the CO2 emission from limestone decomposition is fossil-origin
     qs.StreamImpactItem(ID='Lime', linked_stream=stream.lime, GlobalWarming=0.04261602+44/56)
     
@@ -344,7 +355,7 @@ def create_C2_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
     
     sludge_trucking = qs.ImpactItem(ID='Sludge_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    sludge_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    sludge_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -459,24 +470,24 @@ def create_C3_system(size=10, operation_hours=7884, LA_distance=100, biosolids_p
     P_fertilizer.add_indicator(GlobalWarming, -2.0)
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # TODO: discuss with J.S.G.: whehter the CO2 emission from limestone decomposition is fossil-origin
     qs.StreamImpactItem(ID='Lime', linked_stream=stream.lime, GlobalWarming=0.04261602+44/56)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.4776041 + 44*12/(12*12 + 23*1))
+    qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
@@ -488,7 +499,7 @@ def create_C3_system(size=10, operation_hours=7884, LA_distance=100, biosolids_p
     
     biosolids_trucking = qs.ImpactItem(ID='Biosolids_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biosolids_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    biosolids_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -593,7 +604,7 @@ def create_C4_system(size=10, operation_hours=7884, LA_distance=100, compost_pri
                                        description='Global Warming Potential')
     
     Bulking_agent = qs.ImpactItem('Bulking_agent', functional_unit='kg')
-    Bulking_agent.add_indicator(GlobalWarming, 0.041056332)
+    Bulking_agent.add_indicator(GlobalWarming, 0.04291794596775965)
     
     # BEAM
     N_fertilizer = qs.ImpactItem('N_fertilizer', functional_unit='kg')
@@ -604,22 +615,22 @@ def create_C4_system(size=10, operation_hours=7884, LA_distance=100, compost_pri
     P_fertilizer.add_indicator(GlobalWarming, -2.0)
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.4776041 + 44*12/(12*12 + 23*1))
+    qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
@@ -631,7 +642,7 @@ def create_C4_system(size=10, operation_hours=7884, LA_distance=100, compost_pri
     
     compost_trucking = qs.ImpactItem(ID='Compost_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    compost_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    compost_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -742,22 +753,22 @@ def create_C5_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.47016123 + natural_gas_density/16*44)
+    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
@@ -769,7 +780,7 @@ def create_C5_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
     
     sludge_trucking = qs.ImpactItem(ID='Sludge_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    sludge_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    sludge_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -886,25 +897,25 @@ def create_C6_system(size=10, operation_hours=7884, LA_distance=100, biosolids_p
     P_fertilizer.add_indicator(GlobalWarming, -2.0)
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.47016123 + natural_gas_density/16*44)
+    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.4776041 + 44*12/(12*12 + 23*1))
+    qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
@@ -916,7 +927,7 @@ def create_C6_system(size=10, operation_hours=7884, LA_distance=100, biosolids_p
     
     biosolids_trucking = qs.ImpactItem(ID='Biosolids_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biosolids_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    biosolids_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -1028,23 +1039,23 @@ def create_C7_system(size=10, operation_hours=7884, FTE=0.4, lifetime=20):
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.47016123 + natural_gas_density/16*44)
+    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Ash_incineration', linked_stream=stream.ash_incineration, GlobalWarming=0.0082744841)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Ash_incineration', linked_stream=stream.ash_incineration, GlobalWarming=0.018281422578429424)
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
@@ -1138,19 +1149,19 @@ def create_C8_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
@@ -1162,7 +1173,7 @@ def create_C8_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
     
     sludge_trucking = qs.ImpactItem(ID='Sludge_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    sludge_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    sludge_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -1275,22 +1286,22 @@ def create_C9_system(size=10, operation_hours=7884, LA_distance=100, biosolids_p
     P_fertilizer.add_indicator(GlobalWarming, -2.0)
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.4776041 + 44*12/(12*12 + 23*1))
+    qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
@@ -1302,7 +1313,7 @@ def create_C9_system(size=10, operation_hours=7884, LA_distance=100, biosolids_p
     
     biosolids_trucking = qs.ImpactItem(ID='Biosolids_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biosolids_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    biosolids_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -1410,7 +1421,7 @@ def create_C10_system(size=10, operation_hours=7884, LA_distance=100, compost_pr
                                        description='Global Warming Potential')
     
     Bulking_agent = qs.ImpactItem('Bulking_agent', functional_unit='kg')
-    Bulking_agent.add_indicator(GlobalWarming, 0.041056332)
+    Bulking_agent.add_indicator(GlobalWarming, 0.04291794596775965)
     
     # BEAM
     N_fertilizer = qs.ImpactItem('N_fertilizer', functional_unit='kg')
@@ -1421,22 +1432,22 @@ def create_C10_system(size=10, operation_hours=7884, LA_distance=100, compost_pr
     P_fertilizer.add_indicator(GlobalWarming, -2.0)
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.4776041 + 44*12/(12*12 + 23*1))
+    qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
@@ -1448,7 +1459,7 @@ def create_C10_system(size=10, operation_hours=7884, LA_distance=100, compost_pr
     
     compost_trucking = qs.ImpactItem(ID='Compost_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    compost_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    compost_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -1562,22 +1573,22 @@ def create_C11_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.47016123 + natural_gas_density/16*44)
+    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
@@ -1589,7 +1600,7 @@ def create_C11_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
     
     sludge_trucking = qs.ImpactItem(ID='Sludge_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    sludge_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    sludge_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -1709,25 +1720,25 @@ def create_C12_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
     P_fertilizer.add_indicator(GlobalWarming, -2.0)
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.47016123 + natural_gas_density/16*44)
+    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.4776041 + 44*12/(12*12 + 23*1))
+    qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
@@ -1739,7 +1750,7 @@ def create_C12_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
     
     biosolids_trucking = qs.ImpactItem(ID='Biosolids_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biosolids_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    biosolids_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -1854,23 +1865,23 @@ def create_C13_system(size=10, operation_hours=7884, FTE=0.55, lifetime=20):
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.47016123 + natural_gas_density/16*44)
+    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Ash_incineration', linked_stream=stream.ash_incineration, GlobalWarming=0.0082744841)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Ash_incineration', linked_stream=stream.ash_incineration, GlobalWarming=0.018281422578429424)
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
@@ -1968,22 +1979,22 @@ def create_C14_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.47016123 + natural_gas_density/16*44)
+    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
@@ -1996,7 +2007,7 @@ def create_C14_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
     
     sludge_trucking = qs.ImpactItem(ID='Sludge_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    sludge_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    sludge_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -2114,25 +2125,25 @@ def create_C15_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
     P_fertilizer.add_indicator(GlobalWarming, -2.0)
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.47016123 + natural_gas_density/16*44)
+    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.4776041 + 44*12/(12*12 + 23*1))
+    qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
@@ -2145,7 +2156,7 @@ def create_C15_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
     
     biosolids_trucking = qs.ImpactItem(ID='Biosolids_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biosolids_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    biosolids_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -2258,7 +2269,7 @@ def create_C16_system(size=10, operation_hours=7884, LA_distance=100, compost_pr
                                        description='Global Warming Potential')
     
     Bulking_agent = qs.ImpactItem('Bulking_agent', functional_unit='kg')
-    Bulking_agent.add_indicator(GlobalWarming, 0.041056332)
+    Bulking_agent.add_indicator(GlobalWarming, 0.04291794596775965)
     
     # BEAM
     N_fertilizer = qs.ImpactItem('N_fertilizer', functional_unit='kg')
@@ -2269,25 +2280,25 @@ def create_C16_system(size=10, operation_hours=7884, LA_distance=100, compost_pr
     P_fertilizer.add_indicator(GlobalWarming, -2.0)
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.47016123 + natural_gas_density/16*44)
+    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.4776041 + 44*12/(12*12 + 23*1))
+    qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
@@ -2300,7 +2311,7 @@ def create_C16_system(size=10, operation_hours=7884, LA_distance=100, compost_pr
     
     compost_trucking = qs.ImpactItem(ID='Compost_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    compost_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    compost_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -2419,22 +2430,22 @@ def create_C17_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.47016123 + natural_gas_density/16*44)
+    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
@@ -2447,7 +2458,7 @@ def create_C17_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
     
     sludge_trucking = qs.ImpactItem(ID='Sludge_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    sludge_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    sludge_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -2571,25 +2582,25 @@ def create_C18_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
     P_fertilizer.add_indicator(GlobalWarming, -2.0)
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.47016123 + natural_gas_density/16*44)
+    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.4776041 + 44*12/(12*12 + 23*1))
+    qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
@@ -2602,7 +2613,7 @@ def create_C18_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
     
     biosolids_trucking = qs.ImpactItem(ID='Biosolids_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biosolids_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    biosolids_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -2721,23 +2732,23 @@ def create_C19_system(size=10, operation_hours=7884, FTE=0.55, lifetime=20):
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.47016123 + natural_gas_density/16*44)
+    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Ash_incineration', linked_stream=stream.ash_incineration, GlobalWarming=0.0082744841)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Ash_incineration', linked_stream=stream.ash_incineration, GlobalWarming=0.018281422578429424)
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
@@ -2842,23 +2853,23 @@ def create_C20_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.47016123 + natural_gas_density/16*44)
+    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.0082744841)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
@@ -2871,7 +2882,7 @@ def create_C20_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
     
     sludge_trucking = qs.ImpactItem(ID='Sludge_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    sludge_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    sludge_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -2995,26 +3006,26 @@ def create_C21_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
     P_fertilizer.add_indicator(GlobalWarming, -2.0)
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.47016123 + natural_gas_density/16*44)
+    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.4776041 + 44*12/(12*12 + 23*1))
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.0082744841)
+    qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
+    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
@@ -3027,7 +3038,7 @@ def create_C21_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
     
     biosolids_trucking = qs.ImpactItem(ID='Biosolids_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biosolids_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    biosolids_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -3146,7 +3157,7 @@ def create_C22_system(size=10, operation_hours=7884, LA_distance=100, compost_pr
                                        description='Global Warming Potential')
     
     Bulking_agent = qs.ImpactItem('Bulking_agent', functional_unit='kg')
-    Bulking_agent.add_indicator(GlobalWarming, 0.041056332)
+    Bulking_agent.add_indicator(GlobalWarming, 0.04291794596775965)
     
     # BEAM
     N_fertilizer = qs.ImpactItem('N_fertilizer', functional_unit='kg')
@@ -3157,26 +3168,26 @@ def create_C22_system(size=10, operation_hours=7884, LA_distance=100, compost_pr
     P_fertilizer.add_indicator(GlobalWarming, -2.0)
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.47016123 + natural_gas_density/16*44)
+    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.4776041 + 44*12/(12*12 + 23*1))
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.0082744841)
+    qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
+    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
@@ -3189,7 +3200,7 @@ def create_C22_system(size=10, operation_hours=7884, LA_distance=100, compost_pr
     
     compost_trucking = qs.ImpactItem(ID='Compost_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    compost_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    compost_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -3314,23 +3325,23 @@ def create_C23_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.47016123 + natural_gas_density/16*44)
+    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.0082744841)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
@@ -3343,7 +3354,7 @@ def create_C23_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
     
     sludge_trucking = qs.ImpactItem(ID='Sludge_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    sludge_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    sludge_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -3473,26 +3484,26 @@ def create_C24_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
     P_fertilizer.add_indicator(GlobalWarming, -2.0)
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.47016123 + natural_gas_density/16*44)
+    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.4776041 + 44*12/(12*12 + 23*1))
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.0082744841)
+    qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
+    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
@@ -3505,7 +3516,7 @@ def create_C24_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
     
     biosolids_trucking = qs.ImpactItem(ID='Biosolids_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biosolids_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    biosolids_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -3630,24 +3641,24 @@ def create_C25_system(size=10, operation_hours=7884, FTE=0.7, lifetime=20):
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.47016123 + natural_gas_density/16*44)
+    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Ash_incineration', linked_stream=stream.ash_incineration, GlobalWarming=0.0082744841)
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.0082744841)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Ash_incineration', linked_stream=stream.ash_incineration, GlobalWarming=0.018281422578429424)
+    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
@@ -3794,22 +3805,22 @@ def create_T1_system(size=10, operation_hours=7884, refinery_distance=100, FOAK=
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.47016123 + natural_gas_density/16*44)
+    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
     Deionized_water = qs.ImpactItem('Deionized_water', functional_unit='kg')
-    Deionized_water.add_indicator(GlobalWarming, 0.00045239247)
+    Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
     
     def deionized_water_quantity():
         try:
@@ -3823,23 +3834,23 @@ def create_T1_system(size=10, operation_hours=7884, refinery_distance=100, FOAK=
                 result = 0
         return result
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # use market for petroleum to offset transportation and then add the transportation part
-    # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
+    # 0.6254770020033417 kg CO2 eq/kg petroleum ('market for petroleum')
     # assume biocrude is used to produce biofuel for combustion
     # pertoleum is 84% C, https://en.wikipedia.org/wiki/Petroleum
-    qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.22290007 + 0.84/12*44)/HTL.crude_oil_HHV*HTL.biocrude_HHV)
-    qs.StreamImpactItem(ID='Hydrochar', linked_stream=stream.hydrochar, GlobalWarming=0.0082744841)
-    qs.StreamImpactItem(ID='CHG_catalyst', linked_stream=stream.used_CHG_catalyst, GlobalWarming=471.1867077)
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.0082744841)
+    qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.6254770020033417 + 0.84/12*44)/HTL.crude_oil_HHV*HTL.biocrude_HHV)
+    qs.StreamImpactItem(ID='Hydrochar', linked_stream=stream.hydrochar, GlobalWarming=0.018281422578429424)
+    qs.StreamImpactItem(ID='CHG_catalyst', linked_stream=stream.used_CHG_catalyst, GlobalWarming=1269.60621783954)
+    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
     
     biocrude_trucking = qs.ImpactItem('Biocrude_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biocrude_trucking.add_indicator(GlobalWarming, 0.13004958/1000)
+    biocrude_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), https://doi.org/10.1016/j.biortech.2010.03.136
     biocrude_trucking.price = (5.67 + 0.07*HTL.biocrude_distance)/HTL.biocrude_density/HTL.biocrude_distance/GDPCTPI[2008]*GDPCTPI[2023]
     
@@ -4001,22 +4012,22 @@ def create_T2_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.47016123 + natural_gas_density/16*44)
+    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
     Deionized_water = qs.ImpactItem('Deionized_water', functional_unit='kg')
-    Deionized_water.add_indicator(GlobalWarming, 0.00045239247)
+    Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
     
     def deionized_water_quantity():
         try:
@@ -4030,20 +4041,20 @@ def create_T2_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
                 result = 0
         return result
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Sodium_hydroxide', linked_stream=stream.sodium_hydroxide, GlobalWarming=1.2497984)
-    qs.StreamImpactItem(ID='Hydrochloric_acid', linked_stream=stream.hydrochloric_acid, GlobalWarming=0.87476322)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Sodium_hydroxide', linked_stream=stream.sodium_hydroxide, GlobalWarming=1.4080631253939493)
+    qs.StreamImpactItem(ID='Hydrochloric_acid', linked_stream=stream.hydrochloric_acid, GlobalWarming=0.8701969784483516)
     # use market for petroleum to offset transportation and then add the transportation part
-    # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
+    # 0.6254770020033417 kg CO2 eq/kg petroleum ('market for petroleum')
     # assume biocrude is used to produce biofuel for combustion
     # pertoleum is 84% C, https://en.wikipedia.org/wiki/Petroleum
-    qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.22290007 + 0.84/12*44)/HALT.crude_oil_HHV*HALT.biocrude_HHV)
-    qs.StreamImpactItem(ID='CHG_catalyst', linked_stream=stream.used_CHG_catalyst, GlobalWarming=471.1867077)
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.0082744841)
+    qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.6254770020033417 + 0.84/12*44)/HALT.crude_oil_HHV*HALT.biocrude_HHV)
+    qs.StreamImpactItem(ID='CHG_catalyst', linked_stream=stream.used_CHG_catalyst, GlobalWarming=1269.60621783954)
+    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_HALT', linked_stream=stream.diesel_HALT, GlobalWarming=0.4776041 + 44*12/(12*12 + 23*1))
+    qs.StreamImpactItem(ID='Diesel_HALT', linked_stream=stream.diesel_HALT, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
@@ -4055,7 +4066,7 @@ def create_T2_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     
     biocrude_trucking = qs.ImpactItem('Biocrude_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biocrude_trucking.add_indicator(GlobalWarming, 0.13004958/1000)
+    biocrude_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), https://doi.org/10.1016/j.biortech.2010.03.136
     biocrude_trucking.price = (5.67 + 0.07*HALT.biocrude_distance)/HALT.biocrude_density/HALT.biocrude_distance/GDPCTPI[2008]*GDPCTPI[2023]
     
@@ -4074,7 +4085,7 @@ def create_T2_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     
     hydrochar_trucking = qs.ImpactItem('Hydrochar_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    hydrochar_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    hydrochar_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -4199,19 +4210,19 @@ def create_T3_system(size=10, operation_hours=7884, FOAK=True, FTE=0.4, lifetime
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
     Deionized_water = qs.ImpactItem('Deionized_water', functional_unit='kg')
-    Deionized_water.add_indicator(GlobalWarming, 0.00045239247)
+    Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
     
     def deionized_water_quantity():
         try:
@@ -4225,9 +4236,9 @@ def create_T3_system(size=10, operation_hours=7884, FOAK=True, FTE=0.4, lifetime
                 result = 0
         return result
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Ash_SCWO', linked_stream=stream.ash_SCWO, GlobalWarming=0.0082744841)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Ash_SCWO', linked_stream=stream.ash_SCWO, GlobalWarming=0.018281422578429424)
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
@@ -4360,22 +4371,22 @@ def create_T4_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.47016123 + natural_gas_density/16*44)
+    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
     Deionized_water = qs.ImpactItem('Deionized_water', functional_unit='kg')
-    Deionized_water.add_indicator(GlobalWarming, 0.00045239247)
+    Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
     
     def deionized_water_quantity():
         try:
@@ -4389,17 +4400,17 @@ def create_T4_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
                 result = 0
         return result
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # use market for petroleum to offset transportation and then add the transportation part
-    # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
+    # 0.6254770020033417 kg CO2 eq/kg petroleum ('market for petroleum')
     # assume biooil is used to produce biofuel for combustion
     # pertoleum is 84% C, https://en.wikipedia.org/wiki/Petroleum
-    qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.22290007 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.0082744841)
+    qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.6254770020033417 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
+    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_pyrolysis', linked_stream=stream.diesel_pyrolysis, GlobalWarming=0.4776041 + 44*12/(12*12 + 23*1))
+    qs.StreamImpactItem(ID='Diesel_pyrolysis', linked_stream=stream.diesel_pyrolysis, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
@@ -4412,7 +4423,7 @@ def create_T4_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     
     biooil_trucking = qs.ImpactItem('Biooil_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biooil_trucking.add_indicator(GlobalWarming, 0.13004958/1000)
+    biooil_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), https://doi.org/10.1016/j.biortech.2010.03.136
     biooil_trucking.price = (5.67 + 0.07*Pyrolysis.biooil_distance)/Pyrolysis.biooil_density/Pyrolysis.biooil_distance/GDPCTPI[2008]*GDPCTPI[2023]
     
@@ -4431,7 +4442,7 @@ def create_T4_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     
     biochar_trucking = qs.ImpactItem('Biochar_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biochar_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    biochar_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -4574,22 +4585,22 @@ def create_T5_system(size=10, operation_hours=7884, FOAK=True, FTE=0.7, lifetime
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.47016123 + natural_gas_density/16*44)
+    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
     Deionized_water = qs.ImpactItem('Deionized_water', functional_unit='kg')
-    Deionized_water.add_indicator(GlobalWarming, 0.00045239247)
+    Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
     
     def deionized_water_quantity():
         try:
@@ -4603,11 +4614,11 @@ def create_T5_system(size=10, operation_hours=7884, FOAK=True, FTE=0.7, lifetime
                 result = 0
         return result
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Tar', linked_stream=stream.tar, GlobalWarming=0.69976007)
-    qs.StreamImpactItem(ID='Ash_gasification', linked_stream=stream.ash_gasification, GlobalWarming=0.0082744841)
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.0082744841)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Tar', linked_stream=stream.tar, GlobalWarming=1.3479189232049629)
+    qs.StreamImpactItem(ID='Ash_gasification', linked_stream=stream.ash_gasification, GlobalWarming=0.018281422578429424)
+    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
@@ -4754,22 +4765,22 @@ def create_T6_system(size=10, operation_hours=7884, refinery_distance=100, FOAK=
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.47016123 + natural_gas_density/16*44)
+    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
     Deionized_water = qs.ImpactItem('Deionized_water', functional_unit='kg')
-    Deionized_water.add_indicator(GlobalWarming, 0.00045239247)
+    Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
     
     def deionized_water_quantity():
         try:
@@ -4783,23 +4794,23 @@ def create_T6_system(size=10, operation_hours=7884, refinery_distance=100, FOAK=
                 result = 0
         return result
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # use market for petroleum to offset transportation and then add the transportation part
-    # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
+    # 0.6254770020033417 kg CO2 eq/kg petroleum ('market for petroleum')
     # assume biocrude is used to produce biofuel for combustion
     # pertoleum is 84% C, https://en.wikipedia.org/wiki/Petroleum
-    qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.22290007 + 0.84/12*44)/HTL.crude_oil_HHV*HTL.biocrude_HHV)
-    qs.StreamImpactItem(ID='Hydrochar', linked_stream=stream.hydrochar, GlobalWarming=0.0082744841)
-    qs.StreamImpactItem(ID='CHG_catalyst', linked_stream=stream.used_CHG_catalyst, GlobalWarming=471.1867077)
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.0082744841)
+    qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.6254770020033417 + 0.84/12*44)/HTL.crude_oil_HHV*HTL.biocrude_HHV)
+    qs.StreamImpactItem(ID='Hydrochar', linked_stream=stream.hydrochar, GlobalWarming=0.018281422578429424)
+    qs.StreamImpactItem(ID='CHG_catalyst', linked_stream=stream.used_CHG_catalyst, GlobalWarming=1269.60621783954)
+    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
     
     biocrude_trucking = qs.ImpactItem('Biocrude_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biocrude_trucking.add_indicator(GlobalWarming, 0.13004958/1000)
+    biocrude_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), https://doi.org/10.1016/j.biortech.2010.03.136
     biocrude_trucking.price = (5.67 + 0.07*HTL.biocrude_distance)/HTL.biocrude_density/HTL.biocrude_distance/GDPCTPI[2008]*GDPCTPI[2023]
     
@@ -4963,22 +4974,22 @@ def create_T7_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.47016123 + natural_gas_density/16*44)
+    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
     Deionized_water = qs.ImpactItem('Deionized_water', functional_unit='kg')
-    Deionized_water.add_indicator(GlobalWarming, 0.00045239247)
+    Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
     
     def deionized_water_quantity():
         try:
@@ -4992,20 +5003,20 @@ def create_T7_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
                 result = 0
         return result
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Sodium_hydroxide', linked_stream=stream.sodium_hydroxide, GlobalWarming=1.2497984)
-    qs.StreamImpactItem(ID='Hydrochloric_acid', linked_stream=stream.hydrochloric_acid, GlobalWarming=0.87476322)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Sodium_hydroxide', linked_stream=stream.sodium_hydroxide, GlobalWarming=1.4080631253939493)
+    qs.StreamImpactItem(ID='Hydrochloric_acid', linked_stream=stream.hydrochloric_acid, GlobalWarming=0.8701969784483516)
     # use market for petroleum to offset transportation and then add the transportation part
-    # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
+    # 0.6254770020033417 kg CO2 eq/kg petroleum ('market for petroleum')
     # assume biocrude is used to produce biofuel for combustion
     # pertoleum is 84% C, https://en.wikipedia.org/wiki/Petroleum
-    qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.22290007 + 0.84/12*44)/HALT.crude_oil_HHV*HALT.biocrude_HHV)
-    qs.StreamImpactItem(ID='CHG_catalyst', linked_stream=stream.used_CHG_catalyst, GlobalWarming=471.1867077)
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.0082744841)
+    qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.6254770020033417 + 0.84/12*44)/HALT.crude_oil_HHV*HALT.biocrude_HHV)
+    qs.StreamImpactItem(ID='CHG_catalyst', linked_stream=stream.used_CHG_catalyst, GlobalWarming=1269.60621783954)
+    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_HALT', linked_stream=stream.diesel_HALT, GlobalWarming=0.4776041 + 44*12/(12*12 + 23*1))
+    qs.StreamImpactItem(ID='Diesel_HALT', linked_stream=stream.diesel_HALT, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
@@ -5017,7 +5028,7 @@ def create_T7_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     
     biocrude_trucking = qs.ImpactItem('Biocrude_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biocrude_trucking.add_indicator(GlobalWarming, 0.13004958/1000)
+    biocrude_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), https://doi.org/10.1016/j.biortech.2010.03.136
     biocrude_trucking.price = (5.67 + 0.07*HALT.biocrude_distance)/HALT.biocrude_density/HALT.biocrude_distance/GDPCTPI[2008]*GDPCTPI[2023]
     
@@ -5036,7 +5047,7 @@ def create_T7_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     
     hydrochar_trucking = qs.ImpactItem('Hydrochar_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    hydrochar_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    hydrochar_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -5164,19 +5175,19 @@ def create_T8_system(size=10, operation_hours=7884, FOAK=True, FTE=0.55, lifetim
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
     Deionized_water = qs.ImpactItem('Deionized_water', functional_unit='kg')
-    Deionized_water.add_indicator(GlobalWarming, 0.00045239247)
+    Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
     
     def deionized_water_quantity():
         try:
@@ -5190,9 +5201,9 @@ def create_T8_system(size=10, operation_hours=7884, FOAK=True, FTE=0.55, lifetim
                 result = 0
         return result
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Ash_SCWO', linked_stream=stream.ash_SCWO, GlobalWarming=0.0082744841)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Ash_SCWO', linked_stream=stream.ash_SCWO, GlobalWarming=0.018281422578429424)
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
@@ -5328,22 +5339,22 @@ def create_T9_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.47016123 + natural_gas_density/16*44)
+    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
     Deionized_water = qs.ImpactItem('Deionized_water', functional_unit='kg')
-    Deionized_water.add_indicator(GlobalWarming, 0.00045239247)
+    Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
     
     def deionized_water_quantity():
         try:
@@ -5357,17 +5368,17 @@ def create_T9_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
                 result = 0
         return result
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # use market for petroleum to offset transportation and then add the transportation part
-    # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
+    # 0.6254770020033417 kg CO2 eq/kg petroleum ('market for petroleum')
     # assume biooil is used to produce biofuel for combustion
     # pertoleum is 84% C, https://en.wikipedia.org/wiki/Petroleum
-    qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.22290007 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.0082744841)
+    qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.6254770020033417 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
+    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_pyrolysis', linked_stream=stream.diesel_pyrolysis, GlobalWarming=0.4776041 + 44*12/(12*12 + 23*1))
+    qs.StreamImpactItem(ID='Diesel_pyrolysis', linked_stream=stream.diesel_pyrolysis, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
@@ -5380,7 +5391,7 @@ def create_T9_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     
     biooil_trucking = qs.ImpactItem('Biooil_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biooil_trucking.add_indicator(GlobalWarming, 0.13004958/1000)
+    biooil_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), https://doi.org/10.1016/j.biortech.2010.03.136
     biooil_trucking.price = (5.67 + 0.07*Pyrolysis.biooil_distance)/Pyrolysis.biooil_density/Pyrolysis.biooil_distance/GDPCTPI[2008]*GDPCTPI[2023]
     
@@ -5399,7 +5410,7 @@ def create_T9_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
     
     biochar_trucking = qs.ImpactItem('Biochar_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biochar_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    biochar_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -5545,22 +5556,22 @@ def create_T10_system(size=10, operation_hours=7884, FOAK=True, FTE=0.85, lifeti
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.47016123 + natural_gas_density/16*44)
+    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
     Deionized_water = qs.ImpactItem('Deionized_water', functional_unit='kg')
-    Deionized_water.add_indicator(GlobalWarming, 0.00045239247)
+    Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
     
     def deionized_water_quantity():
         try:
@@ -5574,11 +5585,11 @@ def create_T10_system(size=10, operation_hours=7884, FOAK=True, FTE=0.85, lifeti
                 result = 0
         return result
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Tar', linked_stream=stream.tar, GlobalWarming=0.69976007)
-    qs.StreamImpactItem(ID='Ash_gasification', linked_stream=stream.ash_gasification, GlobalWarming=0.0082744841)
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.0082744841)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Tar', linked_stream=stream.tar, GlobalWarming=1.3479189232049629)
+    qs.StreamImpactItem(ID='Ash_gasification', linked_stream=stream.ash_gasification, GlobalWarming=0.018281422578429424)
+    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
@@ -5727,22 +5738,22 @@ def create_T11_system(size=10, operation_hours=7884, refinery_distance=100, FOAK
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.47016123 + natural_gas_density/16*44)
+    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
     Deionized_water = qs.ImpactItem('Deionized_water', functional_unit='kg')
-    Deionized_water.add_indicator(GlobalWarming, 0.00045239247)
+    Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
     
     def deionized_water_quantity():
         try:
@@ -5756,16 +5767,16 @@ def create_T11_system(size=10, operation_hours=7884, refinery_distance=100, FOAK
                 result = 0
         return result
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # use market for petroleum to offset transportation and then add the transportation part
-    # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
+    # 0.6254770020033417 kg CO2 eq/kg petroleum ('market for petroleum')
     # assume biocrude is used to produce biofuel for combustion
     # pertoleum is 84% C, https://en.wikipedia.org/wiki/Petroleum
-    qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.22290007 + 0.84/12*44)/HTL.crude_oil_HHV*HTL.biocrude_HHV)
-    qs.StreamImpactItem(ID='Hydrochar', linked_stream=stream.hydrochar, GlobalWarming=0.0082744841)
-    qs.StreamImpactItem(ID='CHG_catalyst', linked_stream=stream.used_CHG_catalyst, GlobalWarming=471.1867077)
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.0082744841)
+    qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.6254770020033417 + 0.84/12*44)/HTL.crude_oil_HHV*HTL.biocrude_HHV)
+    qs.StreamImpactItem(ID='Hydrochar', linked_stream=stream.hydrochar, GlobalWarming=0.018281422578429424)
+    qs.StreamImpactItem(ID='CHG_catalyst', linked_stream=stream.used_CHG_catalyst, GlobalWarming=1269.60621783954)
+    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
@@ -5773,7 +5784,7 @@ def create_T11_system(size=10, operation_hours=7884, refinery_distance=100, FOAK
     
     biocrude_trucking = qs.ImpactItem('Biocrude_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biocrude_trucking.add_indicator(GlobalWarming, 0.13004958/1000)
+    biocrude_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), https://doi.org/10.1016/j.biortech.2010.03.136
     biocrude_trucking.price = (5.67 + 0.07*HTL.biocrude_distance)/HTL.biocrude_density/HTL.biocrude_distance/GDPCTPI[2008]*GDPCTPI[2023]
     
@@ -5939,22 +5950,22 @@ def create_T12_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.47016123 + natural_gas_density/16*44)
+    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
     Deionized_water = qs.ImpactItem('Deionized_water', functional_unit='kg')
-    Deionized_water.add_indicator(GlobalWarming, 0.00045239247)
+    Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
     
     def deionized_water_quantity():
         try:
@@ -5968,20 +5979,20 @@ def create_T12_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
                 result = 0
         return result
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Sodium_hydroxide', linked_stream=stream.sodium_hydroxide, GlobalWarming=1.2497984)
-    qs.StreamImpactItem(ID='Hydrochloric_acid', linked_stream=stream.hydrochloric_acid, GlobalWarming=0.87476322)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Sodium_hydroxide', linked_stream=stream.sodium_hydroxide, GlobalWarming=1.4080631253939493)
+    qs.StreamImpactItem(ID='Hydrochloric_acid', linked_stream=stream.hydrochloric_acid, GlobalWarming=0.8701969784483516)
     # use market for petroleum to offset transportation and then add the transportation part
-    # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
+    # 0.6254770020033417 kg CO2 eq/kg petroleum ('market for petroleum')
     # assume biocrude is used to produce biofuel for combustion
     # pertoleum is 84% C, https://en.wikipedia.org/wiki/Petroleum
-    qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.22290007 + 0.84/12*44)/HALT.crude_oil_HHV*HALT.biocrude_HHV)
-    qs.StreamImpactItem(ID='CHG_catalyst', linked_stream=stream.used_CHG_catalyst, GlobalWarming=471.1867077)
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.0082744841)
+    qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.6254770020033417 + 0.84/12*44)/HALT.crude_oil_HHV*HALT.biocrude_HHV)
+    qs.StreamImpactItem(ID='CHG_catalyst', linked_stream=stream.used_CHG_catalyst, GlobalWarming=1269.60621783954)
+    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_HALT', linked_stream=stream.diesel_HALT, GlobalWarming=0.4776041 + 44*12/(12*12 + 23*1))
+    qs.StreamImpactItem(ID='Diesel_HALT', linked_stream=stream.diesel_HALT, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
@@ -5994,7 +6005,7 @@ def create_T12_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
     
     biocrude_trucking = qs.ImpactItem('Biocrude_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biocrude_trucking.add_indicator(GlobalWarming, 0.13004958/1000)
+    biocrude_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), https://doi.org/10.1016/j.biortech.2010.03.136
     biocrude_trucking.price = (5.67 + 0.07*HALT.biocrude_distance)/HALT.biocrude_density/HALT.biocrude_distance/GDPCTPI[2008]*GDPCTPI[2023]
     
@@ -6013,7 +6024,7 @@ def create_T12_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
     
     hydrochar_trucking = qs.ImpactItem('Hydrochar_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    hydrochar_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    hydrochar_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -6150,22 +6161,22 @@ def create_T13_system(size=10, operation_hours=7884, FOAK=True, FTE=0.55, lifeti
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.47016123 + natural_gas_density/16*44)
+    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
     Deionized_water = qs.ImpactItem('Deionized_water', functional_unit='kg')
-    Deionized_water.add_indicator(GlobalWarming, 0.00045239247)
+    Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
     
     def deionized_water_quantity():
         try:
@@ -6179,10 +6190,10 @@ def create_T13_system(size=10, operation_hours=7884, FOAK=True, FTE=0.55, lifeti
                 result = 0
         return result
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Ash_SCWO', linked_stream=stream.ash_SCWO, GlobalWarming=0.0082744841)
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.0082744841)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Ash_SCWO', linked_stream=stream.ash_SCWO, GlobalWarming=0.018281422578429424)
+    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
@@ -6324,22 +6335,22 @@ def create_T14_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.47016123 + natural_gas_density/16*44)
+    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
     Deionized_water = qs.ImpactItem('Deionized_water', functional_unit='kg')
-    Deionized_water.add_indicator(GlobalWarming, 0.00045239247)
+    Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
     
     def deionized_water_quantity():
         try:
@@ -6353,17 +6364,17 @@ def create_T14_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
                 result = 0
         return result
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # use market for petroleum to offset transportation and then add the transportation part
-    # 0.22290007 kg CO2 eq/kg petroleum ('market for petroleum')
+    # 0.6254770020033417 kg CO2 eq/kg petroleum ('market for petroleum')
     # assume biooil is used to produce biofuel for combustion
     # pertoleum is 84% C, https://en.wikipedia.org/wiki/Petroleum
-    qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.22290007 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.0082744841)
+    qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.6254770020033417 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
+    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_pyrolysis', linked_stream=stream.diesel_pyrolysis, GlobalWarming=0.4776041 + 44*12/(12*12 + 23*1))
+    qs.StreamImpactItem(ID='Diesel_pyrolysis', linked_stream=stream.diesel_pyrolysis, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
@@ -6377,7 +6388,7 @@ def create_T14_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
     
     biooil_trucking = qs.ImpactItem('Biooil_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biooil_trucking.add_indicator(GlobalWarming, 0.13004958/1000)
+    biooil_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), https://doi.org/10.1016/j.biortech.2010.03.136
     biooil_trucking.price = (5.67 + 0.07*Pyrolysis.biooil_distance)/Pyrolysis.biooil_density/Pyrolysis.biooil_distance/GDPCTPI[2008]*GDPCTPI[2023]
     
@@ -6396,7 +6407,7 @@ def create_T14_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
     
     biochar_trucking = qs.ImpactItem('Biochar_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biochar_trucking.add_indicator(GlobalWarming, 0.13673337/1000)
+    biochar_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
@@ -6546,22 +6557,22 @@ def create_T15_system(size=10, operation_hours=7884, FOAK=True, FTE=0.85, lifeti
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.67877501)
+    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.1194374)
+    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.036990763)
+    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.47016123 + natural_gas_density/16*44)
+    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
-    Cooling.add_indicator(GlobalWarming, 0.065877932)
+    Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
     Deionized_water = qs.ImpactItem('Deionized_water', functional_unit='kg')
-    Deionized_water.add_indicator(GlobalWarming, 0.00045239247)
+    Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
     
     def deionized_water_quantity():
         try:
@@ -6575,11 +6586,11 @@ def create_T15_system(size=10, operation_hours=7884, FOAK=True, FTE=0.85, lifeti
                 result = 0
         return result
     
-    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.1940311)
-    qs.StreamImpactItem(ID='Tar', linked_stream=stream.tar, GlobalWarming=0.69976007)
-    qs.StreamImpactItem(ID='Ash_gasification', linked_stream=stream.ash_gasification, GlobalWarming=0.0082744841)
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.0082744841)
+    qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
+    qs.StreamImpactItem(ID='Tar', linked_stream=stream.tar, GlobalWarming=1.3479189232049629)
+    qs.StreamImpactItem(ID='Ash_gasification', linked_stream=stream.ash_gasification, GlobalWarming=0.018281422578429424)
+    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
