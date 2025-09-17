@@ -8,6 +8,8 @@ This module contains benchmark models of typical WRRF configurations in the US [
 
 **18 of the possible configurations are available**, including their plant-wide dynamic simulations, operational energy demand estimation, and OPEX accounting. More configurations to follow.
 
+This module has been used to produce the results in Zhang et al. [3]_ using qsdsan==1.4.3, exposan==1.4.3, biosteam==2.51.19, and thermosteam==0.51.17. Versions of additional packages can be found in `werf.yml <https://github.com/QSD-Group/EXPOsan/blob/main/exposan/werf/werf.yml>`_ .
+
 .. figure:: ./readme_figures/wrrf_codes_wide.png
 
     *Benchmark liquid and solids treatment trains.*
@@ -34,3 +36,4 @@ References
 ----------
 .. [1] Tarallo, S.; Shaw, A.; Kohl, P.; Eschborn, R. A Guide to Net-Zero Energy Solutions for Water Resource Recovery Facilities; ENER1C12; The Water Environment Research Foundation, 2015. `<https://doi.org/10.2166/9781780407685>`_.
 .. [2] El Abbadi, S. H.; Feng, J.; Hodson, A. R.; Amouamouha, M.; Busse, M. M.; Polcuch, C.; Zhou, P.; Macknick, J.; Guest, J. S.; Stokes-Draut, J. R.; Dunn, J. B. Benchmarking Greenhouse Gas Emissions from U.S. Wastewater Treatment for Targeted Reduction. 2024. `<https://doi.org/10.31223/X5VQ59>`_
+.. [3] Zhang, X.; Rai, S.; Wang, Z.; Li, Y.; Guest, J. S. An agile benchmarking framework for water resource recovery technologies. In Prep., 2025.
