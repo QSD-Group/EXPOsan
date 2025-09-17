@@ -421,6 +421,7 @@ class AerobicDigestion(SanUnit):
                  F_BM=default_F_BM):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
         self.O2_requirement = O2_requirement
+        # TODO: this becomes less important if the results of 25 / 15 systems are aggregated
         # TODO: use different reduction ratios for lipid, protein, and carbohydrate
         self.VS_reduction = VS_reduction
         self.HRT = HRT
@@ -743,6 +744,7 @@ class AnaerobicDigestion(SanUnit):
                  # !!! 0.2 is an assumption, subject to wide uncertainties
                  gas_collection_cost_factor=0.2, F_BM=default_F_BM):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
+        # TODO: this becomes less important if the results of 25 / 15 systems are aggregated
         # TODO: use different reduction ratios for lipid, protein, and carbohydrate
         self.VS_reduction = VS_reduction
         self.biogas_yield = biogas_yield
@@ -1676,12 +1678,11 @@ class LandApplication(SanUnit):
     application of biosolids, not including the transportation of biosolids
     from the WRRF to the land application site.
     
-    # TODO: discuss with J.S.G.: whehter the CO2 emission from limestone decomposition is fossil-origin; if it is, the following statement is OK; if not, update the specific part of the following statement to 'CO2 emission during limestone decompoistion is considered as biogenic' and also update the CI of 'lime' in landscape_systems.py
     Carbon debit due to the lime in the wastewater residual solids is not
     included (CO2 emission during limestone decompoistion is considered in the
     chemical 'lime' in AlkalineStabilization and any CO2 combined with lime
-    during other processes should be biogenic), while the BEAM model does
-    (though the contribution is limited).
+    during other processes should be biogenic or directly from air), while the
+    BEAM model does (though the contribution is limited).
     
     scope 1 emission: diesel, fugitive methane, fugitive nitrous oxide, carbon sequestration, CaCO3
     scope 2 emission: N/A

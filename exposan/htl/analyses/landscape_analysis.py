@@ -72,12 +72,13 @@ WRRF = pd.read_csv(folder + 'HydroWASTE_v10/HydroWASTE_v10.csv', encoding='latin
 WRRF = WRRF[WRRF['WASTE_DIS'] != 0]
 WRRF = WRRF[~WRRF['STATUS'].isin(['Closed','Decommissioned','Non-Operational'])]
 WRRF['dry_solids_tonne_per_day'] = WRRF['WASTE_DIS']/_MMgal_to_m3*ww_2_dry_solids
-# TODO: mention this in the manuscript or SI
+# TODO: add this to the manuscript or SI
+# TODO: to demonstrate this, may look at the ITO dataset, see how much percentage of WRRF with the WWRF mass flow < 1 dry tonne/day is lagoon
 # models will not be accurate when the WWRS mass flow rate is < 1 dry tonne/day (in reality, those WRRFs may use other WRRS treatment methods, e.g., lagoon, wetland, etc.)
 # only keep WRRFs with ≥ 1 tonne dry solids per day
 WRRF_filtered = WRRF[WRRF['dry_solids_tonne_per_day'] >= 1]
 WRRF_filtered.reset_index(inplace=True)
-# TODO: mention this in the manuscript or SI
+# TODO: add this to the manuscript or SI
 print(f"{WRRF_filtered['dry_solids_tonne_per_day'].sum()/WRRF['dry_solids_tonne_per_day'].sum()*100:.1f}% global WWRS are included." )
 print(f"{len(set(WRRF_filtered['COUNTRY']))} countires are included." )
 
@@ -87,6 +88,7 @@ WRRF_filtered = gpd.GeoDataFrame(WRRF_filtered, crs='EPSG:4269',
 
 HDI = pd.read_excel(folder + 'HDR25_Statistical_Annex_HDI_Table.xlsx')
 
+# TODO: add this to the manuscript or SI
 # electricity price
 electricity_price = pd.read_excel(folder + 'P_Electric Prices by Country.xlsx')
 electricity_price.rename(columns={'Country Name':'country',
@@ -99,9 +101,47 @@ electricity_price = electricity_price[electricity_price['US_cents_per_kWh'].notn
 electricity_price = electricity_price.loc[electricity_price.groupby('country')['year'].idxmax()].reset_index(drop=True)
 electricity_price = electricity_price[['country','country_code','year','US_cents_per_kWh']]
 
+# TODO: add this to the manuscript or SI
+# =============================================================================
+# code for processing ecoinvent data
+# data = pd.read_excel('/Users/jiananfeng/Desktop/electricity_CI_more_digits.xlsx')
+# data['country_code'] = data['country'].str.extract(r'\((.*?)\)')
+# data['country'] = data['country'].str.replace(r"\s*\(.*?\)", "", regex=True)
+# data.to_excel('/Users/jiananfeng/Desktop/electricity_CI_more_digits.xlsx')
+# =============================================================================
 # TODO: for countries w/o country data, use regional or global data
 # electricity CI
 # electriicty_CI = 
+
+# TODO: add this to the manuscript or SI
+# labor cost
+# TODO: for countries with no data, consider (1) manually searching for the data, or (2) use the average value of the labor costs of countries with similar development stages
+labor_cost = pd.read_excel(folder + 'EAR_4HRL_SEX_CUR_NB_A-20250917T1926.xlsx')
+labor_cost = labor_cost[labor_cost['sex.label'] == 'Total']
+labor_cost = labor_cost[labor_cost['classif1.label'] == 'Currency: U.S. dollars']
+labor_cost = labor_cost.loc[labor_cost.groupby('ref_area.label')['time'].idxmax()].reset_index(drop=True)
+# note obs_value can be 0 if the wage after being converted to the U.S. dollar is too low
+labor_cost = labor_cost[labor_cost['obs_value'].notna()]
+labor_cost = labor_cost[['ref_area.label','obs_value']]
+labor_cost.rename(columns={'ref_area.label':'country',
+                           'obs_value':'labor_cost'},
+                  inplace=True)
+
+# TODO: add this to the manuscript or SI
+# price level index (PLI) - for chemical price adjustment
+PLI = pd.read_excel(folder + 'P_Data_Extract_From_World_Development_Indicators.xlsx')
+year_cols = ['1990 [YR1990]','2000 [YR2000]','2015 [YR2015]','2016 [YR2016]','2017 [YR2017]',
+             '2018 [YR2018]','2019 [YR2019]','2020 [YR2020]','2021 [YR2021]','2022 [YR2022]',
+             '2023 [YR2023]','2024 [YR2024]']
+PLI[year_cols] = PLI[year_cols].replace('..', np.nan)
+PLI['PLI'] = PLI[year_cols].ffill(axis=1).iloc[:, -1]
+PLI = PLI[PLI['PLI'].notna()]
+PLI = PLI[['Country Name','Country Code','PLI']]
+PLI.rename(columns={'Country Name':'country',
+                    'Country Code':'country_code'},
+           inplace=True)
+
+# TODO: index for capital costs (any others, like transportation and utilities, but these two are less important and may use other indexes or just the same globally - if other indexes are not very different, so these remains not important, like if capital cost in country A is 0.01% of U.S., in this case, if still keep transportation cost the U.S. value, the transporation may become the most impactful driver)
 
 #%% MPs
 
@@ -569,6 +609,8 @@ ax.bar(4,
 # plt.savefig('/Users/jiananfeng/Desktop/BPA.pdf', transparent=True, bbox_inches='tight')
 
 #%% country average
+
+# TODO: as a kind of uncertainty analysis, show the minimum values on maps in the SI
 
 # TODO: assign electricity price and CI (any other parameters?) for each country
 

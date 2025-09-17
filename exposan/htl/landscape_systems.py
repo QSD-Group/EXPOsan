@@ -14,30 +14,15 @@ for license details.
 
 #%% housekeeping
 
-# TODO: LCA data update
-# TODO 1: update lime LCA data from ecoinvent 3.8 to 3.11
-# TODO 2: check why the previous code has different CI for transporting sludge and biooils
-# TODO 3: country-level electricty CI data need more digits (use the code below to process ecoinvent data)
-# =============================================================================
-# data = pd.read_excel('/Users/jiananfeng/Desktop/XXX.xlsx')
-# data['country_code'] = data['country'].str.extract(r'\((.*?)\)')
-# data['country'] = data['country'].str.replace(r"\s*\(.*?\)", "", regex=True)
-# data.to_excel('/Users/jiananfeng/Desktop/XXX.xlsx')
-# =============================================================================
-
-# TODO: TODOs in _components.py (and maybe others as well)
-
-# TODO: need to decide how to integrate the following TODO into the roadmap analysis
+# TODO: this becomes more doable now for only a comparison between country FOAK and NOAK costs, instead of the previous 3 economic strategies for the transition roadmap analysis, but can still study the effect of each parameter quantitatively
 # TODO: consider update TEA parameters for pioneer T systems based on the suggestions in Poddar, T. K.; Scown, C. D. Technoeconomic Analysis for Near-Term Scale-up of Bioprocesses. Current Opinion in Biotechnology 2025, 92, 103258. https://doi.org/10.1016/j.copbio.2025.103258
-
-# TODO: for both TEA and LCA, consider use a lifetime of 50 years (a duration from 2023 to 2073) or maybe not since need to avoid the replacement of thermochemical units in the greenfield construction strategy (if this strategy is kept)
 
 # TODO: https://www.globalpetrolprices.com/electricity_prices/ also has prices for electricty, diesel, natural gas, etc.
 # TODO: make sure to use the price for the industrial sector
 # TODO: 0.16 is the median electricity of of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
 
 # TODO: check all parameters in TEA, especially the ones listed here
-# TODO: consider adding IRR as a WRRF typology parameter?
+# TODO: consider adding IRR as a WRRF typology parameter (20250917 update: no more typology)
 # TODO: income tax may be found in Steward et al. ES&T, 2023
 
 #%% initialization
@@ -134,7 +119,7 @@ __all__ = (
 
 #%% system C1
 
-def create_C1_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.15, lifetime=20):
+def create_C1_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.15, lifetime=30):
     flowsheet_ID = 'C1'
     
     # clear flowsheet and registry for reloading
@@ -261,7 +246,7 @@ def create_C1_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
 
 #%% system C2
 
-def create_C2_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.2, lifetime=20):
+def create_C2_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.2, lifetime=30):
     flowsheet_ID = 'C2'
     
     # clear flowsheet and registry for reloading
@@ -342,8 +327,8 @@ def create_C2_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
-    # TODO: discuss with J.S.G.: whehter the CO2 emission from limestone decomposition is fossil-origin
-    qs.StreamImpactItem(ID='Lime', linked_stream=stream.lime, GlobalWarming=0.04261602+44/56)
+    # based on ecoinvent, this value likely includes limestone decomposition
+    qs.StreamImpactItem(ID='Lime', linked_stream=stream.lime, GlobalWarming=1.2450783867271262)
     
     # fugitive emissions
     qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
@@ -394,7 +379,7 @@ def create_C2_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
 
 #%% system C3
 
-def create_C3_system(size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.2, lifetime=20):
+def create_C3_system(size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.2, lifetime=30):
     flowsheet_ID = 'C3'
     
     # clear flowsheet and registry for reloading
@@ -483,8 +468,8 @@ def create_C3_system(size=10, operation_hours=7884, LA_distance=100, biosolids_p
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
-    # TODO: discuss with J.S.G.: whehter the CO2 emission from limestone decomposition is fossil-origin
-    qs.StreamImpactItem(ID='Lime', linked_stream=stream.lime, GlobalWarming=0.04261602+44/56)
+    # based on ecoinvent, this value likely includes limestone decomposition
+    qs.StreamImpactItem(ID='Lime', linked_stream=stream.lime, GlobalWarming=1.2450783867271262)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
     qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
@@ -540,7 +525,7 @@ def create_C3_system(size=10, operation_hours=7884, LA_distance=100, biosolids_p
 
 #%% system C4
 
-def create_C4_system(size=10, operation_hours=7884, LA_distance=100, compost_price=0.05, FTE=0.2, lifetime=20):
+def create_C4_system(size=10, operation_hours=7884, LA_distance=100, compost_price=0.05, FTE=0.2, lifetime=30):
     flowsheet_ID = 'C4'
     
     # clear flowsheet and registry for reloading
@@ -684,7 +669,7 @@ def create_C4_system(size=10, operation_hours=7884, LA_distance=100, compost_pri
 
 #%% system C5
 
-def create_C5_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.3, lifetime=20):
+def create_C5_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.3, lifetime=30):
     flowsheet_ID = 'C5'
     
     # clear flowsheet and registry for reloading
@@ -820,7 +805,7 @@ def create_C5_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
 
 #%% system C6
 
-def create_C6_system(size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.3, lifetime=20):
+def create_C6_system(size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.3, lifetime=30):
     flowsheet_ID = 'C6'
     
     # clear flowsheet and registry for reloading
@@ -969,7 +954,7 @@ def create_C6_system(size=10, operation_hours=7884, LA_distance=100, biosolids_p
 
 #%% system C7
 
-def create_C7_system(size=10, operation_hours=7884, FTE=0.4, lifetime=20):
+def create_C7_system(size=10, operation_hours=7884, FTE=0.4, lifetime=30):
     flowsheet_ID = 'C7'
     
     # clear flowsheet and registry for reloading
@@ -1083,7 +1068,7 @@ def create_C7_system(size=10, operation_hours=7884, FTE=0.4, lifetime=20):
 
 #%% system C8
 
-def create_C8_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.3, lifetime=20):
+def create_C8_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.3, lifetime=30):
     flowsheet_ID = 'C8'
     
     # clear flowsheet and registry for reloading
@@ -1212,7 +1197,7 @@ def create_C8_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee
 
 #%% system C9
 
-def create_C9_system(size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.3, lifetime=20):
+def create_C9_system(size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.3, lifetime=30):
     flowsheet_ID = 'C9'
     
     # clear flowsheet and registry for reloading
@@ -1354,7 +1339,7 @@ def create_C9_system(size=10, operation_hours=7884, LA_distance=100, biosolids_p
 
 #%% system C10
 
-def create_C10_system(size=10, operation_hours=7884, LA_distance=100, compost_price=0.05, FTE=0.35, lifetime=20):
+def create_C10_system(size=10, operation_hours=7884, LA_distance=100, compost_price=0.05, FTE=0.35, lifetime=30):
     flowsheet_ID = 'C10'
     
     # clear flowsheet and registry for reloading
@@ -1501,7 +1486,7 @@ def create_C10_system(size=10, operation_hours=7884, LA_distance=100, compost_pr
 
 #%% system C11
 
-def create_C11_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.45, lifetime=20):
+def create_C11_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.45, lifetime=30):
     flowsheet_ID = 'C11'
     
     # clear flowsheet and registry for reloading
@@ -1640,7 +1625,7 @@ def create_C11_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
 
 #%% system C12
 
-def create_C12_system(size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.45, lifetime=20):
+def create_C12_system(size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.45, lifetime=30):
     flowsheet_ID = 'C12'
     
     # clear flowsheet and registry for reloading
@@ -1792,7 +1777,7 @@ def create_C12_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
 
 #%% system C13
 
-def create_C13_system(size=10, operation_hours=7884, FTE=0.55, lifetime=20):
+def create_C13_system(size=10, operation_hours=7884, FTE=0.55, lifetime=30):
     flowsheet_ID = 'C13'
     
     # clear flowsheet and registry for reloading
@@ -1909,7 +1894,7 @@ def create_C13_system(size=10, operation_hours=7884, FTE=0.55, lifetime=20):
 
 #%% system C14
 
-def create_C14_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.3, lifetime=20):
+def create_C14_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.3, lifetime=30):
     flowsheet_ID = 'C14'
     
     # clear flowsheet and registry for reloading
@@ -2047,7 +2032,7 @@ def create_C14_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
 
 #%% system C15
 
-def create_C15_system(size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.3, lifetime=20):
+def create_C15_system(size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.3, lifetime=30):
     flowsheet_ID = 'C15'
     
     # clear flowsheet and registry for reloading
@@ -2198,7 +2183,7 @@ def create_C15_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
 
 #%% system C16
 
-def create_C16_system(size=10, operation_hours=7884, LA_distance=100, compost_price=0.05, FTE=0.35, lifetime=20):
+def create_C16_system(size=10, operation_hours=7884, LA_distance=100, compost_price=0.05, FTE=0.35, lifetime=30):
     flowsheet_ID = 'C16'
     
     # clear flowsheet and registry for reloading
@@ -2354,7 +2339,7 @@ def create_C16_system(size=10, operation_hours=7884, LA_distance=100, compost_pr
 
 #%% system C17
 
-def create_C17_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.45, lifetime=20):
+def create_C17_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.45, lifetime=30):
     flowsheet_ID = 'C17'
     
     # clear flowsheet and registry for reloading
@@ -2498,7 +2483,7 @@ def create_C17_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
 
 #%% system C18
 
-def create_C18_system(size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.45, lifetime=20):
+def create_C18_system(size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.45, lifetime=30):
     flowsheet_ID = 'C18'
     
     # clear flowsheet and registry for reloading
@@ -2655,7 +2640,7 @@ def create_C18_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
 
 #%% system C19
 
-def create_C19_system(size=10, operation_hours=7884, FTE=0.55, lifetime=20):
+def create_C19_system(size=10, operation_hours=7884, FTE=0.55, lifetime=30):
     flowsheet_ID = 'C19'
     
     # clear flowsheet and registry for reloading
@@ -2777,7 +2762,7 @@ def create_C19_system(size=10, operation_hours=7884, FTE=0.55, lifetime=20):
 
 #%% system C20
 
-def create_C20_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.45, lifetime=20):
+def create_C20_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.45, lifetime=30):
     flowsheet_ID = 'C20'
     
     # clear flowsheet and registry for reloading
@@ -2922,7 +2907,7 @@ def create_C20_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
 
 #%% system C21
 
-def create_C21_system(size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.45, lifetime=20):
+def create_C21_system(size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.45, lifetime=30):
     flowsheet_ID = 'C21'
     
     # clear flowsheet and registry for reloading
@@ -3080,7 +3065,7 @@ def create_C21_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
 
 #%% system C22
 
-def create_C22_system(size=10, operation_hours=7884, LA_distance=100, compost_price=0.05, FTE=0.5, lifetime=20):
+def create_C22_system(size=10, operation_hours=7884, LA_distance=100, compost_price=0.05, FTE=0.5, lifetime=30):
     flowsheet_ID = 'C22'
     
     # clear flowsheet and registry for reloading
@@ -3243,7 +3228,7 @@ def create_C22_system(size=10, operation_hours=7884, LA_distance=100, compost_pr
 
 #%% system C23
 
-def create_C23_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.6, lifetime=20):
+def create_C23_system(size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.6, lifetime=30):
     flowsheet_ID = 'C23'
     
     # clear flowsheet and registry for reloading
@@ -3394,7 +3379,7 @@ def create_C23_system(size=10, operation_hours=7884, LF_distance=100, tipping_fe
 
 #%% system C24
 
-def create_C24_system(size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.6, lifetime=20):
+def create_C24_system(size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.6, lifetime=30):
     flowsheet_ID = 'C24'
     
     # clear flowsheet and registry for reloading
@@ -3558,7 +3543,7 @@ def create_C24_system(size=10, operation_hours=7884, LA_distance=100, biosolids_
 
 #%% system C25
 
-def create_C25_system(size=10, operation_hours=7884, FTE=0.7, lifetime=20):
+def create_C25_system(size=10, operation_hours=7884, FTE=0.7, lifetime=30):
     flowsheet_ID = 'C25'
     
     # clear flowsheet and registry for reloading
@@ -3687,7 +3672,7 @@ def create_C25_system(size=10, operation_hours=7884, FTE=0.7, lifetime=20):
 
 #%% system T1
 
-def create_T1_system(size=10, operation_hours=7884, refinery_distance=100, FOAK=True, FTE=0.55, lifetime=20):
+def create_T1_system(size=10, operation_hours=7884, refinery_distance=100, FOAK=True, FTE=0.55, lifetime=30):
     flowsheet_ID = 'T1'
     
     # clear flowsheet and registry for reloading
@@ -3889,7 +3874,7 @@ def create_T1_system(size=10, operation_hours=7884, refinery_distance=100, FOAK=
 
 #%% system T2
 
-def create_T2_system(size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FOAK=True, FTE=0.55, lifetime=20):
+def create_T2_system(size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FOAK=True, FTE=0.55, lifetime=30):
     flowsheet_ID = 'T2'
     
     # clear flowsheet and registry for reloading
@@ -4126,7 +4111,7 @@ def create_T2_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
 
 #%% system T3
 
-def create_T3_system(size=10, operation_hours=7884, FOAK=True, FTE=0.4, lifetime=20):
+def create_T3_system(size=10, operation_hours=7884, FOAK=True, FTE=0.4, lifetime=30):
     flowsheet_ID = 'T3'
     
     # clear flowsheet and registry for reloading
@@ -4264,7 +4249,7 @@ def create_T3_system(size=10, operation_hours=7884, FOAK=True, FTE=0.4, lifetime
 
 #%% system T4
 
-def create_T4_system(size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FOAK=True, FTE=0.7, lifetime=20):
+def create_T4_system(size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FOAK=True, FTE=0.7, lifetime=30):
     flowsheet_ID = 'T4'
     
     # clear flowsheet and registry for reloading
@@ -4483,7 +4468,7 @@ def create_T4_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
 
 #%% system T5
 
-def create_T5_system(size=10, operation_hours=7884, FOAK=True, FTE=0.7, lifetime=20):
+def create_T5_system(size=10, operation_hours=7884, FOAK=True, FTE=0.7, lifetime=30):
     flowsheet_ID = 'T5'
     
     # clear flowsheet and registry for reloading
@@ -4645,7 +4630,7 @@ def create_T5_system(size=10, operation_hours=7884, FOAK=True, FTE=0.7, lifetime
 
 #%% system T6
 
-def create_T6_system(size=10, operation_hours=7884, refinery_distance=100, FOAK=True, FTE=0.7, lifetime=20):
+def create_T6_system(size=10, operation_hours=7884, refinery_distance=100, FOAK=True, FTE=0.7, lifetime=30):
     flowsheet_ID = 'T6'
     
     # clear flowsheet and registry for reloading
@@ -4849,7 +4834,7 @@ def create_T6_system(size=10, operation_hours=7884, refinery_distance=100, FOAK=
 
 #%% system T7
 
-def create_T7_system(size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FOAK=True, FTE=0.7, lifetime=20):
+def create_T7_system(size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FOAK=True, FTE=0.7, lifetime=30):
     flowsheet_ID = 'T7'
     
     # clear flowsheet and registry for reloading
@@ -5088,7 +5073,7 @@ def create_T7_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
 
 #%% system T8
 
-def create_T8_system(size=10, operation_hours=7884, FOAK=True, FTE=0.55, lifetime=20):
+def create_T8_system(size=10, operation_hours=7884, FOAK=True, FTE=0.55, lifetime=30):
     flowsheet_ID = 'T8'
     
     # clear flowsheet and registry for reloading
@@ -5229,7 +5214,7 @@ def create_T8_system(size=10, operation_hours=7884, FOAK=True, FTE=0.55, lifetim
 
 #%% system T9
 
-def create_T9_system(size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FOAK=True, FTE=0.85, lifetime=20):
+def create_T9_system(size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FOAK=True, FTE=0.85, lifetime=30):
     flowsheet_ID = 'T9'
     
     # clear flowsheet and registry for reloading
@@ -5451,7 +5436,7 @@ def create_T9_system(size=10, operation_hours=7884, refinery_distance=100, LA_di
 
 #%% system T10
 
-def create_T10_system(size=10, operation_hours=7884, FOAK=True, FTE=0.85, lifetime=20):
+def create_T10_system(size=10, operation_hours=7884, FOAK=True, FTE=0.85, lifetime=30):
     flowsheet_ID = 'T10'
     
     # clear flowsheet and registry for reloading
@@ -5616,7 +5601,7 @@ def create_T10_system(size=10, operation_hours=7884, FOAK=True, FTE=0.85, lifeti
 
 #%% system T11
 
-def create_T11_system(size=10, operation_hours=7884, refinery_distance=100, FOAK=True, FTE=0.7, lifetime=20):
+def create_T11_system(size=10, operation_hours=7884, refinery_distance=100, FOAK=True, FTE=0.7, lifetime=30):
     flowsheet_ID = 'T11'
     
     # clear flowsheet and registry for reloading
@@ -5823,7 +5808,7 @@ def create_T11_system(size=10, operation_hours=7884, refinery_distance=100, FOAK
 
 #%% system T12
 
-def create_T12_system(size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FOAK=True, FTE=0.7, lifetime=20):
+def create_T12_system(size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FOAK=True, FTE=0.7, lifetime=30):
     flowsheet_ID = 'T12'
     
     # clear flowsheet and registry for reloading
@@ -6065,7 +6050,7 @@ def create_T12_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
 
 #%% system T13
 
-def create_T13_system(size=10, operation_hours=7884, FOAK=True, FTE=0.55, lifetime=20):
+def create_T13_system(size=10, operation_hours=7884, FOAK=True, FTE=0.55, lifetime=30):
     flowsheet_ID = 'T13'
     
     # clear flowsheet and registry for reloading
@@ -6221,7 +6206,7 @@ def create_T13_system(size=10, operation_hours=7884, FOAK=True, FTE=0.55, lifeti
 
 #%% system T14
 
-def create_T14_system(size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FOAK=True, FTE=0.85, lifetime=20):
+def create_T14_system(size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FOAK=True, FTE=0.85, lifetime=30):
     flowsheet_ID = 'T14'
     
     # clear flowsheet and registry for reloading
@@ -6448,7 +6433,7 @@ def create_T14_system(size=10, operation_hours=7884, refinery_distance=100, LA_d
 
 #%% system T15
 
-def create_T15_system(size=10, operation_hours=7884, FOAK=True, FTE=0.85, lifetime=20):
+def create_T15_system(size=10, operation_hours=7884, FOAK=True, FTE=0.85, lifetime=30):
     flowsheet_ID = 'T15'
     
     # clear flowsheet and registry for reloading
