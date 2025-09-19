@@ -12,7 +12,7 @@ for license details.
 """
 
 import time as tm, pandas as pd, numpy as np
-from exposan.werf import create_system, add_performance_metrics, add_OPEX_metrics, opt_underflows#, results_path
+from exposan.werf import create_system, add_performance_metrics, add_OPEX_metrics, opt_underflows
 from exposan.werf.utils import load_state, cache_state
 from qsdsan import Model, sanunits as su, processes as pc
 from qsdsan.utils import get_SRT#, ospath, load_data
@@ -60,8 +60,8 @@ urine.scale(pe*pct)
 # ID = 'I1'
 # ID = 'I2'
 # ID = 'I3'
-ID = 'N1'
-# ID = 'N2'
+# ID = 'N1'
+ID = 'N2'
 
 sys = create_system(ID)
 s = sys.flowsheet.stream
@@ -86,38 +86,33 @@ else:
     thickened = s.thickened_sludge
     thickener = u.GT
 
-# thickener.sludge_flow_rate = ufs.at[ID, (int(pct*100), 'Thickener')]
-# u.DW.sludge_flow_rate = ufs.at[ID, (int(pct*100), 'Dewatering')]
-
 thickener.sludge_flow_rate, u.DW.sludge_flow_rate = opt_underflows[ID]
-# thickener.sludge_flow_rate, u.DW.sludge_flow_rate = (62.37, 11.34)
 load_state(sys, folder='steady_states/baseline_unopt')
-# load_state(sys, folder='steady_states/UD100_opt')
     
 #%%
 # u.ASR.DO_setpoints *= 0
 # u.ASR.DO_setpoints += 1
 # u.ASR.DO_setpoints[:] = [0,0,0,0,1,1]
 # u.ASR.DO_setpoints[:] = [0.5,0,2,2,0,1]
-# u.ASR.DO_setpoints[:] = [0,0,1,1,0,1]
+# u.ASR.DO_setpoints[:] = [0,0,2,2,0,1]
 u.ASR.DO_setpoints[:] = [0,0,1,1,0]
 # Vs = [0.63, 1.5, 2.0, 2.0, 2.3, 0.21] # MG
 # Vs = [0.84, 1.5, 2.0, 2.0, 2.1, 0.2]
 # Vs = [0.99, 1.35, 2.0, 2.0, 2.1, 0.2]
-# Vs = [0.33, 1.5, 2.0, 2.1, 2.3, 0.41]
+# Vs = [0.23, 1.5, 2.2, 2.1, 2.3, 0.31]
 # u.ASR.V_tanks[:] = [v * MGD2cmd for v in Vs]
 V_tot = 2.61 * MGD2cmd
 # fr_V = [0.12, 0.18, 0.24, 0.24, 0.18, 0.04]
-fr_V = [0.18, 0.14, 0.24, 0.24, 0.16, 0.04]
-# fr_V = [0.16, 0.16, 0.24, 0.24, 0.17, 0.03]     # larger anaerobic zone seems better for EBPR
+# fr_V = [0.18, 0.14, 0.24, 0.24, 0.16, 0.04]
+fr_V = [0.16, 0.16, 0.24, 0.24, 0.17, 0.03]     # larger anaerobic zone seems better for EBPR
 u.ASR.V_tanks[:] = [v * V_tot for v in fr_V[:-1]]
 # u.ASR.internal_recycles[0] = (3,1,20*MGD2cmd)
 u.ASR._ODE = None
 
-Q_ras = 2 * 10 * MGD2cmd
-Q_was = 0.2 * MGD2cmd
-u.MBR.pumped_flow = Q_ras + Q_was
-u.S1.split = Q_ras / (Q_ras + Q_was)
+# Q_ras = 2 * 10 * MGD2cmd
+# Q_was = 0.17 * MGD2cmd
+# u.MBR.pumped_flow = Q_ras + Q_was
+# u.S1.split = Q_ras / (Q_ras + Q_was)
 # !!! must reset cache
 
 u.MBR.V_max = fr_V[-1] * V_tot
@@ -128,16 +123,13 @@ u.MBR._ODE = None
 #     unit.aeration = 1.0
 #     unit._ODE = None
 
-s.carbon.imass['S_A'] = 95
+s.carbon.imass['S_A'] = 70
 s.carbon._init_state()
-# u.MD.metal_dosage = 6
+# u.MD.metal_dosage = 18
 # u.MD._AE = None
-# u.FC.underflow = 0.4 * 10 * MGD2cmd
-# u.FC.wastage = 0.2 * MGD2cmd
+# u.FC.underflow = 0.67 * 10 * MGD2cmd
+# u.FC.wastage = 0.1 * MGD2cmd
 # u.FC._ODE = None
-
-# u.AED.V_max = 0.5 * MGD2cmd
-# u.AED._ODE = None
 
 sys._DAE = None
 
@@ -179,3 +171,4 @@ print(f'MLSS ~ {np.mean(mlss):.0f} mg/L')
 df = display_metrics(mdl)
 df.T.to_clipboard()
 cache_state(sys, 'steady_states/UD10_opt')
+sys.flowsheet.clear()
