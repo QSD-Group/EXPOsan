@@ -26,13 +26,13 @@ from qsdsan import get_thermo, WasteStream, Model, System, processes as pc
 from qsdsan.utils import get_SRT, ospath, load_data
 from biosteam.evaluation._utils import var_columns
 
-# import warnings
-# warnings.filterwarnings("ignore")
+import warnings
+warnings.filterwarnings("ignore")
 
 MGD2cmd = 3785.412
 f_rmv = 0.7 # (0.5, 0.8)
 
-# influent strength: low, medium, high
+# influent strength: low, medium, high (Metcalf & Eddy Table 3-18)
 # tech performance: % NH4-N recovery (50-80% reasonable range for ionic strength typical in domestic ww)
 # maintain operation as adjusted unless violation?
 
@@ -124,9 +124,6 @@ def run_model(model=None, n_strength=3, interval=(0,1), samples=None,
     _high = wws['high'].copy('high_strength')
     
     if samples is None: samples = model.sample(N=N, rule=rule, seed=seed)
-    # for strength, qwas in zip(('low', 'mid', 'high'), (0.15, 0.2, 0.3)):
-    #     s.RWW.copy_flow(wws[strength])
-    #     u.FC.wastage = qwas * MGD2cmd
     metrics = {}
     for high_frac in np.linspace(*interval, n_strength):
         _low.scale(1-high_frac)
@@ -138,7 +135,6 @@ def run_model(model=None, n_strength=3, interval=(0,1), samples=None,
         u.FC.wastage = 0.15 * (1+high_frac) * MGD2cmd
         u.FC._ODE = None
         sys._DAE = None
-        # print(f"System {ID}, {strength}-strength ww")
         print(f"System {ID}, influent COD = {s.RWW.COD:.1f} mg/L")
         print("="*45)
         table = []
@@ -170,8 +166,7 @@ def run_model(model=None, n_strength=3, interval=(0,1), samples=None,
         arr = u.ASR.state.iloc[:,:-1].to_numpy()
         mlss = np.sum(cmps.i_mass * cmps.x * arr, axis=1)
         print(f'MLSS = {np.mean(mlss):.0f} mg/L', '\n')
-        # cache_state(sys, f'steady_states/HA_F1/{strength}', 'no_HA')
-        cache_state(sys, 'steady_states/HA_F1/', f'{int(high_frac*100)}')
+        cache_state(sys, 'steady_states/HA_F1/no_HA', f'{int(high_frac*100)}')
 
         for smp in samples:
             for p, v in zip(model.parameters, smp): p.setter(v)
@@ -423,8 +418,8 @@ def compile_stats_by_strength(ID='F1'):
 if __name__ == '__main__':
     # smp = load_data(ospath.join(results_path, 'HA_F1_UA-low.xlsx'), header=[0,1], skiprows=[2,])
     # smp = smp.iloc[:,:5].to_numpy()
-    # smp = run_model(seed=104)
+    # smp = run_model(seed=711, n_strength=11)
     # smp = run_model(samples=smp, interval=(0.1, 0.9), n_strength=9)
-    # run_model_with_HA(samples=smp, interval=(0.1, 0.9), n_strength=9)
+    # run_model_with_HA(samples=smp, n_strength=11)
     # compile_stats()
     out = compile_stats_by_strength()

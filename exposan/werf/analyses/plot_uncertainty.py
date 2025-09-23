@@ -221,7 +221,7 @@ def plot_nrcv_by_strength(ID='F1'):
         spl = mis(x, y, k=k)
         return spl(_x)
     
-    fig, ax = plt.subplots(figsize=(6,9))
+    fig, ax = plt.subplots(figsize=(6,8))
 
     ax.fill_between(
         _x, y1=smoo(stats[0.05]), y2=smoo(stats[0.95]), 
@@ -235,11 +235,11 @@ def plot_nrcv_by_strength(ID='F1'):
     ax.plot(_x, smoo(stats[0.75]), color=a, lw=1.5, ls='--')
     ax.plot(_x, smoo(stats[0.5]), color=da)
     ax.plot(x, stats[0.5], marker='o', lw=0, ms=3, mec=da, mfc=a)
-    ax.set_ylabel('$\mathbf{Ammonia\ recovery}$ [kg-N·day${^{-1}}$]', 
-                    fontname='Arial', fontsize=13, labelpad=8, linespacing=0.8)
+    ax.set_ylabel('$\mathbf{Ammonia\ recovery}$ [kg-N·day$^{-1}$]', 
+                    fontname='Arial', fontsize=13, labelpad=2, linespacing=0.8)
     ax.set_xlabel('$\mathbf{Wastewater\ strength}$ [-]', 
-                    fontname='Arial', fontsize=13, labelpad=1, linespacing=0.8)
-    ax.xaxis.set_ticks([0, 24.9, 100], ['low', 'medium', 'high'])    
+                    fontname='Arial', fontsize=13, labelpad=2, linespacing=0.8)
+    ax.xaxis.set_ticks([0, 24.9, 100], ['low', 'medium', 'high'])
 
     major = dict(which='major', length=8, labelsize=12)
     minor = dict(which='minor', length=5)
@@ -258,7 +258,7 @@ def plot_nrcv_by_strength(ID='F1'):
         xmx = xx.max()
         return xmn + (xmx-xmn) * xmin/100, xmn + (xmx-xmn) * xmax/100
     
-    loc = -0.2    
+    loc = -0.23    
     for xvar in ('BOD', 'TSS', 'TN', 'NH4-N', 'TP', 'OP'):
         twnx = ax.twiny()
         twnx.spines['bottom'].set_position(('axes', loc))
@@ -268,17 +268,15 @@ def plot_nrcv_by_strength(ID='F1'):
         twnx.tick_params(axis='x', direction='out', which='minor', length=2.5)
         twnx.plot(inf_stats.Influent[xvar], stats[0.5], marker='o', lw=0, ms=3, mec=da, mfc=a)
         twnx.set_xlim(get_xlim(inf_stats.Influent[xvar]))
-        if xvar == 'NH4-N': xvar = 'NH_4-N'
+        if xvar == 'NH4-N': xvar = 'NH_4^+-N'
         elif xvar == 'OP': xvar = 'Ortho-P'
-        twnx.set_xlabel('$\mathbf{%s}$ [mg/L]' % xvar, 
+        twnx.set_xlabel('$\mathbf{%s}$ [mg·L$^{-1}$]' % xvar, 
                         fontname='Arial', fontsize=13, labelpad=0, linespacing=0.8)
-        loc -= 0.2
+        loc -= 0.23
 
-    fig.subplots_adjust(bottom=0.55, left=0.2)
-    fig.savefig(ospath.join(figures_path, f'HA_{ID}_UA_nrecovery.png'),
+    fig.subplots_adjust(bottom=0.6, top=0.97, left=0.2, right=0.975)
+    fig.savefig(ospath.join(figures_path, f'HA_{ID}_UA_nrecovery.tif'),
                 dpi=300, transparent=True)
-
-# plot_nrcv_by_strength()
 
 # %%
 from scipy.interpolate import make_interp_spline as mis
@@ -300,7 +298,7 @@ def plot_opex_by_strength(stats=None, data=None, ID='F1'):
         spl = mis(x, y, k=k)
         return spl(_x)
     
-    fig, (tax, bax) = plt.subplots(2, 1, figsize=(6,11), sharex=True)
+    fig, (tax, bax) = plt.subplots(2, 1, figsize=(6,11), sharex=True, sharey=False)
     tax = sns.violinplot(
         data=data, x='Strength', y='OPEX', hue='HA', ax=tax,
         palette={0: o, 1: b}, bw_adjust=0.75, 
@@ -311,9 +309,11 @@ def plot_opex_by_strength(stats=None, data=None, ID='F1'):
         native_scale=True
         )
     handles, labels = tax.get_legend_handles_labels()
-    tax.legend(handles=handles, labels=['Baseline', 'With NH$_4$ recovery by HA'])
-    tax.set_ylabel('$\mathbf{OPEX}$ [USD·day${^{-1}}$]', 
-                   fontname='Arial', fontsize=13, labelpad=0, linespacing=0.8)
+    tax.legend(handles=handles, labels=['Without NH$_4^+$ recovery', 'With NH$_4^+$ recovery by HA'])
+    tax.set_ylim((0, tax.get_ylim()[1]))
+    tax.set_ylabel('$\mathbf{OPEX}$ [USD·day$^{-1}$]', 
+                   fontname='Arial', fontsize=13, labelpad=2, linespacing=0.8)
+    
 
     bax.fill_between(
         _x, y1=smoo(df[0.05]), y2=smoo(df[0.95]), 
@@ -327,23 +327,12 @@ def plot_opex_by_strength(stats=None, data=None, ID='F1'):
     bax.plot(_x, smoo(df[0.75]), color=g, lw=1.5, ls='--')
     bax.plot(_x, smoo(df[0.5]), color=dg)
     bax.plot(x, df[0.5], marker='o', lw=0, ms=3, mec=dg, mfc=g)
-    bax.set_ylabel('$\mathbf{OPEX\ saving}$ [USD·day${^{-1}}$]', 
-                    fontname='Arial', fontsize=13, labelpad=8, linespacing=0.8)
+    bax.set_ylim((0, bax.get_ylim()[1]))
+    bax.set_ylabel('$\mathbf{OPEX\ saving}$ [USD·day$^{-1}$]', 
+                    fontname='Arial', fontsize=13, labelpad=2, linespacing=0.8)
     bax.set_xlabel('$\mathbf{Wastewater\ strength}$ [-]', 
-                    fontname='Arial', fontsize=13, labelpad=1, linespacing=0.8)
-    bax.xaxis.set_ticks([0, mid, 100], ['low', 'medium', 'high'])    
-
-    major = dict(which='major', length=8, labelsize=12)
-    minor = dict(which='minor', length=5)
-    for ax in (tax, bax):
-        ax.tick_params(axis='both', direction='inout', **major)
-        ax.tick_params(axis='y', direction='inout', **minor)
-        ax.tick_params(axis='x', which='minor', length=0)
-        
-        ax2y = ax.secondary_yaxis('right')
-        ax2y.tick_params(axis='y', which='major', direction='in', length=4)
-        ax2y.tick_params(axis='y', which='minor', direction='in', length=2.5)
-        ax2y.yaxis.set_major_formatter(plt.NullFormatter())
+                    fontname='Arial', fontsize=13, labelpad=2, linespacing=0.8)
+    bax.xaxis.set_ticks([0, mid, 100], ['low', 'medium', 'high'])
     
     xmin, xmax = bax.get_xlim()
     def get_xlim(xx):
@@ -361,14 +350,26 @@ def plot_opex_by_strength(stats=None, data=None, ID='F1'):
         twnx.tick_params(axis='x', direction='out', which='minor', length=2.5)
         twnx.plot(stats.Influent[xvar], df[0.5], marker='o', lw=0, ms=3, mec=dg, mfc=g)
         twnx.set_xlim(get_xlim(stats.Influent[xvar]))
-        if xvar == 'NH4-N': xvar = 'NH_4-N'
+        if xvar == 'NH4-N': xvar = 'NH_4^+-N'
         elif xvar == 'OP': xvar = 'Ortho-P'
-        twnx.set_xlabel('$\mathbf{%s}$ [mg·L${^{-1}}$]' % xvar, 
+        twnx.set_xlabel('$\mathbf{%s}$ [mg·L$^{-1}$]' % xvar, 
                         fontname='Arial', fontsize=13, labelpad=0, linespacing=0.8)
         loc -= 0.25
 
-    fig.subplots_adjust(hspace=0, top=0.95, bottom=0.45, left=0.2)
-    fig.savefig(ospath.join(figures_path, f'HA_{ID}_UA_by_strength.png'),
+    major = dict(which='major', length=8, labelsize=12)
+    minor = dict(which='minor', length=5)
+    for ax in (tax, bax):
+        ax.tick_params(axis='both', direction='inout', **major)
+        ax.tick_params(axis='y', direction='inout', **minor)
+        ax.tick_params(axis='x', which='minor', length=0)
+
+        ax2y = ax.secondary_yaxis('right')
+        ax2y.tick_params(axis='y', which='major', direction='in', length=4)
+        ax2y.tick_params(axis='y', which='minor', direction='in', length=2.5)
+        ax2y.set_yticklabels([])
+        
+    fig.subplots_adjust(hspace=0, top=0.975, bottom=0.45, left=0.2, right=0.975)
+    fig.savefig(ospath.join(figures_path, f'HA_{ID}_UA_by_strength.tif'),
                 dpi=300, transparent=True)
     
 # %%
@@ -378,4 +379,6 @@ if __name__ == '__main__':
     # dopex = compile_dopex(save_as='HA_F1_dopex.xlsx')
     data = compile_all_opex()
     plot_opex_by_strength(data=data)
+    plot_nrcv_by_strength()
+
     
