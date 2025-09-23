@@ -52,7 +52,7 @@ configs=('B1', 'B2', 'B3', 'C1', 'C2', 'C3', 'E2', 'E2P', 'F1',
         'G1', 'G2', 'G3', 'H1', 'I1', 'I2', 'I3', 'N1', 'N2')
 data_handles = {
     'Baseline': ('baseline_unopt_performance', 0),   # file name, sheet
-    'Adjusted': ('baseline_opt_performance', 'combined'),
+    'Adjusted': ('baseline_opt_performance', 0),
     'UD10': ('UD_opt_performance', '10'),
     # 'UD30': ('UD_opt_performance', '30'),
     'UD100': ('UD_opt_performance', '100'),
@@ -60,8 +60,10 @@ data_handles = {
     'ECS': ('ECS_opt_performance', 0)
     }
 
+MGD2cmd = 3785.412
+
 #%%
-def compile_opex():
+def compile_opex(normalize_by_flow=True):
     opex = []
     keys = []
     for k, v in data_handles.items():
@@ -78,10 +80,11 @@ def compile_opex():
     opex.columns = [i[1].split(' cost')[0] for i in opex.columns]
     opex['Lime stabilization'] = opex.loc[:,['Lime', 'Lime stablization energy']].sum(axis=1)
     opex.drop(columns=['Lime stablization energy', 'Total OPEX [USD/d]'], inplace=True)
+    if normalize_by_flow:
+        opex /= (10*MGD2cmd)
     return opex
 
 # %%
-MGD2cmd = 3785.412
 
 def single_scenario_stacked_bar(opex=None, scenario='Baseline', save_as=''):
     plt.rcParams['xtick.minor.visible'] = False
@@ -131,7 +134,7 @@ def stacked_bar(opex=None, save_as=''):
     plt.rcParams['ytick.minor.visible'] = True
     if opex is None:
         opex = compile_opex()
-    fig, axes = plt.subplots(ncols=len(configs), sharey=True, figsize=(22, 5))
+    fig, axes = plt.subplots(ncols=len(configs), sharey=True, figsize=(18, 5))
     # fig, axes = plt.subplots(ncols=len(configs), sharey=True, figsize=(12, 5))
     handles = []
     for ID, ax in zip(configs, axes):
@@ -150,12 +153,14 @@ def stacked_bar(opex=None, save_as=''):
                            tick_label=df.index.values)
             if ID == 'B1': handles.append(patch)
             y_offset += y
+        ax.bar(x, y_offset, width=0.65, ec='black', fc=(1,1,1,0), lw=0.25)
+        
         xx = x[y_offset == 0]
-        if xx: ax.scatter(xx, 175, s=12, c='black', marker='x', linewidths=0.75)
+        if xx: ax.scatter(xx, 0.01, s=12, c='black', marker='x', linewidths=0.75)
         ax.set_title(ID, fontsize=14, fontweight='bold')
         ax.set_xlim((-0.75, df.shape[0]-0.25))
         if ID == 'B1': 
-            ax.set_ylabel('$\mathbf{OPEX}$ [USD·day${^{-1}}$]', fontname='Arial', fontsize=14)
+            ax.set_ylabel('$\mathbf{OPEX}$ [USD·m$^{-3}$]', fontname='Arial', fontsize=14)
         ax.tick_params(axis='y', which='major', direction='inout', length=8, labelsize=12)
         ax.tick_params(axis='y', which='minor', direction='inout', length=5)
         ax.tick_params(axis='x', which='major', direction='out', length=4, labelsize=11, labelrotation=90)
@@ -166,9 +171,9 @@ def stacked_bar(opex=None, save_as=''):
             ax2y.yaxis.set_major_formatter(plt.NullFormatter())
     
     fig.legend(handles=handles, labels=categories, reverse=True,
-               bbox_to_anchor=(0.135, 0.85), loc='upper left', 
+               bbox_to_anchor=(0.08, 0.9), loc='upper left', 
                framealpha=1, fontsize=12)
-    fig.subplots_adjust(wspace=0, bottom=0.15)
+    fig.subplots_adjust(wspace=0, bottom=0.16, top=0.94, left=0.06, right=0.985)
     if save_as:
         fig.savefig(ospath.join(figures_path, save_as),
                     dpi=300, transparent=True)
@@ -181,7 +186,7 @@ def horizontal_stacked_bar(opex=None, save_as=''):
     plt.rcParams['xtick.minor.visible'] = True
     if opex is None:
         opex = compile_opex()
-    fig, axes = plt.subplots(nrows=len(configs), sharex=True, figsize=(6, 22))
+    fig, axes = plt.subplots(nrows=len(configs), sharex=True, figsize=(6, 18))
     handles = []
 
     for ID, ax in zip(configs, axes):
@@ -200,13 +205,15 @@ def horizontal_stacked_bar(opex=None, save_as=''):
                             tick_label=df.index.values)
             if ID == 'B1': handles.append(patch)
             y_offset += y
+        ax.barh(x, y_offset, height=0.65, ec='black', fc=(1,1,1,0), lw=0.25)
+
         xx = x[y_offset == 0]
-        if len(xx): ax.scatter(175, xx, s=12, c='black', marker='x', linewidths=0.75)
+        if len(xx): ax.scatter(0.01, xx, s=12, c='black', marker='x', linewidths=0.75)
         ax.set_title(ID+'  ', fontsize=14, fontweight='bold',
                      loc='right', y=0.4, pad=0)
         ax.set_ylim((-0.75, df.shape[0]-0.25))
         if ID == 'N2': 
-            ax.set_xlabel('$\mathbf{OPEX}$ [USD·day${^{-1}}$]', fontname='Arial', fontsize=14)
+            ax.set_xlabel('$\mathbf{OPEX}$ [USD·m${^{-3}}$]', fontname='Arial', fontsize=14)
         ax.tick_params(axis='x', which='major', direction='inout', length=8, labelsize=12)
         ax.tick_params(axis='x', which='minor', direction='inout', length=5)
         ax.tick_params(axis='y', which='major', direction='out', length=4, labelsize=11)
@@ -217,9 +224,9 @@ def horizontal_stacked_bar(opex=None, save_as=''):
             ax2x.xaxis.set_major_formatter(plt.NullFormatter())
     
     fig.legend(handles=handles, labels=categories, reverse=True,
-               bbox_to_anchor=(0.455, 0.88), 
+               bbox_to_anchor=(0.5, 0.965), 
                loc='upper left', framealpha=1, fontsize=12)
-    fig.subplots_adjust(hspace=0, left=0.15)
+    fig.subplots_adjust(hspace=0, left=0.16, right=0.97, bottom=0.045, top=0.985)
     if save_as:
         fig.savefig(ospath.join(figures_path, save_as),
                     dpi=300, transparent=True)
@@ -229,8 +236,8 @@ def horizontal_stacked_bar(opex=None, save_as=''):
 
 #%%
 if __name__ == '__main__':
-    # opex = compile_opex()
-    # stacked_bar(opex, save_as='opex.png')
+    opex = compile_opex()
+    stacked_bar(opex, save_as='opex.tif')
     # stacked_bar(opex, save_as='opex_wrrfs.png')
-    # horizontal_stacked_bar(opex, save_as='opexh.png')
-    single_scenario_stacked_bar(save_as='opex.tif')
+    # horizontal_stacked_bar(opex, save_as='opexh.tif')
+    # single_scenario_stacked_bar(save_as='opex.tif')
