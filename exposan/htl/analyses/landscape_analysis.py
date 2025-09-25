@@ -16,10 +16,12 @@ for license details.
 
 #%% initialization
 
-import numpy as np, pandas as pd, geopandas as gpd, matplotlib.pyplot as plt, matplotlib.colors as colors
+import numpy as np, pandas as pd, geopandas as gpd, matplotlib.pyplot as plt, matplotlib.colors as colors, chaospy as cp, json
 from matplotlib.animation import FuncAnimation
 from matplotlib.mathtext import _mathtext as mathtext
 from colorpalette import Color
+from matplotlib.colors import to_hex
+from chaospy import distributions as shape
 from scipy.stats import qmc
 from warnings import filterwarnings
 from datetime import date
@@ -41,7 +43,7 @@ from exposan.htl import (create_C1_system, create_C2_system, create_C3_system,
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
-folder = '/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_landscape/analyses/'
+folder = '/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_landscape/'
 
 _MMgal_to_m3 = auom('gal').conversion_factor('m3')*1000000
 # TODO: this can be highly uncertain
@@ -57,6 +59,14 @@ y = Color('yellow', (243, 195, 84)).HEX
 a = Color('gray', (144, 145, 142)).HEX
 p = Color('purple', (162, 128, 185)).HEX
 
+lb = to_hex((96/256, 193/256, 207/256, 0.5), keep_alpha=True)
+lg = to_hex((121/256, 191/256, 130/256, 0.5), keep_alpha=True)
+lr = to_hex((237/256, 88/256, 111/256, 0.5), keep_alpha=True)
+lo = to_hex((249/256, 143/256, 96/256, 0.5), keep_alpha=True)
+ly = to_hex((243/256, 195/256, 84/256, 0.5), keep_alpha=True)
+la = to_hex((144/256, 145/256, 142/256, 0.5), keep_alpha=True)
+lp = to_hex((162/256, 128/256, 185/256, 0.5), keep_alpha=True)
+
 db = Color('dark_blue', (53, 118, 127)).HEX
 dg = Color('dark_green', (77, 126, 83)).HEX
 dr = Color('dark_red', (156, 75, 80)).HEX
@@ -65,9 +75,9 @@ dy = Color('dark_yellow', (171, 137, 55)).HEX
 da = Color('dark_gray', (78, 78, 78)).HEX
 dp = Color('dark_purple', (76, 56, 90)).HEX
 
-world = gpd.read_file(folder + 'World Bank Official Boundaries - Admin 0_all_layers/WB_GAD_ADM0_complete.shp')
+world = gpd.read_file(folder + 'analyses/World Bank Official Boundaries - Admin 0_all_layers/WB_GAD_ADM0_complete.shp')
 
-WRRF = pd.read_csv(folder + 'HydroWASTE_v10/HydroWASTE_v10.csv', encoding='latin-1')
+WRRF = pd.read_csv(folder + 'analyses/HydroWASTE_v10/HydroWASTE_v10.csv', encoding='latin-1')
 # WASTE_DIS in m3/day
 WRRF = WRRF[WRRF['WASTE_DIS'] != 0]
 WRRF = WRRF[~WRRF['STATUS'].isin(['Closed','Decommissioned','Non-Operational'])]
@@ -86,11 +96,11 @@ WRRF_filtered = gpd.GeoDataFrame(WRRF_filtered, crs='EPSG:4269',
                                  geometry=gpd.points_from_xy(x=WRRF_filtered.LON_WWTP,
                                                              y=WRRF_filtered.LAT_WWTP))
 
-HDI = pd.read_excel(folder + 'HDR25_Statistical_Annex_HDI_Table.xlsx')
+HDI = pd.read_excel(folder + 'analyses/HDR25_Statistical_Annex_HDI_Table.xlsx')
 
 # TODO: add this to the manuscript or SI
 # electricity price
-electricity_price = pd.read_excel(folder + 'P_Electric Prices by Country.xlsx')
+electricity_price = pd.read_excel(folder + 'analyses/P_Electric Prices by Country.xlsx')
 electricity_price.rename(columns={'Country Name':'country',
                                   'Country Code':'country_code',
                                   'Time':'year',
@@ -116,7 +126,7 @@ electricity_price = electricity_price[['country','country_code','year','US_cents
 # TODO: add this to the manuscript or SI
 # labor cost
 # TODO: for countries with no data, consider (1) manually searching for the data, or (2) use the average value of the labor costs of countries with similar development stages
-labor_cost = pd.read_excel(folder + 'EAR_4HRL_SEX_CUR_NB_A-20250917T1926.xlsx')
+labor_cost = pd.read_excel(folder + 'analyses/EAR_4HRL_SEX_CUR_NB_A-20250917T1926.xlsx')
 labor_cost = labor_cost[labor_cost['sex.label'] == 'Total']
 labor_cost = labor_cost[labor_cost['classif1.label'] == 'Currency: U.S. dollars']
 labor_cost = labor_cost.loc[labor_cost.groupby('ref_area.label')['time'].idxmax()].reset_index(drop=True)
@@ -129,7 +139,7 @@ labor_cost.rename(columns={'ref_area.label':'country',
 
 # TODO: add this to the manuscript or SI
 # price level index (PLI) - for chemical price adjustment
-PLI = pd.read_excel(folder + 'P_Data_Extract_From_World_Development_Indicators.xlsx')
+PLI = pd.read_excel(folder + 'analyses/P_Data_Extract_From_World_Development_Indicators.xlsx')
 year_cols = ['1990 [YR1990]','2000 [YR2000]','2015 [YR2015]','2016 [YR2016]','2017 [YR2017]',
              '2018 [YR2018]','2019 [YR2019]','2020 [YR2020]','2021 [YR2021]','2022 [YR2022]',
              '2023 [YR2023]','2024 [YR2024]']
@@ -143,9 +153,11 @@ PLI.rename(columns={'Country Name':'country',
 
 # TODO: index for capital costs (any others, like transportation and utilities, but these two are less important and may use other indexes or just the same globally - if other indexes are not very different, so these remains not important, like if capital cost in country A is 0.01% of U.S., in this case, if still keep transportation cost the U.S. value, the transporation may become the most impactful driver)
 
-#%% MPs
+#%% MPs concentration
 
-fig, ax = plt.subplots(figsize=(25, 5))
+MPs = pd.read_excel(folder + 'analyses/EC_data.xlsx','MPs_summary')
+
+fig, ax = plt.subplots(figsize=(15, 5))
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
@@ -160,178 +172,81 @@ plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 ax = plt.gca()
+ax.set_yscale('log')
+ax.set_ylim([10**-7, 10**5])
+ax.tick_params(direction='inout', length=20, width=3, labelbottom=True, bottom=False, top=False, left=True, right=False)
 
-ax.set_ylim([-7, 5])
+ax.set_xticklabels(['WWRS','soils','sediment','air','water'])
+plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10, 1000, 100000], fontname='Arial')
 
-ax.tick_params(direction='out', length=10, width=3,
-               bottom=True, top=False, left=True, right=False, pad=0)
-
-plt.xticks([0, 1, 2, 3, 4], ['WWRS','soil/agricultural land','air','sediment','water'], fontname='Arial')
-plt.yticks(np.arange(-7, 8, 3), fontname='Arial')
-
-ax_left = ax.twinx()
-ax_left.set_ylim(ax.get_ylim())
-plt.yticks(np.arange(-7, 8, 3), fontname='Arial')
-
-ax_left.tick_params(direction='inout', length=20, width=3,
-                    bottom=False, top=False, left=True, right=False,
-                    labelcolor='none')
-
-ax_right = ax.twinx()
-ax_right.set_ylim(ax.get_ylim())
-plt.yticks(np.arange(-7, 8, 3), fontname='Arial')
-
-ax_right.tick_params(direction='in', length=10, width=3,
-                     bottom=False, top=False, left=False, right=True,
-                     labelcolor='none')
-
-ax_right.tick_params(direction='in', length=10, width=3,
-                     bottom=False, top=False, left=False, right=True, pad=0)
-
-ax.set_ylabel('$\mathbf{log_{10}C}$\n[particle·${g^{-1}}$]',
+ax.set_ylabel('$\mathbf{C}$ [particle·${g^{-1}}$]',
               fontname='Arial',
               fontsize=45,
               labelpad=13,
               linespacing=0.8)
 
-ax.bar(0,
-       np.log10(24000)-np.log10(1.565),
-       width=0.8,
-       color=r,
-       edgecolor='k',
-       linewidth=3,
-       bottom=np.log10(1.565))
+ax_right = ax.twinx()
+ax_right.set_yscale('log')
+ax_right.set_ylim(ax.get_ylim())
+ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
 
-ax.bar(1,
-       np.log10(2.83)-np.log10(0.088),
-       width=0.8,
-       color=r,
-       edgecolor='k',
-       linewidth=3,
-       bottom=np.log10(0.088))
+ax_right.set_xticklabels(['WWRS','soils','sediment','air','water'])
+plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10, 1000, 100000], fontname='Arial')
 
-ax.bar(2,
-       np.log10(2.256326531)-np.log10(0.000816327),
-       width=0.8,
-       color=r,
-       edgecolor='k',
-       linewidth=3,
-       bottom=np.log10(0.000816327))
+bp = ax.boxplot([MPs[i].dropna() for i in MPs.columns],
+                 whis=[5, 95], showfliers=False, widths=0.7, patch_artist=True)
+    
+bp['boxes'][0].set(color='k', facecolor=r, linewidth=3)
+bp['boxes'][1].set(color='k', facecolor=lr, linewidth=3)
+bp['boxes'][2].set(color='k', facecolor=lr, linewidth=3)
+bp['boxes'][3].set(color='k', facecolor=lr, linewidth=3)
+bp['boxes'][4].set(color='k', facecolor=lr, linewidth=3)
 
-ax.bar(3,
-       np.log10(0.470588235)-np.log10(0.016470588),
-       width=0.8,
-       color=r,
-       edgecolor='k',
-       linewidth=3,
-       bottom=np.log10(0.016470588))
+for whisker in bp['whiskers']:
+    whisker.set(color='k', linewidth=3)
 
-ax.bar(4,
-       np.log10(3.20E-04)-np.log10(2.70E-07),
-       width=0.8,
-       color=r,
-       edgecolor='k',
-       linewidth=3,
-       bottom=np.log10(2.70E-07))
+for median in bp['medians']:
+    median.set(color='k', linewidth=3)
+
+for cap in bp['caps']:
+    cap.set(color='k', linewidth=3)
 
 # plt.savefig('/Users/jiananfeng/Desktop/MPs.pdf', transparent=True, bbox_inches='tight')
 
-#%% PFAS
+#%% MPs distribution
 
-fig, ax = plt.subplots(figsize=(25, 5))
+textile_mass_flow = shape.Uniform(398000, 597000)
+vehicle_tires_mass_flow = shape.Uniform(1130000, 1690000)
+city_dust_mass_flow = shape.Uniform(520000, 780000)
+road_markings_mass_flow = shape.Uniform(472000, 708000)
+personal_care_product_mass_flow = shape.Uniform(20000, 30000)
+marine_coatings_mass_flow = shape.Uniform(40000, 60000)
 
-plt.rcParams['axes.linewidth'] = 3
-plt.rcParams['hatch.linewidth'] = 3
-plt.rcParams['xtick.labelsize'] = 36
-plt.rcParams['ytick.labelsize'] = 36
-plt.rcParams['font.sans-serif'] = 'Arial'
-plt.rcParams['pdf.fonttype'] = 42
-plt.rcParams['ps.fonttype'] = 42
+textile_to_WRRF = shape.Uniform(0.414, 0.620)
+vehicle_tires_to_sewer = shape.Uniform(0.72, 1)
+city_dust_to_sewer = shape.Uniform(0.72, 1)
+road_markings_to_sewer = shape.Uniform(0.72, 1)
+personal_care_product_to_WRRF = shape.Uniform(0.398, 0.596)
 
-plt.rcParams.update({'mathtext.fontset':'custom'})
-plt.rcParams.update({'mathtext.default':'regular'})
-plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+# TODO: this need to be further decided
+combined_sewer_fraction = shape.Uniform(0.4, 0.6)
 
-ax = plt.gca()
+WWRS_removal = shape.Triangle(0.806, 0.952, 0.998)
 
-ax.set_ylim([-7, 5])
+joint = cp.distributions.J(textile_mass_flow, vehicle_tires_mass_flow,
+                           city_dust_mass_flow, road_markings_mass_flow, personal_care_product_mass_flow,
+                           marine_coatings_mass_flow, textile_to_WRRF, vehicle_tires_to_sewer,
+                           city_dust_to_sewer, road_markings_to_sewer, personal_care_product_to_WRRF,
+                           combined_sewer_fraction, WWRS_removal)
+sample = joint.sample(100000)
 
-ax.tick_params(direction='out', length=10, width=3,
-               bottom=True, top=False, left=True, right=False, pad=0)
+MPs_WWRS_MC = pd.DataFrame()
 
-plt.xticks([0, 1, 2, 3, 4], ['WWRS','soil/agricultural land','air','sediment','water'], fontname='Arial')
-plt.yticks(np.arange(-7, 8, 3), fontname='Arial')
+MPs_WWRS_MC = (sample[0]*sample[6] + sample[1]*sample[7]*sample[11] +\
+               sample[2]*sample[8]*sample[11] + sample[3]*sample[9]*sample[11] +\
+               sample[4]*sample[10] + sample[5]*0)*sample[12]/(sample[0] + sample[1] + sample[2] + sample[3] + sample[4] + sample[5])
 
-ax_left = ax.twinx()
-ax_left.set_ylim(ax.get_ylim())
-plt.yticks(np.arange(-7, 8, 3), fontname='Arial')
-
-ax_left.tick_params(direction='inout', length=20, width=3,
-                    bottom=False, top=False, left=True, right=False,
-                    labelcolor='none')
-
-ax_right = ax.twinx()
-ax_right.set_ylim(ax.get_ylim())
-plt.yticks(np.arange(-7, 8, 3), fontname='Arial')
-
-ax_right.tick_params(direction='in', length=10, width=3,
-                     bottom=False, top=False, left=False, right=True,
-                     labelcolor='none')
-
-ax_right.tick_params(direction='in', length=10, width=3,
-                     bottom=False, top=False, left=False, right=True, pad=0)
-
-ax.set_ylabel('$\mathbf{log_{10}C}$\n[ng·${g^{-1}}$]',
-              fontname='Arial',
-              fontsize=45,
-              labelpad=13,
-              linespacing=0.8)
-
-ax.bar(0,
-       np.log10(17000)-np.log10(0.01),
-       width=0.8,
-       color=g,
-       edgecolor='k',
-       linewidth=3,
-       bottom=np.log10(0.01))
-
-ax.bar(1,
-       np.log10(237)-np.log10(0.001),
-       width=0.8,
-       color=g,
-       edgecolor='k',
-       linewidth=3,
-       bottom=np.log10(0.001))
-
-ax.bar(2,
-       np.log10(0.000228571)-np.log10(3.42857E-06),
-       width=0.8,
-       color=g,
-       edgecolor='k',
-       linewidth=3,
-       bottom=np.log10(3.42857E-06))
-
-ax.bar(3,
-       np.log10(2.99)-np.log10(0.0368),
-       width=0.8,
-       color=g,
-       edgecolor='k',
-       linewidth=3,
-       bottom=np.log10(0.0368))
-
-ax.bar(4,
-       np.log10(27777.68)-np.log10(2.03304E-07),
-       width=0.8,
-       color=g,
-       edgecolor='k',
-       linewidth=3,
-       bottom=np.log10(2.03304E-07))
-
-# plt.savefig('/Users/jiananfeng/Desktop/PFAS.pdf', transparent=True, bbox_inches='tight')
-
-#%% pesticide
-
-fig, ax = plt.subplots(figsize=(25, 5))
+fig, ax = plt.subplots(figsize=(2.5, 5))
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
@@ -346,81 +261,701 @@ plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 ax = plt.gca()
+ax.set_xlim([0, 1])
+ax.set_ylim([0, 100])
+ax.tick_params(direction='inout', length=20, width=3, labelbottom=False, bottom=False, top=False, left=True, right=False)
 
-ax.set_ylim([-2, 6])
+plt.yticks(np.arange(0, 120, 20), fontname='Arial')
 
-ax.tick_params(direction='out', length=10, width=3,
-               bottom=True, top=False, left=True, right=False, pad=0)
-
-plt.xticks([0, 1, 2, 3, 4], ['WWRS','soil/agricultural land','air','sediment','water'], fontname='Arial')
-plt.yticks(np.arange(-2, 8, 2), fontname='Arial')
-
-ax_left = ax.twinx()
-ax_left.set_ylim(ax.get_ylim())
-plt.yticks(np.arange(-2, 8, 2), fontname='Arial')
-
-ax_left.tick_params(direction='inout', length=20, width=3,
-                    bottom=False, top=False, left=True, right=False,
-                    labelcolor='none')
-
-ax_right = ax.twinx()
-ax_right.set_ylim(ax.get_ylim())
-plt.yticks(np.arange(-2, 8, 2), fontname='Arial')
-
-ax_right.tick_params(direction='in', length=10, width=3,
-                     bottom=False, top=False, left=False, right=True,
-                     labelcolor='none')
-
-ax_right.tick_params(direction='in', length=10, width=3,
-                     bottom=False, top=False, left=False, right=True, pad=0)
-
-ax.set_ylabel('$\mathbf{log_{10}C}$\n[ng·${g^{-1}}$]',
+ax.set_ylabel('$\mathbf{Occurence}$ [%]',
               fontname='Arial',
               fontsize=45,
               labelpad=13,
               linespacing=0.8)
 
-ax.bar(0,
-       np.log10(90210)-np.log10(0.0000000001),
-       width=0.8,
-       color=b,
-       edgecolor='k',
-       linewidth=3,
-       bottom=np.log10(0.0000000001))
+ax_right = ax.twinx()
+ax_right.set_ylim(ax.get_ylim())
+ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
 
-ax.bar(1,
-       np.log10(12700)-np.log10(0.0000000001),
-       width=0.8,
-       color=b,
-       edgecolor='k',
-       linewidth=3,
-       bottom=np.log10(0.0000000001))
+plt.yticks(np.arange(0, 120, 20), fontname='Arial')
 
-ax.bar(2,
-       np.log10(340.4081633)-np.log10(0.0000000001),
-       width=0.8,
-       color=b,
+ax.bar(0.5,
+       100,
+       width=0.7,
+       color=lr,
        edgecolor='k',
-       linewidth=3,
-       bottom=np.log10(0.0000000001))
+       linewidth=3)
 
-ax.bar(3,
-       np.log10(1200)-np.log10(0.0000000001),
-       width=0.8,
-       color=b,
+ax.bar(0.5,
+       np.quantile(MPs_WWRS_MC, 0.5)*100,
+       yerr=np.array([[(np.quantile(MPs_WWRS_MC, 0.95) - np.quantile(MPs_WWRS_MC, 0.5))*100], [(np.quantile(MPs_WWRS_MC, 0.5) - np.quantile(MPs_WWRS_MC, 0.05))*100]]),
+       error_kw=dict(capsize=15, lw=3, capthick=3),
+       width=0.7,
+       color=r,
        edgecolor='k',
-       linewidth=3,
-       bottom=np.log10(0.0000000001))
+       linewidth=3)
 
-ax.bar(4,
-       np.log10(17163)-np.log10(0.0000000001),
-       width=0.8,
-       color=b,
-       edgecolor='k',
-       linewidth=3,
-       bottom=np.log10(0.0000000001))
+#%% PFAS concentration data processing 1 - EU - data cleaning to reduce the file size
 
-# plt.savefig('/Users/jiananfeng/Desktop/pesticide.pdf', transparent=True, bbox_inches='tight')
+# EU_PFAS_raw = pd.read_csv(folder + 'analyses/PFAS_data/EU_PFAS_raw.csv')
+# EU_PFAS = EU_PFAS_raw[['pfas_values','unit','matrix']]
+# EU_PFAS = EU_PFAS.dropna(subset='matrix')
+# EU_PFAS = EU_PFAS[EU_PFAS['matrix'].isin(['Drinking water','Groundwater','Rainwater','Sea water','Sediment','Soil','Surface water'])]
+# EU_PFAS['pfas_values'] = EU_PFAS['pfas_values'].apply(json.loads)
+
+# def extract_totals(pfas_list):
+#     PFOS_conc, PFOS_unit, PFOA_conc, PFOA_unit = None, None, None, None
+    
+#     for item in pfas_list:
+#         if 'isomer' in item:
+#             continue
+        
+#         if item['substance'] == 'PFOA':
+#             if 'value' in item.keys():
+#                 val = float(item.get('value'))
+#                 PFOA_conc, PFOA_unit = val, item['unit']
+#         elif item['substance'] == 'PFOS':
+#             if 'value' in item.keys():
+#                 val = float(item.get('value'))
+#                 PFOS_conc, PFOS_unit = val, item['unit']
+
+#     return pd.Series({'PFOA_conc': PFOA_conc,
+#                       'PFOA_unit': PFOA_unit,
+#                       'PFOS_conc': PFOS_conc,
+#                       'PFOS_unit': PFOS_unit})
+
+# EU_PFAS_results = EU_PFAS['pfas_values'].apply(extract_totals)
+
+# EU_PFAS = pd.concat([EU_PFAS, EU_PFAS_results], axis=1)
+
+# EU_PFOA = EU_PFAS[['PFOA_conc','PFOA_unit','matrix']]
+# EU_PFOA = EU_PFOA.dropna(subset='PFOA_conc')
+
+# EU_PFOS = EU_PFAS[['PFOS_conc','PFOS_unit','matrix']]
+# EU_PFOS = EU_PFOS.dropna(subset='PFOS_conc')
+
+# EU_PFOA.to_excel(folder + 'analyses/PFAS_data/EU_PFOA.xlsx')
+# EU_PFOS.to_excel(folder + 'analyses/PFAS_data/EU_PFOS.xlsx')
+
+#%% PFOA concentration
+
+# PFOA results in ng/g
+WWRS_PFOA = []
+soil_PFOA = []
+sediment_PFOA = []
+air_PFOA = []
+water_PFOA = []
+
+# =============================================================================
+# CN_1_PFOA
+# =============================================================================
+
+CN_1_PFOA = pd.read_excel(folder + 'analyses/PFAS_data/CN_1_PFOA.xlsx')
+set(CN_1_PFOA['Pathway'])
+CN_1_PFOA = CN_1_PFOA[CN_1_PFOA['Pathway'].isin(['air','others','sediment','soil','water'])]
+CN_1_PFOA = CN_1_PFOA[((CN_1_PFOA['Pathway'] == 'others') & (CN_1_PFOA['Detailed_pathway'].str.contains('sludge|Sludge'))) | (CN_1_PFOA['Pathway'] != 'others')]
+# remove entries containing 'sludge' but are not WWRS
+set(CN_1_PFOA[(CN_1_PFOA['Pathway'] == 'others') & (CN_1_PFOA['Detailed_pathway'].str.contains('sludge'))]['Detailed_pathway'])
+CN_1_PFOA = CN_1_PFOA[~CN_1_PFOA['Detailed_pathway'].isin(['drinking water sludge','surface sediment&sludge'])]
+CN_1_PFOA = CN_1_PFOA[['Pathway','Unit','Min','Max','Mean','Median']]
+CN_1_PFOA.replace('nd', 0, inplace=True)
+for column in ['Min','Max','Mean','Median']:
+    CN_1_PFOA[column] = CN_1_PFOA[column].apply(pd.to_numeric, errors='coerce')
+
+CN_1_PFOA_WWRS = CN_1_PFOA[CN_1_PFOA['Pathway'] == 'others']
+CN_1_PFOA_soil = CN_1_PFOA[CN_1_PFOA['Pathway'] == 'soil']
+CN_1_PFOA_sediment = CN_1_PFOA[CN_1_PFOA['Pathway'] == 'sediment']
+CN_1_PFOA_air = CN_1_PFOA[CN_1_PFOA['Pathway'] == 'air']
+CN_1_PFOA_water = CN_1_PFOA[CN_1_PFOA['Pathway'] == 'water']
+
+# always collect min, max, and median; collect average only if none of min and max are present
+def add_data(row):
+    values = []
+    if not pd.isna(row['Min']) or not pd.isna(row['Max']):
+        if not pd.isna(row['Min']):
+            values.append(row['Min'])
+        if not pd.isna(row['Max']):
+            values.append(row['Max'])
+    else:
+        if not pd.isna(row['Mean']):
+            values.append(row['Mean'])
+    
+    if not pd.isna(row['Median']):
+        values.append(row['Median'])
+    return values
+
+# WWRS
+CN_1_PFOA_WWRS = CN_1_PFOA_WWRS[CN_1_PFOA_WWRS['Unit'].str.contains('dw')]
+# convert all units to ng/g (dw)
+set(CN_1_PFOA_WWRS['Unit'])
+CN_1_PFOA_WWRS['valid_data'] = CN_1_PFOA_WWRS.apply(add_data, axis=1)
+
+WWRS_PFOA += [x for sublist in CN_1_PFOA_WWRS['valid_data'] for x in sublist]
+
+# soil
+CN_1_PFOA_soil = CN_1_PFOA_soil[CN_1_PFOA_soil['Unit'].str.contains('dw')]
+# convert all units to ng/g (dw)
+set(CN_1_PFOA_soil['Unit'])
+CN_1_PFOA_soil.loc[CN_1_PFOA_soil['Unit'] == 'pg/g dw', ['Min','Max','Mean','Median']] *= (1/1000)
+CN_1_PFOA_soil['valid_data'] = CN_1_PFOA_soil.apply(add_data, axis=1)
+
+soil_PFOA += [x for sublist in CN_1_PFOA_soil['valid_data'] for x in sublist]
+
+# sediment
+CN_1_PFOA_sediment = CN_1_PFOA_sediment[CN_1_PFOA_sediment['Unit'].str.contains('dw')]
+# convert all units to ng/g (dw)
+set(CN_1_PFOA_sediment['Unit'])
+CN_1_PFOA_sediment.loc[CN_1_PFOA_sediment['Unit'] == 'pg/g dw', ['Min','Max','Mean','Median']] *= (1/1000)
+CN_1_PFOA_sediment['valid_data'] = CN_1_PFOA_sediment.apply(add_data, axis=1)
+
+sediment_PFOA += [x for sublist in CN_1_PFOA_sediment['valid_data'] for x in sublist]
+
+# air
+# convert all units to ng/g, assuming the density of air is 1.225 kg/m3
+set(CN_1_PFOA_air['Unit'])
+CN_1_PFOA_air.loc[CN_1_PFOA_air['Unit'] == 'ng/L', ['Min','Max','Mean','Median']] *= (1000/1.225/1000)
+CN_1_PFOA_air.loc[CN_1_PFOA_air['Unit'] == 'ng/m3', ['Min','Max','Mean','Median']] *= (1/1.225/1000)
+CN_1_PFOA_air.loc[CN_1_PFOA_air['Unit'] == 'pg/L', ['Min','Max','Mean','Median']] *= (1000/1.225/1000/1000)
+CN_1_PFOA_air.loc[CN_1_PFOA_air['Unit'] == 'pg/m3', ['Min','Max','Mean','Median']] *= (1/1.225/1000/1000)
+CN_1_PFOA_air['valid_data'] = CN_1_PFOA_air.apply(add_data, axis=1)
+
+air_PFOA += [x for sublist in CN_1_PFOA_air['valid_data'] for x in sublist]
+
+# water
+# convert all units to ng/g, assuming the density of water is 1000 kg/m3
+set(CN_1_PFOA_water['Unit'])
+CN_1_PFOA_water.loc[CN_1_PFOA_water['Unit'] == 'ng/L', ['Min','Max','Mean','Median']] *= (1/1000)
+CN_1_PFOA_water.loc[CN_1_PFOA_water['Unit'] == 'ng/l', ['Min','Max','Mean','Median']] *= (1/1000)
+CN_1_PFOA_water.loc[CN_1_PFOA_water['Unit'] == 'pg/L', ['Min','Max','Mean','Median']] *= (1/1000/1000)
+CN_1_PFOA_water.loc[CN_1_PFOA_water['Unit'] == 'pg/mL', ['Min','Max','Mean','Median']] *= (1/1000)
+# PFOA MW: 414.07 g/mpl
+CN_1_PFOA_water.loc[CN_1_PFOA_water['Unit'] == 'pmol/L', ['Min','Max','Mean','Median']] *= (414.07/1000/1000)
+CN_1_PFOA_water['valid_data'] = CN_1_PFOA_water.apply(add_data, axis=1)
+
+water_PFOA += [x for sublist in CN_1_PFOA_water['valid_data'] for x in sublist]
+
+# =============================================================================
+# CN_2_PFAS
+# =============================================================================
+
+CN_2_PFAS = pd.read_excel(folder + 'analyses/PFAS_data/CN_2_PFAS.xlsx')
+CN_2_PFOA = CN_2_PFAS[CN_2_PFAS['ECs_type'] == 'PFOA']
+set(CN_2_PFOA['Ecs_Pathway'])
+CN_2_PFOA = CN_2_PFOA[CN_2_PFOA['Ecs_Pathway'].isin(['Sediment','Soil','air','sediment','sludge','soil','water'])]
+CN_2_PFOA = CN_2_PFOA[['Ecs_Pathway','Ecs_unit','ECs_conc_min','ECs_conc_max','ECs_conc_mean','Ecs_conc_median']]
+for column in ['ECs_conc_min','ECs_conc_max','ECs_conc_mean','Ecs_conc_median']:
+    CN_2_PFOA[column] = CN_2_PFOA[column].apply(pd.to_numeric, errors='coerce')
+
+CN_2_PFOA_WWRS = CN_2_PFOA[CN_2_PFOA['Ecs_Pathway'] == 'sludge']
+CN_2_PFOA_soil = CN_2_PFOA[CN_2_PFOA['Ecs_Pathway'].isin(['Soil','soil'])]
+CN_2_PFOA_sediment = CN_2_PFOA[CN_2_PFOA['Ecs_Pathway'].isin(['Sediment','sediment'])]
+CN_2_PFOA_air = CN_2_PFOA[CN_2_PFOA['Ecs_Pathway'] == 'air']
+CN_2_PFOA_water = CN_2_PFOA[CN_2_PFOA['Ecs_Pathway'] == 'water']
+
+# always collect min, max, and median; collect average only if none of min and max are present
+def add_data(row):
+    values = []
+    if not pd.isna(row['ECs_conc_min']) or not pd.isna(row['ECs_conc_max']):
+        if not pd.isna(row['ECs_conc_min']):
+            values.append(row['ECs_conc_min'])
+        if not pd.isna(row['ECs_conc_max']):
+            values.append(row['ECs_conc_max'])
+    else:
+        if not pd.isna(row['ECs_conc_mean']):
+            values.append(row['ECs_conc_mean'])
+    
+    if not pd.isna(row['Ecs_conc_median']):
+        values.append(row['Ecs_conc_median'])
+    return values
+
+# WWRS
+CN_2_PFOA_WWRS = CN_2_PFOA_WWRS[CN_2_PFOA_WWRS['Ecs_unit'].str.contains('dw')]
+# convert all units to ng/g (dw)
+set(CN_2_PFOA_WWRS['Ecs_unit'])
+
+# soil
+CN_2_PFOA_soil = CN_2_PFOA_soil[CN_2_PFOA_soil['Ecs_unit'].str.contains('dw')]
+# convert all units to ng/g (dw)
+set(CN_2_PFOA_soil['Ecs_unit'])
+CN_2_PFOA_soil.loc[CN_2_PFOA_soil['Ecs_unit'] == 'pg/g dw', ['ECs_conc_min','ECs_conc_max','ECs_conc_mean','Ecs_conc_median']] *= (1/1000)
+CN_2_PFOA_soil['valid_data'] = CN_2_PFOA_soil.apply(add_data, axis=1)
+
+soil_PFOA += [x for sublist in CN_2_PFOA_soil['valid_data'] for x in sublist]
+
+# sediment
+CN_2_PFOA_sediment = CN_2_PFOA_sediment[CN_2_PFOA_sediment['Ecs_unit'].str.contains('dw')]
+# convert all units to ng/g (dw)
+set(CN_2_PFOA_sediment['Ecs_unit'])
+CN_2_PFOA_sediment.loc[CN_2_PFOA_sediment['Ecs_unit'] == 'ng/kg  dw', ['ECs_conc_min','ECs_conc_max','ECs_conc_mean','Ecs_conc_median']] *= (1/1000)
+CN_2_PFOA_sediment.loc[CN_2_PFOA_sediment['Ecs_unit'] == 'pg/g dw', ['ECs_conc_min','ECs_conc_max','ECs_conc_mean','Ecs_conc_median']] *= (1/1000)
+CN_2_PFOA_sediment['valid_data'] = CN_2_PFOA_sediment.apply(add_data, axis=1)
+
+sediment_PFOA += [x for sublist in CN_2_PFOA_sediment['valid_data'] for x in sublist]
+
+# air
+# convert all units to ng/g, assuming the density of air is 1.225 kg/m3
+set(CN_2_PFOA_air['Ecs_unit'])
+CN_2_PFOA_air.loc[CN_2_PFOA_air['Ecs_unit'] == 'ng/L', ['ECs_conc_min','ECs_conc_max','ECs_conc_mean','Ecs_conc_median']] *= (1000/1.225/1000)
+CN_2_PFOA_air.loc[CN_2_PFOA_air['Ecs_unit'] == 'ng/m3', ['ECs_conc_min','ECs_conc_max','ECs_conc_mean','Ecs_conc_median']] *= (1/1.225/1000)
+CN_2_PFOA_air.loc[CN_2_PFOA_air['Ecs_unit'] == 'pg/m3', ['ECs_conc_min','ECs_conc_max','ECs_conc_mean','Ecs_conc_median']] *= (1/1.225/1000/1000)
+CN_2_PFOA_air['valid_data'] = CN_2_PFOA_air.apply(add_data, axis=1)
+
+air_PFOA += [x for sublist in CN_2_PFOA_air['valid_data'] for x in sublist]
+
+# water
+# convert all units to ng/g, assuming the density of water is 1000 kg/m3
+set(CN_2_PFOA_water['Ecs_unit'])
+CN_2_PFOA_water.loc[CN_2_PFOA_water['Ecs_unit'] == 'ng/L', ['ECs_conc_min','ECs_conc_max','ECs_conc_mean','Ecs_conc_median']] *= (1/1000)
+CN_2_PFOA_water.loc[CN_2_PFOA_water['Ecs_unit'] == 'pg/L', ['ECs_conc_min','ECs_conc_max','ECs_conc_mean','Ecs_conc_median']] *= (1/1000/1000)
+CN_2_PFOA_water['valid_data'] = CN_2_PFOA_water.apply(add_data, axis=1)
+
+water_PFOA += [x for sublist in CN_2_PFOA_water['valid_data'] for x in sublist]
+
+# =============================================================================
+# US_PFAS
+# =============================================================================
+
+US_PFAS = pd.read_excel(folder + 'analyses/PFAS_data/US_PFAS.xlsx')
+# PFOA CAS number: 335-67-1
+US_PFOA = US_PFAS[US_PFAS['CAS Number'] == '335-67-1']
+set(US_PFOA['Environmental Media Name'])
+US_PFOA = US_PFOA[US_PFOA['Environmental Media Name'].isin(['Air','Other','Sediment','Soil','Water'])]
+set(US_PFOA['Activity Media Subdivision Name'])
+US_PFOA = US_PFOA[US_PFOA['Environmental Media Name'].isin(['Air','Sediment','Soil','Water'])]
+US_PFOA = US_PFOA[['Environmental Media Name','Result Measure Value','Result Unit of Measure','Activity Comment']]
+US_PFOA['Activity Comment'] = US_PFOA['Activity Comment'].fillna(' ')
+US_PFOA.replace('-', 0, inplace=True)
+US_PFOA['Result Measure Value'] = US_PFOA['Result Measure Value'].apply(pd.to_numeric, errors='coerce')
+
+US_PFOA_soil = US_PFOA[US_PFOA['Environmental Media Name'] == 'Soil']
+US_PFOA_sediment = US_PFOA[US_PFOA['Environmental Media Name'] == 'Sediment']
+US_PFOA_air = US_PFOA[US_PFOA['Environmental Media Name'] == 'Air']
+US_PFOA_water = US_PFOA[US_PFOA['Environmental Media Name'] == 'Water']
+
+# soil
+US_PFOA_soil = US_PFOA_soil[US_PFOA_soil['Activity Comment'].str.contains('dry|Dry')]
+
+# sediment
+US_PFOA_sediment = US_PFOA_sediment[US_PFOA_sediment['Activity Comment'].str.contains('dry|Dry')]
+
+# air
+# convert all units to ng/g, assuming the density of air is 1.225 kg/m3
+set(US_PFOA_air['Result Unit of Measure'])
+US_PFOA_air.loc[US_PFOA_air['Result Unit of Measure'] == 'pg/L', 'Result Measure Value'] *= (1000/1.225/1000/1000)
+
+air_PFOA += list(US_PFOA_air['Result Measure Value'])
+
+# water
+# convert all units to ng/g, assuming the density of water is 1000 kg/m3
+set(US_PFOA_water['Result Unit of Measure'])
+US_PFOA_water = US_PFOA_water[US_PFOA_water['Result Unit of Measure'] != 'ng']
+US_PFOA_water.loc[US_PFOA_water['Result Unit of Measure'] == 'ng/L', 'Result Measure Value'] *= (1/1000)
+
+water_PFOA += list(US_PFOA_water['Result Measure Value'])
+
+# =============================================================================
+# EU_PFOA
+# =============================================================================
+
+EU_PFOA = pd.read_excel(folder + 'analyses/PFAS_data/EU_PFOA.xlsx')
+set(EU_PFOA['matrix'])
+EU_PFOA['PFOA_conc'] = EU_PFOA['PFOA_conc'].apply(pd.to_numeric, errors='coerce')
+
+EU_PFOA_soil = EU_PFOA[EU_PFOA['matrix'] == 'Soil']
+EU_PFOA_sediment = EU_PFOA[EU_PFOA['matrix'] == 'Sediment']
+EU_PFOA_water = EU_PFOA[EU_PFOA['matrix'].isin(['Drinking water','Groundwater','Rainwater','Sea water','Surface water'])]
+
+# soil
+EU_PFOA_soil = EU_PFOA_soil[EU_PFOA_soil['PFOA_unit'].str.contains('dw')]
+set(EU_PFOA_soil['PFOA_unit'])
+EU_PFOA_soil['PFOA_conc'] *= (1/1000)
+
+soil_PFOA += list(EU_PFOA_soil['PFOA_conc'])
+
+# sediment
+EU_PFOA_sediment = EU_PFOA_sediment[EU_PFOA_sediment['PFOA_unit'].str.contains('dw')]
+set(EU_PFOA_sediment['PFOA_unit'])
+EU_PFOA_sediment['PFOA_conc'] *= (1/1000)
+
+sediment_PFOA += list(EU_PFOA_sediment['PFOA_conc'])
+
+# water
+# convert all units to ng/g, assuming the density of water is 1000 kg/m3
+set(EU_PFOA_water['PFOA_unit'])
+EU_PFOA_water['PFOA_conc'] *= (1/1000)
+
+water_PFOA += list(EU_PFOA_water['PFOA_conc'])
+
+# =============================================================================
+# additional WWRS PFOA
+# =============================================================================
+
+additional_WWRS_PFOA = pd.read_excel(folder + 'analyses/EC_data.xlsx','PFAS_summary')
+
+WWRS_PFOA += list(additional_WWRS_PFOA['PFOA'].dropna())
+
+#%% PFOS concentration
+
+# PFOS results in ng/g
+WWRS_PFOS = []
+soil_PFOS = []
+sediment_PFOS = []
+air_PFOS = []
+water_PFOS = []
+
+# =============================================================================
+# CN_1_PFOS
+# =============================================================================
+
+CN_1_PFOS = pd.read_excel(folder + 'analyses/PFAS_data/CN_1_PFOS.xlsx')
+set(CN_1_PFOS['Pathway'])
+CN_1_PFOS = CN_1_PFOS[CN_1_PFOS['Pathway'].isin(['air','others','sediment','soil','water'])]
+CN_1_PFOS = CN_1_PFOS[((CN_1_PFOS['Pathway'] == 'others') & (CN_1_PFOS['Detailed_pathway'].str.contains('sludge|Sludge'))) | (CN_1_PFOS['Pathway'] != 'others')]
+# remove entries containing 'sludge' but are not WWRS
+set(CN_1_PFOS[(CN_1_PFOS['Pathway'] == 'others') & (CN_1_PFOS['Detailed_pathway'].str.contains('sludge'))]['Detailed_pathway'])
+CN_1_PFOS = CN_1_PFOS[~CN_1_PFOS['Detailed_pathway'].isin(['drinking water sludge','surface sediment&sludge'])]
+CN_1_PFOS = CN_1_PFOS[['Pathway','Unit','Min','Max','Mean','Median']]
+CN_1_PFOS.replace('nd', 0, inplace=True)
+for column in ['Min','Max','Mean','Median']:
+    CN_1_PFOS[column] = CN_1_PFOS[column].apply(pd.to_numeric, errors='coerce')
+
+CN_1_PFOS_WWRS = CN_1_PFOS[CN_1_PFOS['Pathway'] == 'others']
+CN_1_PFOS_soil = CN_1_PFOS[CN_1_PFOS['Pathway'] == 'soil']
+CN_1_PFOS_sediment = CN_1_PFOS[CN_1_PFOS['Pathway'] == 'sediment']
+CN_1_PFOS_air = CN_1_PFOS[CN_1_PFOS['Pathway'] == 'air']
+CN_1_PFOS_water = CN_1_PFOS[CN_1_PFOS['Pathway'] == 'water']
+
+# always collect min, max, and median; collect average only if none of min and max are present
+def add_data(row):
+    values = []
+    if not pd.isna(row['Min']) or not pd.isna(row['Max']):
+        if not pd.isna(row['Min']):
+            values.append(row['Min'])
+        if not pd.isna(row['Max']):
+            values.append(row['Max'])
+    else:
+        if not pd.isna(row['Mean']):
+            values.append(row['Mean'])
+    
+    if not pd.isna(row['Median']):
+        values.append(row['Median'])
+    return values
+
+# WWRS
+CN_1_PFOS_WWRS = CN_1_PFOS_WWRS[CN_1_PFOS_WWRS['Unit'].str.contains('dw')]
+# convert all units to ng/g (dw)
+set(CN_1_PFOS_WWRS['Unit'])
+CN_1_PFOS_WWRS['valid_data'] = CN_1_PFOS_WWRS.apply(add_data, axis=1)
+
+WWRS_PFOS += [x for sublist in CN_1_PFOS_WWRS['valid_data'] for x in sublist]
+
+# soil
+CN_1_PFOS_soil = CN_1_PFOS_soil[CN_1_PFOS_soil['Unit'].str.contains('dw')]
+# convert all units to ng/g (dw)
+set(CN_1_PFOS_soil['Unit'])
+CN_1_PFOS_soil.loc[CN_1_PFOS_soil['Unit'] == 'pg/g dw', ['Min','Max','Mean','Median']] *= (1/1000)
+CN_1_PFOS_soil['valid_data'] = CN_1_PFOS_soil.apply(add_data, axis=1)
+
+soil_PFOS += [x for sublist in CN_1_PFOS_soil['valid_data'] for x in sublist]
+
+# sediment
+CN_1_PFOS_sediment = CN_1_PFOS_sediment[CN_1_PFOS_sediment['Unit'].str.contains('dw')]
+# convert all units to ng/g (dw)
+set(CN_1_PFOS_sediment['Unit'])
+CN_1_PFOS_sediment.loc[CN_1_PFOS_sediment['Unit'] == 'pg/g dw', ['Min','Max','Mean','Median']] *= (1/1000)
+CN_1_PFOS_sediment['valid_data'] = CN_1_PFOS_sediment.apply(add_data, axis=1)
+
+sediment_PFOS += [x for sublist in CN_1_PFOS_sediment['valid_data'] for x in sublist]
+
+# air
+# convert all units to ng/g, assuming the density of air is 1.225 kg/m3
+set(CN_1_PFOS_air['Unit'])
+CN_1_PFOS_air.loc[CN_1_PFOS_air['Unit'] == 'ng/L', ['Min','Max','Mean','Median']] *= (1000/1.225/1000)
+CN_1_PFOS_air.loc[CN_1_PFOS_air['Unit'] == 'ng/m3', ['Min','Max','Mean','Median']] *= (1/1.225/1000)
+CN_1_PFOS_air.loc[CN_1_PFOS_air['Unit'] == 'pg/L', ['Min','Max','Mean','Median']] *= (1000/1.225/1000/1000)
+CN_1_PFOS_air.loc[CN_1_PFOS_air['Unit'] == 'pg/m3', ['Min','Max','Mean','Median']] *= (1/1.225/1000/1000)
+CN_1_PFOS_air['valid_data'] = CN_1_PFOS_air.apply(add_data, axis=1)
+
+air_PFOS += [x for sublist in CN_1_PFOS_air['valid_data'] for x in sublist]
+
+# water
+# convert all units to ng/g, assuming the density of water is 1000 kg/m3
+set(CN_1_PFOS_water['Unit'])
+CN_1_PFOS_water.loc[CN_1_PFOS_water['Unit'] == 'ng/L', ['Min','Max','Mean','Median']] *= (1/1000)
+CN_1_PFOS_water.loc[CN_1_PFOS_water['Unit'] == 'ng/l', ['Min','Max','Mean','Median']] *= (1/1000)
+CN_1_PFOS_water.loc[CN_1_PFOS_water['Unit'] == 'pg/L', ['Min','Max','Mean','Median']] *= (1/1000/1000)
+CN_1_PFOS_water.loc[CN_1_PFOS_water['Unit'] == 'pg/mL', ['Min','Max','Mean','Median']] *= (1/1000)
+# PFOS MW: 500.13 g/mpl
+CN_1_PFOS_water.loc[CN_1_PFOS_water['Unit'] == 'pmol/L', ['Min','Max','Mean','Median']] *= (500.13/1000/1000)
+CN_1_PFOS_water['valid_data'] = CN_1_PFOS_water.apply(add_data, axis=1)
+
+water_PFOS += [x for sublist in CN_1_PFOS_water['valid_data'] for x in sublist]
+
+# =============================================================================
+# CN_2_PFAS
+# =============================================================================
+
+CN_2_PFAS = pd.read_excel(folder + 'analyses/PFAS_data/CN_2_PFAS.xlsx')
+CN_2_PFOS = CN_2_PFAS[CN_2_PFAS['ECs_type'] == 'PFOS']
+set(CN_2_PFOS['Ecs_Pathway'])
+CN_2_PFOS = CN_2_PFOS[CN_2_PFOS['Ecs_Pathway'].isin(['air','sediment','sediment ','sludge','soil','water'])]
+CN_2_PFOS = CN_2_PFOS[['Ecs_Pathway','Ecs_unit','ECs_conc_min','ECs_conc_max','ECs_conc_mean','Ecs_conc_median']]
+for column in ['ECs_conc_min','ECs_conc_max','ECs_conc_mean','Ecs_conc_median']:
+    CN_2_PFOS[column] = CN_2_PFOS[column].apply(pd.to_numeric, errors='coerce')
+
+CN_2_PFOS_WWRS = CN_2_PFOS[CN_2_PFOS['Ecs_Pathway'] == 'sludge']
+CN_2_PFOS_soil = CN_2_PFOS[CN_2_PFOS['Ecs_Pathway'] == 'soil']
+CN_2_PFOS_sediment = CN_2_PFOS[CN_2_PFOS['Ecs_Pathway'].isin(['sediment','sediment '])]
+CN_2_PFOS_air = CN_2_PFOS[CN_2_PFOS['Ecs_Pathway'] == 'air']
+CN_2_PFOS_water = CN_2_PFOS[CN_2_PFOS['Ecs_Pathway'] == 'water']
+
+# always collect min, max, and median; collect average only if none of min and max are present
+def add_data(row):
+    values = []
+    if not pd.isna(row['ECs_conc_min']) or not pd.isna(row['ECs_conc_max']):
+        if not pd.isna(row['ECs_conc_min']):
+            values.append(row['ECs_conc_min'])
+        if not pd.isna(row['ECs_conc_max']):
+            values.append(row['ECs_conc_max'])
+    else:
+        if not pd.isna(row['ECs_conc_mean']):
+            values.append(row['ECs_conc_mean'])
+    
+    if not pd.isna(row['Ecs_conc_median']):
+        values.append(row['Ecs_conc_median'])
+    return values
+
+# WWRS
+CN_2_PFOS_WWRS = CN_2_PFOS_WWRS[CN_2_PFOS_WWRS['Ecs_unit'].str.contains('dw')]
+# convert all units to ng/g (dw)
+set(CN_2_PFOS_WWRS['Ecs_unit'])
+
+# soil
+CN_2_PFOS_soil = CN_2_PFOS_soil[CN_2_PFOS_soil['Ecs_unit'].str.contains('dw')]
+# convert all units to ng/g (dw)
+set(CN_2_PFOS_soil['Ecs_unit'])
+CN_2_PFOS_soil.loc[CN_2_PFOS_soil['Ecs_unit'] == 'pg/g dw', ['ECs_conc_min','ECs_conc_max','ECs_conc_mean','Ecs_conc_median']] *= (1/1000)
+CN_2_PFOS_soil['valid_data'] = CN_2_PFOS_soil.apply(add_data, axis=1)
+
+soil_PFOS += [x for sublist in CN_2_PFOS_soil['valid_data'] for x in sublist]
+
+# sediment
+CN_2_PFOS_sediment = CN_2_PFOS_sediment[CN_2_PFOS_sediment['Ecs_unit'].str.contains('dw')]
+# convert all units to ng/g (dw)
+set(CN_2_PFOS_sediment['Ecs_unit'])
+CN_2_PFOS_sediment.loc[CN_2_PFOS_sediment['Ecs_unit'] == 'ng/kg  dw', ['ECs_conc_min','ECs_conc_max','ECs_conc_mean','Ecs_conc_median']] *= (1/1000)
+CN_2_PFOS_sediment['valid_data'] = CN_2_PFOS_sediment.apply(add_data, axis=1)
+
+sediment_PFOS += [x for sublist in CN_2_PFOS_sediment['valid_data'] for x in sublist]
+
+# air
+# convert all units to ng/g, assuming the density of air is 1.225 kg/m3
+set(CN_2_PFOS_air['Ecs_unit'])
+CN_2_PFOS_air.loc[CN_2_PFOS_air['Ecs_unit'] == 'pg/m3', ['ECs_conc_min','ECs_conc_max','ECs_conc_mean','Ecs_conc_median']] *= (1/1.225/1000/1000)
+CN_2_PFOS_air['valid_data'] = CN_2_PFOS_air.apply(add_data, axis=1)
+
+air_PFOS += [x for sublist in CN_2_PFOS_air['valid_data'] for x in sublist]
+
+# water
+# convert all units to ng/g, assuming the density of water is 1000 kg/m3
+set(CN_2_PFOS_water['Ecs_unit'])
+CN_2_PFOS_water.loc[CN_2_PFOS_water['Ecs_unit'] == 'ng/L', ['ECs_conc_min','ECs_conc_max','ECs_conc_mean','Ecs_conc_median']] *= (1/1000)
+CN_2_PFOS_water.loc[CN_2_PFOS_water['Ecs_unit'] == 'pg/L', ['ECs_conc_min','ECs_conc_max','ECs_conc_mean','Ecs_conc_median']] *= (1/1000/1000)
+CN_2_PFOS_water['valid_data'] = CN_2_PFOS_water.apply(add_data, axis=1)
+
+water_PFOS += [x for sublist in CN_2_PFOS_water['valid_data'] for x in sublist]
+
+# =============================================================================
+# US_PFAS
+# =============================================================================
+
+US_PFAS = pd.read_excel(folder + 'analyses/PFAS_data/US_PFAS.xlsx')
+# PFOS CAS number: 1763-23-1
+US_PFOS = US_PFAS[US_PFAS['CAS Number'] == '1763-23-1']
+set(US_PFOS['Environmental Media Name'])
+US_PFOS = US_PFOS[US_PFOS['Environmental Media Name'].isin(['Air','Sediment','Water'])]
+US_PFOS = US_PFOS[['Environmental Media Name','Result Measure Value','Result Unit of Measure','Activity Comment']]
+US_PFOS['Activity Comment'] = US_PFOS['Activity Comment'].fillna(' ')
+US_PFOS.replace('-', 0, inplace=True)
+US_PFOS['Result Measure Value'] = US_PFOS['Result Measure Value'].apply(pd.to_numeric, errors='coerce')
+
+US_PFOS_sediment = US_PFOS[US_PFOS['Environmental Media Name'] == 'Sediment']
+US_PFOS_air = US_PFOS[US_PFOS['Environmental Media Name'] == 'Air']
+US_PFOS_water = US_PFOS[US_PFOS['Environmental Media Name'] == 'Water']
+
+# sediment
+US_PFOS_sediment = US_PFOS_sediment[US_PFOS_sediment['Activity Comment'].str.contains('dry|Dry')]
+
+# air
+# convert all units to ng/g, assuming the density of air is 1.225 kg/m3
+set(US_PFOS_air['Result Unit of Measure'])
+US_PFOS_air.loc[US_PFOS_air['Result Unit of Measure'] == 'pg/L', 'Result Measure Value'] *= (1000/1.225/1000/1000)
+
+air_PFOS += list(US_PFOS_air['Result Measure Value'])
+
+# water
+# convert all units to ng/g, assuming the density of water is 1000 kg/m3
+set(US_PFOS_water['Result Unit of Measure'])
+US_PFOS_water.loc[US_PFOS_water['Result Unit of Measure'] == 'ng/L', 'Result Measure Value'] *= (1/1000)
+
+water_PFOS += list(US_PFOS_water['Result Measure Value'])
+
+# =============================================================================
+# EU_PFOS
+# =============================================================================
+
+EU_PFOS = pd.read_excel(folder + 'analyses/PFAS_data/EU_PFOS.xlsx')
+set(EU_PFOS['matrix'])
+EU_PFOS['PFOS_conc'] = EU_PFOS['PFOS_conc'].apply(pd.to_numeric, errors='coerce')
+
+EU_PFOS_soil = EU_PFOS[EU_PFOS['matrix'] == 'Soil']
+EU_PFOS_sediment = EU_PFOS[EU_PFOS['matrix'] == 'Sediment']
+EU_PFOS_water = EU_PFOS[EU_PFOS['matrix'].isin(['Drinking water','Groundwater','Rainwater','Sea water','Surface water'])]
+
+# soil
+EU_PFOS_soil = EU_PFOS_soil[EU_PFOS_soil['PFOS_unit'].str.contains('dw')]
+set(EU_PFOS_soil['PFOS_unit'])
+EU_PFOS_soil['PFOS_conc'] *= (1/1000)
+
+soil_PFOS += list(EU_PFOS_soil['PFOS_conc'])
+
+# sediment
+EU_PFOS_sediment = EU_PFOS_sediment[EU_PFOS_sediment['PFOS_unit'].str.contains('dw')]
+set(EU_PFOS_sediment['PFOS_unit'])
+EU_PFOS_sediment['PFOS_conc'] *= (1/1000)
+
+sediment_PFOS += list(EU_PFOS_sediment['PFOS_conc'])
+
+# water
+# convert all units to ng/g, assuming the density of water is 1000 kg/m3
+set(EU_PFOS_water['PFOS_unit'])
+EU_PFOS_water['PFOS_conc'] *= (1/1000)
+
+water_PFOS += list(EU_PFOS_water['PFOS_conc'])
+
+# =============================================================================
+# additional WWRS PFOS
+# =============================================================================
+
+additional_WWRS_PFOS = pd.read_excel(folder + 'analyses/EC_data.xlsx','PFAS_summary')
+
+WWRS_PFOS += list(additional_WWRS_PFOS['PFOS'].dropna())
+
+#%% PFOA concentration
+
+fig, ax = plt.subplots(figsize=(15, 5))
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 36
+plt.rcParams['ytick.labelsize'] = 36
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+
+ax = plt.gca()
+ax.set_yscale('log')
+ax.set_ylim([10**-7, 10**3])
+ax.tick_params(direction='inout', length=20, width=3, labelbottom=True, bottom=False, top=False, left=True, right=False)
+
+ax.set_xticklabels(['WWRS','soils','sediment','air','water'])
+plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10, 1000, 100000], fontname='Arial')
+
+ax.set_ylabel('$\mathbf{C}$ [particle·${g^{-1}}$]',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=13,
+              linespacing=0.8)
+
+ax_right = ax.twinx()
+ax_right.set_yscale('log')
+ax_right.set_ylim(ax.get_ylim())
+ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
+
+ax_right.set_xticklabels(['WWRS','soils','sediment','air','water'])
+plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10, 1000, 100000], fontname='Arial')
+
+bp = ax.boxplot([WWRS_PFOA, soil_PFOA, sediment_PFOA, air_PFOA, water_PFOA],
+                 whis=[5, 95], showfliers=False, widths=0.7, patch_artist=True)
+    
+bp['boxes'][0].set(color='k', facecolor=g, linewidth=3)
+bp['boxes'][1].set(color='k', facecolor=lg, linewidth=3)
+bp['boxes'][2].set(color='k', facecolor=lg, linewidth=3)
+bp['boxes'][3].set(color='k', facecolor=lg, linewidth=3)
+bp['boxes'][4].set(color='k', facecolor=lg, linewidth=3)
+
+for whisker in bp['whiskers']:
+    whisker.set(color='k', linewidth=3)
+
+for median in bp['medians']:
+    median.set(color='k', linewidth=3)
+
+for cap in bp['caps']:
+    cap.set(color='k', linewidth=3)
+
+# plt.savefig('/Users/jiananfeng/Desktop/PFOA.pdf', transparent=True, bbox_inches='tight')
+
+#%% PFOS concentration
+
+fig, ax = plt.subplots(figsize=(15, 5))
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 36
+plt.rcParams['ytick.labelsize'] = 36
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+
+ax = plt.gca()
+ax.set_yscale('log')
+ax.set_ylim([10**-7, 10**3])
+ax.tick_params(direction='inout', length=20, width=3, labelbottom=True, bottom=False, top=False, left=True, right=False)
+
+ax.set_xticklabels(['WWRS','soils','sediment','air','water'])
+plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10, 1000, 100000], fontname='Arial')
+
+ax.set_ylabel('$\mathbf{C}$ [particle·${g^{-1}}$]',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=13,
+              linespacing=0.8)
+
+ax_right = ax.twinx()
+ax_right.set_yscale('log')
+ax_right.set_ylim(ax.get_ylim())
+ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
+
+ax_right.set_xticklabels(['WWRS','soils','sediment','air','water'])
+plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10, 1000, 100000], fontname='Arial')
+
+bp = ax.boxplot([WWRS_PFOS, soil_PFOS, sediment_PFOS, air_PFOS, water_PFOS],
+                 whis=[5, 95], showfliers=False, widths=0.7, patch_artist=True)
+    
+bp['boxes'][0].set(color='k', facecolor=g, linewidth=3)
+bp['boxes'][1].set(color='k', facecolor=lg, linewidth=3)
+bp['boxes'][2].set(color='k', facecolor=lg, linewidth=3)
+bp['boxes'][3].set(color='k', facecolor=lg, linewidth=3)
+bp['boxes'][4].set(color='k', facecolor=lg, linewidth=3)
+
+for whisker in bp['whiskers']:
+    whisker.set(color='k', linewidth=3)
+
+for median in bp['medians']:
+    median.set(color='k', linewidth=3)
+
+for cap in bp['caps']:
+    cap.set(color='k', linewidth=3)
+
+# plt.savefig('/Users/jiananfeng/Desktop/PFOS.pdf', transparent=True, bbox_inches='tight')
 
 #%% PhACs
 
@@ -467,7 +1002,7 @@ ax_right.tick_params(direction='in', length=10, width=3,
 ax_right.tick_params(direction='in', length=10, width=3,
                      bottom=False, top=False, left=False, right=True, pad=0)
 
-ax.set_ylabel('$\mathbf{log_{10}C}$\n[ng·${g^{-1}}$]',
+ax.set_ylabel('$\mathbf{C}$ [ng·${g^{-1}}$]',
               fontname='Arial',
               fontsize=45,
               labelpad=13,
@@ -514,99 +1049,6 @@ ax.bar(4,
        bottom=np.log10(0.0000000001))
 
 # plt.savefig('/Users/jiananfeng/Desktop/PhACs.pdf', transparent=True, bbox_inches='tight')
-
-#%% BPA
-
-fig, ax = plt.subplots(figsize=(25, 5))
-
-plt.rcParams['axes.linewidth'] = 3
-plt.rcParams['hatch.linewidth'] = 3
-plt.rcParams['xtick.labelsize'] = 36
-plt.rcParams['ytick.labelsize'] = 36
-plt.rcParams['font.sans-serif'] = 'Arial'
-plt.rcParams['pdf.fonttype'] = 42
-plt.rcParams['ps.fonttype'] = 42
-
-plt.rcParams.update({'mathtext.fontset':'custom'})
-plt.rcParams.update({'mathtext.default':'regular'})
-plt.rcParams.update({'mathtext.bf':'Arial: bold'})
-
-ax = plt.gca()
-
-ax.set_ylim([-7, 5])
-
-ax.tick_params(direction='out', length=10, width=3,
-               bottom=True, top=False, left=True, right=False, pad=0)
-
-plt.xticks([0, 1, 2, 3, 4], ['WWRS','soil/agricultural land','air','sediment','water'], fontname='Arial')
-plt.yticks(np.arange(-7, 8, 3), fontname='Arial')
-
-ax_left = ax.twinx()
-ax_left.set_ylim(ax.get_ylim())
-plt.yticks(np.arange(-7, 8, 3), fontname='Arial')
-
-ax_left.tick_params(direction='inout', length=20, width=3,
-                    bottom=False, top=False, left=True, right=False,
-                    labelcolor='none')
-
-ax_right = ax.twinx()
-ax_right.set_ylim(ax.get_ylim())
-plt.yticks(np.arange(-7, 8, 3), fontname='Arial')
-
-ax_right.tick_params(direction='in', length=10, width=3,
-                     bottom=False, top=False, left=False, right=True,
-                     labelcolor='none')
-
-ax_right.tick_params(direction='in', length=10, width=3,
-                     bottom=False, top=False, left=False, right=True, pad=0)
-
-ax.set_ylabel('$\mathbf{log_{10}C}$\n[ng·${g^{-1}}$]',
-              fontname='Arial',
-              fontsize=45,
-              labelpad=13,
-              linespacing=0.8)
-
-ax.bar(0,
-       np.log10(36700)-np.log10(12.8),
-       width=0.8,
-       color=a,
-       edgecolor='k',
-       linewidth=3,
-       bottom=np.log10(12.8))
-
-ax.bar(1,
-       np.log10(23500)-np.log10(4),
-       width=0.8,
-       color=a,
-       edgecolor='k',
-       linewidth=3,
-       bottom=np.log10(4))
-
-ax.bar(2,
-       np.log10(0.014204082)-np.log10(8.16327E-07),
-       width=0.8,
-       color=a,
-       edgecolor='k',
-       linewidth=3,
-       bottom=np.log10(8.16327E-07))
-
-ax.bar(3,
-       np.log10(8067)-np.log10(0.01),
-       width=0.8,
-       color=a,
-       edgecolor='k',
-       linewidth=3,
-       bottom=np.log10(0.01))
-
-ax.bar(4,
-       np.log10(4.8)-np.log10(0.00003),
-       width=0.8,
-       color=a,
-       edgecolor='k',
-       linewidth=3,
-       bottom=np.log10(0.00003))
-
-# plt.savefig('/Users/jiananfeng/Desktop/BPA.pdf', transparent=True, bbox_inches='tight')
 
 #%% country average
 
