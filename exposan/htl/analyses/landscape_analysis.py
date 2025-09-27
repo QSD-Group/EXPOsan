@@ -176,7 +176,6 @@ ax.set_yscale('log')
 ax.set_ylim([10**-7, 10**5])
 ax.tick_params(direction='inout', length=20, width=3, labelbottom=True, bottom=False, top=False, left=True, right=False)
 
-ax.set_xticklabels(['WWRS','soils','sediment','air','water'])
 plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10, 1000, 100000], fontname='Arial')
 
 ax.set_ylabel('$\mathbf{C}$ [particle·${g^{-1}}$]',
@@ -424,10 +423,8 @@ air_PFOA += [x for sublist in CN_1_PFOA_air['valid_data'] for x in sublist]
 # water
 # convert all units to ng/g, assuming the density of water is 1000 kg/m3
 set(CN_1_PFOA_water['Unit'])
-CN_1_PFOA_water.loc[CN_1_PFOA_water['Unit'] == 'ng/L', ['Min','Max','Mean','Median']] *= (1/1000)
-CN_1_PFOA_water.loc[CN_1_PFOA_water['Unit'] == 'ng/l', ['Min','Max','Mean','Median']] *= (1/1000)
+CN_1_PFOA_water.loc[CN_1_PFOA_water['Unit'].isin(['ng/L','ng/l','pg/mL']), ['Min','Max','Mean','Median']] *= (1/1000)
 CN_1_PFOA_water.loc[CN_1_PFOA_water['Unit'] == 'pg/L', ['Min','Max','Mean','Median']] *= (1/1000/1000)
-CN_1_PFOA_water.loc[CN_1_PFOA_water['Unit'] == 'pg/mL', ['Min','Max','Mean','Median']] *= (1/1000)
 # PFOA MW: 414.07 g/mpl
 CN_1_PFOA_water.loc[CN_1_PFOA_water['Unit'] == 'pmol/L', ['Min','Max','Mean','Median']] *= (414.07/1000/1000)
 CN_1_PFOA_water['valid_data'] = CN_1_PFOA_water.apply(add_data, axis=1)
@@ -486,8 +483,7 @@ soil_PFOA += [x for sublist in CN_2_PFOA_soil['valid_data'] for x in sublist]
 CN_2_PFOA_sediment = CN_2_PFOA_sediment[CN_2_PFOA_sediment['Ecs_unit'].str.contains('dw')]
 # convert all units to ng/g (dw)
 set(CN_2_PFOA_sediment['Ecs_unit'])
-CN_2_PFOA_sediment.loc[CN_2_PFOA_sediment['Ecs_unit'] == 'ng/kg  dw', ['ECs_conc_min','ECs_conc_max','ECs_conc_mean','Ecs_conc_median']] *= (1/1000)
-CN_2_PFOA_sediment.loc[CN_2_PFOA_sediment['Ecs_unit'] == 'pg/g dw', ['ECs_conc_min','ECs_conc_max','ECs_conc_mean','Ecs_conc_median']] *= (1/1000)
+CN_2_PFOA_sediment.loc[CN_2_PFOA_sediment['Ecs_unit'].isin(['ng/kg  dw','pg/g dw']), ['ECs_conc_min','ECs_conc_max','ECs_conc_mean','Ecs_conc_median']] *= (1/1000)
 CN_2_PFOA_sediment['valid_data'] = CN_2_PFOA_sediment.apply(add_data, axis=1)
 
 sediment_PFOA += [x for sublist in CN_2_PFOA_sediment['valid_data'] for x in sublist]
@@ -681,10 +677,8 @@ air_PFOS += [x for sublist in CN_1_PFOS_air['valid_data'] for x in sublist]
 # water
 # convert all units to ng/g, assuming the density of water is 1000 kg/m3
 set(CN_1_PFOS_water['Unit'])
-CN_1_PFOS_water.loc[CN_1_PFOS_water['Unit'] == 'ng/L', ['Min','Max','Mean','Median']] *= (1/1000)
-CN_1_PFOS_water.loc[CN_1_PFOS_water['Unit'] == 'ng/l', ['Min','Max','Mean','Median']] *= (1/1000)
+CN_1_PFOS_water.loc[CN_1_PFOS_water['Unit'].isin(['ng/L','ng/l','pg/mL']), ['Min','Max','Mean','Median']] *= (1/1000)
 CN_1_PFOS_water.loc[CN_1_PFOS_water['Unit'] == 'pg/L', ['Min','Max','Mean','Median']] *= (1/1000/1000)
-CN_1_PFOS_water.loc[CN_1_PFOS_water['Unit'] == 'pg/mL', ['Min','Max','Mean','Median']] *= (1/1000)
 # PFOS MW: 500.13 g/mpl
 CN_1_PFOS_water.loc[CN_1_PFOS_water['Unit'] == 'pmol/L', ['Min','Max','Mean','Median']] *= (500.13/1000/1000)
 CN_1_PFOS_water['valid_data'] = CN_1_PFOS_water.apply(add_data, axis=1)
@@ -841,7 +835,7 @@ additional_WWRS_PFOS = pd.read_excel(folder + 'analyses/EC_data.xlsx','PFAS_summ
 
 WWRS_PFOS += list(additional_WWRS_PFOS['PFOS'].dropna())
 
-#%% PFOA concentration
+#%% PFOA concentration visualization
 
 fig, ax = plt.subplots(figsize=(15, 5))
 
@@ -862,10 +856,9 @@ ax.set_yscale('log')
 ax.set_ylim([10**-7, 10**3])
 ax.tick_params(direction='inout', length=20, width=3, labelbottom=True, bottom=False, top=False, left=True, right=False)
 
-ax.set_xticklabels(['WWRS','soils','sediment','air','water'])
 plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10, 1000, 100000], fontname='Arial')
 
-ax.set_ylabel('$\mathbf{C}$ [particle·${g^{-1}}$]',
+ax.set_ylabel('$\mathbf{C}$ [ng·${g^{-1}}$]',
               fontname='Arial',
               fontsize=45,
               labelpad=13,
@@ -899,7 +892,7 @@ for cap in bp['caps']:
 
 # plt.savefig('/Users/jiananfeng/Desktop/PFOA.pdf', transparent=True, bbox_inches='tight')
 
-#%% PFOS concentration
+#%% PFOS concentration visualization
 
 fig, ax = plt.subplots(figsize=(15, 5))
 
@@ -920,10 +913,9 @@ ax.set_yscale('log')
 ax.set_ylim([10**-7, 10**3])
 ax.tick_params(direction='inout', length=20, width=3, labelbottom=True, bottom=False, top=False, left=True, right=False)
 
-ax.set_xticklabels(['WWRS','soils','sediment','air','water'])
 plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10, 1000, 100000], fontname='Arial')
 
-ax.set_ylabel('$\mathbf{C}$ [particle·${g^{-1}}$]',
+ax.set_ylabel('$\mathbf{C}$ [ng·${g^{-1}}$]',
               fontname='Arial',
               fontsize=45,
               labelpad=13,
@@ -957,9 +949,94 @@ for cap in bp['caps']:
 
 # plt.savefig('/Users/jiananfeng/Desktop/PFOS.pdf', transparent=True, bbox_inches='tight')
 
-#%% PhACs
+#%% PhACs concentration
 
-fig, ax = plt.subplots(figsize=(25, 5))
+PhACs = pd.read_excel(folder + 'analyses/pharms-uba_v3_2021_0.xlsx')
+set(PhACs['Matrix'])
+assert (PhACs['MEC standardized'].isna()).sum() == 0
+set(PhACs['Statistics'])
+PhACs = PhACs[PhACs['Statistics'].isin(['Average','Max','Mean','Median','Min',
+                                        'Single Value','Single value',
+                                        'Single value of a composite sample',
+                                        'average','max','median','min','single Value',
+                                        'time-weighted-average concentration'])]
+
+PhACs = PhACs.fillna('NaN')
+
+# remove average or mean if min or max is present
+group_cols = [c for c in PhACs.columns if c not in ['ID','Statistics','Detection','MEC original','MEC standardized']]
+
+def filter_stats(group):
+    stats = set(group['Statistics'])
+    if ('Max' in stats) or ('Min' in stats) or ('max' in stats) or ('min' in stats):
+        return group[~group['Statistics'].isin(['Average','Mean','average','time-weighted-average concentration'])]
+    return group
+
+PhACs = PhACs.groupby(group_cols, group_keys=False).apply(filter_stats)
+
+# WWRS
+WWRS_PhACs = PhACs[PhACs['Matrix'].isin(['Dissolved activated sludge',
+                                         'WWTP biosolid',
+                                         'WWTP dehydrated sludge',
+                                         'WWTP digested sludge',
+                                         'WWTP primary sludge',
+                                         'WWTP secondary sludge',
+                                         'WWTP sludge',
+                                         'sewage sludge'])]
+set(WWRS_PhACs['Unit standard'])
+WWRS_PhACs = WWRS_PhACs[WWRS_PhACs['Unit standard'].isin(['mg/kg dry-weight','µg/kg dry-weight'])]
+WWRS_PhACs.loc[WWRS_PhACs['Unit standard'] == 'mg/kg dry-weight', 'MEC standardized'] *= 1000
+
+# soil
+soil_PhACs = PhACs[PhACs['Matrix'] == 'Soil']
+set(soil_PhACs['Unit standard'])
+soil_PhACs = soil_PhACs[soil_PhACs['Unit standard'] == 'mg/kg dry-weight']
+soil_PhACs['MEC standardized'] *= 1000
+
+# sediment
+sediment_PhACs = PhACs[PhACs['Matrix'].isin(['Sediment - Aquaculture',
+                                             'Sediment - Estuary',
+                                             'Sediment - Lagoon',
+                                             'Sediment - Lake',
+                                             'Sediment - River/Stream',
+                                             'Sediment - Sea or Ocean',
+                                             'Sediment - unspecific'])]
+set(sediment_PhACs['Unit standard'])
+sediment_PhACs = sediment_PhACs[sediment_PhACs['Unit standard'] == 'mg/kg dry-weight']
+sediment_PhACs['MEC standardized'] *= 1000
+
+# air
+air_PhACs = pd.read_excel(folder + 'analyses/EC_data.xlsx','PhACs_summary')
+
+# water
+# TODO: include all kinds of water for now (except sewage-related water)
+water_PhACs = PhACs[PhACs['Matrix'].isin(['Drinking Water',
+                                          'Groundwater',
+                                          'Infiltration water',
+                                          'Rain',
+                                          'Raw Water - Drinking Water Treatment Plant',
+                                          'Reclaimed Water',
+                                          'Reservoir drainage',
+                                          'Riverbank filtration',
+                                          'Soil Water',
+                                          'Spring water',
+                                          'Surface Water - Aquaculture',
+                                          'Surface Water - Estuary',
+                                          'Surface Water - Lake',
+                                          'Surface Water - Pond',
+                                          'Surface Water - River/Stream',
+                                          'Surface Water - Sea or Ocean',
+                                          'Surface Water - unspecific',
+                                          'Tap Water',
+                                          'Well Water (untreated)'])]
+set(water_PhACs['Unit standard'])
+# TODO: just remove 'mg/kg dry-weight' and assume others are roughly to be the same as per volume
+water_PhACs = water_PhACs[water_PhACs['Unit standard'].isin(['mg/kg','mg/kg moist-weight','µg/L'])]
+water_PhACs.loc[water_PhACs['Unit standard'].isin(['mg/kg','mg/kg moist-weight']), 'MEC standardized'] *= 1000
+
+#%% PhACs concentration visualization
+
+fig, ax = plt.subplots(figsize=(15, 5))
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
@@ -974,33 +1051,11 @@ plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 ax = plt.gca()
+ax.set_yscale('log')
+ax.set_ylim([10**-7, 10**3])
+ax.tick_params(direction='inout', length=20, width=3, labelbottom=True, bottom=False, top=False, left=True, right=False)
 
-ax.set_ylim([-2, 6])
-
-ax.tick_params(direction='out', length=10, width=3,
-               bottom=True, top=False, left=True, right=False, pad=0)
-
-plt.xticks([0, 1, 2, 3, 4], ['WWRS','soil/agricultural land','air','sediment','water'], fontname='Arial')
-plt.yticks(np.arange(-2, 8, 2), fontname='Arial')
-
-ax_left = ax.twinx()
-ax_left.set_ylim(ax.get_ylim())
-plt.yticks(np.arange(-2, 8, 2), fontname='Arial')
-
-ax_left.tick_params(direction='inout', length=20, width=3,
-                    bottom=False, top=False, left=True, right=False,
-                    labelcolor='none')
-
-ax_right = ax.twinx()
-ax_right.set_ylim(ax.get_ylim())
-plt.yticks(np.arange(-2, 8, 2), fontname='Arial')
-
-ax_right.tick_params(direction='in', length=10, width=3,
-                     bottom=False, top=False, left=False, right=True,
-                     labelcolor='none')
-
-ax_right.tick_params(direction='in', length=10, width=3,
-                     bottom=False, top=False, left=False, right=True, pad=0)
+plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10, 1000, 100000], fontname='Arial')
 
 ax.set_ylabel('$\mathbf{C}$ [ng·${g^{-1}}$]',
               fontname='Arial',
@@ -1008,45 +1063,31 @@ ax.set_ylabel('$\mathbf{C}$ [ng·${g^{-1}}$]',
               labelpad=13,
               linespacing=0.8)
 
-ax.bar(0,
-       np.log10(24760)-np.log10(0.0000000001),
-       width=0.8,
-       color=o,
-       edgecolor='k',
-       linewidth=3,
-       bottom=np.log10(0.0000000001))
+ax_right = ax.twinx()
+ax_right.set_yscale('log')
+ax_right.set_ylim(ax.get_ylim())
+ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
 
-ax.bar(1,
-       np.log10(178000)-np.log10(0.0000000001),
-       width=0.8,
-       color=o,
-       edgecolor='k',
-       linewidth=3,
-       bottom=np.log10(0.0000000001))
+ax_right.set_xticklabels(['WWRS','soils','sediment','air','water'])
+plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10, 1000, 100000], fontname='Arial')
 
-# ax.bar(2,
-#        np.log10(0)-np.log10(0),
-#        width=0.8,
-#        color=g,
-#        edgecolor='k',
-#        linewidth=3,
-#        bottom=np.log10(0))
+bp = ax.boxplot([WWRS_PhACs['MEC standardized'], soil_PhACs['MEC standardized'], sediment_PhACs['MEC standardized'], air_PhACs['air'], water_PhACs['MEC standardized']],
+                 whis=[5, 95], showfliers=False, widths=0.7, patch_artist=True)
+    
+bp['boxes'][0].set(color='k', facecolor=o, linewidth=3)
+bp['boxes'][1].set(color='k', facecolor=lo, linewidth=3)
+bp['boxes'][2].set(color='k', facecolor=lo, linewidth=3)
+bp['boxes'][3].set(color='k', facecolor=lo, linewidth=3)
+bp['boxes'][4].set(color='k', facecolor=lo, linewidth=3)
 
-ax.bar(3,
-       np.log10(3111)-np.log10(0.01),
-       width=0.8,
-       color=o,
-       edgecolor='k',
-       linewidth=3,
-       bottom=np.log10(0.01))
+for whisker in bp['whiskers']:
+    whisker.set(color='k', linewidth=3)
 
-ax.bar(4,
-       np.log10(297)-np.log10(0.0000000001),
-       width=0.8,
-       color=o,
-       edgecolor='k',
-       linewidth=3,
-       bottom=np.log10(0.0000000001))
+for median in bp['medians']:
+    median.set(color='k', linewidth=3)
+
+for cap in bp['caps']:
+    cap.set(color='k', linewidth=3)
 
 # plt.savefig('/Users/jiananfeng/Desktop/PhACs.pdf', transparent=True, bbox_inches='tight')
 
