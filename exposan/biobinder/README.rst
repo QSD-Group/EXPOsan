@@ -6,6 +6,10 @@ Summary
 -------
 This module includes a hydrothermal liquefaction (HTL)-based system for the production of biobinders and valuable coproducts (biobased fuel additives, fertilizers, and potentially hydrogen) from wet organic wastes (food waste and swine manure) based on a project funded by the USDA.
 
+This module has been used to produce the results in Ahmad et al. [1]_. Versions of additional packages can be found in `biobinder_environment.yml </exposan/biobinder/biobinder_environment.yml>`_.
+
+The scripts ``fungal.py`` and ``biocrude.py`` modified systems for specific analysis such as fungal treatment of effluent wastewater and raw biocrude production respectively. More settings can be changed for baseline systems in the ``systems.py`` script, the `/analyses </exposan/biobinder/analyses>`_ directory includes multiple sensitivity analyses (with regard to plant size and biocrude yield).
+
 Two main system configurations are included in the module describing the four scenarios each for the configurations discussed in the manuscript, but the system diagram looks identical (the electrochemical [EC] unit is a placeholder that does nothing in the baseline scenario).
 
 .. figure:: ./readme_figures/sys.png
@@ -144,9 +148,6 @@ System Simulation
     Global warming potential of the biobinder is -6.2911 kg CO2e/kg.
     
 
-The scripts ``fungal.py`` and ``biocrude.py`` modified systems for specific analysis such as fungal treatment of effluent wastewater and raw biocrude production respectively. More settings can be changed baseline systems in the ``systems.py`` script, the `/analyses </exposan/biobinder/analyses>`_ directory includes multiple sensitivity analyses (with regard to plant size and biocrude yield).
-
-
 References
 ----------
-.. [1] Ahmad, A.; Kawale, H.; Summers, S.; Bogarin Cantero, B. C.; Allen, C. M.; Hajj, R. M.; Davidson, P. C.; Zhang, Y.; Li, Y. Financial Viability and Carbon Intensity of Hydrothermal Waste Valorization Systems for Bio-Based Asphalt Binder. In Prep. 2025.
+.. [1] Ahmad, A.; Kawale, H.; Summers, S.; Bogarin Cantero, B. C.; Allen, C. M.; Hajj, R. M.; Davidson, P. C.; Zhang, Y.; Li, Y. Financial Viability and Carbon Intensity of Hydrothermal Waste Valorization Systems for Bio-Based Asphalt Binder. In Review 2025.
