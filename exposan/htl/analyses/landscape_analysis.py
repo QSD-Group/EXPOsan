@@ -174,7 +174,7 @@ plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 ax = plt.gca()
 ax.set_yscale('log')
 ax.set_ylim([10**-7, 10**5])
-ax.tick_params(direction='inout', length=20, width=3, labelbottom=True, bottom=False, top=False, left=True, right=False)
+ax.tick_params(direction='inout', length=20, width=3, bottom=False, top=False, left=True, right=False)
 
 plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10, 1000, 100000], fontname='Arial')
 
@@ -193,9 +193,9 @@ ax_right.set_xticklabels(['WWRS','soils','sediment','air','water'])
 plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10, 1000, 100000], fontname='Arial')
 
 bp = ax.boxplot([MPs[i].dropna() for i in MPs.columns],
-                 whis=[5, 95], showfliers=False, widths=0.7, patch_artist=True)
+                whis=[5, 95], showfliers=False, widths=0.7, patch_artist=True)
     
-bp['boxes'][0].set(color='k', facecolor=r, linewidth=3)
+bp['boxes'][0].set(color='k', facecolor=dr, linewidth=3)
 bp['boxes'][1].set(color='k', facecolor=lr, linewidth=3)
 bp['boxes'][2].set(color='k', facecolor=lr, linewidth=3)
 bp['boxes'][3].set(color='k', facecolor=lr, linewidth=3)
@@ -287,10 +287,10 @@ ax.bar(0.5,
 
 ax.bar(0.5,
        np.quantile(MPs_WWRS_MC, 0.5)*100,
-       yerr=np.array([[(np.quantile(MPs_WWRS_MC, 0.95) - np.quantile(MPs_WWRS_MC, 0.5))*100], [(np.quantile(MPs_WWRS_MC, 0.5) - np.quantile(MPs_WWRS_MC, 0.05))*100]]),
+       yerr=np.array([[(np.quantile(MPs_WWRS_MC, 0.5) - np.quantile(MPs_WWRS_MC, 0.05))*100], [(np.quantile(MPs_WWRS_MC, 0.95) - np.quantile(MPs_WWRS_MC, 0.5))*100]]),
        error_kw=dict(capsize=15, lw=3, capthick=3),
        width=0.7,
-       color=r,
+       color=dr,
        edgecolor='k',
        linewidth=3)
 
@@ -835,7 +835,7 @@ additional_WWRS_PFOS = pd.read_excel(folder + 'analyses/EC_data.xlsx','PFAS_summ
 
 WWRS_PFOS += list(additional_WWRS_PFOS['PFOS'].dropna())
 
-#%% PFOA concentration visualization
+#%% PFOA and PFOS concentrations visualization
 
 fig, ax = plt.subplots(figsize=(15, 5))
 
@@ -853,8 +853,9 @@ plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 ax = plt.gca()
 ax.set_yscale('log')
+ax.set_xlim([0.5, 5.5])
 ax.set_ylim([10**-7, 10**3])
-ax.tick_params(direction='inout', length=20, width=3, labelbottom=True, bottom=False, top=False, left=True, right=False)
+ax.tick_params(direction='inout', length=20, width=3, bottom=False, top=False, left=True, right=False)
 
 plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10, 1000, 100000], fontname='Arial')
 
@@ -865,21 +866,32 @@ ax.set_ylabel('$\mathbf{C}$ [ng·${g^{-1}}$]',
               linespacing=0.8)
 
 ax_right = ax.twinx()
+ax_right.set_xlim(ax.get_xlim())
 ax_right.set_yscale('log')
 ax_right.set_ylim(ax.get_ylim())
 ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
 
-ax_right.set_xticklabels(['WWRS','soils','sediment','air','water'])
 plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10, 1000, 100000], fontname='Arial')
 
-bp = ax.boxplot([WWRS_PFOA, soil_PFOA, sediment_PFOA, air_PFOA, water_PFOA],
-                 whis=[5, 95], showfliers=False, widths=0.7, patch_artist=True)
+bp = ax.boxplot([WWRS_PFOA, WWRS_PFOS, WWRS_PFOS, soil_PFOA, soil_PFOS, soil_PFOS,
+                 sediment_PFOA, sediment_PFOS, sediment_PFOS, air_PFOA, air_PFOS, air_PFOS,
+                 water_PFOA, water_PFOS, water_PFOS],
+                positions=[0.825, 1.175, 1.175, 1.825, 2.175, 2.175,
+                           2.825, 3.175, 3.175, 3.825, 4.175, 4.175,
+                           4.825, 5.175, 5.175],
+                whis=[5, 95], showfliers=False, widths=0.35, patch_artist=True)
     
-bp['boxes'][0].set(color='k', facecolor=g, linewidth=3)
-bp['boxes'][1].set(color='k', facecolor=lg, linewidth=3)
-bp['boxes'][2].set(color='k', facecolor=lg, linewidth=3)
-bp['boxes'][3].set(color='k', facecolor=lg, linewidth=3)
-bp['boxes'][4].set(color='k', facecolor=lg, linewidth=3)
+bp['boxes'][0].set(color='k', facecolor=dg, linewidth=3)
+bp['boxes'][1].set(color='w', facecolor=dg, linewidth=3, hatch='//')
+bp['boxes'][2].set(color='k', facecolor='none', linewidth=3)
+
+for i in range(3, 15):
+    if i%3 == 0:
+        bp['boxes'][i].set(color='k', facecolor=lg, linewidth=3)
+    elif i%3 == 1:
+        bp['boxes'][i].set(color='w', facecolor=lg, linewidth=3, hatch='//')
+    else:
+        bp['boxes'][i].set(color='k', facecolor='none', linewidth=3)
 
 for whisker in bp['whiskers']:
     whisker.set(color='k', linewidth=3)
@@ -889,65 +901,11 @@ for median in bp['medians']:
 
 for cap in bp['caps']:
     cap.set(color='k', linewidth=3)
+
+ax.set_xticks([1, 2, 3, 4, 5])
+ax.set_xticklabels(['WWRS','soils','sediment','air','water'], fontname='Arial')
 
 # plt.savefig('/Users/jiananfeng/Desktop/PFOA.pdf', transparent=True, bbox_inches='tight')
-
-#%% PFOS concentration visualization
-
-fig, ax = plt.subplots(figsize=(15, 5))
-
-plt.rcParams['axes.linewidth'] = 3
-plt.rcParams['hatch.linewidth'] = 3
-plt.rcParams['xtick.labelsize'] = 36
-plt.rcParams['ytick.labelsize'] = 36
-plt.rcParams['font.sans-serif'] = 'Arial'
-plt.rcParams['pdf.fonttype'] = 42
-plt.rcParams['ps.fonttype'] = 42
-
-plt.rcParams.update({'mathtext.fontset':'custom'})
-plt.rcParams.update({'mathtext.default':'regular'})
-plt.rcParams.update({'mathtext.bf':'Arial: bold'})
-
-ax = plt.gca()
-ax.set_yscale('log')
-ax.set_ylim([10**-7, 10**3])
-ax.tick_params(direction='inout', length=20, width=3, labelbottom=True, bottom=False, top=False, left=True, right=False)
-
-plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10, 1000, 100000], fontname='Arial')
-
-ax.set_ylabel('$\mathbf{C}$ [ng·${g^{-1}}$]',
-              fontname='Arial',
-              fontsize=45,
-              labelpad=13,
-              linespacing=0.8)
-
-ax_right = ax.twinx()
-ax_right.set_yscale('log')
-ax_right.set_ylim(ax.get_ylim())
-ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
-
-ax_right.set_xticklabels(['WWRS','soils','sediment','air','water'])
-plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10, 1000, 100000], fontname='Arial')
-
-bp = ax.boxplot([WWRS_PFOS, soil_PFOS, sediment_PFOS, air_PFOS, water_PFOS],
-                 whis=[5, 95], showfliers=False, widths=0.7, patch_artist=True)
-    
-bp['boxes'][0].set(color='k', facecolor=g, linewidth=3)
-bp['boxes'][1].set(color='k', facecolor=lg, linewidth=3)
-bp['boxes'][2].set(color='k', facecolor=lg, linewidth=3)
-bp['boxes'][3].set(color='k', facecolor=lg, linewidth=3)
-bp['boxes'][4].set(color='k', facecolor=lg, linewidth=3)
-
-for whisker in bp['whiskers']:
-    whisker.set(color='k', linewidth=3)
-
-for median in bp['medians']:
-    median.set(color='k', linewidth=3)
-
-for cap in bp['caps']:
-    cap.set(color='k', linewidth=3)
-
-# plt.savefig('/Users/jiananfeng/Desktop/PFOS.pdf', transparent=True, bbox_inches='tight')
 
 #%% PhACs concentration
 
@@ -1053,7 +1011,7 @@ plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 ax = plt.gca()
 ax.set_yscale('log')
 ax.set_ylim([10**-7, 10**3])
-ax.tick_params(direction='inout', length=20, width=3, labelbottom=True, bottom=False, top=False, left=True, right=False)
+ax.tick_params(direction='inout', length=20, width=3, bottom=False, top=False, left=True, right=False)
 
 plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10, 1000, 100000], fontname='Arial')
 
@@ -1068,13 +1026,13 @@ ax_right.set_yscale('log')
 ax_right.set_ylim(ax.get_ylim())
 ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
 
-ax_right.set_xticklabels(['WWRS','soils','sediment','air','water'])
+ax_right.set_xticklabels(['WWRS','soils*','sediment*','air','water*'])
 plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10, 1000, 100000], fontname='Arial')
 
 bp = ax.boxplot([WWRS_PhACs['MEC standardized'], soil_PhACs['MEC standardized'], sediment_PhACs['MEC standardized'], air_PhACs['air'], water_PhACs['MEC standardized']],
-                 whis=[5, 95], showfliers=False, widths=0.7, patch_artist=True)
+                whis=[5, 95], showfliers=False, widths=0.7, patch_artist=True)
     
-bp['boxes'][0].set(color='k', facecolor=o, linewidth=3)
+bp['boxes'][0].set(color='k', facecolor=do, linewidth=3)
 bp['boxes'][1].set(color='k', facecolor=lo, linewidth=3)
 bp['boxes'][2].set(color='k', facecolor=lo, linewidth=3)
 bp['boxes'][3].set(color='k', facecolor=lo, linewidth=3)
@@ -1090,6 +1048,84 @@ for cap in bp['caps']:
     cap.set(color='k', linewidth=3)
 
 # plt.savefig('/Users/jiananfeng/Desktop/PhACs.pdf', transparent=True, bbox_inches='tight')
+
+#%% PhACs distribution
+
+# TODO: update / confirm all uncertain parameters and calculations
+
+used_PhACs = shape.Uniform(0.7, 0.9)
+human_use = shape.Uniform(0.784, 1)
+human_to_toilet = shape.Uniform(0.08, 0.12)
+
+toilet_disposal = shape.Triangle(0, 0.115, 0.472)
+trash_disposal = shape.Triangle(0.11, 0.595, 0.954)
+
+toilet_to_WRRF = shape.Uniform(0.398, 0.596)
+landfill_to_WRRF = shape.Uniform(0, 0.1)
+
+WWRS_removal = shape.Triangle(0, 0.58, 1)
+biotransformation_ratio = shape.Triangle(0, 0.30, 1)
+
+MSW_collection = shape.Uniform(0.19*0.8, 0.19*1.2)
+
+joint = cp.distributions.J(used_PhACs, human_use, human_to_toilet,
+                           toilet_disposal, trash_disposal, toilet_to_WRRF,
+                           landfill_to_WRRF, WWRS_removal, biotransformation_ratio,
+                           MSW_collection)
+sample = joint.sample(100000)
+
+PhACs_WWRS_MC = pd.DataFrame()
+
+PhACs_WWRS_MC = (sample[0]*sample[1]*sample[2]*sample[5] + (1 - sample[0])*sample[3]*sample[5] + (1 - sample[0])*np.minimum(sample[4], 1 - sample[3])*sample[6])*sample[7]/(sample[0]*sample[1]*sample[2]*(1 - sample[8]) + sample[0]*(1 - sample[1])*sample[2] + (1 - sample[0])*np.minimum(1, (sample[3]*(1 - sample[8]) + sample[4]*(1 - sample[9]))))
+
+fig, ax = plt.subplots(figsize=(2.5, 5))
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 36
+plt.rcParams['ytick.labelsize'] = 36
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+
+ax = plt.gca()
+ax.set_xlim([0, 1])
+ax.set_ylim([0, 100])
+ax.tick_params(direction='inout', length=20, width=3, labelbottom=False, bottom=False, top=False, left=True, right=False)
+
+plt.yticks(np.arange(0, 120, 20), fontname='Arial')
+
+ax.set_ylabel('$\mathbf{Occurence}$ [%]',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=13,
+              linespacing=0.8)
+
+ax_right = ax.twinx()
+ax_right.set_ylim(ax.get_ylim())
+ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
+
+plt.yticks(np.arange(0, 120, 20), fontname='Arial')
+
+ax.bar(0.5,
+       100,
+       width=0.7,
+       color=lo,
+       edgecolor='k',
+       linewidth=3)
+
+ax.bar(0.5,
+       np.quantile(PhACs_WWRS_MC, 0.5)*100,
+       yerr=np.array([[(np.quantile(PhACs_WWRS_MC, 0.5) - np.quantile(PhACs_WWRS_MC, 0.05))*100], [(np.quantile(PhACs_WWRS_MC, 0.95) - np.quantile(PhACs_WWRS_MC, 0.5))*100]]),
+       error_kw=dict(capsize=15, lw=3, capthick=3),
+       width=0.7,
+       color=do,
+       edgecolor='k',
+       linewidth=3)
 
 #%% country average
 
