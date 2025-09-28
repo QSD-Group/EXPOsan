@@ -18,7 +18,7 @@ from setuptools import setup
 setup(
     name='exposan',
     packages=['exposan'],
-    version='1.4.1',
+    version='1.4.3',
     license='UIUC',
     author='Quantitative Sustainable Design Group',
     author_email='quantitative.sustainable.design@gmail.com',
@@ -30,7 +30,7 @@ setup(
         'Documentation': 'https://qsdsan.readthedocs.io',
         'Repository': 'https://github.com/QSD-Group/EXPOsan',
     },
-    install_requires=['qsdsan',],
+    install_requires=['qsdsan==1.4.3',],
     package_data=
         {'exposan': [
             'adm/*',
@@ -48,6 +48,7 @@ setup(
             'cas/*',
             'eco_san/*',
             'eco_san/data/*',
+            'hap/*',
             'htl/*',
             'htl/data/*',
             'metab/*',
@@ -66,6 +67,10 @@ setup(
             'reclaimer/data/*',
             'saf/*',
             'saf/data/*',
+            'werf/*',
+            'werf/data/*',
+            'werf/systems/*',
+            'werf/utils/*',
         ]},
     classifiers=[
         'License :: OSI Approved :: University of Illinois/NCSA Open Source License',
@@ -80,8 +85,7 @@ setup(
         'Intended Audience :: Science/Research',
         'Natural Language :: English',
         'Operating System :: OS Independent',
-        'Programming Language :: Python :: 3.9',
-        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.12',
         ],
     keywords=[
         'quantitative sustainable design',

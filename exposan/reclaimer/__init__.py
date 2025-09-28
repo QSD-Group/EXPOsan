@@ -156,10 +156,10 @@ update_resource_recovery_settings()
 from . import _components
 from ._components import *
 _components_loaded = False
-def _load_components(reload=False):
+def _load_components(reload=False, adjust_MW_to_measured_as=False):
     global components, _components_loaded
     if not _components_loaded or reload:
-        components = create_components()
+        components = create_components(adjust_MW_to_measured_as=adjust_MW_to_measured_as)
         qs.set_thermo(components)
         _components_loaded = True
 
@@ -306,7 +306,9 @@ def get_recoveries(system, include_breakdown=False):
     K_dct['treated_sludge'] = get_K(sludge_pasteurization.outs[-1])
 
     # Ion Exchange
-    N_dct['NH3'] = ion_exchange.outs[3].imol['NH3'] * 14 * hr_per_yr
+    # N_dct['NH3'] = ion_exchange.outs[3].imol['NH3'] * 14 * hr_per_yr # imol is underestimated due to inconsistency between MW & measured_as
+    N_dct['NH3'] = ion_exchange.outs[3].imass['NH3'] \
+        * ion_exchange.outs[3].components.NH3.i_N * hr_per_yr
 
     # % N, P, and K recovered as a usable fertilizer product,
     # for model metrics and also the Resource Recovery criterion in DMsan analysis

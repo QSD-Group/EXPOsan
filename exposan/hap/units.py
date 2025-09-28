@@ -53,7 +53,8 @@ class HApFermenter(SanUnit, BatchBioreactor):
                  N_parallel_HApFermenter=10, tau=60, T=273.15+37, P=101325,
                  f_maximum_hap_yield=0.66, precipitate_moisture=90,
                  biomass_yield=0.1, inoculum_concentration=0.5,
-                 CaCl2_price=0.3,
+                 # CaCl2_price=0.3, 
+                 CaCl2_price=1.49, acid_price=1.34, 
                  # labor_wage=21.68,  # assume 20% over San Francisco minimum wage by default
                  ):
 
@@ -65,6 +66,7 @@ class HApFermenter(SanUnit, BatchBioreactor):
         self.biomass_yield=biomass_yield
         self.inoculum_concentration=inoculum_concentration
         self.CaCl2_price=CaCl2_price
+        self.acid_price=acid_price
         # self.labor_wage = labor_wage
     
     @property
@@ -154,8 +156,9 @@ class HApFermenter(SanUnit, BatchBioreactor):
         hu = self.heat_utilities.pop()
         self.add_heat_utility(hu.duty*n, self.T)
         self.ins[2].price = self.CaCl2_price * n
-            
-
+        # assume 60 meq H2SO4 /L urine, which = 0.03 mol H2SO4 /L urine  https://doi.org/10.1016/S0925-8574(98)00074-3
+        self.ins[0].price = self.acid_price * 98 * 0.03 / 1e3 * n
+    
 #%%
 @cost('Recirculation flow rate', 'Recirculation pumps', kW=30, S=77.22216,
       cost=47200, n=0.8, BM=2.3, CE=522, N='Number of reactors')
@@ -191,22 +194,35 @@ class YeastProduction(Facility, SanUnit, BatchBioreactor):
     _feedstock_cost_factor = 1.0 
     
     # USD/kg
+    # _prices = {
+    #     'molasses': 2.5,
+    #     'glucose': 3.5,
+    #     'ammonium sulfate': 0.18,
+    #     'H3PO4': 1.7,
+    #     'MgSO4': 0.35,
+    #     'VB1': 52.0,
+    #     'VB2': 35.0,
+    #     'VB5': 35.0,
+    #     'VB6': 30.0,
+    #     'VB7': 300,
+    #     'NaCl': 0.1,
+    #     }
     _prices = {
-        'molasses': 2.5,
-        'glucose': 3.5,
-        'ammonium sulfate': 0.18,
-        'H3PO4': 1.7,
-        'MgSO4': 0.35,
+        'molasses': 3.2,
+        'glucose': 1.2,
+        'ammonium sulfate': 2.88,
+        'H3PO4': 4.04,
+        'MgSO4': 9.90,
         'VB1': 52.0,
         'VB2': 35.0,
-        'VB5': 35.0,
+        'VB5': 50.0,
         'VB6': 30.0,
         'VB7': 300,
-        'NaCl': 0.1,
+        'NaCl': 0.7,
         }
     
     _micronutrient_mixture = (
-        150,  # MgSO4, mass-based
+        150e3,  # MgSO4, mass-based
         370,  # VB1
         800,  # VB2
         2300, # VB5
@@ -288,7 +304,7 @@ class YeastProduction(Facility, SanUnit, BatchBioreactor):
 
     @property
     def P_to_sugar_ratio(self):
-        '''[float] Phosphorus-to-sugarratio, in kg-P/kg sugar fed.'''
+        '''[float] Phosphorus-to-sugar ratio, in kg-P/kg sugar fed.'''
         return self._p2s
     @P_to_sugar_ratio.setter
     def P_to_sugar_ratio(self, p2s):
@@ -699,6 +715,7 @@ class PrecipitateProcessing(Facility, SanUnit):
         yeast = cake.chemicals.Yeast
         product.imass['Ash'] = cake.imass['Yeast'] * (1-yeast.f_Vmass_Totmass)
         product.imass['Yeast'] = product.imass['H2O'] = 0.
+        product.phase = 's'
         
     def _design(self):
         feed, = self.ins

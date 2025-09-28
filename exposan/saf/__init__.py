@@ -13,11 +13,7 @@ for license details.
 '''
 
 import os, qsdsan as qs
-# from qsdsan.utils import auom
 from exposan.utils import _init_modules
-# from exposan.htl import (
-#     _MJ_to_MMBTU,
-#     )
 
 saf_path = os.path.dirname(__file__)
 module = os.path.split(saf_path)[-1]
@@ -66,7 +62,7 @@ def load(configuration='baseline',):
     elif configuration == 'no_psa':
         kwargs = config_no_PSA
     else:
-        raise ValueError('Configuration only be "baseline", "EC", "EC-future", or "no PSA", '
+        raise ValueError('Configuration only be "baseline", "EC", "EC future", or "no PSA", '
                          f'not {kwargs}.')
 
     sys = create_system(**kwargs)
@@ -76,6 +72,7 @@ def load(configuration='baseline',):
     _system_loaded = True
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
+    simulate_and_print(sys)
 
 def __getattr__(name):
     if not _components_loaded or not _system_loaded:

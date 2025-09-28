@@ -536,7 +536,7 @@ def create_systemD(flowsheet=None):
 # Wrapper function
 # =============================================================================
 
-def create_system(system_ID='A', flowsheet=None):
+def create_system(system_ID='A', flowsheet=None, adjust_MW_to_measured_as=False):
     ID = system_ID.lower().lstrip('sys').upper() # so that it'll work for "sysA"/"A"
     reload_lca = False
 
@@ -550,7 +550,7 @@ def create_system(system_ID='A', flowsheet=None):
         flowsheet = Flowsheet(flowsheet_ID)
         main_flowsheet.set_flowsheet(flowsheet)
 
-    _load_components()
+    _load_components(adjust_MW_to_measured_as=adjust_MW_to_measured_as)
     _load_lca_data(reload_lca)
 
     if system_ID == 'A': f = create_systemA
@@ -561,7 +561,7 @@ def create_system(system_ID='A', flowsheet=None):
 
     try: system = f(flowsheet)
     except:
-        _load_components(reload=True)
+        _load_components(reload=True, adjust_MW_to_measured_as=adjust_MW_to_measured_as)
         system = f(flowsheet)
 
     return system
