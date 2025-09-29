@@ -214,6 +214,8 @@ for cap in bp['caps']:
 
 #%% MPs distribution
 
+# TODO: update the code of calculations; add more intermediate steps
+
 textile_mass_flow = shape.Uniform(398000, 597000)
 vehicle_tires_mass_flow = shape.Uniform(1130000, 1690000)
 city_dust_mass_flow = shape.Uniform(520000, 780000)
@@ -237,6 +239,7 @@ joint = cp.distributions.J(textile_mass_flow, vehicle_tires_mass_flow,
                            marine_coatings_mass_flow, textile_to_WRRF, vehicle_tires_to_sewer,
                            city_dust_to_sewer, road_markings_to_sewer, personal_care_product_to_WRRF,
                            combined_sewer_fraction, WWRS_removal)
+
 sample = joint.sample(100000)
 
 MPs_WWRS_MC = pd.DataFrame()
@@ -1051,32 +1054,34 @@ for cap in bp['caps']:
 
 #%% PhACs distribution
 
-# TODO: update / confirm all uncertain parameters and calculations
+# TODO: update the code of calculations; add more intermediate steps
 
-used_PhACs = shape.Uniform(0.7, 0.9)
-human_use = shape.Uniform(0.784, 1)
-human_to_toilet = shape.Uniform(0.08, 0.12)
-
-toilet_disposal = shape.Triangle(0, 0.115, 0.472)
-trash_disposal = shape.Triangle(0.11, 0.595, 0.954)
-
+unused_PhACs = shape.Uniform(0.15, 0.98)
+take_back = shape.Triangle(0.136, 0.169, 0.203)
+toilet_trash_ratio = shape.Triangle(0.319, 0.399, 0.479)
 toilet_to_WRRF = shape.Uniform(0.398, 0.596)
-landfill_to_WRRF = shape.Uniform(0, 0.1)
+trash_to_combustion = shape.Uniform(0.152, 0.228)
+# TODO: update
+landfill_to_WRRF = shape.Uniform(0.01, 0.05)
+human_use = shape.Uniform(0.784, 1)
+excretion = shape.Triangle(0.02, 0.39, 0.862)
+removal_rate = shape.Triangle(0.15, 0.784, 1)
+sorption_biotransformation_ratio = shape.Triangle(0.168, 2.91, 7)
 
-WWRS_removal = shape.Triangle(0, 0.58, 1)
-biotransformation_ratio = shape.Triangle(0, 0.30, 1)
+joint = cp.distributions.J(unused_PhACs, take_back, toilet_trash_ratio,
+                           toilet_to_WRRF, trash_to_combustion, landfill_to_WRRF,
+                           human_use, excretion, removal_rate,
+                           sorption_biotransformation_ratio)
 
-MSW_collection = shape.Uniform(0.19*0.8, 0.19*1.2)
-
-joint = cp.distributions.J(used_PhACs, human_use, human_to_toilet,
-                           toilet_disposal, trash_disposal, toilet_to_WRRF,
-                           landfill_to_WRRF, WWRS_removal, biotransformation_ratio,
-                           MSW_collection)
 sample = joint.sample(100000)
 
 PhACs_WWRS_MC = pd.DataFrame()
 
-PhACs_WWRS_MC = (sample[0]*sample[1]*sample[2]*sample[5] + (1 - sample[0])*sample[3]*sample[5] + (1 - sample[0])*np.minimum(sample[4], 1 - sample[3])*sample[6])*sample[7]/(sample[0]*sample[1]*sample[2]*(1 - sample[8]) + sample[0]*(1 - sample[1])*sample[2] + (1 - sample[0])*np.minimum(1, (sample[3]*(1 - sample[8]) + sample[4]*(1 - sample[9]))))
+PhACs_WRRS = (sample[0]*(1 - sample[1])*sample[2]/(sample[2] + 1)*sample[3] + sample[0]*(1 - sample[1])*(sample[2] + 1)*(1 - sample[4])*sample[5] + (1 - sample[0])*sample[6]*sample[7]*sample[3])*sample[8]*sample[9]/(sample[9] + 1)
+
+PhACs_total = sample[0]*(1 - sample[1])*sample[2]/(sample[2] + 1)*( 1- sample[3]) + (1 - sample[0])*sample[6]*sample[7]*(1 - sample[3]) + (1 - sample[0])*(1 - sample[6])*sample[7] + (sample[0]*(1 - sample[1])*sample[2]/(sample[2] + 1)*sample[3] + sample[0]*(1 - sample[1])*(sample[2] + 1)*(1 - sample[4])*sample[5] + (1 - sample[0])*sample[6]*sample[7]*sample[3])*((1 - sample[8]) + sample[8]*sample[9]/(sample[9] + 1))
+
+PhACs_WWRS_MC = PhACs_WRRS/PhACs_total
 
 fig, ax = plt.subplots(figsize=(2.5, 5))
 
