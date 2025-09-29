@@ -703,9 +703,10 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
 # =============================================================================
 
 # System A: Solids removal only
-def create_modelA(country_specific=False, **model_kwargs):
+def create_modelA(country_specific=False, adjust_MW_to_measured_as=False, **model_kwargs):
     flowsheet = model_kwargs.pop('flowsheet', None)
-    sysA = create_system('A', flowsheet=flowsheet)
+    sysA = create_system('A', flowsheet=flowsheet, 
+                         adjust_MW_to_measured_as=adjust_MW_to_measured_as)
     unitA = sysA.flowsheet.unit
 
     # Shared metrics/parameters
@@ -722,9 +723,10 @@ def create_modelA(country_specific=False, **model_kwargs):
 
 
 # System B: Full Duke system with grid electricity source
-def create_modelB(country_specific=False, **model_kwargs):
+def create_modelB(country_specific=False, adjust_MW_to_measured_as=False, **model_kwargs):
     flowsheet = model_kwargs.pop('flowsheet', None)
-    sysB = create_system('B', flowsheet=flowsheet)
+    sysB = create_system('B', flowsheet=flowsheet, 
+                         adjust_MW_to_measured_as=adjust_MW_to_measured_as)
     unitB = sysB.flowsheet.unit
 
     # Shared parameters
@@ -747,9 +749,10 @@ def create_modelB(country_specific=False, **model_kwargs):
 
 
 # System C: Full Duke system with solar electricity source
-def create_modelC(country_specific=False, **model_kwargs):
+def create_modelC(country_specific=False, adjust_MW_to_measured_as=False, **model_kwargs):
     flowsheet = model_kwargs.pop('flowsheet', None)
-    sysC = create_system('C', flowsheet=flowsheet)
+    sysC = create_system('C', flowsheet=flowsheet, 
+                         adjust_MW_to_measured_as=adjust_MW_to_measured_as)
     unitC = sysC.flowsheet.unit
 
     # Shared parameters
@@ -772,9 +775,10 @@ def create_modelC(country_specific=False, **model_kwargs):
 
 
 # System D: Targeted nitrogen removal (created for NSS preliminary analysis)
-def create_modelD(country_specific=False, **model_kwargs):
+def create_modelD(country_specific=False, adjust_MW_to_measured_as=False, **model_kwargs):
     flowsheet = model_kwargs.pop('flowsheet', None)
-    sysD = create_system('D', flowsheet=flowsheet)
+    sysD = create_system('D', flowsheet=flowsheet, 
+                         adjust_MW_to_measured_as=adjust_MW_to_measured_as)
     unitD = sysD.flowsheet.unit
 
     # Shared parameters
@@ -794,13 +798,15 @@ def create_modelD(country_specific=False, **model_kwargs):
 
 
 # Wrapper function so that it'd work for all
-def create_model(model_ID='A', country_specific=False, **model_kwargs):
+def create_model(model_ID='A', country_specific=False, 
+                 adjust_MW_to_measured_as=False, **model_kwargs):
     model_ID = model_ID.lower().rsplit('model')[-1].rsplit('sys')[-1].upper() # works for "modelA"/"sysA"/"A"
-    if model_ID == 'A': model = create_modelA(country_specific, **model_kwargs)
-    elif model_ID == 'B': model = create_modelB(country_specific, **model_kwargs)
-    elif model_ID == 'C': model = create_modelC(country_specific, **model_kwargs)
-    elif model_ID == 'D': model = create_modelD(country_specific, **model_kwargs)
+    if model_ID == 'A': f = create_modelA
+    elif model_ID == 'B': f = create_modelB
+    elif model_ID == 'C': f = create_modelC
+    elif model_ID == 'D': f = create_modelD
     else: raise ValueError(f'`model_ID` can only be "A", "B", "C", or "D", not "{model_ID}".')
+    model = f(country_specific, adjust_MW_to_measured_as, **model_kwargs)
     return model
 
 
