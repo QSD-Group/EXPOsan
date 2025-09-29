@@ -1,9 +1,19 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Thu Jul 17 17:16:00 2025
 
-@author: aliah
-"""
+'''
+EXPOsan: Exposition of sanitation and resource recovery systems
+
+This module is developed by:
+
+    Yalin Li <mailto.yalin.li@gmail.com>
+    
+    Ali Ahmad <aa3056@scarletmail.rutgers.edu>
+    
+This module is under the University of Illinois/NCSA Open Source License.
+Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
+for license details.
+'''
 
 # !!! Temporarily ignoring warnings
 # import warnings

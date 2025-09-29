@@ -1,9 +1,20 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Thu Jul 17 11:53:17 2025
 
-@author: aliah
-"""
+'''
+EXPOsan: Exposition of sanitation and resource recovery systems
+
+This module is developed by:
+
+    Yalin Li <mailto.yalin.li@gmail.com>
+    
+    Ali Ahmad <aa3056@scarletmail.rutgers.edu>
+    
+This module is under the University of Illinois/NCSA Open Source License.
+Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
+for license details.
+'''
+
 
 # !!! Temporarily ignoring warnings
 # import warnings
@@ -326,7 +337,7 @@ def create_system(
     
     ww_to_disposal = qs.WasteStream('ww_to_disposal')
     WWStorage = qsu.StorageTank(
-        'WWStorage',liquids_to_disposal_lst, outs=ww_to_disposal, #use liquids_to_disposal_lst as ins for DHCU
+        'WWStorage', HTL.outs[1], outs=ww_to_disposal, #use liquids_to_disposal_lst as ins for d-HTL, HTL.outs[1] for c-HTL
         tau=24*1, vessel_material='Stainless steel',
         include_construction=False,
         )
@@ -485,9 +496,9 @@ def simulate_and_print(sys, save_report=False):
     all_impacts = lca.get_allocated_impacts(streams=(biocrude,), operation_only=True, annual=True)
     GWP = all_impacts['GWP']/(biocrude.F_mass*lca.system.operating_hours)
     print(f'Global warming potential of the biocrude is {GWP:.4f} kg CO2e/kg.')
-    biocrude.price = 0.50   #$/kg
-    IRR= tea.solve_IRR()
-    print(f'Internal rate of return of the process is {IRR * 100:.2f}%')
+    # biocrude.price = 0.50   #$/kg
+    # IRR= tea.solve_IRR()
+    # print(f'Internal rate of return of the process is {IRR * 100:.2f}%')
       
 if __name__ == '__main__':    
   
@@ -504,8 +515,8 @@ if __name__ == '__main__':
     # config_kwargs.update(dict(skip_EC=False, generate_H2=True, EC_config=EC_future_config)) # EC, recovery nutrients, generate H2, optimistic assumptions
     
     # Decentralized vs. centralized configuration
-    # config_kwargs.update(dict(decentralized_HTL=False, decentralized_upgrading=False)) # CHCU
-    config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=False)) # DHCU
+    config_kwargs.update(dict(decentralized_HTL=False, decentralized_upgrading=False)) # CHCU
+    # config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=False)) # DHCU
     
     # Distillation column cost calculation doesn't scale down well, so the cost is very high now.
     # But maybe don't need to do the DHDU scenario, if DHCU isn't too different from CHCU
