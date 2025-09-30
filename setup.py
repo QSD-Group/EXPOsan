@@ -37,6 +37,8 @@ setup(
             'adm/data/*',
             'asm/*',
             'asm/data/*',
+            'biobinder/*',
+            'biobinder/data/*',
             'biogenic_refinery/*',
             'biogenic_refinery/data/*',
             'bsm1/*',

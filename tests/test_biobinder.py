@@ -70,4 +70,5 @@ def test_biobinder():
     ))
 
 if __name__ == '__main__':
-    test_biobinder()
+    # test_biobinder() # temporarily remove test for distillation to be fixed
+    from exposan import biobinder
