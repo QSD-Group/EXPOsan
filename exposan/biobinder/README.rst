@@ -6,7 +6,7 @@ Summary
 -------
 This module includes a hydrothermal liquefaction (HTL)-based system for the production of biobinders and valuable coproducts (biobased fuel additives, fertilizers, and potentially hydrogen) from wet organic wastes (food waste and swine manure) based on a project funded by the USDA.
 
-This module has been used to produce the results in Ahmad et al. [1]_ (repository at commit `d3eca6c <https://github.com/QSD-Group/EXPOsan/commit/d3eca6c1fea557d922e3cad945d2ee0148518711>`_). Versions of additional packages can be found in `biobinder_environment.yml </exposan/biobinder/biobinder_environment.yml>`_.
+This module has been used to produce the results in Ahmad et al. [1]_ (repository at commit `d3eca6c <https://github.com/QSD-Group/EXPOsan/commit/d3eca6c1fea557d922e3cad945d2ee0148518711>`_). ``biosteam`` version 2.51.15 and ``thermosteam`` version 0.51.13 Versions of additional packages can be found in `biobinder_environment.yml </exposan/biobinder/biobinder_environment.yml>`_.
 
 The scripts ``fungal.py`` and ``biocrude.py`` modified systems for specific analysis such as fungal treatment of effluent wastewater and raw biocrude production respectively. More settings can be changed for baseline systems in the ``systems.py`` script, the `/analyses </exposan/biobinder/analyses>`_ directory includes multiple sensitivity analyses (with regard to plant size and biocrude yield).
 
