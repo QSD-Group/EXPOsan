@@ -5,6 +5,8 @@ EXPOsan: Exposition of sanitation and resource recovery systems
 This module is developed by:
     
     Yalin Li <mailto.yalin.li@gmail.com>
+    
+    Ali Ahmad <aa3056@scarletmail.rutgers.edu>
 
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
@@ -728,14 +730,14 @@ if __name__ == '__main__':
         )
 
     # What to do with HTL-AP
-    # config_kwargs.update(dict(skip_EC=True, generate_H2=False, EC_config=None)) # no EC
+    config_kwargs.update(dict(skip_EC=True, generate_H2=False, EC_config=None)) # no EC
     # config_kwargs.update(dict(skip_EC=False, generate_H2=False, EC_config=None)) # EC, recover nutrients only
-    config_kwargs.update(dict(skip_EC=False, generate_H2=True, EC_config=None)) # EC, recover nutrients and generate H2
+    # config_kwargs.update(dict(skip_EC=False, generate_H2=True, EC_config=None)) # EC, recover nutrients and generate H2
     # config_kwargs.update(dict(skip_EC=False, generate_H2=True, EC_config=EC_future_config)) # EC, recovery nutrients, generate H2, optimistic assumptions
     
     # Decentralized vs. centralized configuration
-    # config_kwargs.update(dict(decentralized_HTL=False, decentralized_upgrading=False)) # CHCU
-    config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=False)) # DHCU
+    config_kwargs.update(dict(decentralized_HTL=False, decentralized_upgrading=False)) # CHCU
+    # config_kwargs.update(dict(decentralized_HTL=True, decentralized_upgrading=False)) # DHCU
     
     # Distillation column cost calculation doesn't scale down well, so the cost is very high now.
     # But maybe don't need to do the DHDU scenario, if DHCU isn't too different from CHCU

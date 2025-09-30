@@ -38,4 +38,5 @@ def test_saf():
 
 
 if __name__ == '__main__':
-    test_saf()
+    # test_saf() # temporarily remove test for distillation to be fixed
+    from exposan import saf
