@@ -115,6 +115,11 @@ class redox_ED(SanUnit):
         for attr, value in kwargs.items():
             setattr(self, attr, value)
         
+        self.cross_area = self.compartment_length * self.compartment_width
+        self.num_current_collector = 2
+        self.num_spacer = 4
+        self.num_IEM = 3
+        
     def _run(self):
         fc_in, ac_in = self.ins
         # !!! need to edit the inputs, fc_in is from the wastestream, ac_in is
@@ -148,40 +153,45 @@ class redox_ED(SanUnit):
         c6_flux * area / self.flowrate
         
     def _init_lca(self):
-        pass
+        self.construction = [Construction('carbon_cloth', linked_unit=self, 
+                                           item='CarbonCloth', 
+                                           quantity_unit='kg'),
+                             Construction('current_collector', linked_unit=self,
+                                           item='CurrentCollector', 
+                                           quantity_unit='kg'),
+                             Construction('silicon_spacer', linked_unit=self,
+                                           item='SiliconSpacer',
+                                           quantity_unit='kg'),
+                             Construction('IEM', linked_unit=self,
+                                           item='IEM',
+                                           quantity_unit='m2'),    #is there a common format for units?
+                             Construction('housing', linked_unit=self,
+                                           item='Housing',
+                                           quantity_unit='kg'),
+                             Construction('piping', linked_unit=self,
+                                           item='Piping',
+                                           quantity_unit='m')]
+
+# !!! change construction items when scaling up system. Right not materials are
+# based on bench top experiment.
     
     def _design(self):
-        pass
+        area = self.cross_area
+        design = self.design_results
+        constr = self.construction
+        design['CarbonCloth'] = constr[0]*area
+        design['CurrentCollector'] = constr[1]*area*self.num_current_collector
+        design['SiliconSpacer'] = constr[2]*area*self.num_spacer
+        design['IEM'] = constr[3]*area*self.num_IEM
+        design['Housing'] = constr[4].quantity # where would I input quantity value?
+        design['Piping'] = constr[5].quantity
     
     def _cost(self):
         pass
 
-# =============================================================================
-#     def _init_lca(self): 
-#         self.construction = [Construction('carbon_cloth', linked_unit=self, 
-#                                           item='CarbonCloth', 
-#                                           quantity_unit='kg'),
-#                              Construction('current_collector', linked_unit=self,
-#                                           item='CurrentCollector', 
-#                                           quantity_unit='kg'),
-#                              Construction('silicon_spacer', linked_unit=self,
-#                                           item='SiliconSpacer',
-#                                           quantity_unit='kg'),
-#                              Construction('electrolyte_membrane', linked_unit=self,
-#                                           item='ElectrolyteMembrane',
-#                                           quantity_unit='m2'),    #is there a common format for units?
-#                              Construction('housing', linked_unit=self,
-#                                           item='Housing',
-#                                           quantity_unit='kg'),
-#                              Construction('piping', linked_unit=self,
-#                                           item='Piping',
-#                                           quantity_unit='m')] 
-#             
-#     def _design(self):
-#         design = self.design_results
-#         constr = self.construction
-# =============================================================================
-        
+         
+            
+                 
         
         
         
