@@ -12,7 +12,7 @@ from qsdsan.utils import ospath, data_path, load_data, price_ratio
 # from exposan.g2rt._sanunits import G2RTSolidsSeparation
 from numpy import exp
 
-__all__ = ('redox_ED',)
+__all__ = ('centrifuge', 'redox_ED',)
 
 
 #%% Pretreatment: solids separation using centrifugation
@@ -71,21 +71,21 @@ class centrifuge(SanUnit):
         mc_in = TL_in / AD_eff.F_mass # including both water and solubles in the moisture content
         mc_out = self.moisture_content_out # this moisture data should assume the total mass of water and solubles
 # !!! Below the logic check is for moisture content in the solids but the focus here is the liquid stream
-        if mc_in < mc_out*0.999:
+        # if mc_in < mc_out*0.999:
+        if mc_in < mc_out:
             mc_out = mc_in
-            
-        liquid_stream.imass[solids] = AD_eff.imass[solids] * (1- self.TSS_removal)
-        TS_out = liquid_stream.imass[solids].sum() # total soilds in the liquid stream
-        TL_out = TS_out / (1 - mc_out) * mc_out # total solubles and water mass flowrate in the liquid stream
-        liquid_stream.imass[solubles] = AD_eff.imass[solubles] * TL_out / TL_in 
-        breakpoint()
-        liquid_stream.imass['H2O'] = TL_out - liquid_stream.imass[solubles].sum()
+        
+        solid_stream.imass[solids] = AD_eff.imass[solids] * self.TSS_removal
+        TS_out = solid_stream.imass[solids].sum() # total soilds in the solids stream
+        TL_out = TS_out / (1 - mc_out) * mc_out # total solubles and water mass flowrate in the solids stream
+        solid_stream.imass[solubles] = AD_eff.imass[solubles] * TL_out / TL_in 
+        solid_stream.imass['H2O'] = TL_out - solid_stream.imass[solubles].sum()
         # the above line assumes that the solubles (including water and soluble chemicals) partition together and by the same ratio
         #liquid_stream.imass['H2O'] = TS_out*(1-mc_out) * mc_out - liquid_stream.imass[solubles].sum()
         
-        solid_stream.imass[solids] = AD_eff.imass[solids] * self.TSS_removal
-        solid_stream.imass[solubles] = AD_eff.imass[solubles] - liquid_stream.imass[solubles]
-        solid_stream.imass['H2O'] = AD_eff.imass['H2O'] - liquid_stream.imass['H2O']
+        liquid_stream.imass[solids] = AD_eff.imass[solids] * (1 - self.TSS_removal)
+        liquid_stream.imass[solubles] = AD_eff.imass[solubles] - solid_stream.imass[solubles]
+        liquid_stream.imass['H2O'] = AD_eff.imass['H2O'] - solid_stream.imass['H2O']
     
     def _design(self):
         pass
