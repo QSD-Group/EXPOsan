@@ -12,6 +12,8 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
+#%% housekeeping
+
 # TODO: use Matplotlib.rcParams['pdf.fonttype'] = 42
 
 #%% initialization
@@ -1131,6 +1133,83 @@ ax.bar(0.5,
        color=do,
        edgecolor='k',
        linewidth=3)
+
+#%% ARGs concentration
+
+# TODO: add sediment, soil, and ocean data
+# TODO: in the China and Europe datasets, remove genes that are not ARGs
+# TODO: in the China and Europe datasets, for soil, sediment, and WWRS, just keep data that are on a dry-weight basis
+
+# manually collected data
+ARGs_0 = pd.read_excel(folder + 'analyses/EC_data.xlsx','ARGs_summary')
+
+ARGs_1 = pd.read_excel(folder + 'analyses/ARGs_data/ARG Abundance.xlsx')
+# confirmed all types are ARG types but not mobile gene element types
+set(ARGs_1['Type'])
+ARGs_1['Absolute Abundance (copies per g/L sample)'] = ARGs_1['Absolute Abundance (copies per g/L sample)'].apply(pd.to_numeric, errors='coerce')
+ARGs_1 = ARGs_1[~ARGs_1['Absolute Abundance (copies per g/L sample)'].isna()]
+set(ARGs_1['Habitat'])
+
+ARGs_2 = pd.read_excel(folder + 'analyses/ARGs_data/ARGs_NORMAN.xlsx')
+set(ARGs_2['Gene name'])
+# just remove all intI genes, assume all others are ARGs
+ARGs_2 = ARGs_2[~ARGs_2['Gene name'].isin(['intI1','intI1_1','intI1_2','intI1_3','intI1_4',
+                                           'intI2','intI2_2','intI3_1','intI3_2','intl1'])]
+ARGs_2['gene copy number/mL of sample]'] = ARGs_2['gene copy number/mL of sample]'].apply(pd.to_numeric, errors='coerce')
+ARGs_2 = ARGs_2[~ARGs_2['gene copy number/mL of sample]'].isna()]
+set(ARGs_2['Sample matrix'])
+set(ARGs_2[ARGs_2['Sample matrix'] == 'Other']['Other'])
+
+# WWRS
+WWRS_ARGs_1 = ARGs_0['WWRS']
+WWRS_ARGs_2 = pd.read_excel(folder + 'analyses/EC_data.xlsx','ARGs_WWRS_Harrison_2024')
+set(WWRS_ARGs_2['Gene'])
+
+WWRS_ARGs_2 = WWRS_ARGs_2[~WWRS_ARGs_2['Gene'].isin(['16S rRNA','IncQ','intI1'])]
+set(WWRS_ARGs_2['Units'])
+WWRS_ARGs_2 = WWRS_ARGs_2[~WWRS_ARGs_2['Units'].isna()]
+WWRS_ARGs_2 = WWRS_ARGs_2[~WWRS_ARGs_2['Units'].isin(['Log 10 (gene copies/g sample)',
+                                                      'Log Concentration (copies/g)',
+                                                      'Total ARGs (log10(copies/mL)',
+                                                      'copies/g soil',
+                                                      'gcn/mL sludge',
+                                                      'ln (ARG copies)',
+                                                      'log (copies/g)',
+                                                      'log copies/g',
+                                                      'log10 (copies)/mL',
+                                                      'log10 (copies/g sample)',
+                                                      'log10 (gene copies/g wet sludge)',
+                                                      'ng/g',
+                                                      'qnrA copies/g volatile suspended solids'])]
+set(WWRS_ARGs_2['Units'])
+WWRS_ARGs_2.loc[WWRS_ARGs_2['Units'].isin(['Log10 gene copies/g DS','log (ARG copies/g dry basis)','log 10 (gene copies/g DS)','log10 (gene copies/g DS)']),'Conc Before post-treatment'] =\
+    WWRS_ARGs_2.loc[WWRS_ARGs_2['Units'].isin(['Log10 gene copies/g DS','log (ARG copies/g dry basis)','log 10 (gene copies/g DS)','log10 (gene copies/g DS)']),'Conc Before post-treatment'].apply(lambda x: 10**x)
+WWRS_ARGs_2.loc[WWRS_ARGs_2['Units'].isin(['Log10 gene copies/g DS','log (ARG copies/g dry basis)','log 10 (gene copies/g DS)','log10 (gene copies/g DS)']),'Conc After post-treatment'] =\
+    WWRS_ARGs_2.loc[WWRS_ARGs_2['Units'].isin(['Log10 gene copies/g DS','log (ARG copies/g dry basis)','log 10 (gene copies/g DS)','log10 (gene copies/g DS)']),'Conc After post-treatment'].apply(lambda x: 10**x)
+
+WWRS_ARGs = list(WWRS_ARGs_1.dropna()) + list(WWRS_ARGs_2['Conc Before post-treatment']) + list(WWRS_ARGs_2['Conc After post-treatment'])
+
+# sediment
+sediment_ARGs = list(ARGs_0['sediment'].dropna())
+
+# air
+air_ARGs = list(ARGs_0['air'].dropna())
+
+# water
+water_ARGs_1 = ARGs_1[ARGs_1['Habitat'] == 'Water']
+water_ARGs_1['Absolute Abundance (copies per g/L sample)'] *= (1/1000)
+
+water_ARGs_2 = ARGs_2[ARGs_2['Sample matrix'].isin(['Groundwater','Other','Surface water - Lake water',
+                                                    'Surface water - Other','Surface water - Reservoirs',
+                                                    'Surface water - River water'])]
+
+water_ARGs = list(water_ARGs_1['Absolute Abundance (copies per g/L sample)']) + list(water_ARGs_2['gene copy number/mL of sample]'])
+
+#%% test
+
+ax = plt.gca()
+ax.set_yscale('log')
+ax.boxplot([WWRS_ARGs, sediment_ARGs, air_ARGs, water_ARGs], showfliers=False, whis=[5, 95])
 
 #%% country average
 
