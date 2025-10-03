@@ -1162,7 +1162,7 @@ set(ARGs_2[ARGs_2['Sample matrix'] == 'Other']['Other'])
 
 # WWRS
 WWRS_ARGs_1 = ARGs_0['WWRS']
-WWRS_ARGs_2 = pd.read_excel(folder + 'analyses/EC_data.xlsx','ARGs_WWRS_Harrison_2024')
+WWRS_ARGs_2 = pd.read_excel(folder + 'analyses/ARGs_data/ARGs_WWRS_Harrison.xlsx')
 set(WWRS_ARGs_2['Gene'])
 
 WWRS_ARGs_2 = WWRS_ARGs_2[~WWRS_ARGs_2['Gene'].isin(['16S rRNA','IncQ','intI1'])]
