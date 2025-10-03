@@ -178,7 +178,7 @@ ax.set_yscale('log')
 ax.set_ylim([10**-7, 10**5])
 ax.tick_params(direction='inout', length=20, width=3, bottom=False, top=False, left=True, right=False)
 
-plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10, 1000, 100000], fontname='Arial')
+plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10**1, 10**3, 10**5], fontname='Arial')
 
 ax.set_ylabel('$\mathbf{C}$ [particle·${g^{-1}}$]',
               fontname='Arial',
@@ -192,7 +192,7 @@ ax_right.set_ylim(ax.get_ylim())
 ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
 
 ax_right.set_xticklabels(['WWRS','soils','sediment','air','water'])
-plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10, 1000, 100000], fontname='Arial')
+plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10**1, 10**3, 10**5], fontname='Arial')
 
 bp = ax.boxplot([MPs[i].dropna() for i in MPs.columns],
                 whis=[5, 95], showfliers=False, widths=0.7, patch_artist=True)
@@ -862,7 +862,7 @@ ax.set_xlim([0.5, 5.5])
 ax.set_ylim([10**-7, 10**3])
 ax.tick_params(direction='inout', length=20, width=3, bottom=False, top=False, left=True, right=False)
 
-plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10, 1000, 100000], fontname='Arial')
+plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10**1, 10**3, 10**5], fontname='Arial')
 
 ax.set_ylabel('$\mathbf{C}$ [ng·${g^{-1}}$]',
               fontname='Arial',
@@ -876,7 +876,7 @@ ax_right.set_yscale('log')
 ax_right.set_ylim(ax.get_ylim())
 ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
 
-plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10, 1000, 100000], fontname='Arial')
+plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10**1, 10**3, 10**5], fontname='Arial')
 
 bp = ax.boxplot([WWRS_PFOA, WWRS_PFOS, WWRS_PFOS, soil_PFOA, soil_PFOS, soil_PFOS,
                  sediment_PFOA, sediment_PFOS, sediment_PFOS, air_PFOA, air_PFOS, air_PFOS,
@@ -1018,7 +1018,7 @@ ax.set_yscale('log')
 ax.set_ylim([10**-7, 10**3])
 ax.tick_params(direction='inout', length=20, width=3, bottom=False, top=False, left=True, right=False)
 
-plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10, 1000, 100000], fontname='Arial')
+plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10**1, 10**3, 10**5], fontname='Arial')
 
 ax.set_ylabel('$\mathbf{C}$ [ng·${g^{-1}}$]',
               fontname='Arial',
@@ -1032,7 +1032,7 @@ ax_right.set_ylim(ax.get_ylim())
 ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
 
 ax_right.set_xticklabels(['WWRS','soils*','sediment*','air','water*'])
-plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10, 1000, 100000], fontname='Arial')
+plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10**1, 10**3, 10**5], fontname='Arial')
 
 bp = ax.boxplot([WWRS_PhACs['MEC standardized'], soil_PhACs['MEC standardized'], sediment_PhACs['MEC standardized'], air_PhACs['air'], water_PhACs['MEC standardized']],
                 whis=[5, 95], showfliers=False, widths=0.7, patch_artist=True)
@@ -1189,6 +1189,9 @@ WWRS_ARGs_2.loc[WWRS_ARGs_2['Units'].isin(['Log10 gene copies/g DS','log (ARG co
 
 WWRS_ARGs = list(WWRS_ARGs_1.dropna()) + list(WWRS_ARGs_2['Conc Before post-treatment']) + list(WWRS_ARGs_2['Conc After post-treatment'])
 
+# soil
+soil_ARGs = list(ARGs_0['soil'].dropna())
+
 # sediment
 sediment_ARGs = list(ARGs_0['sediment'].dropna())
 
@@ -1196,6 +1199,8 @@ sediment_ARGs = list(ARGs_0['sediment'].dropna())
 air_ARGs = list(ARGs_0['air'].dropna())
 
 # water
+water_ARGs_0 = list(ARGs_0['ocean'].dropna())
+
 water_ARGs_1 = ARGs_1[ARGs_1['Habitat'] == 'Water']
 water_ARGs_1['Absolute Abundance (copies per g/L sample)'] *= (1/1000)
 
@@ -1203,13 +1208,64 @@ water_ARGs_2 = ARGs_2[ARGs_2['Sample matrix'].isin(['Groundwater','Other','Surfa
                                                     'Surface water - Other','Surface water - Reservoirs',
                                                     'Surface water - River water'])]
 
-water_ARGs = list(water_ARGs_1['Absolute Abundance (copies per g/L sample)']) + list(water_ARGs_2['gene copy number/mL of sample]'])
+water_ARGs = water_ARGs_0 + list(water_ARGs_1['Absolute Abundance (copies per g/L sample)']) + list(water_ARGs_2['gene copy number/mL of sample]'])
 
-#%% test
+#%% ARGs concentration visualization
+
+fig, ax = plt.subplots(figsize=(15, 5))
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 36
+plt.rcParams['ytick.labelsize'] = 36
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 ax = plt.gca()
 ax.set_yscale('log')
-ax.boxplot([WWRS_ARGs, sediment_ARGs, air_ARGs, water_ARGs], showfliers=False, whis=[5, 95])
+ax.set_ylim([10**-3, 10**17])
+ax.tick_params(direction='inout', length=20, width=3, bottom=False, top=False, left=True, right=False)
+
+plt.yticks([10**-3, 10**1, 10**5, 10**9, 10**13, 10**17], fontname='Arial')
+
+ax.set_ylabel('$\mathbf{C}$ [copies·${g^{-1}}$]',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=13,
+              linespacing=0.8)
+
+ax_right = ax.twinx()
+ax_right.set_yscale('log')
+ax_right.set_ylim(ax.get_ylim())
+ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
+
+ax_right.set_xticklabels(['WWRS','soils','sediment','air','water'])
+plt.yticks([10**-3, 10**1, 10**5, 10**9, 10**13, 10**17], fontname='Arial')
+
+bp = ax.boxplot([WWRS_ARGs, soil_ARGs, sediment_ARGs, air_ARGs, water_ARGs],
+                whis=[5, 95], showfliers=False, widths=0.7, patch_artist=True)
+    
+bp['boxes'][0].set(color='k', facecolor=dg, linewidth=3)
+bp['boxes'][1].set(color='k', facecolor=lg, linewidth=3)
+bp['boxes'][2].set(color='k', facecolor=lg, linewidth=3)
+bp['boxes'][3].set(color='k', facecolor=lg, linewidth=3)
+bp['boxes'][4].set(color='k', facecolor=lg, linewidth=3)
+
+for whisker in bp['whiskers']:
+    whisker.set(color='k', linewidth=3)
+
+for median in bp['medians']:
+    median.set(color='k', linewidth=3)
+
+for cap in bp['caps']:
+    cap.set(color='k', linewidth=3)
+
+# plt.savefig('/Users/jiananfeng/Desktop/PhACs.pdf', transparent=True, bbox_inches='tight')
 
 #%% country average
 

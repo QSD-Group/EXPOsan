@@ -493,7 +493,7 @@ def create_components(set_thermo=True):
             if getattr(i, attr) is None: setattr(i, attr, 0)
 
     cmps.compile()
-    cmps.set_alias('H2O', 'Water')
+    cmps.set_alias('H2O','Water')
     if set_thermo: qs_set_thermo(cmps)
 
     return cmps
