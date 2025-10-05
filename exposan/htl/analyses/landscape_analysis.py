@@ -216,8 +216,6 @@ for cap in bp['caps']:
 
 #%% MPs distribution
 
-# TODO: update the code of calculations; add more intermediate steps
-
 textile_mass_flow = shape.Uniform(398000, 597000)
 vehicle_tires_mass_flow = shape.Uniform(1130000, 1690000)
 city_dust_mass_flow = shape.Uniform(520000, 780000)
@@ -226,29 +224,39 @@ personal_care_product_mass_flow = shape.Uniform(20000, 30000)
 marine_coatings_mass_flow = shape.Uniform(40000, 60000)
 
 textile_to_WRRF = shape.Uniform(0.414, 0.620)
-vehicle_tires_to_sewer = shape.Uniform(0.72, 1)
-city_dust_to_sewer = shape.Uniform(0.72, 1)
-road_markings_to_sewer = shape.Uniform(0.72, 1)
+vehicle_tires_to_runoff = shape.Uniform(0.72, 1)
+vehicle_tires_runoff_to_sewer = shape.Uniform(0.548, 0.822)
+city_dust_to_runoff = shape.Uniform(0.456, 0.684)
+road_markings_to_runoff = shape.Uniform(0.72, 1)
+road_markings_runoff_to_sewer = shape.Uniform(0.188, 0.282)
 personal_care_product_to_WRRF = shape.Uniform(0.398, 0.596)
 
-# TODO: this need to be further decided
-combined_sewer_fraction = shape.Uniform(0.4, 0.6)
+combined_sewer_fraction = shape.Uniform(0.254, 0.380)
 
 WWRS_removal = shape.Triangle(0.806, 0.952, 0.998)
 
 joint = cp.distributions.J(textile_mass_flow, vehicle_tires_mass_flow,
                            city_dust_mass_flow, road_markings_mass_flow, personal_care_product_mass_flow,
-                           marine_coatings_mass_flow, textile_to_WRRF, vehicle_tires_to_sewer,
-                           city_dust_to_sewer, road_markings_to_sewer, personal_care_product_to_WRRF,
+                           marine_coatings_mass_flow, textile_to_WRRF, vehicle_tires_to_runoff,
+                           vehicle_tires_runoff_to_sewer, city_dust_to_runoff, road_markings_to_runoff,
+                           road_markings_runoff_to_sewer, personal_care_product_to_WRRF,
                            combined_sewer_fraction, WWRS_removal)
 
 sample = joint.sample(100000)
 
 MPs_WWRS_MC = pd.DataFrame()
 
-MPs_WWRS_MC = (sample[0]*sample[6] + sample[1]*sample[7]*sample[11] +\
-               sample[2]*sample[8]*sample[11] + sample[3]*sample[9]*sample[11] +\
-               sample[4]*sample[10] + sample[5]*0)*sample[12]/(sample[0] + sample[1] + sample[2] + sample[3] + sample[4] + sample[5])
+MPs_textile = sample[0]*sample[6]
+MPs_vehicle_tires = sample[1]*sample[7]*sample[8]*sample[13]
+MPs_city_dust = sample[2]*sample[9]*sample[13]
+MPs_road_markings = sample[3]*sample[10]*sample[11]*sample[13]
+MPs_personal_care_products = sample[4]*sample[12]
+MPs_marine_coatings = sample[5]*0
+MPs_total = sample[0] + sample[1] + sample[2] + sample[3] + sample[4] + sample[5]
+
+
+MPs_WWRS_MC = (MPs_textile + MPs_vehicle_tires + MPs_city_dust + MPs_road_markings +\
+               MPs_personal_care_products + MPs_marine_coatings)*sample[14]/MPs_total
 
 fig, ax = plt.subplots(figsize=(2.5, 5))
 
@@ -1058,6 +1066,8 @@ for cap in bp['caps']:
 
 # TODO: update the code of calculations; add more intermediate steps
 
+# TODO: consider adding landfill leachate to environment
+
 unused_PhACs = shape.Uniform(0.15, 0.98)
 take_back = shape.Triangle(0.136, 0.169, 0.203)
 toilet_trash_ratio = shape.Triangle(0.319, 0.399, 0.479)
@@ -1066,6 +1076,7 @@ trash_to_combustion = shape.Uniform(0.152, 0.228)
 # TODO: update
 landfill_to_WRRF = shape.Uniform(0.01, 0.05)
 human_use = shape.Uniform(0.784, 1)
+# TODO: separate human and animal excretion
 excretion = shape.Triangle(0.02, 0.39, 0.862)
 removal_rate = shape.Triangle(0.15, 0.784, 1)
 sorption_biotransformation_ratio = shape.Triangle(0.168, 2.91, 7)
@@ -1266,6 +1277,80 @@ for cap in bp['caps']:
     cap.set(color='k', linewidth=3)
 
 # plt.savefig('/Users/jiananfeng/Desktop/PhACs.pdf', transparent=True, bbox_inches='tight')
+
+#%% ARGs distribution
+
+# TODO: update the code of calculations; add more intermediate steps
+
+# TODO: add unused ARGs
+
+human_use = shape.Uniform(0.224, 0.336)
+human_excretion = shape.Triangle(0.02, 0.39, 0.862)
+excretion_to_WRRF = shape.Uniform(0.398, 0.596)
+animal_excretion = shape.Triangle(0.02, 0.39, 0.862)
+WWRS_capture_rate = shape.Uniform(0.90, 0.95)
+
+joint = cp.distributions.J(human_use, human_excretion, excretion_to_WRRF,
+                           animal_excretion, WWRS_capture_rate)
+
+sample = joint.sample(100000)
+
+ARCs_WWRS_MC = pd.DataFrame()
+
+ARCs_WRRS = sample[0]*sample[1]*sample[2]*sample[4]
+
+ARCs_total = sample[0]*sample[1] + (1 - sample[0])*sample[3]
+
+ARCs_WWRS_MC = ARCs_WRRS/ARCs_total
+
+fig, ax = plt.subplots(figsize=(2.5, 5))
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 36
+plt.rcParams['ytick.labelsize'] = 36
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+
+ax = plt.gca()
+ax.set_xlim([0, 1])
+ax.set_ylim([0, 100])
+ax.tick_params(direction='inout', length=20, width=3, labelbottom=False, bottom=False, top=False, left=True, right=False)
+
+plt.yticks(np.arange(0, 120, 20), fontname='Arial')
+
+ax.set_ylabel('$\mathbf{Occurence}$ [%]',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=13,
+              linespacing=0.8)
+
+ax_right = ax.twinx()
+ax_right.set_ylim(ax.get_ylim())
+ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
+
+plt.yticks(np.arange(0, 120, 20), fontname='Arial')
+
+ax.bar(0.5,
+       100,
+       width=0.7,
+       color=lg,
+       edgecolor='k',
+       linewidth=3)
+
+ax.bar(0.5,
+       np.quantile(ARCs_WWRS_MC, 0.5)*100,
+       yerr=np.array([[(np.quantile(ARCs_WWRS_MC, 0.5) - np.quantile(ARCs_WWRS_MC, 0.05))*100], [(np.quantile(ARCs_WWRS_MC, 0.95) - np.quantile(ARCs_WWRS_MC, 0.5))*100]]),
+       error_kw=dict(capsize=15, lw=3, capthick=3),
+       width=0.7,
+       color=dg,
+       edgecolor='k',
+       linewidth=3)
 
 #%% country average
 
