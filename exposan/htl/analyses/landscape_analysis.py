@@ -77,8 +77,14 @@ dy = Color('dark_yellow', (171, 137, 55)).HEX
 da = Color('dark_gray', (78, 78, 78)).HEX
 dp = Color('dark_purple', (76, 56, 90)).HEX
 
+# =============================================================================
+# word
+# =============================================================================
 world = gpd.read_file(folder + 'analyses/World Bank Official Boundaries - Admin 0_all_layers/WB_GAD_ADM0_complete.shp')
 
+# =============================================================================
+# WRRF
+# =============================================================================
 WRRF = pd.read_csv(folder + 'analyses/HydroWASTE_v10/HydroWASTE_v10.csv', encoding='latin-1')
 # WASTE_DIS in m3/day
 WRRF = WRRF[WRRF['WASTE_DIS'] != 0]
@@ -101,7 +107,9 @@ WRRF_filtered = gpd.GeoDataFrame(WRRF_filtered, crs='EPSG:4269',
 HDI = pd.read_excel(folder + 'analyses/HDR25_Statistical_Annex_HDI_Table.xlsx')
 
 # TODO: add this to the manuscript or SI
+# =============================================================================
 # electricity price
+# =============================================================================
 electricity_price = pd.read_excel(folder + 'analyses/P_Electric Prices by Country.xlsx')
 electricity_price.rename(columns={'Country Name':'country',
                                   'Country Code':'country_code',
@@ -121,26 +129,54 @@ electricity_price = electricity_price[['country','country_code','year','US_cents
 # data['country'] = data['country'].str.replace(r"\s*\(.*?\)", "", regex=True)
 # data.to_excel('/Users/jiananfeng/Desktop/electricity_CI_more_digits.xlsx')
 # =============================================================================
+
 # TODO: for countries w/o country data, use regional or global data
+# =============================================================================
 # electricity CI
-# electriicty_CI = 
+# =============================================================================
+electriicty_country_CI = pd.read_excel(folder + 'analyses/low_voltage_electricity_CI.xlsx','country_data')
+electriicty_region_CI = pd.read_excel(folder + 'analyses/low_voltage_electricity_CI.xlsx','region_data')
 
 # TODO: add this to the manuscript or SI
+# =============================================================================
 # labor cost
-# TODO: for countries with no data, consider (1) manually searching for the data, or (2) use the average value of the labor costs of countries with similar development stages
-labor_cost = pd.read_excel(folder + 'analyses/EAR_4HRL_SEX_CUR_NB_A-20250917T1926.xlsx')
-labor_cost = labor_cost[labor_cost['sex.label'] == 'Total']
-labor_cost = labor_cost[labor_cost['classif1.label'] == 'Currency: U.S. dollars']
+# =============================================================================
+labor_cost = pd.read_excel(folder + 'analyses/ILOSTAT_monthly_earnings_by_economic_activity.xlsx')
+labor_cost = labor_cost[labor_cost['sex.label'] == 'Sex: Total']
+# TODO: some countries do not have either wastewater related data or total, e.g., India
+labor_cost = labor_cost[labor_cost['classif1.label'].isin(['Economic activity (Aggregate): Mining and quarrying; Electricity, gas and water supply',
+                                                           'Economic activity (ISIC-Rev.2): 4. Electricity, Gas and Water',
+                                                           'Economic activity (ISIC-Rev.3.1): E. Electricity, gas and water supply',
+                                                           'Economic activity (ISIC-Rev.4): E. Water supply; sewerage, waste management and remediation activities',
+                                                           'Economic activity (Aggregate): Total',
+                                                           'Economic activity (ISIC-Rev.2): Total',
+                                                           'Economic activity (ISIC-Rev.3.1): Total',
+                                                           'Economic activity (ISIC-Rev.4): Total'])]
+labor_cost = labor_cost[labor_cost['classif2.label'] == 'Currency: U.S. dollars']
+
+labor_cost.loc[labor_cost['classif1.label'] == 'Economic activity (ISIC-Rev.4): E. Water supply; sewerage, waste management and remediation activities','order'] = 0
+labor_cost.loc[labor_cost['classif1.label'] == 'Economic activity (ISIC-Rev.3.1): E. Electricity, gas and water supply','order'] = 1
+labor_cost.loc[labor_cost['classif1.label'] == 'Economic activity (ISIC-Rev.2): 4. Electricity, Gas and Water','order'] = 2
+labor_cost.loc[labor_cost['classif1.label'] == 'Economic activity (Aggregate): Mining and quarrying; Electricity, gas and water supply','order'] = 3
+labor_cost.loc[labor_cost['classif1.label'] == 'Economic activity (ISIC-Rev.4): Total','order'] = 4
+labor_cost.loc[labor_cost['classif1.label'] == 'Economic activity (ISIC-Rev.3.1): Total','order'] = 5
+labor_cost.loc[labor_cost['classif1.label'] == 'Economic activity (ISIC-Rev.2): Total','order'] = 6
+labor_cost.loc[labor_cost['classif1.label'] == 'Economic activity (Aggregate): Total','order'] = 7
+
+assert labor_cost['order'].isna().sum() == 0
+
+labor_cost = labor_cost.loc[labor_cost.groupby('ref_area.label')['order'].idxmin()].reset_index(drop=True)
 labor_cost = labor_cost.loc[labor_cost.groupby('ref_area.label')['time'].idxmax()].reset_index(drop=True)
-# note obs_value can be 0 if the wage after being converted to the U.S. dollar is too low
-labor_cost = labor_cost[labor_cost['obs_value'].notna()]
-labor_cost = labor_cost[['ref_area.label','obs_value']]
+labor_cost = labor_cost[['ref_area.label','ref_area','obs_value']]
 labor_cost.rename(columns={'ref_area.label':'country',
+                           'ref_area':'country_code',
                            'obs_value':'labor_cost'},
                   inplace=True)
 
 # TODO: add this to the manuscript or SI
-# price level index (PLI) - for chemical price adjustment
+# =============================================================================
+# price level index (PLI)
+# =============================================================================
 PLI = pd.read_excel(folder + 'analyses/P_Data_Extract_From_World_Development_Indicators.xlsx')
 year_cols = ['1990 [YR1990]','2000 [YR2000]','2015 [YR2015]','2016 [YR2016]','2017 [YR2017]',
              '2018 [YR2018]','2019 [YR2019]','2020 [YR2020]','2021 [YR2021]','2022 [YR2022]',
@@ -148,6 +184,7 @@ year_cols = ['1990 [YR1990]','2000 [YR2000]','2015 [YR2015]','2016 [YR2016]','20
 PLI[year_cols] = PLI[year_cols].replace('..', np.nan)
 PLI['PLI'] = PLI[year_cols].ffill(axis=1).iloc[:, -1]
 PLI = PLI[PLI['PLI'].notna()]
+PLI.reset_index(inplace=True)
 PLI = PLI[['Country Name','Country Code','PLI']]
 PLI.rename(columns={'Country Name':'country',
                     'Country Code':'country_code'},
@@ -1811,6 +1848,143 @@ for cap in bp['caps']:
 
 # plt.savefig('/Users/jiananfeng/Desktop/PCDD&Fs.pdf', transparent=True, bbox_inches='tight')
 
+#%% country analysis - missing data management
+
+# TODO: add data processing steps and assumptions in the SI
+
+# =============================================================================
+# electricity price
+# =============================================================================
+for i in set(WRRF_filtered['CNTRY_ISO']):
+    if i not in list(electricity_price['country_code']):
+        print(set(WRRF_filtered[WRRF_filtered['CNTRY_ISO'] == i]['COUNTRY']))
+        print(i)
+
+# https://www.voronoiapp.com/energy/Whats-the-Average-Cost-of-1-kWh-Electricity-around-the-World--3398
+electricity_price.loc[len(electricity_price)] = ['Monaco', 'MCO', 9999, 18.0]
+electricity_price.loc[len(electricity_price)] = ['British Virgin Islands', 'VGB', 9999, 22.5]
+electricity_price.loc[len(electricity_price)] = ['Aruba', 'ABW', 9999, 17.8]
+electricity_price.loc[len(electricity_price)] = ['Cuba', 'CUB', 9999, 38.6]
+electricity_price.loc[len(electricity_price)] = ['French Polynesia', 'PYF', 9999, 25.9]
+electricity_price.loc[len(electricity_price)] = ['Curaçao', 'CUW', 9999, 41.9]
+# https://www.globalpetrolprices.com/Macao/electricity_prices/
+electricity_price.loc[len(electricity_price)] = ['Macao', 'MAC', 2025, 15.9]
+# https://www.nkeconwatch.com/category/communications/page/6/ (6.5 2012 euro cent, converted to 2012 US cent)
+electricity_price.loc[len(electricity_price)] = ['North Korea', 'PRK', 2012, 8.4]
+# https://www.ceicdata.com/en/turkmenistan/environmental-environmental-policy-taxes-and-transfers-non-oecd-member-annual/tm-industry-electricity-price-usd-per-kwh
+electricity_price.loc[len(electricity_price)] = ['Turkmenistan', 'TKM', 2020, 1.5]
+
+electricity_price.drop_duplicates(inplace=True)
+
+assert len([i for i in set(WRRF_filtered['CNTRY_ISO']) if i not in list(electricity_price['country_code'])]) == 0
+
+# =============================================================================
+# electricity CI
+# =============================================================================
+for i in set(WRRF_filtered['CNTRY_ISO']):
+    if i not in list(electriicty_country_CI['country_ISO_A3']):
+        print(set(WRRF_filtered[WRRF_filtered['CNTRY_ISO'] == i]['COUNTRY']))
+        print(i)
+
+# Europe without Switzerland
+electriicty_country_CI.loc[len(electriicty_country_CI)] = ['Monaco', 'MC', 'MCO', 0.335772839657998]
+# Africa
+electriicty_country_CI.loc[len(electriicty_country_CI)] = ['Equatorial Guinea', 'GQ', 'GNQ', 0.84866548695154]
+electriicty_country_CI.loc[len(electriicty_country_CI)] = ['Mali', 'ML', 'MLI', 0.84866548695154]
+electriicty_country_CI.loc[len(electriicty_country_CI)] = ['Guinea', 'GN', 'GIN', 0.84866548695154]
+electriicty_country_CI.loc[len(electriicty_country_CI)] = ['Seychelles', 'SC', 'SYC', 0.84866548695154]
+# Latin America and the Caribbean
+electriicty_country_CI.loc[len(electriicty_country_CI)] = ['British Virgin Islands', 'VG', 'VGB', 0.35047605957495]
+electriicty_country_CI.loc[len(electriicty_country_CI)] = ['Aruba', 'AW', 'ABW', 0.35047605957495]
+electriicty_country_CI.loc[len(electriicty_country_CI)] = ['Bahamas', 'BS', 'BHS', 0.35047605957495]
+electriicty_country_CI.loc[len(electriicty_country_CI)] = ['Barbados', 'BB', 'BRB', 0.35047605957495]
+electriicty_country_CI.loc[len(electriicty_country_CI)] = ['Antigua and Barbuda', 'AG', 'ATG', 0.35047605957495]
+electriicty_country_CI.loc[len(electriicty_country_CI)] = ['Belize', 'BZ', 'BLZ', 0.35047605957495]
+
+# Middle East
+electriicty_country_CI.loc[len(electriicty_country_CI)] = ['Palestina', 'PS', 'PSE', 0.907394533030651]
+
+# Asia
+electriicty_country_CI.loc[len(electriicty_country_CI)] = ['Macao', 'MO', 'MAC', 0.876728132896613]
+electriicty_country_CI.loc[len(electriicty_country_CI)] = ['Laos', 'LA', 'LAO', 0.876728132896613]
+electriicty_country_CI.loc[len(electriicty_country_CI)] = ['Afghanistan', 'AF', 'AFG', 0.876728132896613]
+
+# Global
+electriicty_country_CI.loc[len(electriicty_country_CI)] = ['Papua New Guinea', 'PG', 'PNG', 0.691007559959689]
+electriicty_country_CI.loc[len(electriicty_country_CI)] = ['Fiji', 'FJ', 'FJI', 0.691007559959689]
+electriicty_country_CI.loc[len(electriicty_country_CI)] = ['French Polynesia', 'PF', 'PYF', 0.691007559959689]
+
+electriicty_country_CI.drop_duplicates(inplace=True)
+
+assert len([i for i in set(WRRF_filtered['CNTRY_ISO']) if i not in list(electriicty_country_CI['country_ISO_A3'])]) == 0
+
+
+
+
+
+
+
+
+
+
+# =============================================================================
+# labor cost
+# =============================================================================
+for i in set(WRRF_filtered['CNTRY_ISO']):
+    if i not in list(labor_cost['country_code']):
+        print(set(WRRF_filtered[WRRF_filtered['CNTRY_ISO'] == i]['COUNTRY']))
+        print(i)
+
+
+labor_cost
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# =============================================================================
+# PLI
+# =============================================================================
+for i in set(WRRF_filtered['CNTRY_ISO']):
+    if i not in list(PLI['country_code']):
+        print(set(WRRF_filtered[WRRF_filtered['CNTRY_ISO'] == i]['COUNTRY']))
+        print(i)
+
+# use France data
+PLI.loc[len(PLI)] = ['Monaco', 'MCO', 0.753]
+# use the average of China, Hong Kong SAR, China, Macao SAR, China, South Korea, and Japan
+PLI.loc[len(PLI)] = ['Taiwan', 'TWN', 0.604]
+# use the average of Caribbean countries (Dominica, Haiti, and Trinidad and Tobago)
+PLI.loc[len(PLI)] = ['British Virgin Islands', 'VGB', 0.566]
+# use the average of Latin American countries (Belize, Costa Rica, El Salvador, Guatemala, Honduras,
+#                                              Mexico, Nicaragua, Panama, Argentina, Bolivia, Brazil,
+#                                              Chile, Colombia, Ecuador, Guyana, Paraguay, Peru, Suriname,
+#                                              Uruguay, Dominica, Dominican Republic, Haiti, Trinidad and Tobago)
+PLI.loc[len(PLI)] = ['Cuba', 'CUB', 0.464]
+# use the average of Pacific Islands countries (Fiji, Kiribati, Marshall Islands, Nauru, Palau,
+#                                               Papua New Guinea, Samoa, Solomon Islands, Tonga,
+#                                               Tuvalu, Vanuatu)
+PLI.loc[len(PLI)] = ['French Polynesia', 'PYF', 0.764]
+# use the minimum value in the available dataset
+PLI.loc[len(PLI)] = ['North Korea', 'PRK', 0.125]
+
+PLI.drop_duplicates(inplace=True)
+
+assert len([i for i in set(WRRF_filtered['CNTRY_ISO']) if i not in list(electriicty_country_CI['country_ISO_A3'])]) == 0
+
 #%% country average
 
 # TODO: as a kind of uncertainty analysis, show the minimum values on maps in the SI
@@ -1848,6 +2022,15 @@ for i in range(0, len(WRRF_filtered)):
                      create_C25_system):
         sys = function(size=WRRF_filtered.iloc[i]['dry_solids_tonne_per_day'])
         
+        
+        
+        # TODO: is it really reasonablt to use PLI to convert capital and transportation costs?
+        # TODO: update electricity price, electricity CI, chemical costs, capital costs, transportation costs
+        # TODO: test after updating numbers, do TEA and LCA results change correctly?
+        
+        
+        
+        
         C_TEA.append(-sys.TEA.solve_price(sys.flowsheet.raw_wastewater)*3785411.78)
         C_LCA.append(sys.LCA.get_total_impacts(operation_only=True,
                                                exclude=(sys.flowsheet.raw_wastewater,),
@@ -1865,6 +2048,14 @@ for i in range(0, len(WRRF_filtered)):
                      create_T13_system, create_T14_system, create_T15_system):
         sys = function(size=WRRF_filtered.iloc[i]['dry_solids_tonne_per_day'], FOAK=True)
         
+        # TODO: is it really reasonablt to use PLI to convert capital and transportation costs?
+        # TODO: update electricity price, electricity CI, chemical costs, capital costs, transportation costs
+        # TODO: test after updating numbers, do TEA and LCA results change correctly?
+        
+        
+        
+        
+        
         T_FOAK_TEA.append(-sys.TEA.solve_price(sys.flowsheet.raw_wastewater)*3785411.78)
         T_FOAK_LCA.append(sys.LCA.get_total_impacts(operation_only=True,
                                                     exclude=(sys.flowsheet.raw_wastewater,),
@@ -1881,6 +2072,17 @@ for i in range(0, len(WRRF_filtered)):
                      create_T10_system, create_T11_system, create_T12_system,
                      create_T13_system, create_T14_system, create_T15_system):
         sys = function(size=WRRF_filtered.iloc[i]['dry_solids_tonne_per_day'], FOAK=False)
+        
+        
+        
+        # TODO: is it really reasonablt to use PLI to convert capital and transportation costs?
+        # TODO: update electricity price, electricity CI, chemical costs, capital costs, transportation costs
+        # TODO: test after updating numbers, do TEA and LCA results change correctly?
+        
+        
+        
+        
+        
         
         T_NOAK_TEA.append(-sys.TEA.solve_price(sys.flowsheet.raw_wastewater)*3785411.78)
         T_NOAK_LCA.append(sys.LCA.get_total_impacts(operation_only=True,
@@ -1939,6 +2141,8 @@ WRRF_result.reset_index(inplace=True)
 
 WRRF_result = WRRF_result.merge(WRRF_filtered[['COUNTRY','CNTRY_ISO']].drop_duplicates(), how='left', on='COUNTRY')
 
+# TODO: make sure no meaningful results are removed after merging these two datasets
+# TODO: may need to check the country code with https://www.iban.com/country-codes
 world_result = world.merge(WRRF_result, how='left', left_on='ISO_A3', right_on='CNTRY_ISO')
 
 #%% world map visualization - C cost
