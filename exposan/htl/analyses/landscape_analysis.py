@@ -141,37 +141,7 @@ electriicty_region_CI = pd.read_excel(folder + 'analyses/low_voltage_electricity
 # =============================================================================
 # labor cost
 # =============================================================================
-labor_cost = pd.read_excel(folder + 'analyses/ILOSTAT_monthly_earnings_by_economic_activity.xlsx')
-labor_cost = labor_cost[labor_cost['sex.label'] == 'Sex: Total']
-# TODO: some countries do not have either wastewater related data or total, e.g., India
-labor_cost = labor_cost[labor_cost['classif1.label'].isin(['Economic activity (Aggregate): Mining and quarrying; Electricity, gas and water supply',
-                                                           'Economic activity (ISIC-Rev.2): 4. Electricity, Gas and Water',
-                                                           'Economic activity (ISIC-Rev.3.1): E. Electricity, gas and water supply',
-                                                           'Economic activity (ISIC-Rev.4): E. Water supply; sewerage, waste management and remediation activities',
-                                                           'Economic activity (Aggregate): Total',
-                                                           'Economic activity (ISIC-Rev.2): Total',
-                                                           'Economic activity (ISIC-Rev.3.1): Total',
-                                                           'Economic activity (ISIC-Rev.4): Total'])]
-labor_cost = labor_cost[labor_cost['classif2.label'] == 'Currency: U.S. dollars']
-
-labor_cost.loc[labor_cost['classif1.label'] == 'Economic activity (ISIC-Rev.4): E. Water supply; sewerage, waste management and remediation activities','order'] = 0
-labor_cost.loc[labor_cost['classif1.label'] == 'Economic activity (ISIC-Rev.3.1): E. Electricity, gas and water supply','order'] = 1
-labor_cost.loc[labor_cost['classif1.label'] == 'Economic activity (ISIC-Rev.2): 4. Electricity, Gas and Water','order'] = 2
-labor_cost.loc[labor_cost['classif1.label'] == 'Economic activity (Aggregate): Mining and quarrying; Electricity, gas and water supply','order'] = 3
-labor_cost.loc[labor_cost['classif1.label'] == 'Economic activity (ISIC-Rev.4): Total','order'] = 4
-labor_cost.loc[labor_cost['classif1.label'] == 'Economic activity (ISIC-Rev.3.1): Total','order'] = 5
-labor_cost.loc[labor_cost['classif1.label'] == 'Economic activity (ISIC-Rev.2): Total','order'] = 6
-labor_cost.loc[labor_cost['classif1.label'] == 'Economic activity (Aggregate): Total','order'] = 7
-
-assert labor_cost['order'].isna().sum() == 0
-
-labor_cost = labor_cost.loc[labor_cost.groupby('ref_area.label')['order'].idxmin()].reset_index(drop=True)
-labor_cost = labor_cost.loc[labor_cost.groupby('ref_area.label')['time'].idxmax()].reset_index(drop=True)
-labor_cost = labor_cost[['ref_area.label','ref_area','obs_value']]
-labor_cost.rename(columns={'ref_area.label':'country',
-                           'ref_area':'country_code',
-                           'obs_value':'labor_cost'},
-                  inplace=True)
+labor_cost = pd.read_excel(folder + 'analyses/income.xlsx')
 
 # TODO: add this to the manuscript or SI
 # =============================================================================
@@ -1852,6 +1822,9 @@ for cap in bp['caps']:
 
 # TODO: add data processing steps and assumptions in the SI
 
+# TODO: for all datasets, if the data for different country come from different years, decide what to do (either directly use or if the difference is too big, try to adjust)
+# TODO: maybe in the cell 'initialization', do not remove rows that are not marked as the latest year, and also keep the year (or time or something similar) column
+
 # =============================================================================
 # electricity price
 # =============================================================================
@@ -1918,15 +1891,6 @@ electriicty_country_CI.drop_duplicates(inplace=True)
 
 assert len([i for i in set(WRRF_filtered['CNTRY_ISO']) if i not in list(electriicty_country_CI['country_ISO_A3'])]) == 0
 
-
-
-
-
-
-
-
-
-
 # =============================================================================
 # labor cost
 # =============================================================================
@@ -1935,24 +1899,12 @@ for i in set(WRRF_filtered['CNTRY_ISO']):
         print(set(WRRF_filtered[WRRF_filtered['CNTRY_ISO'] == i]['COUNTRY']))
         print(i)
 
+# use the minimum value in the available dataset
+labor_cost.loc[len(labor_cost)] = ['North Korea', 'PRK', 190]
 
-labor_cost
+labor_cost.drop_duplicates(inplace=True)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+assert len([i for i in set(WRRF_filtered['CNTRY_ISO']) if i not in list(labor_cost['country_code'])]) == 0
 
 
 # =============================================================================
@@ -1983,7 +1935,7 @@ PLI.loc[len(PLI)] = ['North Korea', 'PRK', 0.125]
 
 PLI.drop_duplicates(inplace=True)
 
-assert len([i for i in set(WRRF_filtered['CNTRY_ISO']) if i not in list(electriicty_country_CI['country_ISO_A3'])]) == 0
+assert len([i for i in set(WRRF_filtered['CNTRY_ISO']) if i not in list(PLI['country_code'])]) == 0
 
 #%% country average
 
@@ -1993,12 +1945,21 @@ assert len([i for i in set(WRRF_filtered['CNTRY_ISO']) if i not in list(electrii
 
 filterwarnings('ignore')
 
+# TODO: the cost for T NOAK with carbon credits can be calculated using T NOAK cost, T NOAK CI, and C CI
 C_cost_mean = []
 C_CI_mean = []
 T_cost_FOAK_mean = []
 T_CI_FOAK_mean = []
 T_cost_NOAK_mean = []
 T_CI_NOAK_mean = []
+
+# TODO: the cost for T NOAK with carbon credits can be calculated using T NOAK cost, T NOAK CI, and C CI
+C_cost_min = []
+C_CI_min = []
+T_cost_FOAK_min = []
+T_CI_FOAK_min = []
+T_cost_NOAK_min = []
+T_CI_NOAK_min = []
 
 # run in different consoles to speed up
 # do not round all together since the application memory is not enough
@@ -2020,16 +1981,11 @@ for i in range(0, len(WRRF_filtered)):
                      create_C19_system, create_C20_system, create_C21_system,
                      create_C22_system, create_C23_system, create_C24_system,
                      create_C25_system):
-        sys = function(size=WRRF_filtered.iloc[i]['dry_solids_tonne_per_day'])
+        sys = function(country=XXX, size=WRRF_filtered.iloc[i]['dry_solids_tonne_per_day'])
         
-        
-        
-        # TODO: is it really reasonablt to use PLI to convert capital and transportation costs?
+        # TODO: is it really reasonable to use PLI to convert capital and transportation costs?
         # TODO: update electricity price, electricity CI, chemical costs, capital costs, transportation costs
         # TODO: test after updating numbers, do TEA and LCA results change correctly?
-        
-        
-        
         
         C_TEA.append(-sys.TEA.solve_price(sys.flowsheet.raw_wastewater)*3785411.78)
         C_LCA.append(sys.LCA.get_total_impacts(operation_only=True,
@@ -2038,6 +1994,8 @@ for i in range(0, len(WRRF_filtered)):
     
     C_cost_mean.append(np.median(C_TEA))
     C_CI_mean.append(np.median(C_LCA))
+    C_cost_min.append(np.min(C_TEA))
+    C_CI_min.append(np.min(C_LCA))
     
     T_FOAK_TEA = []
     T_FOAK_LCA = []
@@ -2046,15 +2004,11 @@ for i in range(0, len(WRRF_filtered)):
                      create_T7_system, create_T8_system, create_T9_system,
                      create_T10_system, create_T11_system, create_T12_system,
                      create_T13_system, create_T14_system, create_T15_system):
-        sys = function(size=WRRF_filtered.iloc[i]['dry_solids_tonne_per_day'], FOAK=True)
+        sys = function(country=XXX, size=WRRF_filtered.iloc[i]['dry_solids_tonne_per_day'], FOAK=True)
         
-        # TODO: is it really reasonablt to use PLI to convert capital and transportation costs?
+        # TODO: is it really reasonable to use PLI to convert capital and transportation costs?
         # TODO: update electricity price, electricity CI, chemical costs, capital costs, transportation costs
         # TODO: test after updating numbers, do TEA and LCA results change correctly?
-        
-        
-        
-        
         
         T_FOAK_TEA.append(-sys.TEA.solve_price(sys.flowsheet.raw_wastewater)*3785411.78)
         T_FOAK_LCA.append(sys.LCA.get_total_impacts(operation_only=True,
@@ -2063,6 +2017,8 @@ for i in range(0, len(WRRF_filtered)):
     
     T_cost_FOAK_mean.append(np.median(T_FOAK_TEA))
     T_CI_FOAK_mean.append(np.median(T_FOAK_LCA))
+    T_cost_FOAK_min.append(np.min(T_FOAK_TEA))
+    T_CI_FOAK_min.append(np.min(T_FOAK_LCA))
     
     T_NOAK_TEA = []
     T_NOAK_LCA = []
@@ -2071,18 +2027,11 @@ for i in range(0, len(WRRF_filtered)):
                      create_T7_system, create_T8_system, create_T9_system,
                      create_T10_system, create_T11_system, create_T12_system,
                      create_T13_system, create_T14_system, create_T15_system):
-        sys = function(size=WRRF_filtered.iloc[i]['dry_solids_tonne_per_day'], FOAK=False)
+        sys = function(country=XXX, size=WRRF_filtered.iloc[i]['dry_solids_tonne_per_day'], FOAK=False)
         
-        
-        
-        # TODO: is it really reasonablt to use PLI to convert capital and transportation costs?
+        # TODO: is it really reasonable to use PLI to convert capital and transportation costs?
         # TODO: update electricity price, electricity CI, chemical costs, capital costs, transportation costs
         # TODO: test after updating numbers, do TEA and LCA results change correctly?
-        
-        
-        
-        
-        
         
         T_NOAK_TEA.append(-sys.TEA.solve_price(sys.flowsheet.raw_wastewater)*3785411.78)
         T_NOAK_LCA.append(sys.LCA.get_total_impacts(operation_only=True,
@@ -2091,6 +2040,8 @@ for i in range(0, len(WRRF_filtered)):
     
     T_cost_NOAK_mean.append(np.median(T_NOAK_TEA))
     T_CI_NOAK_mean.append(np.median(T_NOAK_LCA))
+    T_cost_NOAK_min.append(np.min(T_NOAK_TEA))
+    T_CI_NOAK_min.append(np.min(T_NOAK_LCA))
 
 country_result = pd.DataFrame({'C_cost_mean': C_cost_mean,
                                'C_CI_mean': C_CI_mean,
