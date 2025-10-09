@@ -39,12 +39,14 @@ for license details.
 
 #%% initialization
 
-import numpy as np, qsdsan as qs, biosteam as bst
+import numpy as np, pandas as pd, qsdsan as qs, biosteam as bst
 from qsdsan import sanunits as qsu
 from biosteam import settings
 from qsdsan.utils import auom, clear_lca_registries, tea_indices
 from exposan.htl import _load_components, landscape_sanunits as lsu, create_tea
 from biosteam.units import IsenthalpicValve
+
+folder = '/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_landscape/'
 
 # use methane density, probably consistent with BioSTEAM, kg/m3
 # https://en.wikipedia.org/wiki/Methane (accessed 2025-02-10)
@@ -83,6 +85,14 @@ GDPCTPI = {2005: 81.537,
            2024: 125.231}	
 
 labor_index = tea_indices['labor']
+
+# country-level data
+electricity_price = pd.read_excel(folder + 'analyses/electricity_price_2025-10-09.xlsx')
+electricity_CI = pd.read_excel(folder + 'analyses/electricity_CI_2025-10-09.xlsx')
+labor_cost = pd.read_excel(folder + 'analyses/labor_cost_2025-10-09.xlsx')
+PLI = pd.read_excel(folder + 'analyses/PLI_2025-10-09.xlsx')
+
+assert PLI[PLI['country_code'] == 'USA']['PLI'].iloc[0] == 1
 
 # TODO: try addressing all warnings (especially in T pathways)
 
@@ -131,7 +141,7 @@ __all__ = (
 
 #%% system C1
 
-def create_C1_system(country='USA', size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.15, lifetime=30):
+def create_C1_system(country_code='USA', size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.15, lifetime=30):
     flowsheet_ID = 'C1'
     
     # clear flowsheet and registry for reloading
@@ -140,7 +150,9 @@ def create_C1_system(country='USA', size=10, operation_hours=7884, LF_distance=1
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -165,12 +177,12 @@ def create_C1_system(country='USA', size=10, operation_hours=7884, LF_distance=1
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(Thickening-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     # TODO: landfilling tipping fees can be an uncertainty parameter or a typology parameter
@@ -180,7 +192,7 @@ def create_C1_system(country='USA', size=10, operation_hours=7884, LF_distance=1
                                   solids_distance=LF_distance)
     # see exposan/htl/data/landfilling_tipping_fee.xlsx
     # U.S. average: 56.8 $·wet ton-1 ~ 62.6 $·wet tonne-1
-    Landfilling.outs[0].price = -tipping_fee
+    Landfilling.outs[0].price = -tipping_fee*country_PLI
     
     sys = qs.System.from_units(ID='system_C1',
                                units=list(flowsheet.unit),
@@ -258,7 +270,7 @@ def create_C1_system(country='USA', size=10, operation_hours=7884, LF_distance=1
 
 #%% system C2
 
-def create_C2_system(country='USA', size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.2, lifetime=30):
+def create_C2_system(country_code='USA', size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.2, lifetime=30):
     flowsheet_ID = 'C2'
     
     # clear flowsheet and registry for reloading
@@ -267,7 +279,9 @@ def create_C2_system(country='USA', size=10, operation_hours=7884, LF_distance=1
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -292,12 +306,12 @@ def create_C2_system(country='USA', size=10, operation_hours=7884, LF_distance=1
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(Thickening-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     AlkalineStabilization = lsu.AlkalineStabilization(ID='AlkalineStabilization',
@@ -311,7 +325,7 @@ def create_C2_system(country='USA', size=10, operation_hours=7884, LF_distance=1
                                   solids_distance=LF_distance)
     # see exposan/htl/data/landfilling_tipping_fee.xlsx
     # U.S. average: 56.8 $·wet ton-1 ~ 62.6 $·wet tonne-1
-    Landfilling.outs[0].price = -tipping_fee
+    Landfilling.outs[0].price = -tipping_fee*country_PLI
     
     sys = qs.System.from_units(ID='system_C2',
                                units=list(flowsheet.unit),
@@ -391,7 +405,7 @@ def create_C2_system(country='USA', size=10, operation_hours=7884, LF_distance=1
 
 #%% system C3
 
-def create_C3_system(country='USA', size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.2, lifetime=30):
+def create_C3_system(country_code='USA', size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.2, lifetime=30):
     flowsheet_ID = 'C3'
     
     # clear flowsheet and registry for reloading
@@ -400,7 +414,9 @@ def create_C3_system(country='USA', size=10, operation_hours=7884, LA_distance=1
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -425,12 +441,12 @@ def create_C3_system(country='USA', size=10, operation_hours=7884, LA_distance=1
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(Thickening-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     AlkalineStabilization = lsu.AlkalineStabilization(ID='AlkalineStabilization',
@@ -444,7 +460,7 @@ def create_C3_system(country='USA', size=10, operation_hours=7884, LA_distance=1
                                           solids_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
-    LandApplication.outs[0].price = biosolids_price
+    LandApplication.outs[0].price = biosolids_price*country_PLI
     
     sys = qs.System.from_units(ID='system_C3',
                                units=list(flowsheet.unit),
@@ -537,7 +553,7 @@ def create_C3_system(country='USA', size=10, operation_hours=7884, LA_distance=1
 
 #%% system C4
 
-def create_C4_system(country='USA', size=10, operation_hours=7884, LA_distance=100, compost_price=0.05, FTE=0.2, lifetime=30):
+def create_C4_system(country_code='USA', size=10, operation_hours=7884, LA_distance=100, compost_price=0.05, FTE=0.2, lifetime=30):
     flowsheet_ID = 'C4'
     
     # clear flowsheet and registry for reloading
@@ -546,7 +562,9 @@ def create_C4_system(country='USA', size=10, operation_hours=7884, LA_distance=1
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -571,17 +589,17 @@ def create_C4_system(country='USA', size=10, operation_hours=7884, LA_distance=1
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(Thickening-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     Composting = lsu.Composting(ID='Composting', ins=(Dewatering-0, 'bulking_agent', 'diesel_composting'),
                                 outs=('compost_cost','methane_composting','nitrous_oxide_composting','sequestered_carbon_dioxide_composting'),
-                                feedstock_digested=False, solids_distance=LA_distance)
+                                feedstock_digested=False, solids_distance=LA_distance, PLI=country_PLI)
     # TODO: uncertainty range (uniform) 18-36 2005$/tonne
     Composting.ins[1].price = 27/1000/GDPCTPI[2005]*GDPCTPI[2023]
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
@@ -681,7 +699,7 @@ def create_C4_system(country='USA', size=10, operation_hours=7884, LA_distance=1
 
 #%% system C5
 
-def create_C5_system(country='USA', size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.3, lifetime=30):
+def create_C5_system(country_code='USA', size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.3, lifetime=30):
     flowsheet_ID = 'C5'
     
     # clear flowsheet and registry for reloading
@@ -690,7 +708,9 @@ def create_C5_system(country='USA', size=10, operation_hours=7884, LF_distance=1
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -715,12 +735,12 @@ def create_C5_system(country='USA', size=10, operation_hours=7884, LF_distance=1
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(Thickening-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     HeatDrying = lsu.HeatDrying(ID='HeatDrying', ins=(Dewatering-0, 'natural_gas_heat_drying'),
@@ -735,7 +755,7 @@ def create_C5_system(country='USA', size=10, operation_hours=7884, LF_distance=1
                                   solids_distance=LF_distance)
     # see exposan/htl/data/landfilling_tipping_fee.xlsx
     # U.S. average: 56.8 $·wet ton-1 ~ 62.6 $·wet tonne-1
-    Landfilling.outs[0].price = -tipping_fee
+    Landfilling.outs[0].price = -tipping_fee*country_PLI
     
     sys = qs.System.from_units(ID='system_C5',
                                units=list(flowsheet.unit),
@@ -817,7 +837,7 @@ def create_C5_system(country='USA', size=10, operation_hours=7884, LF_distance=1
 
 #%% system C6
 
-def create_C6_system(country='USA', size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.3, lifetime=30):
+def create_C6_system(country_code='USA', size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.3, lifetime=30):
     flowsheet_ID = 'C6'
     
     # clear flowsheet and registry for reloading
@@ -826,7 +846,9 @@ def create_C6_system(country='USA', size=10, operation_hours=7884, LA_distance=1
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -851,12 +873,12 @@ def create_C6_system(country='USA', size=10, operation_hours=7884, LA_distance=1
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(Thickening-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     HeatDrying = lsu.HeatDrying(ID='HeatDrying', ins=(Dewatering-0, 'natural_gas_heat_drying'),
@@ -871,7 +893,7 @@ def create_C6_system(country='USA', size=10, operation_hours=7884, LA_distance=1
                                           solids_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
-    LandApplication.outs[0].price = biosolids_price
+    LandApplication.outs[0].price = biosolids_price*country_PLI
     
     sys = qs.System.from_units(ID='system_C6',
                                units=list(flowsheet.unit),
@@ -966,7 +988,7 @@ def create_C6_system(country='USA', size=10, operation_hours=7884, LA_distance=1
 
 #%% system C7
 
-def create_C7_system(country='USA', size=10, operation_hours=7884, FTE=0.4, lifetime=30):
+def create_C7_system(country_code='USA', size=10, operation_hours=7884, FTE=0.4, lifetime=30):
     flowsheet_ID = 'C7'
     
     # clear flowsheet and registry for reloading
@@ -975,7 +997,9 @@ def create_C7_system(country='USA', size=10, operation_hours=7884, FTE=0.4, life
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -1000,12 +1024,12 @@ def create_C7_system(country='USA', size=10, operation_hours=7884, FTE=0.4, life
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(Thickening-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     HeatDrying = lsu.HeatDrying(ID='HeatDrying', ins=(Dewatering-0, 'natural_gas_heat_drying'),
@@ -1080,7 +1104,7 @@ def create_C7_system(country='USA', size=10, operation_hours=7884, FTE=0.4, life
 
 #%% system C8
 
-def create_C8_system(country='USA', size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.3, lifetime=30):
+def create_C8_system(country_code='USA', size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.3, lifetime=30):
     flowsheet_ID = 'C8'
     
     # clear flowsheet and registry for reloading
@@ -1089,7 +1113,9 @@ def create_C8_system(country='USA', size=10, operation_hours=7884, LF_distance=1
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -1114,15 +1140,15 @@ def create_C8_system(country='USA', size=10, operation_hours=7884, LF_distance=1
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     AerobicDigestion = lsu.AerobicDigestion(ID='AerobicDigestion', ins=(Thickening-0, 'air'),
-                                            outs=('digested_sludge','offgas_AeD'))
+                                            outs=('digested_sludge','offgas_AeD'), PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AerobicDigestion-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     Landfilling = lsu.Landfilling(ID='Landfilling',
@@ -1131,7 +1157,7 @@ def create_C8_system(country='USA', size=10, operation_hours=7884, LF_distance=1
                                   solids_distance=LF_distance)
     # see exposan/htl/data/landfilling_tipping_fee.xlsx
     # U.S. average: 56.8 $·wet ton-1 ~ 62.6 $·wet tonne-1
-    Landfilling.outs[0].price = -tipping_fee
+    Landfilling.outs[0].price = -tipping_fee*country_PLI
     
     sys = qs.System.from_units(ID='system_C8',
                                units=list(flowsheet.unit),
@@ -1209,7 +1235,7 @@ def create_C8_system(country='USA', size=10, operation_hours=7884, LF_distance=1
 
 #%% system C9
 
-def create_C9_system(country='USA', size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.3, lifetime=30):
+def create_C9_system(country_code='USA', size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.3, lifetime=30):
     flowsheet_ID = 'C9'
     
     # clear flowsheet and registry for reloading
@@ -1218,7 +1244,9 @@ def create_C9_system(country='USA', size=10, operation_hours=7884, LA_distance=1
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -1243,15 +1271,15 @@ def create_C9_system(country='USA', size=10, operation_hours=7884, LA_distance=1
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     AerobicDigestion = lsu.AerobicDigestion(ID='AerobicDigestion', ins=(Thickening-0, 'air'),
-                                            outs=('digested_sludge','offgas_AeD'))
+                                            outs=('digested_sludge','offgas_AeD'), PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AerobicDigestion-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     LandApplication = lsu.LandApplication(ID='LandApplication',
@@ -1260,7 +1288,7 @@ def create_C9_system(country='USA', size=10, operation_hours=7884, LA_distance=1
                                           solids_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
-    LandApplication.outs[0].price = biosolids_price
+    LandApplication.outs[0].price = biosolids_price*country_PLI
     
     sys = qs.System.from_units(ID='system_C9',
                                units=list(flowsheet.unit),
@@ -1351,7 +1379,7 @@ def create_C9_system(country='USA', size=10, operation_hours=7884, LA_distance=1
 
 #%% system C10
 
-def create_C10_system(country='USA', size=10, operation_hours=7884, LA_distance=100, compost_price=0.05, FTE=0.35, lifetime=30):
+def create_C10_system(country_code='USA', size=10, operation_hours=7884, LA_distance=100, compost_price=0.05, FTE=0.35, lifetime=30):
     flowsheet_ID = 'C10'
     
     # clear flowsheet and registry for reloading
@@ -1360,7 +1388,9 @@ def create_C10_system(country='USA', size=10, operation_hours=7884, LA_distance=
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -1385,20 +1415,20 @@ def create_C10_system(country='USA', size=10, operation_hours=7884, LA_distance=
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     AerobicDigestion = lsu.AerobicDigestion(ID='AerobicDigestion', ins=(Thickening-0, 'air'),
-                                            outs=('digested_sludge','offgas_AeD'))
+                                            outs=('digested_sludge','offgas_AeD'), PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AerobicDigestion-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     Composting = lsu.Composting(ID='Composting', ins=(Dewatering-0, 'bulking_agent', 'diesel_composting'),
                                 outs=('compost_cost','methane_composting','nitrous_oxide_composting','sequestered_carbon_dioxide_composting'),
-                                feedstock_digested=True, solids_distance=LA_distance)
+                                feedstock_digested=True, solids_distance=LA_distance, PLI=country_PLI)
     # TODO: uncertainty range (uniform) 18-36 2005$/tonne
     Composting.ins[1].price = 27/1000/GDPCTPI[2005]*GDPCTPI[2023]
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
@@ -1498,7 +1528,7 @@ def create_C10_system(country='USA', size=10, operation_hours=7884, LA_distance=
 
 #%% system C11
 
-def create_C11_system(country='USA', size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.45, lifetime=30):
+def create_C11_system(country_code='USA', size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.45, lifetime=30):
     flowsheet_ID = 'C11'
     
     # clear flowsheet and registry for reloading
@@ -1507,7 +1537,9 @@ def create_C11_system(country='USA', size=10, operation_hours=7884, LF_distance=
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -1532,15 +1564,15 @@ def create_C11_system(country='USA', size=10, operation_hours=7884, LF_distance=
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     AerobicDigestion = lsu.AerobicDigestion(ID='AerobicDigestion', ins=(Thickening-0, 'air'),
-                                            outs=('digested_sludge','offgas_AeD'))
+                                            outs=('digested_sludge','offgas_AeD'), PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AerobicDigestion-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     HeatDrying = lsu.HeatDrying(ID='HeatDrying', ins=(Dewatering-0, 'natural_gas_heat_drying'),
@@ -1555,7 +1587,7 @@ def create_C11_system(country='USA', size=10, operation_hours=7884, LF_distance=
                                   solids_distance=LF_distance)
     # see exposan/htl/data/landfilling_tipping_fee.xlsx
     # U.S. average: 56.8 $·wet ton-1 ~ 62.6 $·wet tonne-1
-    Landfilling.outs[0].price = -tipping_fee
+    Landfilling.outs[0].price = -tipping_fee*country_PLI
     
     sys = qs.System.from_units(ID='system_C11',
                                units=list(flowsheet.unit),
@@ -1637,7 +1669,7 @@ def create_C11_system(country='USA', size=10, operation_hours=7884, LF_distance=
 
 #%% system C12
 
-def create_C12_system(country='USA', size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.45, lifetime=30):
+def create_C12_system(country_code='USA', size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.45, lifetime=30):
     flowsheet_ID = 'C12'
     
     # clear flowsheet and registry for reloading
@@ -1646,7 +1678,9 @@ def create_C12_system(country='USA', size=10, operation_hours=7884, LA_distance=
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -1671,15 +1705,15 @@ def create_C12_system(country='USA', size=10, operation_hours=7884, LA_distance=
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     AerobicDigestion = lsu.AerobicDigestion(ID='AerobicDigestion', ins=(Thickening-0, 'air'),
-                                            outs=('digested_sludge','offgas_AeD'))
+                                            outs=('digested_sludge','offgas_AeD'), PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AerobicDigestion-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     HeatDrying = lsu.HeatDrying(ID='HeatDrying', ins=(Dewatering-0, 'natural_gas_heat_drying'),
@@ -1694,7 +1728,7 @@ def create_C12_system(country='USA', size=10, operation_hours=7884, LA_distance=
                                           solids_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
-    LandApplication.outs[0].price = biosolids_price
+    LandApplication.outs[0].price = biosolids_price*country_PLI
     
     sys = qs.System.from_units(ID='system_C12',
                                units=list(flowsheet.unit),
@@ -1789,7 +1823,7 @@ def create_C12_system(country='USA', size=10, operation_hours=7884, LA_distance=
 
 #%% system C13
 
-def create_C13_system(country='USA', size=10, operation_hours=7884, FTE=0.55, lifetime=30):
+def create_C13_system(country_code='USA', size=10, operation_hours=7884, FTE=0.55, lifetime=30):
     flowsheet_ID = 'C13'
     
     # clear flowsheet and registry for reloading
@@ -1798,7 +1832,9 @@ def create_C13_system(country='USA', size=10, operation_hours=7884, FTE=0.55, li
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -1823,15 +1859,15 @@ def create_C13_system(country='USA', size=10, operation_hours=7884, FTE=0.55, li
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     AerobicDigestion = lsu.AerobicDigestion(ID='AerobicDigestion', ins=(Thickening-0, 'air'),
-                                            outs=('digested_sludge','offgas_AeD'))
+                                            outs=('digested_sludge','offgas_AeD'), PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AerobicDigestion-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     HeatDrying = lsu.HeatDrying(ID='HeatDrying', ins=(Dewatering-0, 'natural_gas_heat_drying'),
@@ -1906,7 +1942,7 @@ def create_C13_system(country='USA', size=10, operation_hours=7884, FTE=0.55, li
 
 #%% system C14
 
-def create_C14_system(country='USA', size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.3, lifetime=30):
+def create_C14_system(country_code='USA', size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.3, lifetime=30):
     flowsheet_ID = 'C14'
     
     # clear flowsheet and registry for reloading
@@ -1915,7 +1951,9 @@ def create_C14_system(country='USA', size=10, operation_hours=7884, LF_distance=
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -1940,19 +1978,19 @@ def create_C14_system(country='USA', size=10, operation_hours=7884, LF_distance=
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
-                                                biogas_CHP_ratio=0, biogas_RNG_ratio=0.9)
+                                                biogas_CHP_ratio=0, biogas_RNG_ratio=0.9, PLI=country_PLI)
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
     AnaerobicDigestion.outs[1].price = 0.218
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AnaerobicDigestion-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     Landfilling = lsu.Landfilling(ID='Landfilling',
@@ -1961,7 +1999,7 @@ def create_C14_system(country='USA', size=10, operation_hours=7884, LF_distance=
                                   solids_distance=LF_distance)
     # see exposan/htl/data/landfilling_tipping_fee.xlsx
     # U.S. average: 56.8 $·wet ton-1 ~ 62.6 $·wet tonne-1
-    Landfilling.outs[0].price = -tipping_fee
+    Landfilling.outs[0].price = -tipping_fee*country_PLI
     
     sys = qs.System.from_units(ID='system_C14',
                                units=list(flowsheet.unit),
@@ -2044,7 +2082,7 @@ def create_C14_system(country='USA', size=10, operation_hours=7884, LF_distance=
 
 #%% system C15
 
-def create_C15_system(country='USA', size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.3, lifetime=30):
+def create_C15_system(country_code='USA', size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.3, lifetime=30):
     flowsheet_ID = 'C15'
     
     # clear flowsheet and registry for reloading
@@ -2053,7 +2091,9 @@ def create_C15_system(country='USA', size=10, operation_hours=7884, LA_distance=
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -2078,19 +2118,19 @@ def create_C15_system(country='USA', size=10, operation_hours=7884, LA_distance=
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
-                                                biogas_CHP_ratio=0, biogas_RNG_ratio=0.9)
+                                                biogas_CHP_ratio=0, biogas_RNG_ratio=0.9, PLI=country_PLI)
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
     AnaerobicDigestion.outs[1].price = 0.218
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AnaerobicDigestion-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     LandApplication = lsu.LandApplication(ID='LandApplication',
@@ -2099,7 +2139,7 @@ def create_C15_system(country='USA', size=10, operation_hours=7884, LA_distance=
                                           solids_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
-    LandApplication.outs[0].price = biosolids_price
+    LandApplication.outs[0].price = biosolids_price*country_PLI
     
     sys = qs.System.from_units(ID='system_C15',
                                units=list(flowsheet.unit),
@@ -2195,7 +2235,7 @@ def create_C15_system(country='USA', size=10, operation_hours=7884, LA_distance=
 
 #%% system C16
 
-def create_C16_system(country='USA', size=10, operation_hours=7884, LA_distance=100, compost_price=0.05, FTE=0.35, lifetime=30):
+def create_C16_system(country_code='USA', size=10, operation_hours=7884, LA_distance=100, compost_price=0.05, FTE=0.35, lifetime=30):
     flowsheet_ID = 'C16'
     
     # clear flowsheet and registry for reloading
@@ -2204,7 +2244,9 @@ def create_C16_system(country='USA', size=10, operation_hours=7884, LA_distance=
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -2229,24 +2271,24 @@ def create_C16_system(country='USA', size=10, operation_hours=7884, LA_distance=
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
-                                                biogas_CHP_ratio=0, biogas_RNG_ratio=0.9)
+                                                biogas_CHP_ratio=0, biogas_RNG_ratio=0.9, PLI=country_PLI)
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
     AnaerobicDigestion.outs[1].price = 0.218
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AnaerobicDigestion-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     Composting = lsu.Composting(ID='Composting', ins=(Dewatering-0, 'bulking_agent', 'diesel_composting'),
                                 outs=('compost_cost','methane_composting','nitrous_oxide_composting','sequestered_carbon_dioxide_composting'),
-                                feedstock_digested=True, solids_distance=LA_distance)
+                                feedstock_digested=True, solids_distance=LA_distance, PLI=country_PLI)
     # TODO: uncertainty range (uniform) 18-36 2005$/tonne
     Composting.ins[1].price = 27/1000/GDPCTPI[2005]*GDPCTPI[2023]
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
@@ -2351,7 +2393,7 @@ def create_C16_system(country='USA', size=10, operation_hours=7884, LA_distance=
 
 #%% system C17
 
-def create_C17_system(country='USA', size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.45, lifetime=30):
+def create_C17_system(country_code='USA', size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.45, lifetime=30):
     flowsheet_ID = 'C17'
     
     # clear flowsheet and registry for reloading
@@ -2360,7 +2402,9 @@ def create_C17_system(country='USA', size=10, operation_hours=7884, LF_distance=
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -2385,19 +2429,19 @@ def create_C17_system(country='USA', size=10, operation_hours=7884, LF_distance=
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
-                                                biogas_CHP_ratio=0, biogas_RNG_ratio=0.9)
+                                                biogas_CHP_ratio=0, biogas_RNG_ratio=0.9, PLI=country_PLI)
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
     AnaerobicDigestion.outs[1].price = 0.218
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AnaerobicDigestion-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     HeatDrying = lsu.HeatDrying(ID='HeatDrying', ins=(Dewatering-0, 'natural_gas_heat_drying'),
@@ -2412,7 +2456,7 @@ def create_C17_system(country='USA', size=10, operation_hours=7884, LF_distance=
                                   solids_distance=LF_distance)
     # see exposan/htl/data/landfilling_tipping_fee.xlsx
     # U.S. average: 56.8 $·wet ton-1 ~ 62.6 $·wet tonne-1
-    Landfilling.outs[0].price = -tipping_fee
+    Landfilling.outs[0].price = -tipping_fee*country_PLI
     
     sys = qs.System.from_units(ID='system_C17',
                                units=list(flowsheet.unit),
@@ -2495,7 +2539,7 @@ def create_C17_system(country='USA', size=10, operation_hours=7884, LF_distance=
 
 #%% system C18
 
-def create_C18_system(country='USA', size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.45, lifetime=30):
+def create_C18_system(country_code='USA', size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.45, lifetime=30):
     flowsheet_ID = 'C18'
     
     # clear flowsheet and registry for reloading
@@ -2504,7 +2548,9 @@ def create_C18_system(country='USA', size=10, operation_hours=7884, LA_distance=
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -2529,19 +2575,19 @@ def create_C18_system(country='USA', size=10, operation_hours=7884, LA_distance=
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
-                                                biogas_CHP_ratio=0, biogas_RNG_ratio=0.9)
+                                                biogas_CHP_ratio=0, biogas_RNG_ratio=0.9, PLI=country_PLI)
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
     AnaerobicDigestion.outs[1].price = 0.218
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AnaerobicDigestion-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     HeatDrying = lsu.HeatDrying(ID='HeatDrying', ins=(Dewatering-0, 'natural_gas_heat_drying'),
@@ -2556,7 +2602,7 @@ def create_C18_system(country='USA', size=10, operation_hours=7884, LA_distance=
                                           solids_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
-    LandApplication.outs[0].price = biosolids_price
+    LandApplication.outs[0].price = biosolids_price*country_PLI
     
     sys = qs.System.from_units(ID='system_C18',
                                units=list(flowsheet.unit),
@@ -2652,7 +2698,7 @@ def create_C18_system(country='USA', size=10, operation_hours=7884, LA_distance=
 
 #%% system C19
 
-def create_C19_system(country='USA', size=10, operation_hours=7884, FTE=0.55, lifetime=30):
+def create_C19_system(country_code='USA', size=10, operation_hours=7884, FTE=0.55, lifetime=30):
     flowsheet_ID = 'C19'
     
     # clear flowsheet and registry for reloading
@@ -2661,7 +2707,9 @@ def create_C19_system(country='USA', size=10, operation_hours=7884, FTE=0.55, li
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -2686,19 +2734,19 @@ def create_C19_system(country='USA', size=10, operation_hours=7884, FTE=0.55, li
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
-                                                biogas_CHP_ratio=0, biogas_RNG_ratio=0.9)
+                                                biogas_CHP_ratio=0, biogas_RNG_ratio=0.9, PLI=country_PLI)
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
     AnaerobicDigestion.outs[1].price = 0.218
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AnaerobicDigestion-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     HeatDrying = lsu.HeatDrying(ID='HeatDrying', ins=(Dewatering-0, 'natural_gas_heat_drying'),
@@ -2774,7 +2822,7 @@ def create_C19_system(country='USA', size=10, operation_hours=7884, FTE=0.55, li
 
 #%% system C20
 
-def create_C20_system(country='USA', size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.45, lifetime=30):
+def create_C20_system(country_code='USA', size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.45, lifetime=30):
     flowsheet_ID = 'C20'
     
     # clear flowsheet and registry for reloading
@@ -2783,7 +2831,9 @@ def create_C20_system(country='USA', size=10, operation_hours=7884, LF_distance=
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -2808,16 +2858,16 @@ def create_C20_system(country='USA', size=10, operation_hours=7884, LF_distance=
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
-                                                biogas_CHP_ratio=0.9, biogas_RNG_ratio=0)
+                                                biogas_CHP_ratio=0.9, biogas_RNG_ratio=0, PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AnaerobicDigestion-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     Landfilling = lsu.Landfilling(ID='Landfilling',
@@ -2826,7 +2876,7 @@ def create_C20_system(country='USA', size=10, operation_hours=7884, LF_distance=
                                   solids_distance=LF_distance)
     # see exposan/htl/data/landfilling_tipping_fee.xlsx
     # U.S. average: 56.8 $·wet ton-1 ~ 62.6 $·wet tonne-1
-    Landfilling.outs[0].price = -tipping_fee
+    Landfilling.outs[0].price = -tipping_fee*country_PLI
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air'),
                                 outs=('emission','ash_CHP'), supplement_power_utility=False)
@@ -2919,7 +2969,7 @@ def create_C20_system(country='USA', size=10, operation_hours=7884, LF_distance=
 
 #%% system C21
 
-def create_C21_system(country='USA', size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.45, lifetime=30):
+def create_C21_system(country_code='USA', size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.45, lifetime=30):
     flowsheet_ID = 'C21'
     
     # clear flowsheet and registry for reloading
@@ -2928,7 +2978,9 @@ def create_C21_system(country='USA', size=10, operation_hours=7884, LA_distance=
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -2953,16 +3005,16 @@ def create_C21_system(country='USA', size=10, operation_hours=7884, LA_distance=
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
-                                                biogas_CHP_ratio=0.9, biogas_RNG_ratio=0)
+                                                biogas_CHP_ratio=0.9, biogas_RNG_ratio=0, PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AnaerobicDigestion-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     LandApplication = lsu.LandApplication(ID='LandApplication',
@@ -2971,7 +3023,7 @@ def create_C21_system(country='USA', size=10, operation_hours=7884, LA_distance=
                                           solids_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
-    LandApplication.outs[0].price = biosolids_price
+    LandApplication.outs[0].price = biosolids_price*country_PLI
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air_CHP'),
                                 outs=('emission','ash_CHP'), supplement_power_utility=False)
@@ -3077,7 +3129,7 @@ def create_C21_system(country='USA', size=10, operation_hours=7884, LA_distance=
 
 #%% system C22
 
-def create_C22_system(country='USA', size=10, operation_hours=7884, LA_distance=100, compost_price=0.05, FTE=0.5, lifetime=30):
+def create_C22_system(country_code='USA', size=10, operation_hours=7884, LA_distance=100, compost_price=0.05, FTE=0.5, lifetime=30):
     flowsheet_ID = 'C22'
     
     # clear flowsheet and registry for reloading
@@ -3086,7 +3138,9 @@ def create_C22_system(country='USA', size=10, operation_hours=7884, LA_distance=
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -3111,21 +3165,21 @@ def create_C22_system(country='USA', size=10, operation_hours=7884, LA_distance=
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
-                                                biogas_CHP_ratio=0.9, biogas_RNG_ratio=0)
+                                                biogas_CHP_ratio=0.9, biogas_RNG_ratio=0, PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AnaerobicDigestion-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     Composting = lsu.Composting(ID='Composting', ins=(Dewatering-0, 'bulking_agent', 'diesel_composting'),
                                 outs=('compost_cost','methane_composting','nitrous_oxide_composting','sequestered_carbon_dioxide_composting'),
-                                feedstock_digested=True, solids_distance=LA_distance)
+                                feedstock_digested=True, solids_distance=LA_distance, PLI=country_PLI)
     # TODO: uncertainty range (uniform) 18-36 2005$/tonne
     Composting.ins[1].price = 27/1000/GDPCTPI[2005]*GDPCTPI[2023]
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
@@ -3240,7 +3294,7 @@ def create_C22_system(country='USA', size=10, operation_hours=7884, LA_distance=
 
 #%% system C23
 
-def create_C23_system(country='USA', size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.6, lifetime=30):
+def create_C23_system(country_code='USA', size=10, operation_hours=7884, LF_distance=100, tipping_fee=0.0626, FTE=0.6, lifetime=30):
     flowsheet_ID = 'C23'
     
     # clear flowsheet and registry for reloading
@@ -3249,7 +3303,9 @@ def create_C23_system(country='USA', size=10, operation_hours=7884, LF_distance=
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -3274,16 +3330,16 @@ def create_C23_system(country='USA', size=10, operation_hours=7884, LF_distance=
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
-                                                biogas_CHP_ratio=0.9, biogas_RNG_ratio=0)
+                                                biogas_CHP_ratio=0.9, biogas_RNG_ratio=0, PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AnaerobicDigestion-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     HeatDrying = lsu.HeatDrying(ID='HeatDrying', ins=(Dewatering-0, 'natural_gas_heat_drying'),
@@ -3298,7 +3354,7 @@ def create_C23_system(country='USA', size=10, operation_hours=7884, LF_distance=
                                   solids_distance=LF_distance)
     # see exposan/htl/data/landfilling_tipping_fee.xlsx
     # U.S. average: 56.8 $·wet ton-1 ~ 62.6 $·wet tonne-1
-    Landfilling.outs[0].price = -tipping_fee
+    Landfilling.outs[0].price = -tipping_fee*country_PLI
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air_CHP'),
                                 outs=('emission','ash_CHP'), supplement_power_utility=False)
@@ -3391,7 +3447,7 @@ def create_C23_system(country='USA', size=10, operation_hours=7884, LF_distance=
 
 #%% system C24
 
-def create_C24_system(country='USA', size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.6, lifetime=30):
+def create_C24_system(country_code='USA', size=10, operation_hours=7884, LA_distance=100, biosolids_price=0, FTE=0.6, lifetime=30):
     flowsheet_ID = 'C24'
     
     # clear flowsheet and registry for reloading
@@ -3400,7 +3456,9 @@ def create_C24_system(country='USA', size=10, operation_hours=7884, LA_distance=
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -3425,16 +3483,16 @@ def create_C24_system(country='USA', size=10, operation_hours=7884, LA_distance=
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
-                                                biogas_CHP_ratio=0.9, biogas_RNG_ratio=0)
+                                                biogas_CHP_ratio=0.9, biogas_RNG_ratio=0, PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AnaerobicDigestion-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     HeatDrying = lsu.HeatDrying(ID='HeatDrying', ins=(Dewatering-0, 'natural_gas_heat_drying'),
@@ -3449,7 +3507,7 @@ def create_C24_system(country='USA', size=10, operation_hours=7884, LA_distance=
                                           solids_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
-    LandApplication.outs[0].price = biosolids_price
+    LandApplication.outs[0].price = biosolids_price*country_PLI
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air_CHP'),
                                 outs=('emission','ash_CHP'), supplement_power_utility=False)
@@ -3555,7 +3613,7 @@ def create_C24_system(country='USA', size=10, operation_hours=7884, LA_distance=
 
 #%% system C25
 
-def create_C25_system(country='USA', size=10, operation_hours=7884, FTE=0.7, lifetime=30):
+def create_C25_system(country_code='USA', size=10, operation_hours=7884, FTE=0.7, lifetime=30):
     flowsheet_ID = 'C25'
     
     # clear flowsheet and registry for reloading
@@ -3564,7 +3622,9 @@ def create_C25_system(country='USA', size=10, operation_hours=7884, FTE=0.7, lif
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -3589,16 +3649,16 @@ def create_C25_system(country='USA', size=10, operation_hours=7884, FTE=0.7, lif
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
-                                                biogas_CHP_ratio=0.9, biogas_RNG_ratio=0)
+                                                biogas_CHP_ratio=0.9, biogas_RNG_ratio=0, PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AnaerobicDigestion-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     HeatDrying = lsu.HeatDrying(ID='HeatDrying', ins=(Dewatering-0, 'natural_gas_heat_drying'),
@@ -3684,7 +3744,7 @@ def create_C25_system(country='USA', size=10, operation_hours=7884, FTE=0.7, lif
 
 #%% system T1
 
-def create_T1_system(country='USA', size=10, operation_hours=7884, refinery_distance=100, FOAK=True, FTE=0.55, lifetime=30):
+def create_T1_system(country_code='USA', size=10, operation_hours=7884, refinery_distance=100, FOAK=True, FTE=0.55, lifetime=30):
     flowsheet_ID = 'T1'
     
     # clear flowsheet and registry for reloading
@@ -3693,7 +3753,9 @@ def create_T1_system(country='USA', size=10, operation_hours=7884, refinery_dist
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -3718,12 +3780,12 @@ def create_T1_system(country='USA', size=10, operation_hours=7884, refinery_dist
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(Thickening-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     HTL = lsu.HydrothermalLiquefaction(ID='HTL', ins=Dewatering-0,
@@ -3886,7 +3948,7 @@ def create_T1_system(country='USA', size=10, operation_hours=7884, refinery_dist
 
 #%% system T2
 
-def create_T2_system(country='USA', size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FOAK=True, FTE=0.55, lifetime=30):
+def create_T2_system(country_code='USA', size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FOAK=True, FTE=0.55, lifetime=30):
     flowsheet_ID = 'T2'
     
     # clear flowsheet and registry for reloading
@@ -3895,7 +3957,9 @@ def create_T2_system(country='USA', size=10, operation_hours=7884, refinery_dist
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -3920,12 +3984,12 @@ def create_T2_system(country='USA', size=10, operation_hours=7884, refinery_dist
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(Thickening-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     HALT = lsu.HydrothermalAlkalineTreatment(ID='HALT', ins=(Dewatering-0, 'sodium_hydroxide', 'hydrochloric_acid', 'diesel_HALT'),
@@ -4123,7 +4187,7 @@ def create_T2_system(country='USA', size=10, operation_hours=7884, refinery_dist
 
 #%% system T3
 
-def create_T3_system(country='USA', size=10, operation_hours=7884, FOAK=True, FTE=0.4, lifetime=30):
+def create_T3_system(country_code='USA', size=10, operation_hours=7884, FOAK=True, FTE=0.4, lifetime=30):
     flowsheet_ID = 'T3'
     
     # clear flowsheet and registry for reloading
@@ -4132,7 +4196,9 @@ def create_T3_system(country='USA', size=10, operation_hours=7884, FOAK=True, FT
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -4157,12 +4223,12 @@ def create_T3_system(country='USA', size=10, operation_hours=7884, FOAK=True, FT
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(Thickening-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     SCWO = lsu.SupercriticalWaterOxidation(ID='SCWO', ins=Dewatering-0, outs=('ash_SCWO','offgas_SCWO'), FOAK=FOAK)
@@ -4261,7 +4327,7 @@ def create_T3_system(country='USA', size=10, operation_hours=7884, FOAK=True, FT
 
 #%% system T4
 
-def create_T4_system(country='USA', size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FOAK=True, FTE=0.7, lifetime=30):
+def create_T4_system(country_code='USA', size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FOAK=True, FTE=0.7, lifetime=30):
     flowsheet_ID = 'T4'
     
     # clear flowsheet and registry for reloading
@@ -4270,7 +4336,9 @@ def create_T4_system(country='USA', size=10, operation_hours=7884, refinery_dist
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -4295,12 +4363,12 @@ def create_T4_system(country='USA', size=10, operation_hours=7884, refinery_dist
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(Thickening-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     HeatDrying = lsu.HeatDrying(ID='HeatDrying', ins=(Dewatering-0, 'natural_gas_heat_drying'),
@@ -4480,7 +4548,7 @@ def create_T4_system(country='USA', size=10, operation_hours=7884, refinery_dist
 
 #%% system T5
 
-def create_T5_system(country='USA', size=10, operation_hours=7884, FOAK=True, FTE=0.7, lifetime=30):
+def create_T5_system(country_code='USA', size=10, operation_hours=7884, FOAK=True, FTE=0.7, lifetime=30):
     flowsheet_ID = 'T5'
     
     # clear flowsheet and registry for reloading
@@ -4489,7 +4557,9 @@ def create_T5_system(country='USA', size=10, operation_hours=7884, FOAK=True, FT
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -4514,12 +4584,12 @@ def create_T5_system(country='USA', size=10, operation_hours=7884, FOAK=True, FT
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(Thickening-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     HeatDrying = lsu.HeatDrying(ID='HeatDrying', ins=(Dewatering-0, 'natural_gas_heat_drying'),
@@ -4642,7 +4712,7 @@ def create_T5_system(country='USA', size=10, operation_hours=7884, FOAK=True, FT
 
 #%% system T6
 
-def create_T6_system(country='USA', size=10, operation_hours=7884, refinery_distance=100, FOAK=True, FTE=0.7, lifetime=30):
+def create_T6_system(country_code='USA', size=10, operation_hours=7884, refinery_distance=100, FOAK=True, FTE=0.7, lifetime=30):
     flowsheet_ID = 'T6'
     
     # clear flowsheet and registry for reloading
@@ -4651,7 +4721,9 @@ def create_T6_system(country='USA', size=10, operation_hours=7884, refinery_dist
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -4676,15 +4748,15 @@ def create_T6_system(country='USA', size=10, operation_hours=7884, refinery_dist
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     AerobicDigestion = lsu.AerobicDigestion(ID='AerobicDigestion', ins=(Thickening-0, 'air'),
-                                            outs=('digested_sludge','offgas_AeD'))
+                                            outs=('digested_sludge','offgas_AeD'), PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AerobicDigestion-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     HTL = lsu.HydrothermalLiquefaction(ID='HTL', ins=Dewatering-0,
@@ -4846,7 +4918,7 @@ def create_T6_system(country='USA', size=10, operation_hours=7884, refinery_dist
 
 #%% system T7
 
-def create_T7_system(country='USA', size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FOAK=True, FTE=0.7, lifetime=30):
+def create_T7_system(country_code='USA', size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FOAK=True, FTE=0.7, lifetime=30):
     flowsheet_ID = 'T7'
     
     # clear flowsheet and registry for reloading
@@ -4855,7 +4927,9 @@ def create_T7_system(country='USA', size=10, operation_hours=7884, refinery_dist
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -4880,15 +4954,15 @@ def create_T7_system(country='USA', size=10, operation_hours=7884, refinery_dist
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     AerobicDigestion = lsu.AerobicDigestion(ID='AerobicDigestion', ins=(Thickening-0, 'air'),
-                                            outs=('digested_sludge','offgas_AeD'))
+                                            outs=('digested_sludge','offgas_AeD'), PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AerobicDigestion-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     HALT = lsu.HydrothermalAlkalineTreatment(ID='HALT', ins=(Dewatering-0, 'sodium_hydroxide', 'hydrochloric_acid', 'diesel_HALT'),
@@ -5085,7 +5159,7 @@ def create_T7_system(country='USA', size=10, operation_hours=7884, refinery_dist
 
 #%% system T8
 
-def create_T8_system(country='USA', size=10, operation_hours=7884, FOAK=True, FTE=0.55, lifetime=30):
+def create_T8_system(country_code='USA', size=10, operation_hours=7884, FOAK=True, FTE=0.55, lifetime=30):
     flowsheet_ID = 'T8'
     
     # clear flowsheet and registry for reloading
@@ -5094,7 +5168,9 @@ def create_T8_system(country='USA', size=10, operation_hours=7884, FOAK=True, FT
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -5119,15 +5195,15 @@ def create_T8_system(country='USA', size=10, operation_hours=7884, FOAK=True, FT
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     AerobicDigestion = lsu.AerobicDigestion(ID='AerobicDigestion', ins=(Thickening-0, 'air'),
-                                            outs=('digested_sludge','offgas_AeD'))
+                                            outs=('digested_sludge','offgas_AeD'), PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AerobicDigestion-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     SCWO = lsu.SupercriticalWaterOxidation(ID='SCWO', ins=Dewatering-0, outs=('ash_SCWO','offgas_SCWO'), FOAK=FOAK)
@@ -5226,7 +5302,7 @@ def create_T8_system(country='USA', size=10, operation_hours=7884, FOAK=True, FT
 
 #%% system T9
 
-def create_T9_system(country='USA', size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FOAK=True, FTE=0.85, lifetime=30):
+def create_T9_system(country_code='USA', size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FOAK=True, FTE=0.85, lifetime=30):
     flowsheet_ID = 'T9'
     
     # clear flowsheet and registry for reloading
@@ -5235,7 +5311,9 @@ def create_T9_system(country='USA', size=10, operation_hours=7884, refinery_dist
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -5260,15 +5338,15 @@ def create_T9_system(country='USA', size=10, operation_hours=7884, refinery_dist
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     AerobicDigestion = lsu.AerobicDigestion(ID='AerobicDigestion', ins=(Thickening-0, 'air'),
-                                            outs=('digested_sludge','offgas_AeD'))
+                                            outs=('digested_sludge','offgas_AeD'), PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AerobicDigestion-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     HeatDrying = lsu.HeatDrying(ID='HeatDrying', ins=(Dewatering-0, 'natural_gas_heat_drying'),
@@ -5448,7 +5526,7 @@ def create_T9_system(country='USA', size=10, operation_hours=7884, refinery_dist
 
 #%% system T10
 
-def create_T10_system(country='USA', size=10, operation_hours=7884, FOAK=True, FTE=0.85, lifetime=30):
+def create_T10_system(country_code='USA', size=10, operation_hours=7884, FOAK=True, FTE=0.85, lifetime=30):
     flowsheet_ID = 'T10'
     
     # clear flowsheet and registry for reloading
@@ -5457,7 +5535,9 @@ def create_T10_system(country='USA', size=10, operation_hours=7884, FOAK=True, F
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -5482,15 +5562,15 @@ def create_T10_system(country='USA', size=10, operation_hours=7884, FOAK=True, F
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     AerobicDigestion = lsu.AerobicDigestion(ID='AerobicDigestion', ins=(Thickening-0, 'air'),
-                                            outs=('digested_sludge','offgas_AeD'))
+                                            outs=('digested_sludge','offgas_AeD'), PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AerobicDigestion-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     HeatDrying = lsu.HeatDrying(ID='HeatDrying', ins=(Dewatering-0, 'natural_gas_heat_drying'),
@@ -5613,7 +5693,7 @@ def create_T10_system(country='USA', size=10, operation_hours=7884, FOAK=True, F
 
 #%% system T11
 
-def create_T11_system(country='USA', size=10, operation_hours=7884, refinery_distance=100, FOAK=True, FTE=0.7, lifetime=30):
+def create_T11_system(country_code='USA', size=10, operation_hours=7884, refinery_distance=100, FOAK=True, FTE=0.7, lifetime=30):
     flowsheet_ID = 'T11'
     
     # clear flowsheet and registry for reloading
@@ -5622,7 +5702,9 @@ def create_T11_system(country='USA', size=10, operation_hours=7884, refinery_dis
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -5647,16 +5729,16 @@ def create_T11_system(country='USA', size=10, operation_hours=7884, refinery_dis
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
-                                                biogas_CHP_ratio=0.9, biogas_RNG_ratio=0)
+                                                biogas_CHP_ratio=0.9, biogas_RNG_ratio=0, PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AnaerobicDigestion-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     HTL = lsu.HydrothermalLiquefaction(ID='HTL', ins=Dewatering-0,
@@ -5820,7 +5902,7 @@ def create_T11_system(country='USA', size=10, operation_hours=7884, refinery_dis
 
 #%% system T12
 
-def create_T12_system(country='USA', size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FOAK=True, FTE=0.7, lifetime=30):
+def create_T12_system(country_code='USA', size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FOAK=True, FTE=0.7, lifetime=30):
     flowsheet_ID = 'T12'
     
     # clear flowsheet and registry for reloading
@@ -5829,7 +5911,9 @@ def create_T12_system(country='USA', size=10, operation_hours=7884, refinery_dis
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -5854,16 +5938,16 @@ def create_T12_system(country='USA', size=10, operation_hours=7884, refinery_dis
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
-                                                biogas_CHP_ratio=0.9, biogas_RNG_ratio=0)
+                                                biogas_CHP_ratio=0.9, biogas_RNG_ratio=0, PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AnaerobicDigestion-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     HALT = lsu.HydrothermalAlkalineTreatment(ID='HALT', ins=(Dewatering-0, 'sodium_hydroxide', 'hydrochloric_acid', 'diesel_HALT'),
@@ -6062,7 +6146,7 @@ def create_T12_system(country='USA', size=10, operation_hours=7884, refinery_dis
 
 #%% system T13
 
-def create_T13_system(country='USA', size=10, operation_hours=7884, FOAK=True, FTE=0.55, lifetime=30):
+def create_T13_system(country_code='USA', size=10, operation_hours=7884, FOAK=True, FTE=0.55, lifetime=30):
     flowsheet_ID = 'T13'
     
     # clear flowsheet and registry for reloading
@@ -6071,7 +6155,9 @@ def create_T13_system(country='USA', size=10, operation_hours=7884, FOAK=True, F
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -6096,16 +6182,16 @@ def create_T13_system(country='USA', size=10, operation_hours=7884, FOAK=True, F
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
-                                                biogas_CHP_ratio=0.9, biogas_RNG_ratio=0)
+                                                biogas_CHP_ratio=0.9, biogas_RNG_ratio=0, PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AnaerobicDigestion-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     SCWO = lsu.SupercriticalWaterOxidation(ID='SCWO', ins=Dewatering-0, outs=('ash_SCWO','offgas_SCWO'), FOAK=FOAK)
@@ -6218,7 +6304,7 @@ def create_T13_system(country='USA', size=10, operation_hours=7884, FOAK=True, F
 
 #%% system T14
 
-def create_T14_system(country='USA', size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FOAK=True, FTE=0.85, lifetime=30):
+def create_T14_system(country_code='USA', size=10, operation_hours=7884, refinery_distance=100, LA_distance=100, FOAK=True, FTE=0.85, lifetime=30):
     flowsheet_ID = 'T14'
     
     # clear flowsheet and registry for reloading
@@ -6227,7 +6313,9 @@ def create_T14_system(country='USA', size=10, operation_hours=7884, refinery_dis
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -6252,16 +6340,16 @@ def create_T14_system(country='USA', size=10, operation_hours=7884, refinery_dis
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
-                                                biogas_CHP_ratio=0.9, biogas_RNG_ratio=0)
+                                                biogas_CHP_ratio=0.9, biogas_RNG_ratio=0, PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AnaerobicDigestion-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     HeatDrying = lsu.HeatDrying(ID='HeatDrying', ins=(Dewatering-0, 'natural_gas_heat_drying'),
@@ -6445,7 +6533,7 @@ def create_T14_system(country='USA', size=10, operation_hours=7884, refinery_dis
 
 #%% system T15
 
-def create_T15_system(country='USA', size=10, operation_hours=7884, FOAK=True, FTE=0.85, lifetime=30):
+def create_T15_system(country_code='USA', size=10, operation_hours=7884, FOAK=True, FTE=0.85, lifetime=30):
     flowsheet_ID = 'T15'
     
     # clear flowsheet and registry for reloading
@@ -6454,7 +6542,9 @@ def create_T15_system(country='USA', size=10, operation_hours=7884, FOAK=True, F
         
     clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2023]
+    country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
+    
+    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = 0.16
     
@@ -6479,16 +6569,16 @@ def create_T15_system(country='USA', size=10, operation_hours=7884, FOAK=True, F
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
-                                outs=('thickened_sludge','reject_thickening'))
+                                outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
     Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
-                                                biogas_CHP_ratio=0.9, biogas_RNG_ratio=0)
+                                                biogas_CHP_ratio=0.9, biogas_RNG_ratio=0, PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AnaerobicDigestion-0, 'polymer_dewatering'),
-                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'))
+                                outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
     
     HeatDrying = lsu.HeatDrying(ID='HeatDrying', ins=(Dewatering-0, 'natural_gas_heat_drying'),

@@ -23,9 +23,28 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
+# TODO: capital costs udpate process (units not listed below are adjusted through CEPCI, and do not double applying PLI e.g., to both baseline_purchase_costs and cost decorators which are based on CEPCI)
+# DONE: Thickening
+# DONE: AerobicDigestion (the pump was replaces since the purchase costs of the original one do not change with PLI)
+# DONE: AnaerobicDigestion (the pump was replaces since the purchase costs of the original one do not change with PLI)
+# DONE: Dewatering
+# TODO: AlkalineStabilization
+# DONE: Composting
+# DONE: Landfilling (tipping fee adjusted)
+# DONE: LandApplication (only biosolids price adjusted, other chemicals have not been updated)
+# TODO: CHP
+# TODO: HydrothermalLiquefaction (auxiliary units only, if necessary)
+# TODO: flash
+# TODO: HydrothermalAlkalineTreatment (auxiliary units only, if necessary)
+# TODO: CatalyticHydrothermalGasification (auxiliary units only, if necessary)
+# TODO: Pyrolysis (auxiliary units only, if necessary)
+# TODO: Gasification (auxiliary units only, if necessary)
+# TODO: SupercriticalWaterOxidation (auxiliary units only, if necessary)
+# TODO: check all units again
+
 import os, qsdsan as qs, biosteam as bst
 from qsdsan import SanUnit
-from qsdsan.sanunits import SludgePump, WWTpump, HXutility, HXprocess, Pump
+from qsdsan.sanunits import SludgePump, HXutility, HXprocess, Pump
 from qsdsan.utils import auom, calculate_excavation_volume
 from qsdsan.equipments import Blower, GasPiping
 from biosteam import Stream
@@ -81,6 +100,7 @@ folder = os.path.dirname(__file__)
 
 # numbers without citations are likely from the BEAM*2024 model
 
+# TODO: consider putting units in order based on the first letter, if necessary (but the current order is based on the use order in the landscape_systems.py and separate C and T units, which is fine)
 __all__ = (
     'WRRF',
     'Thickening',
@@ -254,6 +274,8 @@ class Thickening(SanUnit):
         typically, 33 for centrifugal thickening, 4.9 for others.
     max_capacity : float
         maximum hydraulic loading per belt thickener, [m3/h].
+    PLI : float
+        price level index as an approximation to adjust CAPEX, [-].
     '''
     _N_ins = 2
     _N_outs = 2
@@ -261,12 +283,13 @@ class Thickening(SanUnit):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', lifetime=25, target_moisture=0.97,
-                 polymer_addition=5, unit_electricity=4.9, max_capacity=100):
+                 polymer_addition=5, unit_electricity=4.9, max_capacity=100, PLI=1):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
         self.target_moisture = target_moisture
         self.polymer_addition = polymer_addition
         self.unit_electricity = unit_electricity
         self.max_capacity = max_capacity
+        self.PLI = PLI
         ID = self.ID
         sludge = self.outs[0].proxy(f'{ID}_sludge')
         eff = self.outs[1].proxy(f'{ID}_eff')
@@ -305,6 +328,10 @@ class Thickening(SanUnit):
     
     def _cost(self):
         for p in (self.sludge_pump, self.effluent_pump): p.simulate()
+        
+        for C in [self.baseline_purchase_costs] + [unit.baseline_purchase_costs for unit in self.auxiliary_units]:
+            for item in C.keys():
+                C[item] = C[item]*self.PLI
     
     @property
     def moisture(self):
@@ -355,6 +382,7 @@ class AerobicDigestion(SanUnit):
         unit cost of the slab concrete, [$/ft3].
     excavation_unit_cost : float
         unit cost of the excavation activity, [$/ft3].
+    PLI : float
     
     References
     ----------
@@ -388,7 +416,7 @@ class AerobicDigestion(SanUnit):
     # ft
     _constr_access = 3
     
-    auxiliary_unit_names = ('heat_exchanger','sludge_pump')
+    auxiliary_unit_names = ('sludge_pump',)
     
     F_BM_pump = 1.18*(1+0.007/100) # 0.007 is for miscellaneous costs
     # BioSTEAM: BM = 2.3 for all tanks
@@ -417,7 +445,7 @@ class AerobicDigestion(SanUnit):
                  init_with='WasteStream', lifetime=30, O2_requirement=2.3,
                  VS_reduction=0.475, HRT=14, SRT=40, unit_electricity=0.03,
                  depth=10, wall_concrete_unit_cost=24,
-                 slab_concrete_unit_cost=13, excavation_unit_cost=0.3,
+                 slab_concrete_unit_cost=13, excavation_unit_cost=0.3, PLI=1,
                  F_BM=default_F_BM):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
         self.O2_requirement = O2_requirement
@@ -431,13 +459,11 @@ class AerobicDigestion(SanUnit):
         self.wall_concrete_unit_cost = wall_concrete_unit_cost
         self.slab_concrete_unit_cost = slab_concrete_unit_cost
         self.excavation_unit_cost = excavation_unit_cost
+        self.PLI=PLI
         self.F_BM.update(F_BM)
         ID = self.ID
-        self.sludge_pump = WWTpump(ID=f'{ID}_sludge', ins=self.ins[0].proxy(),
-                                   pump_type='', Q_mgd=None, add_inputs=(1,),
-                                   capacity_factor=1., include_pump_cost=True,
-                                   include_building_cost=False,
-                                   include_OM_cost=False)
+        eff = self.outs[0].proxy(f'{ID}_eff')
+        self.sludge_pump = SludgePump(f'.{ID}_eff_pump', ins=eff, init_with=init_with)
         self.blower = blower = Blower('blower', linked_unit=self, N_reactor=1)
         self.air_piping = air_piping = GasPiping('air_piping', linked_unit=self, N_reactor=1)
         self.equipments = (blower, air_piping)
@@ -489,11 +515,6 @@ class AerobicDigestion(SanUnit):
                                                       self.excav_slope,
                                                       self.constr_access)
         
-        # the pump here does not have power_utility (though may have additional O&M costs for the model to be conservative)
-        sludge_pump = self.sludge_pump
-        sludge_pump.simulate()
-        D.update(sludge_pump.design_results)
-        
         # the blower here does not include electricity
         # blower and gas piping
         air_cfm = auom('m3/h').convert(self.ins[1].F_vol, 'cfm')
@@ -512,6 +533,7 @@ class AerobicDigestion(SanUnit):
         self.add_power_utility(self.electricity_requirement)
 
     def _cost(self):
+        
         D, C = self.design_results, self.baseline_purchase_costs
         blower, piping = self.equipments
         
@@ -522,6 +544,13 @@ class AerobicDigestion(SanUnit):
         # note blower._cost() includes piping
         C.update(blower._cost())
         # C.update(piping._cost())
+        
+        self.sludge_pump.simulate()
+        self.sludge_pump.power_utility.empty()
+        
+        for C in [self.baseline_purchase_costs] + [unit.baseline_purchase_costs for unit in self.auxiliary_units]:
+            for item in C.keys():
+                C[item] = C[item]*self.PLI
     
     @property
     def moisture(self):
@@ -681,6 +710,8 @@ class AnaerobicDigestion(SanUnit):
     gas_collection_cost_factor : float
         capital cost ratio of the gas collection system and the tank
         excluding execavation, [-].
+    PLI : float
+        price level index as an approximation to adjust CAPEX, [-].
     '''
     _N_ins = 1
     _N_outs = 4
@@ -742,7 +773,7 @@ class AnaerobicDigestion(SanUnit):
                  # refer to qsdsan/equipments/_vertical_mixer.py
                  vertical_mixer_unit_power=3.7, vertical_mixer_unit_price=10200,
                  # !!! 0.2 is an assumption, subject to wide uncertainties
-                 gas_collection_cost_factor=0.2, F_BM=default_F_BM):
+                 gas_collection_cost_factor=0.2, PLI=1, F_BM=default_F_BM):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
         # TODO: this becomes less important if the results of 25 / 15 systems are aggregated
         # TODO: use different reduction ratios for lipid, protein, and carbohydrate
@@ -767,16 +798,14 @@ class AnaerobicDigestion(SanUnit):
         self.vertical_mixer_unit_power = vertical_mixer_unit_power
         self.vertical_mixer_unit_price = vertical_mixer_unit_price
         self.gas_collection_cost_factor = gas_collection_cost_factor
+        self.PLI = PLI
         self.F_BM.update(F_BM)
         ID = self.ID
         hx_in = Stream(f'{ID}_hx_in')
         hx_out = Stream(f'{ID}_hx_out')
         self.heat_exchanger = HXutility(ID=f'{ID}_hx', ins=hx_in, outs=hx_out)
-        self.sludge_pump = WWTpump(ID=f'{ID}_sludge', ins=self.ins[0].proxy(),
-                                   pump_type='', Q_mgd=None, add_inputs=(1,),
-                                   capacity_factor=1., include_pump_cost=True,
-                                   include_building_cost=False,
-                                   include_OM_cost=False)
+        eff = self.outs[0].proxy(f'{ID}_eff')
+        self.sludge_pump = SludgePump(f'.{ID}_eff_pump', ins=eff, init_with=init_with)
     
     def _run(self):
         input_sludge = self.ins[0]
@@ -862,11 +891,6 @@ class AnaerobicDigestion(SanUnit):
                                                       self.excav_slope,
                                                       self.constr_access)
         
-        # the pump here does not have power_utility (though may have additional O&M costs for the model to be conservative)
-        sludge_pump = self.sludge_pump
-        sludge_pump.simulate()
-        D.update(sludge_pump.design_results)
-        
         # kW
         self.electricity_requirement = V*self.unit_electricity
         
@@ -881,6 +905,13 @@ class AnaerobicDigestion(SanUnit):
         C['Vertical mixer'] = self.electricity_requirement/self.vertical_mixer_unit_power*self.vertical_mixer_unit_price
         # this just adds the cost, not indicating the gas collection system is made of concreate (do not affect LCA since construction is excluded)
         C['Gas collection system'] = (C['Wall concrete'] + C['Slab concrete'])*self.gas_collection_cost_factor
+        
+        self.sludge_pump.simulate()
+        self.sludge_pump.power_utility.empty()
+        
+        for C in [self.baseline_purchase_costs] + [unit.baseline_purchase_costs for unit in self.auxiliary_units]:
+            for item in C.keys():
+                C[item] = C[item]*self.PLI
     
     @property
     def moisture(self):
@@ -1003,6 +1034,8 @@ class Dewatering(SanUnit):
     unit_electricity : float
         electricity for dewatering, [kWh/m3].
         from BioSTEAM, 1.40.
+    PLI : float
+        price level index as an approximation to adjust CAPEX, [-].
     '''
     _N_ins = 2
     _N_outs = 3
@@ -1012,13 +1045,14 @@ class Dewatering(SanUnit):
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', lifetime=20, target_moisture=0.8,
                  polymer_addition=5, methane_concentration=6, mathane_loss=0.9,
-                 unit_electricity=1.40):
+                 unit_electricity=1.40, PLI=1):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
         self.target_moisture = target_moisture
         self.polymer_addition = polymer_addition
         self.methane_concentration = methane_concentration
         self.mathane_loss = mathane_loss
         self.unit_electricity = unit_electricity
+        self.PLI = PLI
         ID = self.ID
         eff = self.outs[1].proxy(f'{ID}_eff')
         self.effluent_pump = SludgePump(f'.{ID}_eff_pump', ins=eff, init_with=init_with)
@@ -1066,6 +1100,11 @@ class Dewatering(SanUnit):
     
     def _cost(self):
         self.effluent_pump.simulate()
+        
+        # self.baseline_purchase_costs has already been adjusted through bst.CE in the _design function
+        for C in [unit.baseline_purchase_costs for unit in self.auxiliary_units]:
+            for item in C.keys():
+                C[item] = C[item]*self.PLI
     
     @property
     def moisture(self):
@@ -1245,6 +1284,8 @@ class Composting(SanUnit):
         typically, 0 for windrow, 180 for ASP, 291 for in vessel.
     solids_distance : float
         distance between WRRFs and land application sites, [km].
+    PLI : float
+        price level index as an approximation to adjust CAPEX, [-].
     
     References
     ----------
@@ -1266,7 +1307,7 @@ class Composting(SanUnit):
                  compost_moisture_content=0.5, load_size=13, load_frequency=3,
                  tractor_fuel=25, methane_fugitive_ratio=0.0001,
                  feedstock_digested=True, unit_carbon_sequestration=0.4475,
-                 unit_electricity=0, solids_distance=100):
+                 unit_electricity=0, solids_distance=100, PLI=1):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
         self.lipid_2_C = lipid_2_C
         self.protein_2_C = protein_2_C
@@ -1290,6 +1331,7 @@ class Composting(SanUnit):
         self.unit_carbon_sequestration = unit_carbon_sequestration
         self.unit_electricity = unit_electricity
         self.solids_distance = solids_distance
+        self.PLI = PLI
     
     def _run(self):
         input_solids, bulking_agent, diesel = self.ins
@@ -1362,6 +1404,10 @@ class Composting(SanUnit):
         C = self.baseline_purchase_costs
         # based on [1], 1593.7 is marshall and swift equipment cost index 2017, 751 is the baseline marshall and swift equipment cost index
         C['Composting equipment'] = (1560*self.ins[0].F_mass/1000*24 + 450000)*1593.7/qs.CEPCI_by_year[2017]*qs.CEPCI_by_year[2022]/751
+        
+        for C in [self.baseline_purchase_costs] + [unit.baseline_purchase_costs for unit in self.auxiliary_units]:
+            for item in C.keys():
+                C[item] = C[item]*self.PLI
     
     @property
     def nitrogen_mass_flow(self):

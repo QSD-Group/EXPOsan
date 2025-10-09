@@ -43,14 +43,14 @@ from exposan.htl import (create_C1_system, create_C2_system, create_C3_system,
                          create_T12_system, create_T13_system, create_T14_system,
                          create_T15_system)
 
-mathtext.FontConstantsBase.sup1 = 0.35
-
 folder = '/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_landscape/'
 
 _MMgal_to_m3 = auom('gal').conversion_factor('m3')*1000000
 # TODO: this can be highly uncertain
 # tonne/MG
 ww_2_dry_solids = 1
+
+mathtext.FontConstantsBase.sup1 = 0.35
 
 # color palette
 b = Color('blue', (96, 193, 207)).HEX
@@ -134,8 +134,7 @@ electricity_price = electricity_price[['country','country_code','year','US_cents
 # =============================================================================
 # electricity CI
 # =============================================================================
-electriicty_country_CI = pd.read_excel(folder + 'analyses/low_voltage_electricity_CI.xlsx','country_data')
-electriicty_region_CI = pd.read_excel(folder + 'analyses/low_voltage_electricity_CI.xlsx','region_data')
+electriicty_CI = pd.read_excel(folder + 'analyses/low_voltage_electricity_CI.xlsx')
 
 # TODO: add this to the manuscript or SI
 # =============================================================================
@@ -161,6 +160,132 @@ PLI.rename(columns={'Country Name':'country',
            inplace=True)
 
 # TODO: index for capital costs (any others, like transportation and utilities, but these two are less important and may use other indexes or just the same globally - if other indexes are not very different, so these remains not important, like if capital cost in country A is 0.01% of U.S., in this case, if still keep transportation cost the U.S. value, the transporation may become the most impactful driver)
+
+#%% data processing
+
+# TODO: add data processing steps and assumptions in the SI
+
+# TODO: for all datasets, if the data for different country come from different years, decide what to do (either directly use or if the difference is too big, try to adjust)
+# TODO: maybe in the cell 'initialization', do not remove rows that are not marked as the latest year, and also keep the year (or time or something similar) column
+
+# =============================================================================
+# electricity price
+# =============================================================================
+for i in set(WRRF_filtered['CNTRY_ISO']):
+    if i not in list(electricity_price['country_code']):
+        print(set(WRRF_filtered[WRRF_filtered['CNTRY_ISO'] == i]['COUNTRY']))
+        print(i)
+
+# https://www.voronoiapp.com/energy/Whats-the-Average-Cost-of-1-kWh-Electricity-around-the-World--3398
+electricity_price.loc[len(electricity_price)] = ['Monaco', 'MCO', 9999, 18.0]
+electricity_price.loc[len(electricity_price)] = ['British Virgin Islands', 'VGB', 9999, 22.5]
+electricity_price.loc[len(electricity_price)] = ['Aruba', 'ABW', 9999, 17.8]
+electricity_price.loc[len(electricity_price)] = ['Cuba', 'CUB', 9999, 38.6]
+electricity_price.loc[len(electricity_price)] = ['French Polynesia', 'PYF', 9999, 25.9]
+electricity_price.loc[len(electricity_price)] = ['Curaçao', 'CUW', 9999, 41.9]
+# https://www.globalpetrolprices.com/Macao/electricity_prices/
+electricity_price.loc[len(electricity_price)] = ['Macao', 'MAC', 2025, 15.9]
+# https://www.nkeconwatch.com/category/communications/page/6/ (6.5 2012 euro cent, converted to 2012 US cent)
+electricity_price.loc[len(electricity_price)] = ['North Korea', 'PRK', 2012, 8.4]
+# https://www.ceicdata.com/en/turkmenistan/environmental-environmental-policy-taxes-and-transfers-non-oecd-member-annual/tm-industry-electricity-price-usd-per-kwh
+electricity_price.loc[len(electricity_price)] = ['Turkmenistan', 'TKM', 2020, 1.5]
+
+electricity_price.drop_duplicates(inplace=True)
+
+assert len([i for i in set(WRRF_filtered['CNTRY_ISO']) if i not in list(electricity_price['country_code'])]) == 0
+
+electricity_price.to_excel(folder + f'analyses/electricity_price_{date.today()}.xlsx')
+
+# =============================================================================
+# electricity CI
+# =============================================================================
+for i in set(WRRF_filtered['CNTRY_ISO']):
+    if i not in list(electriicty_CI['country_ISO_A3']):
+        print(set(WRRF_filtered[WRRF_filtered['CNTRY_ISO'] == i]['COUNTRY']))
+        print(i)
+
+# Europe without Switzerland
+electriicty_CI.loc[len(electriicty_CI)] = ['Monaco', 'MC', 'MCO', 0.335772839657998]
+# Africa
+electriicty_CI.loc[len(electriicty_CI)] = ['Equatorial Guinea', 'GQ', 'GNQ', 0.84866548695154]
+electriicty_CI.loc[len(electriicty_CI)] = ['Mali', 'ML', 'MLI', 0.84866548695154]
+electriicty_CI.loc[len(electriicty_CI)] = ['Guinea', 'GN', 'GIN', 0.84866548695154]
+electriicty_CI.loc[len(electriicty_CI)] = ['Seychelles', 'SC', 'SYC', 0.84866548695154]
+# Latin America and the Caribbean
+electriicty_CI.loc[len(electriicty_CI)] = ['British Virgin Islands', 'VG', 'VGB', 0.35047605957495]
+electriicty_CI.loc[len(electriicty_CI)] = ['Aruba', 'AW', 'ABW', 0.35047605957495]
+electriicty_CI.loc[len(electriicty_CI)] = ['Bahamas', 'BS', 'BHS', 0.35047605957495]
+electriicty_CI.loc[len(electriicty_CI)] = ['Barbados', 'BB', 'BRB', 0.35047605957495]
+electriicty_CI.loc[len(electriicty_CI)] = ['Antigua and Barbuda', 'AG', 'ATG', 0.35047605957495]
+electriicty_CI.loc[len(electriicty_CI)] = ['Belize', 'BZ', 'BLZ', 0.35047605957495]
+
+# Middle East
+electriicty_CI.loc[len(electriicty_CI)] = ['Palestina', 'PS', 'PSE', 0.907394533030651]
+
+# Asia
+electriicty_CI.loc[len(electriicty_CI)] = ['Macao', 'MO', 'MAC', 0.876728132896613]
+electriicty_CI.loc[len(electriicty_CI)] = ['Laos', 'LA', 'LAO', 0.876728132896613]
+electriicty_CI.loc[len(electriicty_CI)] = ['Afghanistan', 'AF', 'AFG', 0.876728132896613]
+
+# Global
+electriicty_CI.loc[len(electriicty_CI)] = ['Papua New Guinea', 'PG', 'PNG', 0.691007559959689]
+electriicty_CI.loc[len(electriicty_CI)] = ['Fiji', 'FJ', 'FJI', 0.691007559959689]
+electriicty_CI.loc[len(electriicty_CI)] = ['French Polynesia', 'PF', 'PYF', 0.691007559959689]
+
+electriicty_CI.drop_duplicates(inplace=True)
+
+assert len([i for i in set(WRRF_filtered['CNTRY_ISO']) if i not in list(electriicty_CI['country_ISO_A3'])]) == 0
+
+electriicty_CI.to_excel(folder + f'analyses/electricity_CI_{date.today()}.xlsx')
+
+# =============================================================================
+# labor cost
+# =============================================================================
+for i in set(WRRF_filtered['CNTRY_ISO']):
+    if i not in list(labor_cost['country_code']):
+        print(set(WRRF_filtered[WRRF_filtered['CNTRY_ISO'] == i]['COUNTRY']))
+        print(i)
+
+# use the minimum value in the available dataset
+labor_cost.loc[len(labor_cost)] = ['North Korea', 'PRK', 190]
+
+labor_cost.drop_duplicates(inplace=True)
+
+assert len([i for i in set(WRRF_filtered['CNTRY_ISO']) if i not in list(labor_cost['country_code'])]) == 0
+
+labor_cost.to_excel(folder + f'analyses/labor_cost_{date.today()}.xlsx')
+
+# =============================================================================
+# PLI
+# =============================================================================
+for i in set(WRRF_filtered['CNTRY_ISO']):
+    if i not in list(PLI['country_code']):
+        print(set(WRRF_filtered[WRRF_filtered['CNTRY_ISO'] == i]['COUNTRY']))
+        print(i)
+
+# use France data
+PLI.loc[len(PLI)] = ['Monaco', 'MCO', 0.753]
+# use the average of China, Hong Kong SAR, China, Macao SAR, China, South Korea, and Japan
+PLI.loc[len(PLI)] = ['Taiwan', 'TWN', 0.604]
+# use the average of Caribbean countries (Dominica, Haiti, and Trinidad and Tobago)
+PLI.loc[len(PLI)] = ['British Virgin Islands', 'VGB', 0.566]
+# use the average of Latin American countries (Belize, Costa Rica, El Salvador, Guatemala, Honduras,
+#                                              Mexico, Nicaragua, Panama, Argentina, Bolivia, Brazil,
+#                                              Chile, Colombia, Ecuador, Guyana, Paraguay, Peru, Suriname,
+#                                              Uruguay, Dominica, Dominican Republic, Haiti, Trinidad and Tobago)
+PLI.loc[len(PLI)] = ['Cuba', 'CUB', 0.464]
+# use the average of Pacific Islands countries (Fiji, Kiribati, Marshall Islands, Nauru, Palau,
+#                                               Papua New Guinea, Samoa, Solomon Islands, Tonga,
+#                                               Tuvalu, Vanuatu)
+PLI.loc[len(PLI)] = ['French Polynesia', 'PYF', 0.764]
+# use the minimum value in the available dataset
+PLI.loc[len(PLI)] = ['North Korea', 'PRK', 0.125]
+
+PLI.drop_duplicates(inplace=True)
+
+assert len([i for i in set(WRRF_filtered['CNTRY_ISO']) if i not in list(PLI['country_code'])]) == 0
+
+PLI.to_excel(folder + f'analyses/PLI_{date.today()}.xlsx')
 
 #%% MPs concentration
 
@@ -1818,125 +1943,6 @@ for cap in bp['caps']:
 
 # plt.savefig('/Users/jiananfeng/Desktop/PCDD&Fs.pdf', transparent=True, bbox_inches='tight')
 
-#%% country analysis - missing data management
-
-# TODO: add data processing steps and assumptions in the SI
-
-# TODO: for all datasets, if the data for different country come from different years, decide what to do (either directly use or if the difference is too big, try to adjust)
-# TODO: maybe in the cell 'initialization', do not remove rows that are not marked as the latest year, and also keep the year (or time or something similar) column
-
-# =============================================================================
-# electricity price
-# =============================================================================
-for i in set(WRRF_filtered['CNTRY_ISO']):
-    if i not in list(electricity_price['country_code']):
-        print(set(WRRF_filtered[WRRF_filtered['CNTRY_ISO'] == i]['COUNTRY']))
-        print(i)
-
-# https://www.voronoiapp.com/energy/Whats-the-Average-Cost-of-1-kWh-Electricity-around-the-World--3398
-electricity_price.loc[len(electricity_price)] = ['Monaco', 'MCO', 9999, 18.0]
-electricity_price.loc[len(electricity_price)] = ['British Virgin Islands', 'VGB', 9999, 22.5]
-electricity_price.loc[len(electricity_price)] = ['Aruba', 'ABW', 9999, 17.8]
-electricity_price.loc[len(electricity_price)] = ['Cuba', 'CUB', 9999, 38.6]
-electricity_price.loc[len(electricity_price)] = ['French Polynesia', 'PYF', 9999, 25.9]
-electricity_price.loc[len(electricity_price)] = ['Curaçao', 'CUW', 9999, 41.9]
-# https://www.globalpetrolprices.com/Macao/electricity_prices/
-electricity_price.loc[len(electricity_price)] = ['Macao', 'MAC', 2025, 15.9]
-# https://www.nkeconwatch.com/category/communications/page/6/ (6.5 2012 euro cent, converted to 2012 US cent)
-electricity_price.loc[len(electricity_price)] = ['North Korea', 'PRK', 2012, 8.4]
-# https://www.ceicdata.com/en/turkmenistan/environmental-environmental-policy-taxes-and-transfers-non-oecd-member-annual/tm-industry-electricity-price-usd-per-kwh
-electricity_price.loc[len(electricity_price)] = ['Turkmenistan', 'TKM', 2020, 1.5]
-
-electricity_price.drop_duplicates(inplace=True)
-
-assert len([i for i in set(WRRF_filtered['CNTRY_ISO']) if i not in list(electricity_price['country_code'])]) == 0
-
-# =============================================================================
-# electricity CI
-# =============================================================================
-for i in set(WRRF_filtered['CNTRY_ISO']):
-    if i not in list(electriicty_country_CI['country_ISO_A3']):
-        print(set(WRRF_filtered[WRRF_filtered['CNTRY_ISO'] == i]['COUNTRY']))
-        print(i)
-
-# Europe without Switzerland
-electriicty_country_CI.loc[len(electriicty_country_CI)] = ['Monaco', 'MC', 'MCO', 0.335772839657998]
-# Africa
-electriicty_country_CI.loc[len(electriicty_country_CI)] = ['Equatorial Guinea', 'GQ', 'GNQ', 0.84866548695154]
-electriicty_country_CI.loc[len(electriicty_country_CI)] = ['Mali', 'ML', 'MLI', 0.84866548695154]
-electriicty_country_CI.loc[len(electriicty_country_CI)] = ['Guinea', 'GN', 'GIN', 0.84866548695154]
-electriicty_country_CI.loc[len(electriicty_country_CI)] = ['Seychelles', 'SC', 'SYC', 0.84866548695154]
-# Latin America and the Caribbean
-electriicty_country_CI.loc[len(electriicty_country_CI)] = ['British Virgin Islands', 'VG', 'VGB', 0.35047605957495]
-electriicty_country_CI.loc[len(electriicty_country_CI)] = ['Aruba', 'AW', 'ABW', 0.35047605957495]
-electriicty_country_CI.loc[len(electriicty_country_CI)] = ['Bahamas', 'BS', 'BHS', 0.35047605957495]
-electriicty_country_CI.loc[len(electriicty_country_CI)] = ['Barbados', 'BB', 'BRB', 0.35047605957495]
-electriicty_country_CI.loc[len(electriicty_country_CI)] = ['Antigua and Barbuda', 'AG', 'ATG', 0.35047605957495]
-electriicty_country_CI.loc[len(electriicty_country_CI)] = ['Belize', 'BZ', 'BLZ', 0.35047605957495]
-
-# Middle East
-electriicty_country_CI.loc[len(electriicty_country_CI)] = ['Palestina', 'PS', 'PSE', 0.907394533030651]
-
-# Asia
-electriicty_country_CI.loc[len(electriicty_country_CI)] = ['Macao', 'MO', 'MAC', 0.876728132896613]
-electriicty_country_CI.loc[len(electriicty_country_CI)] = ['Laos', 'LA', 'LAO', 0.876728132896613]
-electriicty_country_CI.loc[len(electriicty_country_CI)] = ['Afghanistan', 'AF', 'AFG', 0.876728132896613]
-
-# Global
-electriicty_country_CI.loc[len(electriicty_country_CI)] = ['Papua New Guinea', 'PG', 'PNG', 0.691007559959689]
-electriicty_country_CI.loc[len(electriicty_country_CI)] = ['Fiji', 'FJ', 'FJI', 0.691007559959689]
-electriicty_country_CI.loc[len(electriicty_country_CI)] = ['French Polynesia', 'PF', 'PYF', 0.691007559959689]
-
-electriicty_country_CI.drop_duplicates(inplace=True)
-
-assert len([i for i in set(WRRF_filtered['CNTRY_ISO']) if i not in list(electriicty_country_CI['country_ISO_A3'])]) == 0
-
-# =============================================================================
-# labor cost
-# =============================================================================
-for i in set(WRRF_filtered['CNTRY_ISO']):
-    if i not in list(labor_cost['country_code']):
-        print(set(WRRF_filtered[WRRF_filtered['CNTRY_ISO'] == i]['COUNTRY']))
-        print(i)
-
-# use the minimum value in the available dataset
-labor_cost.loc[len(labor_cost)] = ['North Korea', 'PRK', 190]
-
-labor_cost.drop_duplicates(inplace=True)
-
-assert len([i for i in set(WRRF_filtered['CNTRY_ISO']) if i not in list(labor_cost['country_code'])]) == 0
-
-
-# =============================================================================
-# PLI
-# =============================================================================
-for i in set(WRRF_filtered['CNTRY_ISO']):
-    if i not in list(PLI['country_code']):
-        print(set(WRRF_filtered[WRRF_filtered['CNTRY_ISO'] == i]['COUNTRY']))
-        print(i)
-
-# use France data
-PLI.loc[len(PLI)] = ['Monaco', 'MCO', 0.753]
-# use the average of China, Hong Kong SAR, China, Macao SAR, China, South Korea, and Japan
-PLI.loc[len(PLI)] = ['Taiwan', 'TWN', 0.604]
-# use the average of Caribbean countries (Dominica, Haiti, and Trinidad and Tobago)
-PLI.loc[len(PLI)] = ['British Virgin Islands', 'VGB', 0.566]
-# use the average of Latin American countries (Belize, Costa Rica, El Salvador, Guatemala, Honduras,
-#                                              Mexico, Nicaragua, Panama, Argentina, Bolivia, Brazil,
-#                                              Chile, Colombia, Ecuador, Guyana, Paraguay, Peru, Suriname,
-#                                              Uruguay, Dominica, Dominican Republic, Haiti, Trinidad and Tobago)
-PLI.loc[len(PLI)] = ['Cuba', 'CUB', 0.464]
-# use the average of Pacific Islands countries (Fiji, Kiribati, Marshall Islands, Nauru, Palau,
-#                                               Papua New Guinea, Samoa, Solomon Islands, Tonga,
-#                                               Tuvalu, Vanuatu)
-PLI.loc[len(PLI)] = ['French Polynesia', 'PYF', 0.764]
-# use the minimum value in the available dataset
-PLI.loc[len(PLI)] = ['North Korea', 'PRK', 0.125]
-
-PLI.drop_duplicates(inplace=True)
-
-assert len([i for i in set(WRRF_filtered['CNTRY_ISO']) if i not in list(PLI['country_code'])]) == 0
-
 #%% country average
 
 # TODO: as a kind of uncertainty analysis, show the minimum values on maps in the SI
@@ -1981,7 +1987,7 @@ for i in range(0, len(WRRF_filtered)):
                      create_C19_system, create_C20_system, create_C21_system,
                      create_C22_system, create_C23_system, create_C24_system,
                      create_C25_system):
-        sys = function(country=XXX, size=WRRF_filtered.iloc[i]['dry_solids_tonne_per_day'])
+        sys = function(country_code=XXX, size=WRRF_filtered.iloc[i]['dry_solids_tonne_per_day'])
         
         # TODO: is it really reasonable to use PLI to convert capital and transportation costs?
         # TODO: update electricity price, electricity CI, chemical costs, capital costs, transportation costs
@@ -2004,7 +2010,7 @@ for i in range(0, len(WRRF_filtered)):
                      create_T7_system, create_T8_system, create_T9_system,
                      create_T10_system, create_T11_system, create_T12_system,
                      create_T13_system, create_T14_system, create_T15_system):
-        sys = function(country=XXX, size=WRRF_filtered.iloc[i]['dry_solids_tonne_per_day'], FOAK=True)
+        sys = function(country_code=XXX, size=WRRF_filtered.iloc[i]['dry_solids_tonne_per_day'], FOAK=True)
         
         # TODO: is it really reasonable to use PLI to convert capital and transportation costs?
         # TODO: update electricity price, electricity CI, chemical costs, capital costs, transportation costs
@@ -2027,7 +2033,7 @@ for i in range(0, len(WRRF_filtered)):
                      create_T7_system, create_T8_system, create_T9_system,
                      create_T10_system, create_T11_system, create_T12_system,
                      create_T13_system, create_T14_system, create_T15_system):
-        sys = function(country=XXX, size=WRRF_filtered.iloc[i]['dry_solids_tonne_per_day'], FOAK=False)
+        sys = function(country_code=XXX, size=WRRF_filtered.iloc[i]['dry_solids_tonne_per_day'], FOAK=False)
         
         # TODO: is it really reasonable to use PLI to convert capital and transportation costs?
         # TODO: update electricity price, electricity CI, chemical costs, capital costs, transportation costs
