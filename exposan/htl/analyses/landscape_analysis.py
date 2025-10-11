@@ -2336,7 +2336,7 @@ for function in (create_C1_system, create_C2_system, create_C3_system,
                  create_T9_system, create_T10_system, create_T11_system,
                  create_T12_system, create_T13_system, create_T14_system,
                  create_T15_system):
-    sys = function(size=10)
+    sys = function(country_code='CHN', size=10)
     print('\n' + sys.ID)
     print(round(sys.get_cooling_duty()))
     print(round(sys.get_heating_duty()))
@@ -2359,7 +2359,7 @@ for function in (create_C1_system, create_C2_system, create_C3_system,
                  create_T9_system, create_T10_system, create_T11_system,
                  create_T12_system, create_T13_system, create_T14_system,
                  create_T15_system):
-    sys = function(size=10)
+    sys = function(country_code='CHN', size=10)
     
     print('\n' + sys.ID)
     
@@ -2372,7 +2372,7 @@ for function in (create_T1_system, create_T2_system, create_T3_system,
                  create_T7_system, create_T8_system, create_T9_system,
                  create_T10_system, create_T11_system, create_T12_system,
                  create_T13_system, create_T14_system, create_T15_system):
-    sys = function(size=10, FOAK=False)
+    sys = function(country_code='CHN', size=10, FOAK=False)
     
     print('\n' + sys.ID + ' nth plant')
     
@@ -2411,7 +2411,7 @@ for function in (create_C1_system, create_C2_system, create_C3_system,
                  create_T9_system, create_T10_system, create_T11_system,
                  create_T12_system, create_T13_system, create_T14_system,
                  create_T15_system):
-    sys = function(size=10)
+    sys = function(country_code='CHN', size=10)
     
     print('\n' + sys.ID)
     
@@ -2428,7 +2428,7 @@ for function in (create_T1_system, create_T2_system, create_T3_system,
                  create_T7_system, create_T8_system, create_T9_system,
                  create_T10_system, create_T11_system, create_T12_system,
                  create_T13_system, create_T14_system, create_T15_system):
-    sys = function(size=10, FOAK=False)
+    sys = function(country_code='CHN', size=10, FOAK=False)
     
     print('\n' + sys.ID + ' nth plant')
     

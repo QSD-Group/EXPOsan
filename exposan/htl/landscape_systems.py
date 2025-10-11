@@ -25,17 +25,7 @@ for license details.
 # TODO: consider adding IRR as a WRRF typology parameter (20250917 update: no more typology)
 # TODO: income tax may be found in Steward et al. ES&T, 2023
 
-# TODO: for methane GWP, 29.8 may be for fossil-derived CH4
-# TODO: change it to 27 based on https://ghgprotocol.org/sites/default/files/2024-08/Global-Warming-Potential-Values%20%28August%202024%29.pdf
-# TODO: 29.8 was used in the Nature Water paper, which was fine, since 29.8 was used consistently throughout the analyses and was spefically mentioned in the SI, also some parts of CH4 from WRRFs can be fossil-based, so using 29.8 was conservative
-
-# TODO: add country options for relevant parameters
-# TODO 1: update CEPCI using PLI to update capital costs
-# TODO 2: update chemical and transportation costs using PLI manually (check if there are any additional utility costs)
-# TODO 3: update electricity price and CI manually
-# TODO 4: update labor costs manually
-# TODO 5: update CI of other chemicals, etc. (need a systematic way to do this)
-# TODO 6: check and complete other necessary TODOs (e.g., TODO: for methane GWP, 29.8 may be for fossil-derived CH4) before running analyses (but does not need to address all TODOs, the analyses may be rerun several times anyway)
+# TODO: check if all necessary pumps are included        
 
 #%% initialization
 
@@ -90,9 +80,23 @@ labor_index = tea_indices['labor']
 electricity_price = pd.read_excel(folder + 'analyses/electricity_price_2025-10-09.xlsx')
 electricity_CI = pd.read_excel(folder + 'analyses/electricity_CI_2025-10-09.xlsx')
 labor_cost = pd.read_excel(folder + 'analyses/labor_cost_2025-10-09.xlsx')
+labor_cost['labor_index'] = labor_cost['average_annual_income_USD']/labor_cost[labor_cost['country_code'] == 'USA']['average_annual_income_USD'].iloc[0]
 PLI = pd.read_excel(folder + 'analyses/PLI_2025-10-09.xlsx')
 
 assert PLI[PLI['country_code'] == 'USA']['PLI'].iloc[0] == 1
+
+European_countries = ['ALB','AND','AUT','BLR','BEL','BIH','BGR','HRV','CZE','DNK',
+                      'EST','FIN','FRA','DEU','GRC','HUN','ISL','IRL','ITA','XKX',
+                      'LVA','LIE','LTU','LUX','MLT','MDA','MCO','MNE','NLD','MKD',
+                      'NOR','POL','PRT','ROU','RUS','SMR','SRB','SVK','SVN','ESP',
+                      'SWE','CHE','TUR','UKR','GBR']
+
+Northern_American_countires = ['CAN','USA','GRL','MEX','NIC','HND','CUB','GTM',
+                               'PAN','CRI','DOM','HTI','BLZ','SLV','BHS','JAM',
+                               'PRI','TTO','GLP','MTQ','TCA','DMA','LCA','CUW',
+                               'ATG','BRB','VCT','VIR','GRD','BES','CYM','KNA',
+                               'SPM','ABW','VGB','MSR','AIA','BMU','MAF','SXM',
+                               'BLM','CPT']
 
 # TODO: try addressing all warnings (especially in T pathways)
 
@@ -154,7 +158,31 @@ def create_C1_system(country_code='USA', size=10, operation_hours=7884, LF_dista
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -173,17 +201,18 @@ def create_C1_system(country_code='USA', size=10, operation_hours=7884, LF_dista
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(Thickening-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     # TODO: landfilling tipping fees can be an uncertainty parameter or a typology parameter
     Landfilling = lsu.Landfilling(ID='Landfilling',
@@ -207,13 +236,21 @@ def create_C1_system(country_code='USA', size=10, operation_hours=7884, LF_dista
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
@@ -222,8 +259,8 @@ def create_C1_system(country_code='USA', size=10, operation_hours=7884, LF_dista
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_LF', linked_stream=stream.methane_LF, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_LF', linked_stream=stream.methane_LF, GlobalWarming=27)
     qs.StreamImpactItem(ID='Nitrous_oxide_LF', linked_stream=stream.nitrous_oxide_LF, GlobalWarming=273)
     
     # carbon sequestration
@@ -231,11 +268,18 @@ def create_C1_system(country_code='USA', size=10, operation_hours=7884, LF_dista
     
     sludge_trucking = qs.ImpactItem(ID='Sludge_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    sludge_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
+    if country_code == 'ZAF':
+        sludge_trucking.add_indicator(GlobalWarming, 0.14059514852771382/1000)
+    elif country_code == 'BRA':
+        sludge_trucking.add_indicator(GlobalWarming, 0.11982238243679814/1000)
+    elif country_code in European_countries:
+        sludge_trucking.add_indicator(GlobalWarming, 0.15050202193852563/1000)
+    else:
+        sludge_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
-    sludge_trucking.price = (0.00551 + 0.0000541*Landfilling.solids_distance)/Landfilling.solids_distance
+    sludge_trucking.price = (0.00551 + 0.0000541*Landfilling.solids_distance)/Landfilling.solids_distance*country_PLI
     
     sludge_transportation = qs.Transportation(ID='Sludge_transportation',
                                               linked_unit=Landfilling,
@@ -257,7 +301,7 @@ def create_C1_system(country_code='USA', size=10, operation_hours=7884, LF_dista
            Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -283,7 +327,31 @@ def create_C2_system(country_code='USA', size=10, operation_hours=7884, LF_dista
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -302,22 +370,23 @@ def create_C2_system(country_code='USA', size=10, operation_hours=7884, LF_dista
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(Thickening-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     AlkalineStabilization = lsu.AlkalineStabilization(ID='AlkalineStabilization',
                                                       ins=(Dewatering-0, 'lime'),
                                                       outs='stabilized_solids')
-    AlkalineStabilization.ins[1].price = 0.1189/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    AlkalineStabilization.ins[1].price = 0.1189/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     Landfilling = lsu.Landfilling(ID='Landfilling',
                                   ins=AlkalineStabilization-0,
@@ -340,13 +409,21 @@ def create_C2_system(country_code='USA', size=10, operation_hours=7884, LF_dista
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
@@ -354,11 +431,14 @@ def create_C2_system(country_code='USA', size=10, operation_hours=7884, LF_dista
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # based on ecoinvent, this value likely includes limestone decomposition
-    qs.StreamImpactItem(ID='Lime', linked_stream=stream.lime, GlobalWarming=1.2450783867271262)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Lime', linked_stream=stream.lime, GlobalWarming=1.1647726618744279)
+    else:
+        qs.StreamImpactItem(ID='Lime', linked_stream=stream.lime, GlobalWarming=1.2450783867271262)
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_LF', linked_stream=stream.methane_LF, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_LF', linked_stream=stream.methane_LF, GlobalWarming=27)
     qs.StreamImpactItem(ID='Nitrous_oxide_LF', linked_stream=stream.nitrous_oxide_LF, GlobalWarming=273)
     
     # carbon sequestration
@@ -366,11 +446,18 @@ def create_C2_system(country_code='USA', size=10, operation_hours=7884, LF_dista
     
     sludge_trucking = qs.ImpactItem(ID='Sludge_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    sludge_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
+    if country_code == 'ZAF':
+        sludge_trucking.add_indicator(GlobalWarming, 0.14059514852771382/1000)
+    elif country_code == 'BRA':
+        sludge_trucking.add_indicator(GlobalWarming, 0.11982238243679814/1000)
+    elif country_code in European_countries:
+        sludge_trucking.add_indicator(GlobalWarming, 0.15050202193852563/1000)
+    else:
+        sludge_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
-    sludge_trucking.price = (0.00551 + 0.0000541*Landfilling.solids_distance)/Landfilling.solids_distance
+    sludge_trucking.price = (0.00551 + 0.0000541*Landfilling.solids_distance)/Landfilling.solids_distance*country_PLI
     
     sludge_transportation = qs.Transportation(ID='Sludge_transportation',
                                               linked_unit=Landfilling,
@@ -392,7 +479,7 @@ def create_C2_system(country_code='USA', size=10, operation_hours=7884, LF_dista
            Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -418,7 +505,31 @@ def create_C3_system(country_code='USA', size=10, operation_hours=7884, LA_dista
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -437,29 +548,30 @@ def create_C3_system(country_code='USA', size=10, operation_hours=7884, LA_dista
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(Thickening-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     AlkalineStabilization = lsu.AlkalineStabilization(ID='AlkalineStabilization',
                                                       ins=(Dewatering-0, 'lime'),
                                                       outs='stabilized_solids')
-    AlkalineStabilization.ins[1].price = 0.1189/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    AlkalineStabilization.ins[1].price = 0.1189/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     LandApplication = lsu.LandApplication(ID='LandApplication',
                                           ins=(AlkalineStabilization-0, 'diesel_LA'),
                                           outs=('biosolids_cost','methane_LA','nitrous_oxide_LA','carbon_dioxide_LA'),
                                           solids_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
-    LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
+    LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density*country_PLI
     LandApplication.outs[0].price = biosolids_price*country_PLI
     
     sys = qs.System.from_units(ID='system_C3',
@@ -483,13 +595,21 @@ def create_C3_system(country_code='USA', size=10, operation_hours=7884, LA_dista
     P_fertilizer.add_indicator(GlobalWarming, -2.0)
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
@@ -497,14 +617,32 @@ def create_C3_system(country_code='USA', size=10, operation_hours=7884, LA_dista
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # based on ecoinvent, this value likely includes limestone decomposition
-    qs.StreamImpactItem(ID='Lime', linked_stream=stream.lime, GlobalWarming=1.2450783867271262)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Lime', linked_stream=stream.lime, GlobalWarming=1.1647726618744279)
+    else:
+        qs.StreamImpactItem(ID='Lime', linked_stream=stream.lime, GlobalWarming=1.2450783867271262)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8970860511867621 + 44*12/(12*12 + 23*1))
+    elif country_code == 'COL':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.6777889995887414 + 44*12/(12*12 + 23*1))
+    elif country_code == 'IND':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.9819236027859558 + 44*12/(12*12 + 23*1))
+    elif country_code == 'ZAF':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8820480754893896 + 44*12/(12*12 + 23*1))
+    elif country_code == 'PER':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8701113618791989 + 44*12/(12*12 + 23*1))
+    elif country_code == 'BRA':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.6239541867786678 + 44*12/(12*12 + 23*1))
+    elif country_code in European_countries:
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8730080399195541 + 44*12/(12*12 + 23*1))
+    else:
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_LA', linked_stream=stream.methane_LA, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_LA', linked_stream=stream.methane_LA, GlobalWarming=27)
     qs.StreamImpactItem(ID='Nitrous_oxide_LA', linked_stream=stream.nitrous_oxide_LA, GlobalWarming=273)
     
     # carbon sequestration
@@ -512,11 +650,18 @@ def create_C3_system(country_code='USA', size=10, operation_hours=7884, LA_dista
     
     biosolids_trucking = qs.ImpactItem(ID='Biosolids_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biosolids_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
+    if country_code == 'ZAF':
+        biosolids_trucking.add_indicator(GlobalWarming, 0.14059514852771382/1000)
+    elif country_code == 'BRA':
+        biosolids_trucking.add_indicator(GlobalWarming, 0.11982238243679814/1000)
+    elif country_code in European_countries:
+        biosolids_trucking.add_indicator(GlobalWarming, 0.15050202193852563/1000)
+    else:
+        biosolids_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
-    biosolids_trucking.price = (0.00551 + 0.0000541*LandApplication.solids_distance)/LandApplication.solids_distance
+    biosolids_trucking.price = (0.00551 + 0.0000541*LandApplication.solids_distance)/LandApplication.solids_distance*country_PLI
     
     biosolids_transportation = qs.Transportation(ID='Biosolids_transportation',
                                                  linked_unit=LandApplication,
@@ -540,7 +685,7 @@ def create_C3_system(country_code='USA', size=10, operation_hours=7884, LA_dista
            Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -566,7 +711,31 @@ def create_C4_system(country_code='USA', size=10, operation_hours=7884, LA_dista
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -585,26 +754,27 @@ def create_C4_system(country_code='USA', size=10, operation_hours=7884, LA_dista
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(Thickening-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     Composting = lsu.Composting(ID='Composting', ins=(Dewatering-0, 'bulking_agent', 'diesel_composting'),
                                 outs=('compost_cost','methane_composting','nitrous_oxide_composting','sequestered_carbon_dioxide_composting'),
                                 feedstock_digested=False, solids_distance=LA_distance, PLI=country_PLI)
     # TODO: uncertainty range (uniform) 18-36 2005$/tonne
-    Composting.ins[1].price = 27/1000/GDPCTPI[2005]*GDPCTPI[2023]
+    Composting.ins[1].price = 27/1000/GDPCTPI[2005]*GDPCTPI[2023]*country_PLI
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
-    Composting.ins[2].price = 4.224/_gal_to_liter*1000/diesel_density
-    Composting.outs[0].price = compost_price
+    Composting.ins[2].price = 4.224/_gal_to_liter*1000/diesel_density*country_PLI
+    Composting.outs[0].price = compost_price*country_PLI
     
     sys = qs.System.from_units(ID='system_C4',
                                units=list(flowsheet.unit),
@@ -619,7 +789,12 @@ def create_C4_system(country_code='USA', size=10, operation_hours=7884, LA_dista
                                        description='Global Warming Potential')
     
     Bulking_agent = qs.ImpactItem('Bulking_agent', functional_unit='kg')
-    Bulking_agent.add_indicator(GlobalWarming, 0.04291794596775965)
+    if country_code == 'CHE':
+        Bulking_agent.add_indicator(GlobalWarming, 0.021387244244734732)
+    elif country_code in European_countries:
+        Bulking_agent.add_indicator(GlobalWarming, 0.03047830694185532)
+    else:
+        Bulking_agent.add_indicator(GlobalWarming, 0.04291794596775965)
     
     # BEAM
     N_fertilizer = qs.ImpactItem('N_fertilizer', functional_unit='kg')
@@ -630,13 +805,21 @@ def create_C4_system(country_code='USA', size=10, operation_hours=7884, LA_dista
     P_fertilizer.add_indicator(GlobalWarming, -2.0)
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
@@ -645,11 +828,26 @@ def create_C4_system(country_code='USA', size=10, operation_hours=7884, LA_dista
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.8970860511867621 + 44*12/(12*12 + 23*1))
+    elif country_code == 'COL':
+        qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.6777889995887414 + 44*12/(12*12 + 23*1))
+    elif country_code == 'IND':
+        qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.9819236027859558 + 44*12/(12*12 + 23*1))
+    elif country_code == 'ZAF':
+        qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.8820480754893896 + 44*12/(12*12 + 23*1))
+    elif country_code == 'PER':
+        qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.8701113618791989 + 44*12/(12*12 + 23*1))
+    elif country_code == 'BRA':
+        qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.6239541867786678 + 44*12/(12*12 + 23*1))
+    elif country_code in European_countries:
+        qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.8730080399195541 + 44*12/(12*12 + 23*1))
+    else:
+        qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_composting', linked_stream=stream.methane_composting, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_composting', linked_stream=stream.methane_composting, GlobalWarming=27)
     qs.StreamImpactItem(ID='Nitrous_oxide_composting', linked_stream=stream.nitrous_oxide_composting, GlobalWarming=273)
     
     # carbon sequestration
@@ -657,11 +855,18 @@ def create_C4_system(country_code='USA', size=10, operation_hours=7884, LA_dista
     
     compost_trucking = qs.ImpactItem(ID='Compost_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    compost_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
+    if country_code == 'ZAF':
+        compost_trucking.add_indicator(GlobalWarming, 0.14059514852771382/1000)
+    elif country_code == 'BRA':
+        compost_trucking.add_indicator(GlobalWarming, 0.11982238243679814/1000)
+    elif country_code in European_countries:
+        compost_trucking.add_indicator(GlobalWarming, 0.15050202193852563/1000)
+    else:
+        compost_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
-    compost_trucking.price = (0.00551 + 0.0000541*Composting.solids_distance)/Composting.solids_distance
+    compost_trucking.price = (0.00551 + 0.0000541*Composting.solids_distance)/Composting.solids_distance*country_PLI
     
     compost_transportation = qs.Transportation(ID='Compost_transportation',
                                                linked_unit=Composting,
@@ -686,7 +891,7 @@ def create_C4_system(country_code='USA', size=10, operation_hours=7884, LA_dista
            Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -712,7 +917,31 @@ def create_C5_system(country_code='USA', size=10, operation_hours=7884, LF_dista
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -731,23 +960,24 @@ def create_C5_system(country_code='USA', size=10, operation_hours=7884, LF_dista
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(Thickening-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     HeatDrying = lsu.HeatDrying(ID='HeatDrying', ins=(Dewatering-0, 'natural_gas_heat_drying'),
                                 outs=('dried_solids','vapor'))
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    HeatDrying.ins[1].price = 0.218
+    HeatDrying.ins[1].price = 0.218*country_PLI
     
     Landfilling = lsu.Landfilling(ID='Landfilling',
                                   ins=HeatDrying-0,
@@ -770,17 +1000,58 @@ def create_C5_system(country_code='USA', size=10, operation_hours=7884, LF_dista
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
-        
+    if country_code == 'CHE':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7008435167236161 + natural_gas_density/16*44)
+    elif country_code == 'DEU':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4549664070734295 + natural_gas_density/16*44)
+    elif country_code == 'ESP':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8874492234001324 + natural_gas_density/16*44)
+    elif country_code == 'GBR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4100646325467 + natural_gas_density/16*44)
+    elif country_code == 'BEL':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5685568661222136 + natural_gas_density/16*44)
+    elif country_code == 'USA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5735112177514514 + natural_gas_density/16*44)
+    elif country_code == 'TUR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7039019951758329 + natural_gas_density/16*44)
+    elif country_code == 'FRA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7228085846276232 + natural_gas_density/16*44)
+    elif country_code == 'NLD':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5732876065672489 + natural_gas_density/16*44)
+    elif country_code == 'MEX':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.583138412259907 + natural_gas_density/16*44)
+    elif country_code == 'ITA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7463130536072833 + natural_gas_density/16*44)
+    elif country_code == 'CAN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5424438688893909 + natural_gas_density/16*44)
+    elif country_code == 'JPN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8612532956914958 + natural_gas_density/16*44)
+    elif country_code == 'KOR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8632380439297898 + natural_gas_density/16*44)
+    elif country_code == 'CHN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6687205543269131 + natural_gas_density/16*44)
+    elif country_code in European_countries:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6884940098670117 + natural_gas_density/16*44)
+    else:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
+    
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
@@ -788,8 +1059,8 @@ def create_C5_system(country_code='USA', size=10, operation_hours=7884, LF_dista
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_LF', linked_stream=stream.methane_LF, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_LF', linked_stream=stream.methane_LF, GlobalWarming=27)
     qs.StreamImpactItem(ID='Nitrous_oxide_LF', linked_stream=stream.nitrous_oxide_LF, GlobalWarming=273)
     
     # carbon sequestration
@@ -797,11 +1068,18 @@ def create_C5_system(country_code='USA', size=10, operation_hours=7884, LF_dista
     
     sludge_trucking = qs.ImpactItem(ID='Sludge_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    sludge_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
+    if country_code == 'ZAF':
+        sludge_trucking.add_indicator(GlobalWarming, 0.14059514852771382/1000)
+    elif country_code == 'BRA':
+        sludge_trucking.add_indicator(GlobalWarming, 0.11982238243679814/1000)
+    elif country_code in European_countries:
+        sludge_trucking.add_indicator(GlobalWarming, 0.15050202193852563/1000)
+    else:
+        sludge_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
-    sludge_trucking.price = (0.00551 + 0.0000541*Landfilling.solids_distance)/Landfilling.solids_distance
+    sludge_trucking.price = (0.00551 + 0.0000541*Landfilling.solids_distance)/Landfilling.solids_distance*country_PLI
     
     sludge_transportation = qs.Transportation(ID='Sludge_transportation',
                                               linked_unit=Landfilling,
@@ -824,7 +1102,7 @@ def create_C5_system(country_code='USA', size=10, operation_hours=7884, LF_dista
            Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -850,7 +1128,31 @@ def create_C6_system(country_code='USA', size=10, operation_hours=7884, LA_dista
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -869,30 +1171,31 @@ def create_C6_system(country_code='USA', size=10, operation_hours=7884, LA_dista
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(Thickening-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     HeatDrying = lsu.HeatDrying(ID='HeatDrying', ins=(Dewatering-0, 'natural_gas_heat_drying'),
                                 outs=('dried_solids','vapor'))
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    HeatDrying.ins[1].price = 0.218
+    HeatDrying.ins[1].price = 0.218*country_PLI
     
     LandApplication = lsu.LandApplication(ID='LandApplication',
                                           ins=(HeatDrying-0, 'diesel_LA'),
                                           outs=('biosolids_cost','methane_LA','nitrous_oxide_LA','carbon_dioxide_LA'),
                                           solids_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
-    LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
+    LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density*country_PLI
     LandApplication.outs[0].price = biosolids_price*country_PLI
     
     sys = qs.System.from_units(ID='system_C6',
@@ -916,16 +1219,57 @@ def create_C6_system(country_code='USA', size=10, operation_hours=7884, LA_dista
     P_fertilizer.add_indicator(GlobalWarming, -2.0)
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
+    if country_code == 'CHE':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7008435167236161 + natural_gas_density/16*44)
+    elif country_code == 'DEU':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4549664070734295 + natural_gas_density/16*44)
+    elif country_code == 'ESP':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8874492234001324 + natural_gas_density/16*44)
+    elif country_code == 'GBR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4100646325467 + natural_gas_density/16*44)
+    elif country_code == 'BEL':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5685568661222136 + natural_gas_density/16*44)
+    elif country_code == 'USA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5735112177514514 + natural_gas_density/16*44)
+    elif country_code == 'TUR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7039019951758329 + natural_gas_density/16*44)
+    elif country_code == 'FRA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7228085846276232 + natural_gas_density/16*44)
+    elif country_code == 'NLD':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5732876065672489 + natural_gas_density/16*44)
+    elif country_code == 'MEX':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.583138412259907 + natural_gas_density/16*44)
+    elif country_code == 'ITA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7463130536072833 + natural_gas_density/16*44)
+    elif country_code == 'CAN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5424438688893909 + natural_gas_density/16*44)
+    elif country_code == 'JPN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8612532956914958 + natural_gas_density/16*44)
+    elif country_code == 'KOR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8632380439297898 + natural_gas_density/16*44)
+    elif country_code == 'CHN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6687205543269131 + natural_gas_density/16*44)
+    elif country_code in European_countries:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6884940098670117 + natural_gas_density/16*44)
+    else:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
@@ -934,11 +1278,26 @@ def create_C6_system(country_code='USA', size=10, operation_hours=7884, LA_dista
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8970860511867621 + 44*12/(12*12 + 23*1))
+    elif country_code == 'COL':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.6777889995887414 + 44*12/(12*12 + 23*1))
+    elif country_code == 'IND':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.9819236027859558 + 44*12/(12*12 + 23*1))
+    elif country_code == 'ZAF':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8820480754893896 + 44*12/(12*12 + 23*1))
+    elif country_code == 'PER':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8701113618791989 + 44*12/(12*12 + 23*1))
+    elif country_code == 'BRA':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.6239541867786678 + 44*12/(12*12 + 23*1))
+    elif country_code in European_countries:
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8730080399195541 + 44*12/(12*12 + 23*1))
+    else:
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_LA', linked_stream=stream.methane_LA, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_LA', linked_stream=stream.methane_LA, GlobalWarming=27)
     qs.StreamImpactItem(ID='Nitrous_oxide_LA', linked_stream=stream.nitrous_oxide_LA, GlobalWarming=273)
     
     # carbon sequestration
@@ -946,11 +1305,18 @@ def create_C6_system(country_code='USA', size=10, operation_hours=7884, LA_dista
     
     biosolids_trucking = qs.ImpactItem(ID='Biosolids_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biosolids_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
+    if country_code == 'ZAF':
+        biosolids_trucking.add_indicator(GlobalWarming, 0.14059514852771382/1000)
+    elif country_code == 'BRA':
+        biosolids_trucking.add_indicator(GlobalWarming, 0.11982238243679814/1000)
+    elif country_code in European_countries:
+        biosolids_trucking.add_indicator(GlobalWarming, 0.15050202193852563/1000)
+    else:
+        biosolids_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
-    biosolids_trucking.price = (0.00551 + 0.0000541*LandApplication.solids_distance)/LandApplication.solids_distance
+    biosolids_trucking.price = (0.00551 + 0.0000541*LandApplication.solids_distance)/LandApplication.solids_distance*country_PLI
     
     biosolids_transportation = qs.Transportation(ID='Biosolids_transportation',
                                                  linked_unit=LandApplication,
@@ -975,7 +1341,7 @@ def create_C6_system(country_code='USA', size=10, operation_hours=7884, LA_dista
            Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -1001,7 +1367,31 @@ def create_C7_system(country_code='USA', size=10, operation_hours=7884, FTE=0.4,
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -1020,32 +1410,33 @@ def create_C7_system(country_code='USA', size=10, operation_hours=7884, FTE=0.4,
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(Thickening-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     HeatDrying = lsu.HeatDrying(ID='HeatDrying', ins=(Dewatering-0, 'natural_gas_heat_drying'),
                                 outs=('dried_solids','vapor_drying'))
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    HeatDrying.ins[1].price = 0.218
+    HeatDrying.ins[1].price = 0.218*country_PLI
     
     Incineration = lsu.Incineration(ID='Incineration',
                                     ins=(HeatDrying-0, 'natural_gas_incineration'),
                                     outs=('ash_incineration','vapor_incineration','methane_IN','nitrous_oxide_IN'))
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    Incineration.ins[1].price = 0.218
+    Incineration.ins[1].price = 0.218*country_PLI
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
-    Incineration.outs[0].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    Incineration.outs[0].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     sys = qs.System.from_units(ID='system_C7',
                                units=list(flowsheet.unit),
@@ -1060,27 +1451,71 @@ def create_C7_system(country_code='USA', size=10, operation_hours=7884, FTE=0.4,
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
+    if country_code == 'CHE':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7008435167236161 + natural_gas_density/16*44)
+    elif country_code == 'DEU':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4549664070734295 + natural_gas_density/16*44)
+    elif country_code == 'ESP':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8874492234001324 + natural_gas_density/16*44)
+    elif country_code == 'GBR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4100646325467 + natural_gas_density/16*44)
+    elif country_code == 'BEL':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5685568661222136 + natural_gas_density/16*44)
+    elif country_code == 'USA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5735112177514514 + natural_gas_density/16*44)
+    elif country_code == 'TUR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7039019951758329 + natural_gas_density/16*44)
+    elif country_code == 'FRA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7228085846276232 + natural_gas_density/16*44)
+    elif country_code == 'NLD':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5732876065672489 + natural_gas_density/16*44)
+    elif country_code == 'MEX':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.583138412259907 + natural_gas_density/16*44)
+    elif country_code == 'ITA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7463130536072833 + natural_gas_density/16*44)
+    elif country_code == 'CAN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5424438688893909 + natural_gas_density/16*44)
+    elif country_code == 'JPN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8612532956914958 + natural_gas_density/16*44)
+    elif country_code == 'KOR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8632380439297898 + natural_gas_density/16*44)
+    elif country_code == 'CHN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6687205543269131 + natural_gas_density/16*44)
+    elif country_code in European_countries:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6884940098670117 + natural_gas_density/16*44)
+    else:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
-    qs.StreamImpactItem(ID='Ash_incineration', linked_stream=stream.ash_incineration, GlobalWarming=0.018281422578429424)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Ash_incineration', linked_stream=stream.ash_incineration, GlobalWarming=0.00946219748385128)
+    else:
+        qs.StreamImpactItem(ID='Ash_incineration', linked_stream=stream.ash_incineration, GlobalWarming=0.018281422578429424)
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_IN', linked_stream=stream.methane_IN, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_IN', linked_stream=stream.methane_IN, GlobalWarming=27)
     qs.StreamImpactItem(ID='Nitrous_oxide_IN', linked_stream=stream.nitrous_oxide_IN, GlobalWarming=273)
     
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
@@ -1091,7 +1526,7 @@ def create_C7_system(country_code='USA', size=10, operation_hours=7884, FTE=0.4,
            Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -1117,7 +1552,31 @@ def create_C8_system(country_code='USA', size=10, operation_hours=7884, LF_dista
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -1136,12 +1595,13 @@ def create_C8_system(country_code='USA', size=10, operation_hours=7884, LF_dista
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     AerobicDigestion = lsu.AerobicDigestion(ID='AerobicDigestion', ins=(Thickening-0, 'air'),
                                             outs=('digested_sludge','offgas_AeD'), PLI=country_PLI)
@@ -1149,7 +1609,7 @@ def create_C8_system(country_code='USA', size=10, operation_hours=7884, LF_dista
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AerobicDigestion-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     Landfilling = lsu.Landfilling(ID='Landfilling',
                                   ins=Dewatering-0,
@@ -1172,13 +1632,21 @@ def create_C8_system(country_code='USA', size=10, operation_hours=7884, LF_dista
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
@@ -1187,8 +1655,8 @@ def create_C8_system(country_code='USA', size=10, operation_hours=7884, LF_dista
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_LF', linked_stream=stream.methane_LF, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_LF', linked_stream=stream.methane_LF, GlobalWarming=27)
     qs.StreamImpactItem(ID='Nitrous_oxide_LF', linked_stream=stream.nitrous_oxide_LF, GlobalWarming=273)
     
     # carbon sequestration
@@ -1196,11 +1664,18 @@ def create_C8_system(country_code='USA', size=10, operation_hours=7884, LF_dista
     
     sludge_trucking = qs.ImpactItem(ID='Sludge_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    sludge_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
+    if country_code == 'ZAF':
+        sludge_trucking.add_indicator(GlobalWarming, 0.14059514852771382/1000)
+    elif country_code == 'BRA':
+        sludge_trucking.add_indicator(GlobalWarming, 0.11982238243679814/1000)
+    elif country_code in European_countries:
+        sludge_trucking.add_indicator(GlobalWarming, 0.15050202193852563/1000)
+    else:
+        sludge_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
-    sludge_trucking.price = (0.00551 + 0.0000541*Landfilling.solids_distance)/Landfilling.solids_distance
+    sludge_trucking.price = (0.00551 + 0.0000541*Landfilling.solids_distance)/Landfilling.solids_distance*country_PLI
     
     sludge_transportation = qs.Transportation(ID='Sludge_transportation',
                                               linked_unit=Landfilling,
@@ -1222,7 +1697,7 @@ def create_C8_system(country_code='USA', size=10, operation_hours=7884, LF_dista
            Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -1248,7 +1723,31 @@ def create_C9_system(country_code='USA', size=10, operation_hours=7884, LA_dista
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -1267,12 +1766,13 @@ def create_C9_system(country_code='USA', size=10, operation_hours=7884, LA_dista
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     AerobicDigestion = lsu.AerobicDigestion(ID='AerobicDigestion', ins=(Thickening-0, 'air'),
                                             outs=('digested_sludge','offgas_AeD'), PLI=country_PLI)
@@ -1280,14 +1780,14 @@ def create_C9_system(country_code='USA', size=10, operation_hours=7884, LA_dista
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AerobicDigestion-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     LandApplication = lsu.LandApplication(ID='LandApplication',
                                           ins=(Dewatering-0, 'diesel_LA'),
                                           outs=('biosolids_cost','methane_LA','nitrous_oxide_LA','carbon_dioxide_LA'),
                                           solids_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
-    LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
+    LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density*country_PLI
     LandApplication.outs[0].price = biosolids_price*country_PLI
     
     sys = qs.System.from_units(ID='system_C9',
@@ -1311,13 +1811,21 @@ def create_C9_system(country_code='USA', size=10, operation_hours=7884, LA_dista
     P_fertilizer.add_indicator(GlobalWarming, -2.0)
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
@@ -1326,11 +1834,26 @@ def create_C9_system(country_code='USA', size=10, operation_hours=7884, LA_dista
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8970860511867621 + 44*12/(12*12 + 23*1))
+    elif country_code == 'COL':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.6777889995887414 + 44*12/(12*12 + 23*1))
+    elif country_code == 'IND':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.9819236027859558 + 44*12/(12*12 + 23*1))
+    elif country_code == 'ZAF':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8820480754893896 + 44*12/(12*12 + 23*1))
+    elif country_code == 'PER':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8701113618791989 + 44*12/(12*12 + 23*1))
+    elif country_code == 'BRA':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.6239541867786678 + 44*12/(12*12 + 23*1))
+    elif country_code in European_countries:
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8730080399195541 + 44*12/(12*12 + 23*1))
+    else:
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_LA', linked_stream=stream.methane_LA, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_LA', linked_stream=stream.methane_LA, GlobalWarming=27)
     qs.StreamImpactItem(ID='Nitrous_oxide_LA', linked_stream=stream.nitrous_oxide_LA, GlobalWarming=273)
     
     # carbon sequestration
@@ -1338,11 +1861,18 @@ def create_C9_system(country_code='USA', size=10, operation_hours=7884, LA_dista
     
     biosolids_trucking = qs.ImpactItem(ID='Biosolids_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biosolids_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
+    if country_code == 'ZAF':
+        biosolids_trucking.add_indicator(GlobalWarming, 0.14059514852771382/1000)
+    elif country_code == 'BRA':
+        biosolids_trucking.add_indicator(GlobalWarming, 0.11982238243679814/1000)
+    elif country_code in European_countries:
+        biosolids_trucking.add_indicator(GlobalWarming, 0.15050202193852563/1000)
+    else:
+        biosolids_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
-    biosolids_trucking.price = (0.00551 + 0.0000541*LandApplication.solids_distance)/LandApplication.solids_distance
+    biosolids_trucking.price = (0.00551 + 0.0000541*LandApplication.solids_distance)/LandApplication.solids_distance*country_PLI
     
     biosolids_transportation = qs.Transportation(ID='Biosolids_transportation',
                                                  linked_unit=LandApplication,
@@ -1366,7 +1896,7 @@ def create_C9_system(country_code='USA', size=10, operation_hours=7884, LA_dista
            Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -1392,7 +1922,31 @@ def create_C10_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -1411,12 +1965,13 @@ def create_C10_system(country_code='USA', size=10, operation_hours=7884, LA_dist
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     AerobicDigestion = lsu.AerobicDigestion(ID='AerobicDigestion', ins=(Thickening-0, 'air'),
                                             outs=('digested_sludge','offgas_AeD'), PLI=country_PLI)
@@ -1424,16 +1979,16 @@ def create_C10_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AerobicDigestion-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     Composting = lsu.Composting(ID='Composting', ins=(Dewatering-0, 'bulking_agent', 'diesel_composting'),
                                 outs=('compost_cost','methane_composting','nitrous_oxide_composting','sequestered_carbon_dioxide_composting'),
                                 feedstock_digested=True, solids_distance=LA_distance, PLI=country_PLI)
     # TODO: uncertainty range (uniform) 18-36 2005$/tonne
-    Composting.ins[1].price = 27/1000/GDPCTPI[2005]*GDPCTPI[2023]
+    Composting.ins[1].price = 27/1000/GDPCTPI[2005]*GDPCTPI[2023]*country_PLI
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
-    Composting.ins[2].price = 4.224/_gal_to_liter*1000/diesel_density
-    Composting.outs[0].price = compost_price
+    Composting.ins[2].price = 4.224/_gal_to_liter*1000/diesel_density*country_PLI
+    Composting.outs[0].price = compost_price*country_PLI
     
     sys = qs.System.from_units(ID='system_C10',
                                units=list(flowsheet.unit),
@@ -1448,7 +2003,12 @@ def create_C10_system(country_code='USA', size=10, operation_hours=7884, LA_dist
                                        description='Global Warming Potential')
     
     Bulking_agent = qs.ImpactItem('Bulking_agent', functional_unit='kg')
-    Bulking_agent.add_indicator(GlobalWarming, 0.04291794596775965)
+    if country_code == 'CHE':
+        Bulking_agent.add_indicator(GlobalWarming, 0.021387244244734732)
+    elif country_code in European_countries:
+        Bulking_agent.add_indicator(GlobalWarming, 0.03047830694185532)
+    else:
+        Bulking_agent.add_indicator(GlobalWarming, 0.04291794596775965)
     
     # BEAM
     N_fertilizer = qs.ImpactItem('N_fertilizer', functional_unit='kg')
@@ -1459,13 +2019,21 @@ def create_C10_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     P_fertilizer.add_indicator(GlobalWarming, -2.0)
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
@@ -1474,11 +2042,26 @@ def create_C10_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.8970860511867621 + 44*12/(12*12 + 23*1))
+    elif country_code == 'COL':
+        qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.6777889995887414 + 44*12/(12*12 + 23*1))
+    elif country_code == 'IND':
+        qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.9819236027859558 + 44*12/(12*12 + 23*1))
+    elif country_code == 'ZAF':
+        qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.8820480754893896 + 44*12/(12*12 + 23*1))
+    elif country_code == 'PER':
+        qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.8701113618791989 + 44*12/(12*12 + 23*1))
+    elif country_code == 'BRA':
+        qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.6239541867786678 + 44*12/(12*12 + 23*1))
+    elif country_code in European_countries:
+        qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.8730080399195541 + 44*12/(12*12 + 23*1))
+    else:
+        qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_composting', linked_stream=stream.methane_composting, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_composting', linked_stream=stream.methane_composting, GlobalWarming=27)
     qs.StreamImpactItem(ID='Nitrous_oxide_composting', linked_stream=stream.nitrous_oxide_composting, GlobalWarming=273)
     
     # carbon sequestration
@@ -1486,11 +2069,18 @@ def create_C10_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     
     compost_trucking = qs.ImpactItem(ID='Compost_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    compost_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
+    if country_code == 'ZAF':
+        compost_trucking.add_indicator(GlobalWarming, 0.14059514852771382/1000)
+    elif country_code == 'BRA':
+        compost_trucking.add_indicator(GlobalWarming, 0.11982238243679814/1000)
+    elif country_code in European_countries:
+        compost_trucking.add_indicator(GlobalWarming, 0.15050202193852563/1000)
+    else:
+        compost_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
-    compost_trucking.price = (0.00551 + 0.0000541*Composting.solids_distance)/Composting.solids_distance
+    compost_trucking.price = (0.00551 + 0.0000541*Composting.solids_distance)/Composting.solids_distance*country_PLI
     
     compost_transportation = qs.Transportation(ID='Compost_transportation',
                                                linked_unit=Composting,
@@ -1515,7 +2105,7 @@ def create_C10_system(country_code='USA', size=10, operation_hours=7884, LA_dist
            Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -1541,7 +2131,31 @@ def create_C11_system(country_code='USA', size=10, operation_hours=7884, LF_dist
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -1560,12 +2174,13 @@ def create_C11_system(country_code='USA', size=10, operation_hours=7884, LF_dist
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     AerobicDigestion = lsu.AerobicDigestion(ID='AerobicDigestion', ins=(Thickening-0, 'air'),
                                             outs=('digested_sludge','offgas_AeD'), PLI=country_PLI)
@@ -1573,13 +2188,13 @@ def create_C11_system(country_code='USA', size=10, operation_hours=7884, LF_dist
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AerobicDigestion-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     HeatDrying = lsu.HeatDrying(ID='HeatDrying', ins=(Dewatering-0, 'natural_gas_heat_drying'),
                                 outs=('dried_solids','vapor'))
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    HeatDrying.ins[1].price = 0.218
+    HeatDrying.ins[1].price = 0.218*country_PLI
     
     Landfilling = lsu.Landfilling(ID='Landfilling',
                                   ins=HeatDrying-0,
@@ -1602,16 +2217,57 @@ def create_C11_system(country_code='USA', size=10, operation_hours=7884, LF_dist
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
+    if country_code == 'CHE':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7008435167236161 + natural_gas_density/16*44)
+    elif country_code == 'DEU':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4549664070734295 + natural_gas_density/16*44)
+    elif country_code == 'ESP':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8874492234001324 + natural_gas_density/16*44)
+    elif country_code == 'GBR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4100646325467 + natural_gas_density/16*44)
+    elif country_code == 'BEL':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5685568661222136 + natural_gas_density/16*44)
+    elif country_code == 'USA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5735112177514514 + natural_gas_density/16*44)
+    elif country_code == 'TUR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7039019951758329 + natural_gas_density/16*44)
+    elif country_code == 'FRA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7228085846276232 + natural_gas_density/16*44)
+    elif country_code == 'NLD':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5732876065672489 + natural_gas_density/16*44)
+    elif country_code == 'MEX':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.583138412259907 + natural_gas_density/16*44)
+    elif country_code == 'ITA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7463130536072833 + natural_gas_density/16*44)
+    elif country_code == 'CAN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5424438688893909 + natural_gas_density/16*44)
+    elif country_code == 'JPN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8612532956914958 + natural_gas_density/16*44)
+    elif country_code == 'KOR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8632380439297898 + natural_gas_density/16*44)
+    elif country_code == 'CHN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6687205543269131 + natural_gas_density/16*44)
+    elif country_code in European_countries:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6884940098670117 + natural_gas_density/16*44)
+    else:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
@@ -1620,8 +2276,8 @@ def create_C11_system(country_code='USA', size=10, operation_hours=7884, LF_dist
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_LF', linked_stream=stream.methane_LF, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_LF', linked_stream=stream.methane_LF, GlobalWarming=27)
     qs.StreamImpactItem(ID='Nitrous_oxide_LF', linked_stream=stream.nitrous_oxide_LF, GlobalWarming=273)
     
     # carbon sequestration
@@ -1629,11 +2285,18 @@ def create_C11_system(country_code='USA', size=10, operation_hours=7884, LF_dist
     
     sludge_trucking = qs.ImpactItem(ID='Sludge_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    sludge_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
+    if country_code == 'ZAF':
+        sludge_trucking.add_indicator(GlobalWarming, 0.14059514852771382/1000)
+    elif country_code == 'BRA':
+        sludge_trucking.add_indicator(GlobalWarming, 0.11982238243679814/1000)
+    elif country_code in European_countries:
+        sludge_trucking.add_indicator(GlobalWarming, 0.15050202193852563/1000)
+    else:
+        sludge_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
-    sludge_trucking.price = (0.00551 + 0.0000541*Landfilling.solids_distance)/Landfilling.solids_distance
+    sludge_trucking.price = (0.00551 + 0.0000541*Landfilling.solids_distance)/Landfilling.solids_distance*country_PLI
     
     sludge_transportation = qs.Transportation(ID='Sludge_transportation',
                                               linked_unit=Landfilling,
@@ -1656,7 +2319,7 @@ def create_C11_system(country_code='USA', size=10, operation_hours=7884, LF_dist
            Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -1682,7 +2345,31 @@ def create_C12_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -1701,12 +2388,13 @@ def create_C12_system(country_code='USA', size=10, operation_hours=7884, LA_dist
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     AerobicDigestion = lsu.AerobicDigestion(ID='AerobicDigestion', ins=(Thickening-0, 'air'),
                                             outs=('digested_sludge','offgas_AeD'), PLI=country_PLI)
@@ -1714,20 +2402,20 @@ def create_C12_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AerobicDigestion-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     HeatDrying = lsu.HeatDrying(ID='HeatDrying', ins=(Dewatering-0, 'natural_gas_heat_drying'),
                                 outs=('dried_solids','vapor'))
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    HeatDrying.ins[1].price = 0.218
+    HeatDrying.ins[1].price = 0.218*country_PLI
     
     LandApplication = lsu.LandApplication(ID='LandApplication',
                                           ins=(HeatDrying-0, 'diesel_LA'),
                                           outs=('biosolids_cost','methane_LA','nitrous_oxide_LA','carbon_dioxide_LA'),
                                           solids_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
-    LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
+    LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density*country_PLI
     LandApplication.outs[0].price = biosolids_price*country_PLI
     
     sys = qs.System.from_units(ID='system_C12',
@@ -1751,16 +2439,57 @@ def create_C12_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     P_fertilizer.add_indicator(GlobalWarming, -2.0)
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
+    if country_code == 'CHE':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7008435167236161 + natural_gas_density/16*44)
+    elif country_code == 'DEU':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4549664070734295 + natural_gas_density/16*44)
+    elif country_code == 'ESP':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8874492234001324 + natural_gas_density/16*44)
+    elif country_code == 'GBR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4100646325467 + natural_gas_density/16*44)
+    elif country_code == 'BEL':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5685568661222136 + natural_gas_density/16*44)
+    elif country_code == 'USA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5735112177514514 + natural_gas_density/16*44)
+    elif country_code == 'TUR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7039019951758329 + natural_gas_density/16*44)
+    elif country_code == 'FRA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7228085846276232 + natural_gas_density/16*44)
+    elif country_code == 'NLD':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5732876065672489 + natural_gas_density/16*44)
+    elif country_code == 'MEX':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.583138412259907 + natural_gas_density/16*44)
+    elif country_code == 'ITA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7463130536072833 + natural_gas_density/16*44)
+    elif country_code == 'CAN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5424438688893909 + natural_gas_density/16*44)
+    elif country_code == 'JPN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8612532956914958 + natural_gas_density/16*44)
+    elif country_code == 'KOR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8632380439297898 + natural_gas_density/16*44)
+    elif country_code == 'CHN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6687205543269131 + natural_gas_density/16*44)
+    elif country_code in European_countries:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6884940098670117 + natural_gas_density/16*44)
+    else:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
@@ -1769,11 +2498,26 @@ def create_C12_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8970860511867621 + 44*12/(12*12 + 23*1))
+    elif country_code == 'COL':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.6777889995887414 + 44*12/(12*12 + 23*1))
+    elif country_code == 'IND':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.9819236027859558 + 44*12/(12*12 + 23*1))
+    elif country_code == 'ZAF':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8820480754893896 + 44*12/(12*12 + 23*1))
+    elif country_code == 'PER':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8701113618791989 + 44*12/(12*12 + 23*1))
+    elif country_code == 'BRA':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.6239541867786678 + 44*12/(12*12 + 23*1))
+    elif country_code in European_countries:
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8730080399195541 + 44*12/(12*12 + 23*1))
+    else:
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_LA', linked_stream=stream.methane_LA, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_LA', linked_stream=stream.methane_LA, GlobalWarming=27)
     qs.StreamImpactItem(ID='Nitrous_oxide_LA', linked_stream=stream.nitrous_oxide_LA, GlobalWarming=273)
     
     # carbon sequestration
@@ -1781,11 +2525,18 @@ def create_C12_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     
     biosolids_trucking = qs.ImpactItem(ID='Biosolids_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biosolids_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
+    if country_code == 'ZAF':
+        biosolids_trucking.add_indicator(GlobalWarming, 0.14059514852771382/1000)
+    elif country_code == 'BRA':
+        biosolids_trucking.add_indicator(GlobalWarming, 0.11982238243679814/1000)
+    elif country_code in European_countries:
+        biosolids_trucking.add_indicator(GlobalWarming, 0.15050202193852563/1000)
+    else:
+        biosolids_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
-    biosolids_trucking.price = (0.00551 + 0.0000541*LandApplication.solids_distance)/LandApplication.solids_distance
+    biosolids_trucking.price = (0.00551 + 0.0000541*LandApplication.solids_distance)/LandApplication.solids_distance*country_PLI
     
     biosolids_transportation = qs.Transportation(ID='Biosolids_transportation',
                                                  linked_unit=LandApplication,
@@ -1810,7 +2561,7 @@ def create_C12_system(country_code='USA', size=10, operation_hours=7884, LA_dist
            Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -1836,7 +2587,31 @@ def create_C13_system(country_code='USA', size=10, operation_hours=7884, FTE=0.5
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -1855,12 +2630,13 @@ def create_C13_system(country_code='USA', size=10, operation_hours=7884, FTE=0.5
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     AerobicDigestion = lsu.AerobicDigestion(ID='AerobicDigestion', ins=(Thickening-0, 'air'),
                                             outs=('digested_sludge','offgas_AeD'), PLI=country_PLI)
@@ -1868,22 +2644,22 @@ def create_C13_system(country_code='USA', size=10, operation_hours=7884, FTE=0.5
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AerobicDigestion-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     HeatDrying = lsu.HeatDrying(ID='HeatDrying', ins=(Dewatering-0, 'natural_gas_heat_drying'),
                                 outs=('dried_solids','vapor'))
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    HeatDrying.ins[1].price = 0.218
+    HeatDrying.ins[1].price = 0.218*country_PLI
     
     Incineration = lsu.Incineration(ID='Incineration',
                                     ins=(HeatDrying-0, 'natural_gas_incineration'),
                                     outs=('ash_incineration','vapor_incineration','methane_IN','nitrous_oxide_IN'))
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    Incineration.ins[1].price = 0.218
+    Incineration.ins[1].price = 0.218*country_PLI
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
-    Incineration.outs[0].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    Incineration.outs[0].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     sys = qs.System.from_units(ID='system_C13',
                                units=list(flowsheet.unit),
@@ -1898,27 +2674,71 @@ def create_C13_system(country_code='USA', size=10, operation_hours=7884, FTE=0.5
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
+    if country_code == 'CHE':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7008435167236161 + natural_gas_density/16*44)
+    elif country_code == 'DEU':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4549664070734295 + natural_gas_density/16*44)
+    elif country_code == 'ESP':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8874492234001324 + natural_gas_density/16*44)
+    elif country_code == 'GBR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4100646325467 + natural_gas_density/16*44)
+    elif country_code == 'BEL':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5685568661222136 + natural_gas_density/16*44)
+    elif country_code == 'USA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5735112177514514 + natural_gas_density/16*44)
+    elif country_code == 'TUR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7039019951758329 + natural_gas_density/16*44)
+    elif country_code == 'FRA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7228085846276232 + natural_gas_density/16*44)
+    elif country_code == 'NLD':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5732876065672489 + natural_gas_density/16*44)
+    elif country_code == 'MEX':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.583138412259907 + natural_gas_density/16*44)
+    elif country_code == 'ITA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7463130536072833 + natural_gas_density/16*44)
+    elif country_code == 'CAN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5424438688893909 + natural_gas_density/16*44)
+    elif country_code == 'JPN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8612532956914958 + natural_gas_density/16*44)
+    elif country_code == 'KOR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8632380439297898 + natural_gas_density/16*44)
+    elif country_code == 'CHN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6687205543269131 + natural_gas_density/16*44)
+    elif country_code in European_countries:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6884940098670117 + natural_gas_density/16*44)
+    else:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
-    qs.StreamImpactItem(ID='Ash_incineration', linked_stream=stream.ash_incineration, GlobalWarming=0.018281422578429424)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Ash_incineration', linked_stream=stream.ash_incineration, GlobalWarming=0.00946219748385128)
+    else:
+        qs.StreamImpactItem(ID='Ash_incineration', linked_stream=stream.ash_incineration, GlobalWarming=0.018281422578429424)
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_IN', linked_stream=stream.methane_IN, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_IN', linked_stream=stream.methane_IN, GlobalWarming=27)
     qs.StreamImpactItem(ID='Nitrous_oxide_IN', linked_stream=stream.nitrous_oxide_IN, GlobalWarming=273)
     
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
@@ -1929,7 +2749,7 @@ def create_C13_system(country_code='USA', size=10, operation_hours=7884, FTE=0.5
            Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -1955,7 +2775,31 @@ def create_C14_system(country_code='USA', size=10, operation_hours=7884, LF_dist
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -1974,24 +2818,25 @@ def create_C14_system(country_code='USA', size=10, operation_hours=7884, LF_dist
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
                                                 biogas_CHP_ratio=0, biogas_RNG_ratio=0.9, PLI=country_PLI)
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    AnaerobicDigestion.outs[1].price = 0.218
+    AnaerobicDigestion.outs[1].price = 0.218*country_PLI
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AnaerobicDigestion-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     Landfilling = lsu.Landfilling(ID='Landfilling',
                                   ins=Dewatering-0,
@@ -2014,16 +2859,57 @@ def create_C14_system(country_code='USA', size=10, operation_hours=7884, LF_dist
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
+    if country_code == 'CHE':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7008435167236161 + natural_gas_density/16*44)
+    elif country_code == 'DEU':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4549664070734295 + natural_gas_density/16*44)
+    elif country_code == 'ESP':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8874492234001324 + natural_gas_density/16*44)
+    elif country_code == 'GBR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4100646325467 + natural_gas_density/16*44)
+    elif country_code == 'BEL':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5685568661222136 + natural_gas_density/16*44)
+    elif country_code == 'USA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5735112177514514 + natural_gas_density/16*44)
+    elif country_code == 'TUR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7039019951758329 + natural_gas_density/16*44)
+    elif country_code == 'FRA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7228085846276232 + natural_gas_density/16*44)
+    elif country_code == 'NLD':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5732876065672489 + natural_gas_density/16*44)
+    elif country_code == 'MEX':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.583138412259907 + natural_gas_density/16*44)
+    elif country_code == 'ITA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7463130536072833 + natural_gas_density/16*44)
+    elif country_code == 'CAN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5424438688893909 + natural_gas_density/16*44)
+    elif country_code == 'JPN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8612532956914958 + natural_gas_density/16*44)
+    elif country_code == 'KOR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8632380439297898 + natural_gas_density/16*44)
+    elif country_code == 'CHN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6687205543269131 + natural_gas_density/16*44)
+    elif country_code in European_countries:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6884940098670117 + natural_gas_density/16*44)
+    else:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
@@ -2032,9 +2918,9 @@ def create_C14_system(country_code='USA', size=10, operation_hours=7884, LF_dist
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_LF', linked_stream=stream.methane_LF, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_LF', linked_stream=stream.methane_LF, GlobalWarming=27)
     qs.StreamImpactItem(ID='Nitrous_oxide_LF', linked_stream=stream.nitrous_oxide_LF, GlobalWarming=273)
     
     # carbon sequestration
@@ -2042,11 +2928,18 @@ def create_C14_system(country_code='USA', size=10, operation_hours=7884, LF_dist
     
     sludge_trucking = qs.ImpactItem(ID='Sludge_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    sludge_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
+    if country_code == 'ZAF':
+        sludge_trucking.add_indicator(GlobalWarming, 0.14059514852771382/1000)
+    elif country_code == 'BRA':
+        sludge_trucking.add_indicator(GlobalWarming, 0.11982238243679814/1000)
+    elif country_code in European_countries:
+        sludge_trucking.add_indicator(GlobalWarming, 0.15050202193852563/1000)
+    else:
+        sludge_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
-    sludge_trucking.price = (0.00551 + 0.0000541*Landfilling.solids_distance)/Landfilling.solids_distance
+    sludge_trucking.price = (0.00551 + 0.0000541*Landfilling.solids_distance)/Landfilling.solids_distance*country_PLI
     
     sludge_transportation = qs.Transportation(ID='Sludge_transportation',
                                               linked_unit=Landfilling,
@@ -2069,7 +2962,7 @@ def create_C14_system(country_code='USA', size=10, operation_hours=7884, LF_dist
            Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -2095,7 +2988,31 @@ def create_C15_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -2114,31 +3031,32 @@ def create_C15_system(country_code='USA', size=10, operation_hours=7884, LA_dist
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
                                                 biogas_CHP_ratio=0, biogas_RNG_ratio=0.9, PLI=country_PLI)
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    AnaerobicDigestion.outs[1].price = 0.218
+    AnaerobicDigestion.outs[1].price = 0.218*country_PLI
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AnaerobicDigestion-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     LandApplication = lsu.LandApplication(ID='LandApplication',
                                           ins=(Dewatering-0, 'diesel_LA'),
                                           outs=('biosolids_cost','methane_LA','nitrous_oxide_LA','carbon_dioxide_LA'),
                                           solids_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
-    LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
+    LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density*country_PLI
     LandApplication.outs[0].price = biosolids_price*country_PLI
     
     sys = qs.System.from_units(ID='system_C15',
@@ -2162,16 +3080,57 @@ def create_C15_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     P_fertilizer.add_indicator(GlobalWarming, -2.0)
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
+    if country_code == 'CHE':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7008435167236161 + natural_gas_density/16*44)
+    elif country_code == 'DEU':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4549664070734295 + natural_gas_density/16*44)
+    elif country_code == 'ESP':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8874492234001324 + natural_gas_density/16*44)
+    elif country_code == 'GBR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4100646325467 + natural_gas_density/16*44)
+    elif country_code == 'BEL':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5685568661222136 + natural_gas_density/16*44)
+    elif country_code == 'USA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5735112177514514 + natural_gas_density/16*44)
+    elif country_code == 'TUR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7039019951758329 + natural_gas_density/16*44)
+    elif country_code == 'FRA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7228085846276232 + natural_gas_density/16*44)
+    elif country_code == 'NLD':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5732876065672489 + natural_gas_density/16*44)
+    elif country_code == 'MEX':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.583138412259907 + natural_gas_density/16*44)
+    elif country_code == 'ITA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7463130536072833 + natural_gas_density/16*44)
+    elif country_code == 'CAN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5424438688893909 + natural_gas_density/16*44)
+    elif country_code == 'JPN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8612532956914958 + natural_gas_density/16*44)
+    elif country_code == 'KOR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8632380439297898 + natural_gas_density/16*44)
+    elif country_code == 'CHN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6687205543269131 + natural_gas_density/16*44)
+    elif country_code in European_countries:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6884940098670117 + natural_gas_density/16*44)
+    else:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
@@ -2180,12 +3139,27 @@ def create_C15_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8970860511867621 + 44*12/(12*12 + 23*1))
+    elif country_code == 'COL':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.6777889995887414 + 44*12/(12*12 + 23*1))
+    elif country_code == 'IND':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.9819236027859558 + 44*12/(12*12 + 23*1))
+    elif country_code == 'ZAF':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8820480754893896 + 44*12/(12*12 + 23*1))
+    elif country_code == 'PER':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8701113618791989 + 44*12/(12*12 + 23*1))
+    elif country_code == 'BRA':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.6239541867786678 + 44*12/(12*12 + 23*1))
+    elif country_code in European_countries:
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8730080399195541 + 44*12/(12*12 + 23*1))
+    else:
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_LA', linked_stream=stream.methane_LA, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_LA', linked_stream=stream.methane_LA, GlobalWarming=27)
     qs.StreamImpactItem(ID='Nitrous_oxide_LA', linked_stream=stream.nitrous_oxide_LA, GlobalWarming=273)
     
     # carbon sequestration
@@ -2193,11 +3167,18 @@ def create_C15_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     
     biosolids_trucking = qs.ImpactItem(ID='Biosolids_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biosolids_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
+    if country_code == 'ZAF':
+        biosolids_trucking.add_indicator(GlobalWarming, 0.14059514852771382/1000)
+    elif country_code == 'BRA':
+        biosolids_trucking.add_indicator(GlobalWarming, 0.11982238243679814/1000)
+    elif country_code in European_countries:
+        biosolids_trucking.add_indicator(GlobalWarming, 0.15050202193852563/1000)
+    else:
+        biosolids_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
-    biosolids_trucking.price = (0.00551 + 0.0000541*LandApplication.solids_distance)/LandApplication.solids_distance
+    biosolids_trucking.price = (0.00551 + 0.0000541*LandApplication.solids_distance)/LandApplication.solids_distance*country_PLI
     
     biosolids_transportation = qs.Transportation(ID='Biosolids_transportation',
                                                  linked_unit=LandApplication,
@@ -2222,7 +3203,7 @@ def create_C15_system(country_code='USA', size=10, operation_hours=7884, LA_dist
            Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -2248,7 +3229,31 @@ def create_C16_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -2267,33 +3272,34 @@ def create_C16_system(country_code='USA', size=10, operation_hours=7884, LA_dist
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
                                                 biogas_CHP_ratio=0, biogas_RNG_ratio=0.9, PLI=country_PLI)
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    AnaerobicDigestion.outs[1].price = 0.218
+    AnaerobicDigestion.outs[1].price = 0.218*country_PLI
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AnaerobicDigestion-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     Composting = lsu.Composting(ID='Composting', ins=(Dewatering-0, 'bulking_agent', 'diesel_composting'),
                                 outs=('compost_cost','methane_composting','nitrous_oxide_composting','sequestered_carbon_dioxide_composting'),
                                 feedstock_digested=True, solids_distance=LA_distance, PLI=country_PLI)
     # TODO: uncertainty range (uniform) 18-36 2005$/tonne
-    Composting.ins[1].price = 27/1000/GDPCTPI[2005]*GDPCTPI[2023]
+    Composting.ins[1].price = 27/1000/GDPCTPI[2005]*GDPCTPI[2023]*country_PLI
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
-    Composting.ins[2].price = 4.224/_gal_to_liter*1000/diesel_density
-    Composting.outs[0].price = compost_price
+    Composting.ins[2].price = 4.224/_gal_to_liter*1000/diesel_density*country_PLI
+    Composting.outs[0].price = compost_price*country_PLI
     
     sys = qs.System.from_units(ID='system_C16',
                                units=list(flowsheet.unit),
@@ -2308,7 +3314,12 @@ def create_C16_system(country_code='USA', size=10, operation_hours=7884, LA_dist
                                        description='Global Warming Potential')
     
     Bulking_agent = qs.ImpactItem('Bulking_agent', functional_unit='kg')
-    Bulking_agent.add_indicator(GlobalWarming, 0.04291794596775965)
+    if country_code == 'CHE':
+        Bulking_agent.add_indicator(GlobalWarming, 0.021387244244734732)
+    elif country_code in European_countries:
+        Bulking_agent.add_indicator(GlobalWarming, 0.03047830694185532)
+    else:
+        Bulking_agent.add_indicator(GlobalWarming, 0.04291794596775965)
     
     # BEAM
     N_fertilizer = qs.ImpactItem('N_fertilizer', functional_unit='kg')
@@ -2319,16 +3330,57 @@ def create_C16_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     P_fertilizer.add_indicator(GlobalWarming, -2.0)
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
+    if country_code == 'CHE':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7008435167236161 + natural_gas_density/16*44)
+    elif country_code == 'DEU':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4549664070734295 + natural_gas_density/16*44)
+    elif country_code == 'ESP':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8874492234001324 + natural_gas_density/16*44)
+    elif country_code == 'GBR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4100646325467 + natural_gas_density/16*44)
+    elif country_code == 'BEL':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5685568661222136 + natural_gas_density/16*44)
+    elif country_code == 'USA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5735112177514514 + natural_gas_density/16*44)
+    elif country_code == 'TUR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7039019951758329 + natural_gas_density/16*44)
+    elif country_code == 'FRA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7228085846276232 + natural_gas_density/16*44)
+    elif country_code == 'NLD':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5732876065672489 + natural_gas_density/16*44)
+    elif country_code == 'MEX':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.583138412259907 + natural_gas_density/16*44)
+    elif country_code == 'ITA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7463130536072833 + natural_gas_density/16*44)
+    elif country_code == 'CAN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5424438688893909 + natural_gas_density/16*44)
+    elif country_code == 'JPN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8612532956914958 + natural_gas_density/16*44)
+    elif country_code == 'KOR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8632380439297898 + natural_gas_density/16*44)
+    elif country_code == 'CHN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6687205543269131 + natural_gas_density/16*44)
+    elif country_code in European_countries:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6884940098670117 + natural_gas_density/16*44)
+    else:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
@@ -2337,12 +3389,27 @@ def create_C16_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.8970860511867621 + 44*12/(12*12 + 23*1))
+    elif country_code == 'COL':
+        qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.6777889995887414 + 44*12/(12*12 + 23*1))
+    elif country_code == 'IND':
+        qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.9819236027859558 + 44*12/(12*12 + 23*1))
+    elif country_code == 'ZAF':
+        qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.8820480754893896 + 44*12/(12*12 + 23*1))
+    elif country_code == 'PER':
+        qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.8701113618791989 + 44*12/(12*12 + 23*1))
+    elif country_code == 'BRA':
+        qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.6239541867786678 + 44*12/(12*12 + 23*1))
+    elif country_code in European_countries:
+        qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.8730080399195541 + 44*12/(12*12 + 23*1))
+    else:
+        qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_composting', linked_stream=stream.methane_composting, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_composting', linked_stream=stream.methane_composting, GlobalWarming=27)
     qs.StreamImpactItem(ID='Nitrous_oxide_composting', linked_stream=stream.nitrous_oxide_composting, GlobalWarming=273)
     
     # carbon sequestration
@@ -2350,11 +3417,18 @@ def create_C16_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     
     compost_trucking = qs.ImpactItem(ID='Compost_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    compost_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
+    if country_code == 'ZAF':
+        compost_trucking.add_indicator(GlobalWarming, 0.14059514852771382/1000)
+    elif country_code == 'BRA':
+        compost_trucking.add_indicator(GlobalWarming, 0.11982238243679814/1000)
+    elif country_code in European_countries:
+        compost_trucking.add_indicator(GlobalWarming, 0.15050202193852563/1000)
+    else:
+        compost_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
-    compost_trucking.price = (0.00551 + 0.0000541*Composting.solids_distance)/Composting.solids_distance
+    compost_trucking.price = (0.00551 + 0.0000541*Composting.solids_distance)/Composting.solids_distance*country_PLI
     
     compost_transportation = qs.Transportation(ID='Compost_transportation',
                                                linked_unit=Composting,
@@ -2380,7 +3454,7 @@ def create_C16_system(country_code='USA', size=10, operation_hours=7884, LA_dist
            Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -2406,7 +3480,31 @@ def create_C17_system(country_code='USA', size=10, operation_hours=7884, LF_dist
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -2425,30 +3523,31 @@ def create_C17_system(country_code='USA', size=10, operation_hours=7884, LF_dist
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
                                                 biogas_CHP_ratio=0, biogas_RNG_ratio=0.9, PLI=country_PLI)
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    AnaerobicDigestion.outs[1].price = 0.218
+    AnaerobicDigestion.outs[1].price = 0.218*country_PLI
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AnaerobicDigestion-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     HeatDrying = lsu.HeatDrying(ID='HeatDrying', ins=(Dewatering-0, 'natural_gas_heat_drying'),
                                 outs=('dried_solids','vapor'))
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    HeatDrying.ins[1].price = 0.218
+    HeatDrying.ins[1].price = 0.218*country_PLI
     
     Landfilling = lsu.Landfilling(ID='Landfilling',
                                   ins=HeatDrying-0,
@@ -2471,16 +3570,57 @@ def create_C17_system(country_code='USA', size=10, operation_hours=7884, LF_dist
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
+    if country_code == 'CHE':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7008435167236161 + natural_gas_density/16*44)
+    elif country_code == 'DEU':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4549664070734295 + natural_gas_density/16*44)
+    elif country_code == 'ESP':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8874492234001324 + natural_gas_density/16*44)
+    elif country_code == 'GBR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4100646325467 + natural_gas_density/16*44)
+    elif country_code == 'BEL':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5685568661222136 + natural_gas_density/16*44)
+    elif country_code == 'USA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5735112177514514 + natural_gas_density/16*44)
+    elif country_code == 'TUR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7039019951758329 + natural_gas_density/16*44)
+    elif country_code == 'FRA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7228085846276232 + natural_gas_density/16*44)
+    elif country_code == 'NLD':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5732876065672489 + natural_gas_density/16*44)
+    elif country_code == 'MEX':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.583138412259907 + natural_gas_density/16*44)
+    elif country_code == 'ITA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7463130536072833 + natural_gas_density/16*44)
+    elif country_code == 'CAN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5424438688893909 + natural_gas_density/16*44)
+    elif country_code == 'JPN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8612532956914958 + natural_gas_density/16*44)
+    elif country_code == 'KOR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8632380439297898 + natural_gas_density/16*44)
+    elif country_code == 'CHN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6687205543269131 + natural_gas_density/16*44)
+    elif country_code in European_countries:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6884940098670117 + natural_gas_density/16*44)
+    else:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
@@ -2489,9 +3629,9 @@ def create_C17_system(country_code='USA', size=10, operation_hours=7884, LF_dist
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_LF', linked_stream=stream.methane_LF, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_LF', linked_stream=stream.methane_LF, GlobalWarming=27)
     qs.StreamImpactItem(ID='Nitrous_oxide_LF', linked_stream=stream.nitrous_oxide_LF, GlobalWarming=273)
     
     # carbon sequestration
@@ -2499,11 +3639,18 @@ def create_C17_system(country_code='USA', size=10, operation_hours=7884, LF_dist
     
     sludge_trucking = qs.ImpactItem(ID='Sludge_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    sludge_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
+    if country_code == 'ZAF':
+        sludge_trucking.add_indicator(GlobalWarming, 0.14059514852771382/1000)
+    elif country_code == 'BRA':
+        sludge_trucking.add_indicator(GlobalWarming, 0.11982238243679814/1000)
+    elif country_code in European_countries:
+        sludge_trucking.add_indicator(GlobalWarming, 0.15050202193852563/1000)
+    else:
+        sludge_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
-    sludge_trucking.price = (0.00551 + 0.0000541*Landfilling.solids_distance)/Landfilling.solids_distance
+    sludge_trucking.price = (0.00551 + 0.0000541*Landfilling.solids_distance)/Landfilling.solids_distance*country_PLI
     
     sludge_transportation = qs.Transportation(ID='Sludge_transportation',
                                               linked_unit=Landfilling,
@@ -2526,7 +3673,7 @@ def create_C17_system(country_code='USA', size=10, operation_hours=7884, LF_dist
            Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -2552,7 +3699,31 @@ def create_C18_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -2571,37 +3742,38 @@ def create_C18_system(country_code='USA', size=10, operation_hours=7884, LA_dist
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
                                                 biogas_CHP_ratio=0, biogas_RNG_ratio=0.9, PLI=country_PLI)
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    AnaerobicDigestion.outs[1].price = 0.218
+    AnaerobicDigestion.outs[1].price = 0.218*country_PLI
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AnaerobicDigestion-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     HeatDrying = lsu.HeatDrying(ID='HeatDrying', ins=(Dewatering-0, 'natural_gas_heat_drying'),
                                 outs=('dried_solids','vapor'))
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    HeatDrying.ins[1].price = 0.218
+    HeatDrying.ins[1].price = 0.218*country_PLI
     
     LandApplication = lsu.LandApplication(ID='LandApplication',
                                           ins=(HeatDrying-0, 'diesel_LA'),
                                           outs=('biosolids_cost','methane_LA','nitrous_oxide_LA','carbon_dioxide_LA'),
                                           solids_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
-    LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
+    LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density*country_PLI
     LandApplication.outs[0].price = biosolids_price*country_PLI
     
     sys = qs.System.from_units(ID='system_C18',
@@ -2625,16 +3797,57 @@ def create_C18_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     P_fertilizer.add_indicator(GlobalWarming, -2.0)
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
+    if country_code == 'CHE':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7008435167236161 + natural_gas_density/16*44)
+    elif country_code == 'DEU':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4549664070734295 + natural_gas_density/16*44)
+    elif country_code == 'ESP':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8874492234001324 + natural_gas_density/16*44)
+    elif country_code == 'GBR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4100646325467 + natural_gas_density/16*44)
+    elif country_code == 'BEL':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5685568661222136 + natural_gas_density/16*44)
+    elif country_code == 'USA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5735112177514514 + natural_gas_density/16*44)
+    elif country_code == 'TUR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7039019951758329 + natural_gas_density/16*44)
+    elif country_code == 'FRA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7228085846276232 + natural_gas_density/16*44)
+    elif country_code == 'NLD':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5732876065672489 + natural_gas_density/16*44)
+    elif country_code == 'MEX':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.583138412259907 + natural_gas_density/16*44)
+    elif country_code == 'ITA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7463130536072833 + natural_gas_density/16*44)
+    elif country_code == 'CAN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5424438688893909 + natural_gas_density/16*44)
+    elif country_code == 'JPN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8612532956914958 + natural_gas_density/16*44)
+    elif country_code == 'KOR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8632380439297898 + natural_gas_density/16*44)
+    elif country_code == 'CHN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6687205543269131 + natural_gas_density/16*44)
+    elif country_code in European_countries:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6884940098670117 + natural_gas_density/16*44)
+    else:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
@@ -2643,12 +3856,27 @@ def create_C18_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8970860511867621 + 44*12/(12*12 + 23*1))
+    elif country_code == 'COL':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.6777889995887414 + 44*12/(12*12 + 23*1))
+    elif country_code == 'IND':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.9819236027859558 + 44*12/(12*12 + 23*1))
+    elif country_code == 'ZAF':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8820480754893896 + 44*12/(12*12 + 23*1))
+    elif country_code == 'PER':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8701113618791989 + 44*12/(12*12 + 23*1))
+    elif country_code == 'BRA':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.6239541867786678 + 44*12/(12*12 + 23*1))
+    elif country_code in European_countries:
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8730080399195541 + 44*12/(12*12 + 23*1))
+    else:
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_LA', linked_stream=stream.methane_LA, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_LA', linked_stream=stream.methane_LA, GlobalWarming=27)
     qs.StreamImpactItem(ID='Nitrous_oxide_LA', linked_stream=stream.nitrous_oxide_LA, GlobalWarming=273)
     
     # carbon sequestration
@@ -2656,11 +3884,18 @@ def create_C18_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     
     biosolids_trucking = qs.ImpactItem(ID='Biosolids_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biosolids_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
+    if country_code == 'ZAF':
+        biosolids_trucking.add_indicator(GlobalWarming, 0.14059514852771382/1000)
+    elif country_code == 'BRA':
+        biosolids_trucking.add_indicator(GlobalWarming, 0.11982238243679814/1000)
+    elif country_code in European_countries:
+        biosolids_trucking.add_indicator(GlobalWarming, 0.15050202193852563/1000)
+    else:
+        biosolids_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
-    biosolids_trucking.price = (0.00551 + 0.0000541*LandApplication.solids_distance)/LandApplication.solids_distance
+    biosolids_trucking.price = (0.00551 + 0.0000541*LandApplication.solids_distance)/LandApplication.solids_distance*country_PLI
     
     biosolids_transportation = qs.Transportation(ID='Biosolids_transportation',
                                                  linked_unit=LandApplication,
@@ -2685,7 +3920,7 @@ def create_C18_system(country_code='USA', size=10, operation_hours=7884, LA_dist
            Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -2711,7 +3946,31 @@ def create_C19_system(country_code='USA', size=10, operation_hours=7884, FTE=0.5
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -2730,39 +3989,40 @@ def create_C19_system(country_code='USA', size=10, operation_hours=7884, FTE=0.5
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
                                                 biogas_CHP_ratio=0, biogas_RNG_ratio=0.9, PLI=country_PLI)
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    AnaerobicDigestion.outs[1].price = 0.218
+    AnaerobicDigestion.outs[1].price = 0.218*country_PLI
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AnaerobicDigestion-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     HeatDrying = lsu.HeatDrying(ID='HeatDrying', ins=(Dewatering-0, 'natural_gas_heat_drying'),
                                 outs=('dried_solids','vapor'))
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    HeatDrying.ins[1].price = 0.218
+    HeatDrying.ins[1].price = 0.218*country_PLI
     
     Incineration = lsu.Incineration(ID='Incineration',
                                     ins=(HeatDrying-0, 'natural_gas_incineration'),
                                     outs=('ash_incineration','vapor_incineration','methane_IN','nitrous_oxide_IN'))
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    Incineration.ins[1].price = 0.218
+    Incineration.ins[1].price = 0.218*country_PLI
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
-    Incineration.outs[0].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    Incineration.outs[0].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     sys = qs.System.from_units(ID='system_C19',
                                units=list(flowsheet.unit),
@@ -2777,28 +4037,72 @@ def create_C19_system(country_code='USA', size=10, operation_hours=7884, FTE=0.5
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
+    if country_code == 'CHE':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7008435167236161 + natural_gas_density/16*44)
+    elif country_code == 'DEU':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4549664070734295 + natural_gas_density/16*44)
+    elif country_code == 'ESP':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8874492234001324 + natural_gas_density/16*44)
+    elif country_code == 'GBR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4100646325467 + natural_gas_density/16*44)
+    elif country_code == 'BEL':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5685568661222136 + natural_gas_density/16*44)
+    elif country_code == 'USA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5735112177514514 + natural_gas_density/16*44)
+    elif country_code == 'TUR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7039019951758329 + natural_gas_density/16*44)
+    elif country_code == 'FRA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7228085846276232 + natural_gas_density/16*44)
+    elif country_code == 'NLD':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5732876065672489 + natural_gas_density/16*44)
+    elif country_code == 'MEX':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.583138412259907 + natural_gas_density/16*44)
+    elif country_code == 'ITA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7463130536072833 + natural_gas_density/16*44)
+    elif country_code == 'CAN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5424438688893909 + natural_gas_density/16*44)
+    elif country_code == 'JPN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8612532956914958 + natural_gas_density/16*44)
+    elif country_code == 'KOR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8632380439297898 + natural_gas_density/16*44)
+    elif country_code == 'CHN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6687205543269131 + natural_gas_density/16*44)
+    elif country_code in European_countries:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6884940098670117 + natural_gas_density/16*44)
+    else:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
-    qs.StreamImpactItem(ID='Ash_incineration', linked_stream=stream.ash_incineration, GlobalWarming=0.018281422578429424)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Ash_incineration', linked_stream=stream.ash_incineration, GlobalWarming=0.00946219748385128)
+    else:
+        qs.StreamImpactItem(ID='Ash_incineration', linked_stream=stream.ash_incineration, GlobalWarming=0.018281422578429424)
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_IN', linked_stream=stream.methane_IN, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_IN', linked_stream=stream.methane_IN, GlobalWarming=27)
     qs.StreamImpactItem(ID='Nitrous_oxide_IN', linked_stream=stream.nitrous_oxide_IN, GlobalWarming=273)
     
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
@@ -2809,7 +4113,7 @@ def create_C19_system(country_code='USA', size=10, operation_hours=7884, FTE=0.5
            Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -2835,7 +4139,31 @@ def create_C20_system(country_code='USA', size=10, operation_hours=7884, LF_dist
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -2854,12 +4182,13 @@ def create_C20_system(country_code='USA', size=10, operation_hours=7884, LF_dist
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
@@ -2868,7 +4197,7 @@ def create_C20_system(country_code='USA', size=10, operation_hours=7884, LF_dist
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AnaerobicDigestion-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     Landfilling = lsu.Landfilling(ID='Landfilling',
                                   ins=Dewatering-0,
@@ -2879,13 +4208,13 @@ def create_C20_system(country_code='USA', size=10, operation_hours=7884, LF_dist
     Landfilling.outs[0].price = -tipping_fee*country_PLI
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+                                outs=('emission','ash_CHP'), unit_CAPEX=1225*country_PLI, supplement_power_utility=False)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    CHP.ins[1].price = 0.218
+    CHP.ins[1].price = 0.218*country_PLI
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
-    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     sys = qs.System.from_units(ID='system_C20',
                                units=list(flowsheet.unit),
@@ -2900,28 +4229,72 @@ def create_C20_system(country_code='USA', size=10, operation_hours=7884, LF_dist
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
+    if country_code == 'CHE':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7008435167236161 + natural_gas_density/16*44)
+    elif country_code == 'DEU':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4549664070734295 + natural_gas_density/16*44)
+    elif country_code == 'ESP':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8874492234001324 + natural_gas_density/16*44)
+    elif country_code == 'GBR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4100646325467 + natural_gas_density/16*44)
+    elif country_code == 'BEL':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5685568661222136 + natural_gas_density/16*44)
+    elif country_code == 'USA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5735112177514514 + natural_gas_density/16*44)
+    elif country_code == 'TUR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7039019951758329 + natural_gas_density/16*44)
+    elif country_code == 'FRA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7228085846276232 + natural_gas_density/16*44)
+    elif country_code == 'NLD':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5732876065672489 + natural_gas_density/16*44)
+    elif country_code == 'MEX':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.583138412259907 + natural_gas_density/16*44)
+    elif country_code == 'ITA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7463130536072833 + natural_gas_density/16*44)
+    elif country_code == 'CAN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5424438688893909 + natural_gas_density/16*44)
+    elif country_code == 'JPN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8612532956914958 + natural_gas_density/16*44)
+    elif country_code == 'KOR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8632380439297898 + natural_gas_density/16*44)
+    elif country_code == 'CHN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6687205543269131 + natural_gas_density/16*44)
+    elif country_code in European_countries:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6884940098670117 + natural_gas_density/16*44)
+    else:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.00946219748385128)
+    else:
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_LF', linked_stream=stream.methane_LF, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_LF', linked_stream=stream.methane_LF, GlobalWarming=27)
     qs.StreamImpactItem(ID='Nitrous_oxide_LF', linked_stream=stream.nitrous_oxide_LF, GlobalWarming=273)
     
     # carbon sequestration
@@ -2929,11 +4302,18 @@ def create_C20_system(country_code='USA', size=10, operation_hours=7884, LF_dist
     
     sludge_trucking = qs.ImpactItem(ID='Sludge_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    sludge_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
+    if country_code == 'ZAF':
+        sludge_trucking.add_indicator(GlobalWarming, 0.14059514852771382/1000)
+    elif country_code == 'BRA':
+        sludge_trucking.add_indicator(GlobalWarming, 0.11982238243679814/1000)
+    elif country_code in European_countries:
+        sludge_trucking.add_indicator(GlobalWarming, 0.15050202193852563/1000)
+    else:
+        sludge_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
-    sludge_trucking.price = (0.00551 + 0.0000541*Landfilling.solids_distance)/Landfilling.solids_distance
+    sludge_trucking.price = (0.00551 + 0.0000541*Landfilling.solids_distance)/Landfilling.solids_distance*country_PLI
     
     sludge_transportation = qs.Transportation(ID='Sludge_transportation',
                                               linked_unit=Landfilling,
@@ -2956,7 +4336,7 @@ def create_C20_system(country_code='USA', size=10, operation_hours=7884, LF_dist
            Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -2982,7 +4362,31 @@ def create_C21_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -3001,12 +4405,13 @@ def create_C21_system(country_code='USA', size=10, operation_hours=7884, LA_dist
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
@@ -3015,24 +4420,24 @@ def create_C21_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AnaerobicDigestion-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     LandApplication = lsu.LandApplication(ID='LandApplication',
                                           ins=(Dewatering-0, 'diesel_LA'),
                                           outs=('biosolids_cost','methane_LA','nitrous_oxide_LA','carbon_dioxide_LA'),
                                           solids_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
-    LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
+    LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density*country_PLI
     LandApplication.outs[0].price = biosolids_price*country_PLI
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air_CHP'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+                                outs=('emission','ash_CHP'), unit_CAPEX=1225*country_PLI, supplement_power_utility=False)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    CHP.ins[1].price = 0.218
+    CHP.ins[1].price = 0.218*country_PLI
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
-    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     sys = qs.System.from_units(ID='system_C21',
                                units=list(flowsheet.unit),
@@ -3055,16 +4460,57 @@ def create_C21_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     P_fertilizer.add_indicator(GlobalWarming, -2.0)
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
+    if country_code == 'CHE':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7008435167236161 + natural_gas_density/16*44)
+    elif country_code == 'DEU':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4549664070734295 + natural_gas_density/16*44)
+    elif country_code == 'ESP':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8874492234001324 + natural_gas_density/16*44)
+    elif country_code == 'GBR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4100646325467 + natural_gas_density/16*44)
+    elif country_code == 'BEL':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5685568661222136 + natural_gas_density/16*44)
+    elif country_code == 'USA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5735112177514514 + natural_gas_density/16*44)
+    elif country_code == 'TUR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7039019951758329 + natural_gas_density/16*44)
+    elif country_code == 'FRA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7228085846276232 + natural_gas_density/16*44)
+    elif country_code == 'NLD':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5732876065672489 + natural_gas_density/16*44)
+    elif country_code == 'MEX':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.583138412259907 + natural_gas_density/16*44)
+    elif country_code == 'ITA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7463130536072833 + natural_gas_density/16*44)
+    elif country_code == 'CAN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5424438688893909 + natural_gas_density/16*44)
+    elif country_code == 'JPN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8612532956914958 + natural_gas_density/16*44)
+    elif country_code == 'KOR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8632380439297898 + natural_gas_density/16*44)
+    elif country_code == 'CHN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6687205543269131 + natural_gas_density/16*44)
+    elif country_code in European_countries:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6884940098670117 + natural_gas_density/16*44)
+    else:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
@@ -3073,13 +4519,31 @@ def create_C21_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8970860511867621 + 44*12/(12*12 + 23*1))
+    elif country_code == 'COL':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.6777889995887414 + 44*12/(12*12 + 23*1))
+    elif country_code == 'IND':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.9819236027859558 + 44*12/(12*12 + 23*1))
+    elif country_code == 'ZAF':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8820480754893896 + 44*12/(12*12 + 23*1))
+    elif country_code == 'PER':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8701113618791989 + 44*12/(12*12 + 23*1))
+    elif country_code == 'BRA':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.6239541867786678 + 44*12/(12*12 + 23*1))
+    elif country_code in European_countries:
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8730080399195541 + 44*12/(12*12 + 23*1))
+    else:
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.00946219748385128)
+    else:
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_LA', linked_stream=stream.methane_LA, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_LA', linked_stream=stream.methane_LA, GlobalWarming=27)
     qs.StreamImpactItem(ID='Nitrous_oxide_LA', linked_stream=stream.nitrous_oxide_LA, GlobalWarming=273)
     
     # carbon sequestration
@@ -3087,11 +4551,18 @@ def create_C21_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     
     biosolids_trucking = qs.ImpactItem(ID='Biosolids_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biosolids_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
+    if country_code == 'ZAF':
+        biosolids_trucking.add_indicator(GlobalWarming, 0.14059514852771382/1000)
+    elif country_code == 'BRA':
+        biosolids_trucking.add_indicator(GlobalWarming, 0.11982238243679814/1000)
+    elif country_code in European_countries:
+        biosolids_trucking.add_indicator(GlobalWarming, 0.15050202193852563/1000)
+    else:
+        biosolids_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
-    biosolids_trucking.price = (0.00551 + 0.0000541*LandApplication.solids_distance)/LandApplication.solids_distance
+    biosolids_trucking.price = (0.00551 + 0.0000541*LandApplication.solids_distance)/LandApplication.solids_distance*country_PLI
     
     biosolids_transportation = qs.Transportation(ID='Biosolids_transportation',
                                                  linked_unit=LandApplication,
@@ -3116,7 +4587,7 @@ def create_C21_system(country_code='USA', size=10, operation_hours=7884, LA_dist
            Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -3142,7 +4613,31 @@ def create_C22_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -3161,12 +4656,13 @@ def create_C22_system(country_code='USA', size=10, operation_hours=7884, LA_dist
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
@@ -3175,25 +4671,25 @@ def create_C22_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AnaerobicDigestion-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     Composting = lsu.Composting(ID='Composting', ins=(Dewatering-0, 'bulking_agent', 'diesel_composting'),
                                 outs=('compost_cost','methane_composting','nitrous_oxide_composting','sequestered_carbon_dioxide_composting'),
                                 feedstock_digested=True, solids_distance=LA_distance, PLI=country_PLI)
     # TODO: uncertainty range (uniform) 18-36 2005$/tonne
-    Composting.ins[1].price = 27/1000/GDPCTPI[2005]*GDPCTPI[2023]
+    Composting.ins[1].price = 27/1000/GDPCTPI[2005]*GDPCTPI[2023]*country_PLI
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
-    Composting.ins[2].price = 4.224/_gal_to_liter*1000/diesel_density
-    Composting.outs[0].price = compost_price
+    Composting.ins[2].price = 4.224/_gal_to_liter*1000/diesel_density*country_PLI
+    Composting.outs[0].price = compost_price*country_PLI
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air_CHP'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+                                outs=('emission','ash_CHP'), unit_CAPEX=1225*country_PLI, supplement_power_utility=False)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    CHP.ins[1].price = 0.218
+    CHP.ins[1].price = 0.218*country_PLI
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
-    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     sys = qs.System.from_units(ID='system_C22',
                                units=list(flowsheet.unit),
@@ -3208,7 +4704,12 @@ def create_C22_system(country_code='USA', size=10, operation_hours=7884, LA_dist
                                        description='Global Warming Potential')
     
     Bulking_agent = qs.ImpactItem('Bulking_agent', functional_unit='kg')
-    Bulking_agent.add_indicator(GlobalWarming, 0.04291794596775965)
+    if country_code == 'CHE':
+        Bulking_agent.add_indicator(GlobalWarming, 0.021387244244734732)
+    elif country_code in European_countries:
+        Bulking_agent.add_indicator(GlobalWarming, 0.03047830694185532)
+    else:
+        Bulking_agent.add_indicator(GlobalWarming, 0.04291794596775965)
     
     # BEAM
     N_fertilizer = qs.ImpactItem('N_fertilizer', functional_unit='kg')
@@ -3219,16 +4720,57 @@ def create_C22_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     P_fertilizer.add_indicator(GlobalWarming, -2.0)
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
+    if country_code == 'CHE':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7008435167236161 + natural_gas_density/16*44)
+    elif country_code == 'DEU':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4549664070734295 + natural_gas_density/16*44)
+    elif country_code == 'ESP':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8874492234001324 + natural_gas_density/16*44)
+    elif country_code == 'GBR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4100646325467 + natural_gas_density/16*44)
+    elif country_code == 'BEL':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5685568661222136 + natural_gas_density/16*44)
+    elif country_code == 'USA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5735112177514514 + natural_gas_density/16*44)
+    elif country_code == 'TUR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7039019951758329 + natural_gas_density/16*44)
+    elif country_code == 'FRA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7228085846276232 + natural_gas_density/16*44)
+    elif country_code == 'NLD':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5732876065672489 + natural_gas_density/16*44)
+    elif country_code == 'MEX':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.583138412259907 + natural_gas_density/16*44)
+    elif country_code == 'ITA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7463130536072833 + natural_gas_density/16*44)
+    elif country_code == 'CAN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5424438688893909 + natural_gas_density/16*44)
+    elif country_code == 'JPN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8612532956914958 + natural_gas_density/16*44)
+    elif country_code == 'KOR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8632380439297898 + natural_gas_density/16*44)
+    elif country_code == 'CHN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6687205543269131 + natural_gas_density/16*44)
+    elif country_code in European_countries:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6884940098670117 + natural_gas_density/16*44)
+    else:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
@@ -3237,13 +4779,31 @@ def create_C22_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.8970860511867621 + 44*12/(12*12 + 23*1))
+    elif country_code == 'COL':
+        qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.6777889995887414 + 44*12/(12*12 + 23*1))
+    elif country_code == 'IND':
+        qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.9819236027859558 + 44*12/(12*12 + 23*1))
+    elif country_code == 'ZAF':
+        qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.8820480754893896 + 44*12/(12*12 + 23*1))
+    elif country_code == 'PER':
+        qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.8701113618791989 + 44*12/(12*12 + 23*1))
+    elif country_code == 'BRA':
+        qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.6239541867786678 + 44*12/(12*12 + 23*1))
+    elif country_code in European_countries:
+        qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.8730080399195541 + 44*12/(12*12 + 23*1))
+    else:
+        qs.StreamImpactItem(ID='Diesel_composting', linked_stream=stream.diesel_composting, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.00946219748385128)
+    else:
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_composting', linked_stream=stream.methane_composting, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_composting', linked_stream=stream.methane_composting, GlobalWarming=27)
     qs.StreamImpactItem(ID='Nitrous_oxide_composting', linked_stream=stream.nitrous_oxide_composting, GlobalWarming=273)
     
     # carbon sequestration
@@ -3251,11 +4811,18 @@ def create_C22_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     
     compost_trucking = qs.ImpactItem(ID='Compost_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    compost_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
+    if country_code == 'ZAF':
+        compost_trucking.add_indicator(GlobalWarming, 0.14059514852771382/1000)
+    elif country_code == 'BRA':
+        compost_trucking.add_indicator(GlobalWarming, 0.11982238243679814/1000)
+    elif country_code in European_countries:
+        compost_trucking.add_indicator(GlobalWarming, 0.15050202193852563/1000)
+    else:
+        compost_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
-    compost_trucking.price = (0.00551 + 0.0000541*Composting.solids_distance)/Composting.solids_distance
+    compost_trucking.price = (0.00551 + 0.0000541*Composting.solids_distance)/Composting.solids_distance*country_PLI
     
     compost_transportation = qs.Transportation(ID='Compost_transportation',
                                                linked_unit=Composting,
@@ -3281,7 +4848,7 @@ def create_C22_system(country_code='USA', size=10, operation_hours=7884, LA_dist
            Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -3307,7 +4874,31 @@ def create_C23_system(country_code='USA', size=10, operation_hours=7884, LF_dist
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -3326,12 +4917,13 @@ def create_C23_system(country_code='USA', size=10, operation_hours=7884, LF_dist
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
@@ -3340,13 +4932,13 @@ def create_C23_system(country_code='USA', size=10, operation_hours=7884, LF_dist
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AnaerobicDigestion-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     HeatDrying = lsu.HeatDrying(ID='HeatDrying', ins=(Dewatering-0, 'natural_gas_heat_drying'),
                                 outs=('dried_solids','vapor'))
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    HeatDrying.ins[1].price = 0.218
+    HeatDrying.ins[1].price = 0.218*country_PLI
     
     Landfilling = lsu.Landfilling(ID='Landfilling',
                                   ins=HeatDrying-0,
@@ -3357,13 +4949,13 @@ def create_C23_system(country_code='USA', size=10, operation_hours=7884, LF_dist
     Landfilling.outs[0].price = -tipping_fee*country_PLI
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air_CHP'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+                                outs=('emission','ash_CHP'), unit_CAPEX=1225*country_PLI, supplement_power_utility=False)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    CHP.ins[1].price = 0.218
+    CHP.ins[1].price = 0.218*country_PLI
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
-    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     sys = qs.System.from_units(ID='system_C23',
                                units=list(flowsheet.unit),
@@ -3378,28 +4970,72 @@ def create_C23_system(country_code='USA', size=10, operation_hours=7884, LF_dist
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
+    if country_code == 'CHE':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7008435167236161 + natural_gas_density/16*44)
+    elif country_code == 'DEU':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4549664070734295 + natural_gas_density/16*44)
+    elif country_code == 'ESP':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8874492234001324 + natural_gas_density/16*44)
+    elif country_code == 'GBR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4100646325467 + natural_gas_density/16*44)
+    elif country_code == 'BEL':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5685568661222136 + natural_gas_density/16*44)
+    elif country_code == 'USA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5735112177514514 + natural_gas_density/16*44)
+    elif country_code == 'TUR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7039019951758329 + natural_gas_density/16*44)
+    elif country_code == 'FRA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7228085846276232 + natural_gas_density/16*44)
+    elif country_code == 'NLD':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5732876065672489 + natural_gas_density/16*44)
+    elif country_code == 'MEX':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.583138412259907 + natural_gas_density/16*44)
+    elif country_code == 'ITA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7463130536072833 + natural_gas_density/16*44)
+    elif country_code == 'CAN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5424438688893909 + natural_gas_density/16*44)
+    elif country_code == 'JPN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8612532956914958 + natural_gas_density/16*44)
+    elif country_code == 'KOR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8632380439297898 + natural_gas_density/16*44)
+    elif country_code == 'CHN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6687205543269131 + natural_gas_density/16*44)
+    elif country_code in European_countries:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6884940098670117 + natural_gas_density/16*44)
+    else:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.00946219748385128)
+    else:
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_LF', linked_stream=stream.methane_LF, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_LF', linked_stream=stream.methane_LF, GlobalWarming=27)
     qs.StreamImpactItem(ID='Nitrous_oxide_LF', linked_stream=stream.nitrous_oxide_LF, GlobalWarming=273)
     
     # carbon sequestration
@@ -3407,11 +5043,18 @@ def create_C23_system(country_code='USA', size=10, operation_hours=7884, LF_dist
     
     sludge_trucking = qs.ImpactItem(ID='Sludge_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    sludge_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
+    if country_code == 'ZAF':
+        sludge_trucking.add_indicator(GlobalWarming, 0.14059514852771382/1000)
+    elif country_code == 'BRA':
+        sludge_trucking.add_indicator(GlobalWarming, 0.11982238243679814/1000)
+    elif country_code in European_countries:
+        sludge_trucking.add_indicator(GlobalWarming, 0.15050202193852563/1000)
+    else:
+        sludge_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
-    sludge_trucking.price = (0.00551 + 0.0000541*Landfilling.solids_distance)/Landfilling.solids_distance
+    sludge_trucking.price = (0.00551 + 0.0000541*Landfilling.solids_distance)/Landfilling.solids_distance*country_PLI
     
     sludge_transportation = qs.Transportation(ID='Sludge_transportation',
                                               linked_unit=Landfilling,
@@ -3434,7 +5077,7 @@ def create_C23_system(country_code='USA', size=10, operation_hours=7884, LF_dist
            Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -3460,7 +5103,31 @@ def create_C24_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -3479,12 +5146,13 @@ def create_C24_system(country_code='USA', size=10, operation_hours=7884, LA_dist
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
@@ -3493,30 +5161,30 @@ def create_C24_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AnaerobicDigestion-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     HeatDrying = lsu.HeatDrying(ID='HeatDrying', ins=(Dewatering-0, 'natural_gas_heat_drying'),
                                 outs=('dried_solids','vapor'))
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    HeatDrying.ins[1].price = 0.218
+    HeatDrying.ins[1].price = 0.218*country_PLI
     
     LandApplication = lsu.LandApplication(ID='LandApplication',
                                           ins=(HeatDrying-0, 'diesel_LA'),
                                           outs=('biosolids_cost','methane_LA','nitrous_oxide_LA','carbon_dioxide_LA'),
                                           solids_distance=LA_distance)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
-    LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
+    LandApplication.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density*country_PLI
     LandApplication.outs[0].price = biosolids_price*country_PLI
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air_CHP'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+                                outs=('emission','ash_CHP'), unit_CAPEX=1225*country_PLI, supplement_power_utility=False)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    CHP.ins[1].price = 0.218
+    CHP.ins[1].price = 0.218*country_PLI
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
-    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     sys = qs.System.from_units(ID='system_C24',
                                units=list(flowsheet.unit),
@@ -3539,16 +5207,57 @@ def create_C24_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     P_fertilizer.add_indicator(GlobalWarming, -2.0)
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
+    if country_code == 'CHE':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7008435167236161 + natural_gas_density/16*44)
+    elif country_code == 'DEU':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4549664070734295 + natural_gas_density/16*44)
+    elif country_code == 'ESP':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8874492234001324 + natural_gas_density/16*44)
+    elif country_code == 'GBR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4100646325467 + natural_gas_density/16*44)
+    elif country_code == 'BEL':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5685568661222136 + natural_gas_density/16*44)
+    elif country_code == 'USA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5735112177514514 + natural_gas_density/16*44)
+    elif country_code == 'TUR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7039019951758329 + natural_gas_density/16*44)
+    elif country_code == 'FRA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7228085846276232 + natural_gas_density/16*44)
+    elif country_code == 'NLD':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5732876065672489 + natural_gas_density/16*44)
+    elif country_code == 'MEX':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.583138412259907 + natural_gas_density/16*44)
+    elif country_code == 'ITA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7463130536072833 + natural_gas_density/16*44)
+    elif country_code == 'CAN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5424438688893909 + natural_gas_density/16*44)
+    elif country_code == 'JPN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8612532956914958 + natural_gas_density/16*44)
+    elif country_code == 'KOR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8632380439297898 + natural_gas_density/16*44)
+    elif country_code == 'CHN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6687205543269131 + natural_gas_density/16*44)
+    elif country_code in European_countries:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6884940098670117 + natural_gas_density/16*44)
+    else:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
@@ -3557,13 +5266,31 @@ def create_C24_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8970860511867621 + 44*12/(12*12 + 23*1))
+    elif country_code == 'COL':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.6777889995887414 + 44*12/(12*12 + 23*1))
+    elif country_code == 'IND':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.9819236027859558 + 44*12/(12*12 + 23*1))
+    elif country_code == 'ZAF':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8820480754893896 + 44*12/(12*12 + 23*1))
+    elif country_code == 'PER':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8701113618791989 + 44*12/(12*12 + 23*1))
+    elif country_code == 'BRA':
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.6239541867786678 + 44*12/(12*12 + 23*1))
+    elif country_code in European_countries:
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8730080399195541 + 44*12/(12*12 + 23*1))
+    else:
+        qs.StreamImpactItem(ID='Diesel_LA', linked_stream=stream.diesel_LA, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.00946219748385128)
+    else:
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_LA', linked_stream=stream.methane_LA, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_LA', linked_stream=stream.methane_LA, GlobalWarming=27)
     qs.StreamImpactItem(ID='Nitrous_oxide_LA', linked_stream=stream.nitrous_oxide_LA, GlobalWarming=273)
     
     # carbon sequestration
@@ -3571,11 +5298,18 @@ def create_C24_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     
     biosolids_trucking = qs.ImpactItem(ID='Biosolids_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biosolids_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
+    if country_code == 'ZAF':
+        biosolids_trucking.add_indicator(GlobalWarming, 0.14059514852771382/1000)
+    elif country_code == 'BRA':
+        biosolids_trucking.add_indicator(GlobalWarming, 0.11982238243679814/1000)
+    elif country_code in European_countries:
+        biosolids_trucking.add_indicator(GlobalWarming, 0.15050202193852563/1000)
+    else:
+        biosolids_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
-    biosolids_trucking.price = (0.00551 + 0.0000541*LandApplication.solids_distance)/LandApplication.solids_distance
+    biosolids_trucking.price = (0.00551 + 0.0000541*LandApplication.solids_distance)/LandApplication.solids_distance*country_PLI
     
     biosolids_transportation = qs.Transportation(ID='Biosolids_transportation',
                                                  linked_unit=LandApplication,
@@ -3600,7 +5334,7 @@ def create_C24_system(country_code='USA', size=10, operation_hours=7884, LA_dist
            Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -3626,7 +5360,31 @@ def create_C25_system(country_code='USA', size=10, operation_hours=7884, FTE=0.7
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -3645,12 +5403,13 @@ def create_C25_system(country_code='USA', size=10, operation_hours=7884, FTE=0.7
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
@@ -3659,31 +5418,31 @@ def create_C25_system(country_code='USA', size=10, operation_hours=7884, FTE=0.7
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AnaerobicDigestion-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     HeatDrying = lsu.HeatDrying(ID='HeatDrying', ins=(Dewatering-0, 'natural_gas_heat_drying'),
                                 outs=('dried_solids','vapor'))
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    HeatDrying.ins[1].price = 0.218
+    HeatDrying.ins[1].price = 0.218*country_PLI
     
     Incineration = lsu.Incineration(ID='Incineration',
                                     ins=(HeatDrying-0, 'natural_gas_incineration'),
                                     outs=('ash_incineration','vapor_incineration','methane_IN','nitrous_oxide_IN'))
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    Incineration.ins[1].price = 0.218
+    Incineration.ins[1].price = 0.218*country_PLI
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
-    Incineration.outs[0].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    Incineration.outs[0].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air_CHP'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+                                outs=('emission','ash_CHP'), unit_CAPEX=1225*country_PLI, supplement_power_utility=False)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    CHP.ins[1].price = 0.218
+    CHP.ins[1].price = 0.218*country_PLI
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
-    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     sys = qs.System.from_units(ID='system_C25',
                                units=list(flowsheet.unit),
@@ -3698,29 +5457,76 @@ def create_C25_system(country_code='USA', size=10, operation_hours=7884, FTE=0.7
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
+    if country_code == 'CHE':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7008435167236161 + natural_gas_density/16*44)
+    elif country_code == 'DEU':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4549664070734295 + natural_gas_density/16*44)
+    elif country_code == 'ESP':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8874492234001324 + natural_gas_density/16*44)
+    elif country_code == 'GBR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4100646325467 + natural_gas_density/16*44)
+    elif country_code == 'BEL':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5685568661222136 + natural_gas_density/16*44)
+    elif country_code == 'USA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5735112177514514 + natural_gas_density/16*44)
+    elif country_code == 'TUR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7039019951758329 + natural_gas_density/16*44)
+    elif country_code == 'FRA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7228085846276232 + natural_gas_density/16*44)
+    elif country_code == 'NLD':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5732876065672489 + natural_gas_density/16*44)
+    elif country_code == 'MEX':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.583138412259907 + natural_gas_density/16*44)
+    elif country_code == 'ITA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7463130536072833 + natural_gas_density/16*44)
+    elif country_code == 'CAN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5424438688893909 + natural_gas_density/16*44)
+    elif country_code == 'JPN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8612532956914958 + natural_gas_density/16*44)
+    elif country_code == 'KOR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8632380439297898 + natural_gas_density/16*44)
+    elif country_code == 'CHN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6687205543269131 + natural_gas_density/16*44)
+    elif country_code in European_countries:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6884940098670117 + natural_gas_density/16*44)
+    else:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
-    qs.StreamImpactItem(ID='Ash_incineration', linked_stream=stream.ash_incineration, GlobalWarming=0.018281422578429424)
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Ash_incineration', linked_stream=stream.ash_incineration, GlobalWarming=0.00946219748385128)
+    else:
+        qs.StreamImpactItem(ID='Ash_incineration', linked_stream=stream.ash_incineration, GlobalWarming=0.018281422578429424)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.00946219748385128)
+    else:
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_IN', linked_stream=stream.methane_IN, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_IN', linked_stream=stream.methane_IN, GlobalWarming=27)
     qs.StreamImpactItem(ID='Nitrous_oxide_IN', linked_stream=stream.nitrous_oxide_IN, GlobalWarming=273)
     
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
@@ -3731,7 +5537,7 @@ def create_C25_system(country_code='USA', size=10, operation_hours=7884, FTE=0.7
            Cooling=lambda:sys.get_cooling_duty()/1000*lifetime)
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -3757,7 +5563,31 @@ def create_T1_system(country_code='USA', size=10, operation_hours=7884, refinery
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -3776,24 +5606,25 @@ def create_T1_system(country_code='USA', size=10, operation_hours=7884, refinery
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(Thickening-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     HTL = lsu.HydrothermalLiquefaction(ID='HTL', ins=Dewatering-0,
                                        outs=('biocrude','HTL_aqueous_undefined','hydrochar','offgas_HTL'),
                                        biocrude_distance=refinery_distance, FOAK=FOAK)
     # assume hydrochar from HTL is disposed of by sending it to landfills
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
-    HTL.outs[2].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    HTL.outs[2].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     first_year_factor = HTL.plant_performance_factor/100
     
@@ -3808,10 +5639,11 @@ def create_T1_system(country_code='USA', size=10, operation_hours=7884, refinery
     CHG = lsu.CatalyticHydrothermalGasification(ID='CHG', ins=(Analyzer-0, 'virgin_CHG_catalyst'),
                                                 outs=('CHG_out','used_CHG_catalyst'))
     # CHG catalyst price, https://doi.org/10.2172/1126336
-    CHG.ins[1].price = 60/_lb_to_kg/GDPCTPI[2011]*GDPCTPI[2023]
+    CHG.ins[1].price = 60/_lb_to_kg/GDPCTPI[2011]*GDPCTPI[2023]*country_PLI
     
     V1 = IsenthalpicValve(ID='V1', ins=CHG-0, outs='depressurized_cooled_CHG', P=50*6894.76, vle=True)
     
+    # the purchase costs of Flash are related to bst.CE
     F1 = qsu.Flash(ID='F1', ins=V1-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
                    T=60+273.15, P=50*6894.76, thermo=settings.thermo.ideal())
     F1.lifetime = 20
@@ -3819,21 +5651,21 @@ def create_T1_system(country_code='USA', size=10, operation_hours=7884, refinery
     GasMixer = qsu.Mixer(ID='GasMixer', ins=(HTL-3, F1-0), outs=('fuel_gas'))
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(GasMixer-0, 'natural_gas_CHP', 'air_CHP'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+                                outs=('emission','ash_CHP'), unit_CAPEX=1225*country_PLI, supplement_power_utility=False)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    CHP.ins[1].price = 0.218
+    CHP.ins[1].price = 0.218*country_PLI
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
-    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     # treatment of CT residual is not considerd (since it is not in the model)
     # but ecoinvent has it and indicates it might be disposed of through landfilling
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
-    CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     # cooling_tower_chemicals: 1.7842 2016$/lb, https://doi.org/10.2172/1483234
-    CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     CT.lifetime = 20
     
     sys = qs.System.from_units(ID='system_T1',
@@ -3855,7 +5687,7 @@ def create_T1_system(country_code='USA', size=10, operation_hours=7884, refinery
     # biocrude replacing crude oil of the same amount of energy
     # TODO: may need update the price to a more general number
     # 76.1 $/barrel crude oil, U.S. EIA, 2023 monthly average
-    HTL.outs[0].price = 76.1/_oil_barrel_to_m3/HTL.crude_oil_density/HTL.crude_oil_HHV*HTL.biocrude_HHV
+    HTL.outs[0].price = 76.1/_oil_barrel_to_m3/HTL.crude_oil_density/HTL.crude_oil_HHV*HTL.biocrude_HHV*country_PLI
     
     GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
                                        method='TRACI',
@@ -3864,22 +5696,68 @@ def create_T1_system(country_code='USA', size=10, operation_hours=7884, refinery
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
+    if country_code == 'CHE':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7008435167236161 + natural_gas_density/16*44)
+    elif country_code == 'DEU':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4549664070734295 + natural_gas_density/16*44)
+    elif country_code == 'ESP':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8874492234001324 + natural_gas_density/16*44)
+    elif country_code == 'GBR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4100646325467 + natural_gas_density/16*44)
+    elif country_code == 'BEL':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5685568661222136 + natural_gas_density/16*44)
+    elif country_code == 'USA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5735112177514514 + natural_gas_density/16*44)
+    elif country_code == 'TUR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7039019951758329 + natural_gas_density/16*44)
+    elif country_code == 'FRA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7228085846276232 + natural_gas_density/16*44)
+    elif country_code == 'NLD':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5732876065672489 + natural_gas_density/16*44)
+    elif country_code == 'MEX':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.583138412259907 + natural_gas_density/16*44)
+    elif country_code == 'ITA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7463130536072833 + natural_gas_density/16*44)
+    elif country_code == 'CAN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5424438688893909 + natural_gas_density/16*44)
+    elif country_code == 'JPN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8612532956914958 + natural_gas_density/16*44)
+    elif country_code == 'KOR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8632380439297898 + natural_gas_density/16*44)
+    elif country_code == 'CHN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6687205543269131 + natural_gas_density/16*44)
+    elif country_code in European_countries:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6884940098670117 + natural_gas_density/16*44)
+    else:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
     Deionized_water = qs.ImpactItem('Deionized_water', functional_unit='kg')
-    Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
+    if country_code == 'CHE':
+        Deionized_water.add_indicator(GlobalWarming, 0.0003052493660070587)
+    elif country_code in European_countries:
+        Deionized_water.add_indicator(GlobalWarming, 0.00039891058449043786)
+    else:
+        Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
     
     def deionized_water_quantity():
         try:
@@ -3896,22 +5774,51 @@ def create_T1_system(country_code='USA', size=10, operation_hours=7884, refinery
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # use market for petroleum to offset transportation and then add the transportation part
-    # 0.6254770020033417 kg CO2 eq/kg petroleum ('market for petroleum')
     # assume biocrude is used to produce biofuel for combustion
     # pertoleum is 84% C, https://en.wikipedia.org/wiki/Petroleum
-    qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.6254770020033417 + 0.84/12*44)/HTL.crude_oil_HHV*HTL.biocrude_HHV)
-    qs.StreamImpactItem(ID='Hydrochar', linked_stream=stream.hydrochar, GlobalWarming=0.018281422578429424)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.7522599436600327 + 0.84/12*44)/HTL.crude_oil_HHV*HTL.biocrude_HHV)
+    elif country_code == 'ZAF':
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.5891222858752428 + 0.84/12*44)/HTL.crude_oil_HHV*HTL.biocrude_HHV)
+    elif country_code == 'IND':
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.6375458980732374 + 0.84/12*44)/HTL.crude_oil_HHV*HTL.biocrude_HHV)
+    elif country_code == 'PER':
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.5735774071625496 + 0.84/12*44)/HTL.crude_oil_HHV*HTL.biocrude_HHV)
+    elif country_code == 'BRA':
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.33387058042913026 + 0.84/12*44)/HTL.crude_oil_HHV*HTL.biocrude_HHV)
+    elif country_code == 'COL':
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.35748879874422146 + 0.84/12*44)/HTL.crude_oil_HHV*HTL.biocrude_HHV)
+    elif country_code in European_countries:
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.5960832499896735 + 0.84/12*44)/HTL.crude_oil_HHV*HTL.biocrude_HHV)
+    elif country_code in Northern_American_countires:
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.5074316714055547 + 0.84/12*44)/HTL.crude_oil_HHV*HTL.biocrude_HHV)
+    else:
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.6254770020033417 + 0.84/12*44)/HTL.crude_oil_HHV*HTL.biocrude_HHV)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Hydrochar', linked_stream=stream.hydrochar, GlobalWarming=0.00946219748385128)
+    else:
+        qs.StreamImpactItem(ID='Hydrochar', linked_stream=stream.hydrochar, GlobalWarming=0.018281422578429424)
     qs.StreamImpactItem(ID='CHG_catalyst', linked_stream=stream.used_CHG_catalyst, GlobalWarming=1269.60621783954)
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.00946219748385128)
+    else:
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
     
     biocrude_trucking = qs.ImpactItem('Biocrude_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biocrude_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
+    if country_code == 'ZAF':
+        biocrude_trucking.add_indicator(GlobalWarming, 0.14059514852771382/1000)
+    elif country_code == 'BRA':
+        biocrude_trucking.add_indicator(GlobalWarming, 0.11982238243679814/1000)
+    elif country_code in European_countries:
+        biocrude_trucking.add_indicator(GlobalWarming, 0.15050202193852563/1000)
+    else:
+        biocrude_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), https://doi.org/10.1016/j.biortech.2010.03.136
-    biocrude_trucking.price = (5.67 + 0.07*HTL.biocrude_distance)/HTL.biocrude_density/HTL.biocrude_distance/GDPCTPI[2008]*GDPCTPI[2023]
+    biocrude_trucking.price = (5.67 + 0.07*HTL.biocrude_distance)/HTL.biocrude_density/HTL.biocrude_distance/GDPCTPI[2008]*GDPCTPI[2023]*country_PLI
     
     biocrude_transportation = qs.Transportation('Biocrude_transportation',
                                                 linked_unit=HTL,
@@ -3935,7 +5842,7 @@ def create_T1_system(country_code='USA', size=10, operation_hours=7884, refinery
            Deionized_water=lambda:deionized_water_quantity())
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -3961,7 +5868,31 @@ def create_T2_system(country_code='USA', size=10, operation_hours=7884, refinery
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -3980,29 +5911,30 @@ def create_T2_system(country_code='USA', size=10, operation_hours=7884, refinery
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(Thickening-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     HALT = lsu.HydrothermalAlkalineTreatment(ID='HALT', ins=(Dewatering-0, 'sodium_hydroxide', 'hydrochloric_acid', 'diesel_HALT'),
                                              outs=('biocrude','HALT_aqueous_undefined','hydrochar','offgas_HALT'),
                                              biocrude_distance=refinery_distance, hydrochar_distance=LA_distance, FOAK=FOAK)
     # 0.2384 2016$/lb, https://doi.org/10.2172/1483234
-    HALT.ins[1].price = 0.2384/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    HALT.ins[1].price = 0.2384/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     # 0.49 2020$/lb, from A.J.K. HALT model
-    HALT.ins[2].price = 0.49/_lb_to_kg/GDPCTPI[2020]*GDPCTPI[2023]
+    HALT.ins[2].price = 0.49/_lb_to_kg/GDPCTPI[2020]*GDPCTPI[2023]*country_PLI
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
-    HALT.ins[3].price = 4.224/_gal_to_liter*1000/diesel_density
+    HALT.ins[3].price = 4.224/_gal_to_liter*1000/diesel_density*country_PLI
     # 0 - 0.093 2018$, Figure 6 in https://www.sciencedirect.com/science/article/pii/S0306261919318021?via%3Dihub
-    HALT.outs[2].price = 0.0465/GDPCTPI[2018]*GDPCTPI[2023]
+    HALT.outs[2].price = 0.0465/GDPCTPI[2018]*GDPCTPI[2023]*country_PLI
     
     first_year_factor = HALT.plant_performance_factor/100
     
@@ -4017,10 +5949,11 @@ def create_T2_system(country_code='USA', size=10, operation_hours=7884, refinery
     CHG = lsu.CatalyticHydrothermalGasification(ID='CHG', ins=(Analyzer-0, 'virgin_CHG_catalyst'),
                                                 outs=('CHG_out','used_CHG_catalyst'))
     # CHG catalyst price, https://doi.org/10.2172/1126336
-    CHG.ins[1].price = 60/_lb_to_kg/GDPCTPI[2011]*GDPCTPI[2023]
+    CHG.ins[1].price = 60/_lb_to_kg/GDPCTPI[2011]*GDPCTPI[2023]*country_PLI
     
     V1 = IsenthalpicValve(ID='V1', ins=CHG-0, outs='depressurized_cooled_CHG', P=50*6894.76, vle=True)
     
+    # the purchase costs of Flash are related to bst.CE
     F1 = qsu.Flash(ID='F1', ins=V1-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
                    T=60+273.15, P=50*6894.76, thermo=settings.thermo.ideal())
     F1.lifetime = 20
@@ -4028,21 +5961,21 @@ def create_T2_system(country_code='USA', size=10, operation_hours=7884, refinery
     GasMixer = qsu.Mixer(ID='GasMixer', ins=(HALT-3, F1-0), outs=('fuel_gas'))
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(GasMixer-0, 'natural_gas_CHP', 'air_CHP'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+                                outs=('emission','ash_CHP'), unit_CAPEX=1225*country_PLI, supplement_power_utility=False)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    CHP.ins[1].price = 0.218
+    CHP.ins[1].price = 0.218*country_PLI
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
-    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     # treatment of CT residual is not considerd (since it is not in the model)
     # but ecoinvent has it and indicates it might be disposed of through landfilling
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
-    CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     # cooling_tower_chemicals: 1.7842 2016$/lb, https://doi.org/10.2172/1483234
-    CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     CT.lifetime = 20
     
     sys = qs.System.from_units(ID='system_T2',
@@ -4064,7 +5997,7 @@ def create_T2_system(country_code='USA', size=10, operation_hours=7884, refinery
     # biocrude replacing crude oil of the same amount of energy
     # TODO: may need update the price to a more general number
     # 76.1 $/barrel crude oil, U.S. EIA, 2023 monthly average
-    HALT.outs[0].price = 76.1/_oil_barrel_to_m3/HALT.crude_oil_density/HALT.crude_oil_HHV*HALT.biocrude_HHV
+    HALT.outs[0].price = 76.1/_oil_barrel_to_m3/HALT.crude_oil_density/HALT.crude_oil_HHV*HALT.biocrude_HHV*country_PLI
     
     GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
                                        method='TRACI',
@@ -4073,22 +6006,68 @@ def create_T2_system(country_code='USA', size=10, operation_hours=7884, refinery
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
+    if country_code == 'CHE':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7008435167236161 + natural_gas_density/16*44)
+    elif country_code == 'DEU':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4549664070734295 + natural_gas_density/16*44)
+    elif country_code == 'ESP':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8874492234001324 + natural_gas_density/16*44)
+    elif country_code == 'GBR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4100646325467 + natural_gas_density/16*44)
+    elif country_code == 'BEL':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5685568661222136 + natural_gas_density/16*44)
+    elif country_code == 'USA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5735112177514514 + natural_gas_density/16*44)
+    elif country_code == 'TUR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7039019951758329 + natural_gas_density/16*44)
+    elif country_code == 'FRA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7228085846276232 + natural_gas_density/16*44)
+    elif country_code == 'NLD':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5732876065672489 + natural_gas_density/16*44)
+    elif country_code == 'MEX':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.583138412259907 + natural_gas_density/16*44)
+    elif country_code == 'ITA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7463130536072833 + natural_gas_density/16*44)
+    elif country_code == 'CAN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5424438688893909 + natural_gas_density/16*44)
+    elif country_code == 'JPN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8612532956914958 + natural_gas_density/16*44)
+    elif country_code == 'KOR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8632380439297898 + natural_gas_density/16*44)
+    elif country_code == 'CHN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6687205543269131 + natural_gas_density/16*44)
+    elif country_code in European_countries:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6884940098670117 + natural_gas_density/16*44)
+    else:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
     Deionized_water = qs.ImpactItem('Deionized_water', functional_unit='kg')
-    Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
+    if country_code == 'CHE':
+        Deionized_water.add_indicator(GlobalWarming, 0.0003052493660070587)
+    elif country_code in European_countries:
+        Deionized_water.add_indicator(GlobalWarming, 0.00039891058449043786)
+    else:
+        Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
     
     def deionized_water_quantity():
         try:
@@ -4104,21 +6083,61 @@ def create_T2_system(country_code='USA', size=10, operation_hours=7884, refinery
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
-    qs.StreamImpactItem(ID='Sodium_hydroxide', linked_stream=stream.sodium_hydroxide, GlobalWarming=1.4080631253939493)
-    qs.StreamImpactItem(ID='Hydrochloric_acid', linked_stream=stream.hydrochloric_acid, GlobalWarming=0.8701969784483516)
+    if country_code in European_countries:
+        qs.StreamImpactItem(ID='Sodium_hydroxide', linked_stream=stream.sodium_hydroxide, GlobalWarming=0.9151448191617616)
+    else:
+        qs.StreamImpactItem(ID='Sodium_hydroxide', linked_stream=stream.sodium_hydroxide, GlobalWarming=1.4080631253939493)
+    if country_code in European_countries:
+        qs.StreamImpactItem(ID='Hydrochloric_acid', linked_stream=stream.hydrochloric_acid, GlobalWarming=0.5779004915128144)
+    else:
+        qs.StreamImpactItem(ID='Hydrochloric_acid', linked_stream=stream.hydrochloric_acid, GlobalWarming=0.8701969784483516)
     # use market for petroleum to offset transportation and then add the transportation part
-    # 0.6254770020033417 kg CO2 eq/kg petroleum ('market for petroleum')
     # assume biocrude is used to produce biofuel for combustion
     # pertoleum is 84% C, https://en.wikipedia.org/wiki/Petroleum
-    qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.6254770020033417 + 0.84/12*44)/HALT.crude_oil_HHV*HALT.biocrude_HHV)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.7522599436600327 + 0.84/12*44)/HALT.crude_oil_HHV*HALT.biocrude_HHV)
+    elif country_code == 'ZAF':
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.5891222858752428 + 0.84/12*44)/HALT.crude_oil_HHV*HALT.biocrude_HHV)
+    elif country_code == 'IND':
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.6375458980732374 + 0.84/12*44)/HALT.crude_oil_HHV*HALT.biocrude_HHV)
+    elif country_code == 'PER':
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.5735774071625496 + 0.84/12*44)/HALT.crude_oil_HHV*HALT.biocrude_HHV)
+    elif country_code == 'BRA':
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.33387058042913026 + 0.84/12*44)/HALT.crude_oil_HHV*HALT.biocrude_HHV)
+    elif country_code == 'COL':
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.35748879874422146 + 0.84/12*44)/HALT.crude_oil_HHV*HALT.biocrude_HHV)
+    elif country_code in European_countries:
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.5960832499896735 + 0.84/12*44)/HALT.crude_oil_HHV*HALT.biocrude_HHV)
+    elif country_code in Northern_American_countires:
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.5074316714055547 + 0.84/12*44)/HALT.crude_oil_HHV*HALT.biocrude_HHV)
+    else:
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.6254770020033417 + 0.84/12*44)/HALT.crude_oil_HHV*HALT.biocrude_HHV)
     qs.StreamImpactItem(ID='CHG_catalyst', linked_stream=stream.used_CHG_catalyst, GlobalWarming=1269.60621783954)
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.00946219748385128)
+    else:
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_HALT', linked_stream=stream.diesel_HALT, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Diesel_HALT', linked_stream=stream.diesel_HALT, GlobalWarming=0.8970860511867621 + 44*12/(12*12 + 23*1))
+    elif country_code == 'COL':
+        qs.StreamImpactItem(ID='Diesel_HALT', linked_stream=stream.diesel_HALT, GlobalWarming=0.6777889995887414 + 44*12/(12*12 + 23*1))
+    elif country_code == 'IND':
+        qs.StreamImpactItem(ID='Diesel_HALT', linked_stream=stream.diesel_HALT, GlobalWarming=0.9819236027859558 + 44*12/(12*12 + 23*1))
+    elif country_code == 'ZAF':
+        qs.StreamImpactItem(ID='Diesel_HALT', linked_stream=stream.diesel_HALT, GlobalWarming=0.8820480754893896 + 44*12/(12*12 + 23*1))
+    elif country_code == 'PER':
+        qs.StreamImpactItem(ID='Diesel_HALT', linked_stream=stream.diesel_HALT, GlobalWarming=0.8701113618791989 + 44*12/(12*12 + 23*1))
+    elif country_code == 'BRA':
+        qs.StreamImpactItem(ID='Diesel_HALT', linked_stream=stream.diesel_HALT, GlobalWarming=0.6239541867786678 + 44*12/(12*12 + 23*1))
+    elif country_code in European_countries:
+        qs.StreamImpactItem(ID='Diesel_HALT', linked_stream=stream.diesel_HALT, GlobalWarming=0.8730080399195541 + 44*12/(12*12 + 23*1))
+    else:
+        qs.StreamImpactItem(ID='Diesel_HALT', linked_stream=stream.diesel_HALT, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
     
     # carbon sequestration
     # directly using hydrochar, unlike landfilling, land application, and composting which have carbon dioxide as fake streams
@@ -4127,9 +6146,16 @@ def create_T2_system(country_code='USA', size=10, operation_hours=7884, refinery
     
     biocrude_trucking = qs.ImpactItem('Biocrude_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biocrude_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
+    if country_code == 'ZAF':
+        biocrude_trucking.add_indicator(GlobalWarming, 0.14059514852771382/1000)
+    elif country_code == 'BRA':
+        biocrude_trucking.add_indicator(GlobalWarming, 0.11982238243679814/1000)
+    elif country_code in European_countries:
+        biocrude_trucking.add_indicator(GlobalWarming, 0.15050202193852563/1000)
+    else:
+        biocrude_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), https://doi.org/10.1016/j.biortech.2010.03.136
-    biocrude_trucking.price = (5.67 + 0.07*HALT.biocrude_distance)/HALT.biocrude_density/HALT.biocrude_distance/GDPCTPI[2008]*GDPCTPI[2023]
+    biocrude_trucking.price = (5.67 + 0.07*HALT.biocrude_distance)/HALT.biocrude_density/HALT.biocrude_distance/GDPCTPI[2008]*GDPCTPI[2023]*country_PLI
     
     biocrude_transportation = qs.Transportation('Biocrude_transportation',
                                                 linked_unit=HALT,
@@ -4146,11 +6172,18 @@ def create_T2_system(country_code='USA', size=10, operation_hours=7884, refinery
     
     hydrochar_trucking = qs.ImpactItem('Hydrochar_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    hydrochar_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
+    if country_code == 'ZAF':
+        hydrochar_trucking.add_indicator(GlobalWarming, 0.14059514852771382/1000)
+    elif country_code == 'BRA':
+        hydrochar_trucking.add_indicator(GlobalWarming, 0.11982238243679814/1000)
+    elif country_code in European_countries:
+        hydrochar_trucking.add_indicator(GlobalWarming, 0.15050202193852563/1000)
+    else:
+        hydrochar_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
-    hydrochar_trucking.price = (0.00551 + 0.0000541*HALT.hydrochar_distance)/HALT.hydrochar_distance
+    hydrochar_trucking.price = (0.00551 + 0.0000541*HALT.hydrochar_distance)/HALT.hydrochar_distance*country_PLI
     
     hydrochar_transportation = qs.Transportation('Hydrochar_transportation',
                                                  linked_unit=HALT,
@@ -4174,7 +6207,7 @@ def create_T2_system(country_code='USA', size=10, operation_hours=7884, refinery
            Deionized_water=lambda:deionized_water_quantity())
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -4200,7 +6233,31 @@ def create_T3_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tru
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -4219,21 +6276,22 @@ def create_T3_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tru
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(Thickening-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     SCWO = lsu.SupercriticalWaterOxidation(ID='SCWO', ins=Dewatering-0, outs=('ash_SCWO','offgas_SCWO'), FOAK=FOAK)
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
-    SCWO.outs[0].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    SCWO.outs[0].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     first_year_factor = SCWO.plant_performance_factor/100
     
@@ -4245,9 +6303,9 @@ def create_T3_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tru
     # but ecoinvent has it and indicates it might be disposed of through landfilling
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
-    CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     # cooling_tower_chemicals: 1.7842 2016$/lb, https://doi.org/10.2172/1483234
-    CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     CT.lifetime = 20
     
     sys = qs.System.from_units(ID='system_T3',
@@ -4273,19 +6331,32 @@ def create_T3_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tru
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
     Deionized_water = qs.ImpactItem('Deionized_water', functional_unit='kg')
-    Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
+    if country_code == 'CHE':
+        Deionized_water.add_indicator(GlobalWarming, 0.0003052493660070587)
+    elif country_code in European_countries:
+        Deionized_water.add_indicator(GlobalWarming, 0.00039891058449043786)
+    else:
+        Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
     
     def deionized_water_quantity():
         try:
@@ -4301,10 +6372,13 @@ def create_T3_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tru
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
-    qs.StreamImpactItem(ID='Ash_SCWO', linked_stream=stream.ash_SCWO, GlobalWarming=0.018281422578429424)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Ash_SCWO', linked_stream=stream.ash_SCWO, GlobalWarming=0.00946219748385128)
+    else:
+        qs.StreamImpactItem(ID='Ash_SCWO', linked_stream=stream.ash_SCWO, GlobalWarming=0.018281422578429424)
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
     
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
@@ -4314,7 +6388,7 @@ def create_T3_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tru
            Deionized_water=lambda:deionized_water_quantity())
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -4340,7 +6414,31 @@ def create_T4_system(country_code='USA', size=10, operation_hours=7884, refinery
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -4359,35 +6457,36 @@ def create_T4_system(country_code='USA', size=10, operation_hours=7884, refinery
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(Thickening-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     HeatDrying = lsu.HeatDrying(ID='HeatDrying', ins=(Dewatering-0, 'natural_gas_heat_drying'),
                                 outs=('dried_solids','vapor'))
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    HeatDrying.ins[1].price = 0.218
+    HeatDrying.ins[1].price = 0.218*country_PLI
     
     Pyrolysis = lsu.Pyrolysis(ID='Pyrolysis', ins=(HeatDrying-0, 'diesel_pyrolysis'),
                               outs=('biooil','biochar','pyrogas'),
                               biooil_distance=refinery_distance, biochar_distance=LA_distance, FOAK=FOAK)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
-    Pyrolysis.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
+    Pyrolysis.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density*country_PLI
     # biooil replacing crude oil of the same amount of energy
     # TODO: may need update the price to a more general number
     # 76.1 $/barrel crude oil, U.S. EIA, 2023 monthly average
-    Pyrolysis.outs[0].price = 76.1/_oil_barrel_to_m3/Pyrolysis.crude_oil_density/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV
+    Pyrolysis.outs[0].price = 76.1/_oil_barrel_to_m3/Pyrolysis.crude_oil_density/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV*country_PLI
     # https://cloverly.com/blog/the-ultimate-business-guide-to-biochar-everything-you-need-to-know
-    Pyrolysis.outs[1].price = 0.131
+    Pyrolysis.outs[1].price = 0.131*country_PLI
     
     first_year_factor = Pyrolysis.plant_performance_factor/100
     
@@ -4396,21 +6495,21 @@ def create_T4_system(country_code='USA', size=10, operation_hours=7884, refinery
     operation_hours *= np.mean(performance_factor_list)
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(Pyrolysis-2, 'natural_gas_CHP', 'air_CHP'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+                                outs=('emission','ash_CHP'), unit_CAPEX=1225*country_PLI, supplement_power_utility=False)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    CHP.ins[1].price = 0.218
+    CHP.ins[1].price = 0.218*country_PLI
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
-    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     # treatment of CT residual is not considerd (since it is not in the model)
     # but ecoinvent has it and indicates it might be disposed of through landfilling
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
-    CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     # cooling_tower_chemicals: 1.7842 2016$/lb, https://doi.org/10.2172/1483234
-    CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     CT.lifetime = 20
     
     sys = qs.System.from_units(ID='system_T4',
@@ -4436,22 +6535,68 @@ def create_T4_system(country_code='USA', size=10, operation_hours=7884, refinery
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
+    if country_code == 'CHE':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7008435167236161 + natural_gas_density/16*44)
+    elif country_code == 'DEU':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4549664070734295 + natural_gas_density/16*44)
+    elif country_code == 'ESP':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8874492234001324 + natural_gas_density/16*44)
+    elif country_code == 'GBR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4100646325467 + natural_gas_density/16*44)
+    elif country_code == 'BEL':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5685568661222136 + natural_gas_density/16*44)
+    elif country_code == 'USA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5735112177514514 + natural_gas_density/16*44)
+    elif country_code == 'TUR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7039019951758329 + natural_gas_density/16*44)
+    elif country_code == 'FRA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7228085846276232 + natural_gas_density/16*44)
+    elif country_code == 'NLD':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5732876065672489 + natural_gas_density/16*44)
+    elif country_code == 'MEX':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.583138412259907 + natural_gas_density/16*44)
+    elif country_code == 'ITA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7463130536072833 + natural_gas_density/16*44)
+    elif country_code == 'CAN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5424438688893909 + natural_gas_density/16*44)
+    elif country_code == 'JPN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8612532956914958 + natural_gas_density/16*44)
+    elif country_code == 'KOR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8632380439297898 + natural_gas_density/16*44)
+    elif country_code == 'CHN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6687205543269131 + natural_gas_density/16*44)
+    elif country_code in European_countries:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6884940098670117 + natural_gas_density/16*44)
+    else:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
     Deionized_water = qs.ImpactItem('Deionized_water', functional_unit='kg')
-    Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
+    if country_code == 'CHE':
+        Deionized_water.add_indicator(GlobalWarming, 0.0003052493660070587)
+    elif country_code in European_countries:
+        Deionized_water.add_indicator(GlobalWarming, 0.00039891058449043786)
+    else:
+        Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
     
     def deionized_water_quantity():
         try:
@@ -4468,17 +6613,51 @@ def create_T4_system(country_code='USA', size=10, operation_hours=7884, refinery
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # use market for petroleum to offset transportation and then add the transportation part
-    # 0.6254770020033417 kg CO2 eq/kg petroleum ('market for petroleum')
     # assume biooil is used to produce biofuel for combustion
     # pertoleum is 84% C, https://en.wikipedia.org/wiki/Petroleum
-    qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.6254770020033417 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.7522599436600327 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
+    elif country_code == 'ZAF':
+        qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.5891222858752428 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
+    elif country_code == 'IND':
+        qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.6375458980732374 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
+    elif country_code == 'PER':
+        qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.5735774071625496 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
+    elif country_code == 'BRA':
+        qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.33387058042913026 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
+    elif country_code == 'COL':
+        qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.35748879874422146 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
+    elif country_code in European_countries:
+        qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.5960832499896735 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
+    elif country_code in Northern_American_countires:
+        qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.5074316714055547 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
+    else:
+        qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.6254770020033417 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.00946219748385128)
+    else:
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_pyrolysis', linked_stream=stream.diesel_pyrolysis, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Diesel_pyrolysis', linked_stream=stream.diesel_pyrolysis, GlobalWarming=0.8970860511867621 + 44*12/(12*12 + 23*1))
+    elif country_code == 'COL':
+        qs.StreamImpactItem(ID='Diesel_pyrolysis', linked_stream=stream.diesel_pyrolysis, GlobalWarming=0.6777889995887414 + 44*12/(12*12 + 23*1))
+    elif country_code == 'IND':
+        qs.StreamImpactItem(ID='Diesel_pyrolysis', linked_stream=stream.diesel_pyrolysis, GlobalWarming=0.9819236027859558 + 44*12/(12*12 + 23*1))
+    elif country_code == 'ZAF':
+        qs.StreamImpactItem(ID='Diesel_pyrolysis', linked_stream=stream.diesel_pyrolysis, GlobalWarming=0.8820480754893896 + 44*12/(12*12 + 23*1))
+    elif country_code == 'PER':
+        qs.StreamImpactItem(ID='Diesel_pyrolysis', linked_stream=stream.diesel_pyrolysis, GlobalWarming=0.8701113618791989 + 44*12/(12*12 + 23*1))
+    elif country_code == 'BRA':
+        qs.StreamImpactItem(ID='Diesel_pyrolysis', linked_stream=stream.diesel_pyrolysis, GlobalWarming=0.6239541867786678 + 44*12/(12*12 + 23*1))
+    elif country_code in European_countries:
+        qs.StreamImpactItem(ID='Diesel_pyrolysis', linked_stream=stream.diesel_pyrolysis, GlobalWarming=0.8730080399195541 + 44*12/(12*12 + 23*1))
+    else:
+        qs.StreamImpactItem(ID='Diesel_pyrolysis', linked_stream=stream.diesel_pyrolysis, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
     
     # carbon sequestration
     # the following number is consistent with the best guess from Table SI-12 in the SI of https://pubs.acs.org/doi/full/10.1021/acs.est.2c06083 (assuming 60% biochar is C)
@@ -4488,9 +6667,16 @@ def create_T4_system(country_code='USA', size=10, operation_hours=7884, refinery
     
     biooil_trucking = qs.ImpactItem('Biooil_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biooil_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
+    if country_code == 'ZAF':
+        biooil_trucking.add_indicator(GlobalWarming, 0.14059514852771382/1000)
+    elif country_code == 'BRA':
+        biooil_trucking.add_indicator(GlobalWarming, 0.11982238243679814/1000)
+    elif country_code in European_countries:
+        biooil_trucking.add_indicator(GlobalWarming, 0.15050202193852563/1000)
+    else:
+        biooil_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), https://doi.org/10.1016/j.biortech.2010.03.136
-    biooil_trucking.price = (5.67 + 0.07*Pyrolysis.biooil_distance)/Pyrolysis.biooil_density/Pyrolysis.biooil_distance/GDPCTPI[2008]*GDPCTPI[2023]
+    biooil_trucking.price = (5.67 + 0.07*Pyrolysis.biooil_distance)/Pyrolysis.biooil_density/Pyrolysis.biooil_distance/GDPCTPI[2008]*GDPCTPI[2023]*country_PLI
     
     biooil_transportation = qs.Transportation('Biooil_transportation',
                                               linked_unit=Pyrolysis,
@@ -4507,11 +6693,18 @@ def create_T4_system(country_code='USA', size=10, operation_hours=7884, refinery
     
     biochar_trucking = qs.ImpactItem('Biochar_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biochar_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
+    if country_code == 'ZAF':
+        biochar_trucking.add_indicator(GlobalWarming, 0.14059514852771382/1000)
+    elif country_code == 'BRA':
+        biochar_trucking.add_indicator(GlobalWarming, 0.11982238243679814/1000)
+    elif country_code in European_countries:
+        biochar_trucking.add_indicator(GlobalWarming, 0.15050202193852563/1000)
+    else:
+        biochar_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
-    biochar_trucking.price = (0.00551 + 0.0000541*Pyrolysis.biochar_distance)/Pyrolysis.biochar_distance
+    biochar_trucking.price = (0.00551 + 0.0000541*Pyrolysis.biochar_distance)/Pyrolysis.biochar_distance*country_PLI
     
     bioochar_transportation = qs.Transportation('Bioochar_transportation',
                                                 linked_unit=Pyrolysis,
@@ -4535,7 +6728,7 @@ def create_T4_system(country_code='USA', size=10, operation_hours=7884, refinery
            Deionized_water=lambda:deionized_water_quantity())
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -4561,7 +6754,31 @@ def create_T5_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tru
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -4580,30 +6797,31 @@ def create_T5_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tru
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(Thickening-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     HeatDrying = lsu.HeatDrying(ID='HeatDrying', ins=(Dewatering-0, 'natural_gas_heat_drying'),
                                 outs=('dried_solids','vapor'))
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    HeatDrying.ins[1].price = 0.218
+    HeatDrying.ins[1].price = 0.218*country_PLI
     
     Gasification = lsu.Gasification(ID='Gasification', ins=HeatDrying-0, outs=('tar','ash_gasification','syngas'), FOAK=FOAK)
     # 300 to 510 $·tonne-1, including removal, transport, and disposal as a Resource Conservation and Recovery Act (RCRA) permitted facility
     # https://www.profitableventure.com/cost-dispose-hazardous-waste-per-ton/
-    Gasification.outs[0].price = -0.405
+    Gasification.outs[0].price = -0.405*country_PLI
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
-    Gasification.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    Gasification.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     first_year_factor = Gasification.plant_performance_factor/100
     
@@ -4612,21 +6830,21 @@ def create_T5_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tru
     operation_hours *= np.mean(performance_factor_list)
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(Gasification-2, 'natural_gas_CHP', 'air_CHP'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+                                outs=('emission','ash_CHP'), unit_CAPEX=1225*country_PLI, supplement_power_utility=False)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    CHP.ins[1].price = 0.218
+    CHP.ins[1].price = 0.218*country_PLI
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
-    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     # treatment of CT residual is not considerd (since it is not in the model)
     # but ecoinvent has it and indicates it might be disposed of through landfilling
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
-    CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     # cooling_tower_chemicals: 1.7842 2016$/lb, https://doi.org/10.2172/1483234
-    CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     CT.lifetime = 20
     
     sys = qs.System.from_units(ID='system_T5',
@@ -4652,22 +6870,68 @@ def create_T5_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tru
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
+    if country_code == 'CHE':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7008435167236161 + natural_gas_density/16*44)
+    elif country_code == 'DEU':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4549664070734295 + natural_gas_density/16*44)
+    elif country_code == 'ESP':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8874492234001324 + natural_gas_density/16*44)
+    elif country_code == 'GBR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4100646325467 + natural_gas_density/16*44)
+    elif country_code == 'BEL':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5685568661222136 + natural_gas_density/16*44)
+    elif country_code == 'USA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5735112177514514 + natural_gas_density/16*44)
+    elif country_code == 'TUR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7039019951758329 + natural_gas_density/16*44)
+    elif country_code == 'FRA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7228085846276232 + natural_gas_density/16*44)
+    elif country_code == 'NLD':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5732876065672489 + natural_gas_density/16*44)
+    elif country_code == 'MEX':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.583138412259907 + natural_gas_density/16*44)
+    elif country_code == 'ITA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7463130536072833 + natural_gas_density/16*44)
+    elif country_code == 'CAN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5424438688893909 + natural_gas_density/16*44)
+    elif country_code == 'JPN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8612532956914958 + natural_gas_density/16*44)
+    elif country_code == 'KOR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8632380439297898 + natural_gas_density/16*44)
+    elif country_code == 'CHN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6687205543269131 + natural_gas_density/16*44)
+    elif country_code in European_countries:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6884940098670117 + natural_gas_density/16*44)
+    else:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
     Deionized_water = qs.ImpactItem('Deionized_water', functional_unit='kg')
-    Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
+    if country_code == 'CHE':
+        Deionized_water.add_indicator(GlobalWarming, 0.0003052493660070587)
+    elif country_code in European_countries:
+        Deionized_water.add_indicator(GlobalWarming, 0.00039891058449043786)
+    else:
+        Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
     
     def deionized_water_quantity():
         try:
@@ -4684,11 +6948,17 @@ def create_T5_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tru
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     qs.StreamImpactItem(ID='Tar', linked_stream=stream.tar, GlobalWarming=1.3479189232049629)
-    qs.StreamImpactItem(ID='Ash_gasification', linked_stream=stream.ash_gasification, GlobalWarming=0.018281422578429424)
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Ash_gasification', linked_stream=stream.ash_gasification, GlobalWarming=0.00946219748385128)
+    else:
+        qs.StreamImpactItem(ID='Ash_gasification', linked_stream=stream.ash_gasification, GlobalWarming=0.018281422578429424)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.00946219748385128)
+    else:
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
     
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
@@ -4699,7 +6969,7 @@ def create_T5_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tru
            Deionized_water=lambda:deionized_water_quantity())
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -4725,7 +6995,31 @@ def create_T6_system(country_code='USA', size=10, operation_hours=7884, refinery
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -4744,12 +7038,13 @@ def create_T6_system(country_code='USA', size=10, operation_hours=7884, refinery
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     AerobicDigestion = lsu.AerobicDigestion(ID='AerobicDigestion', ins=(Thickening-0, 'air'),
                                             outs=('digested_sludge','offgas_AeD'), PLI=country_PLI)
@@ -4757,14 +7052,14 @@ def create_T6_system(country_code='USA', size=10, operation_hours=7884, refinery
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AerobicDigestion-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     HTL = lsu.HydrothermalLiquefaction(ID='HTL', ins=Dewatering-0,
                                        outs=('biocrude','HTL_aqueous_undefined','hydrochar','offgas_HTL'),
                                        biocrude_distance=refinery_distance, FOAK=FOAK)
     # assume hydrochar from HTL is disposed of by sending it to landfills
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
-    HTL.outs[2].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    HTL.outs[2].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     first_year_factor = HTL.plant_performance_factor/100
     
@@ -4779,31 +7074,32 @@ def create_T6_system(country_code='USA', size=10, operation_hours=7884, refinery
     CHG = lsu.CatalyticHydrothermalGasification(ID='CHG', ins=(Analyzer-0, 'virgin_CHG_catalyst'),
                                                 outs=('CHG_out','used_CHG_catalyst'))
     # CHG catalyst price, https://doi.org/10.2172/1126336
-    CHG.ins[1].price = 60/_lb_to_kg/GDPCTPI[2011]*GDPCTPI[2023]
+    CHG.ins[1].price = 60/_lb_to_kg/GDPCTPI[2011]*GDPCTPI[2023]*country_PLI
     
     V1 = IsenthalpicValve(ID='V1', ins=CHG-0, outs='depressurized_cooled_CHG', P=50*6894.76, vle=True)
     
+    # the purchase costs of Flash are related to bst.CE
     F1 = qsu.Flash(ID='F1', ins=V1-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
                    T=60+273.15, P=50*6894.76, thermo=settings.thermo.ideal())
     
     GasMixer = qsu.Mixer(ID='GasMixer', ins=(HTL-3, F1-0), outs=('fuel_gas'))
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(GasMixer-0, 'natural_gas_CHP', 'air_CHP'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+                                outs=('emission','ash_CHP'), unit_CAPEX=1225*country_PLI, supplement_power_utility=False)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    CHP.ins[1].price = 0.218
+    CHP.ins[1].price = 0.218*country_PLI
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
-    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     # treatment of CT residual is not considerd (since it is not in the model)
     # but ecoinvent has it and indicates it might be disposed of through landfilling
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
-    CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     # cooling_tower_chemicals: 1.7842 2016$/lb, https://doi.org/10.2172/1483234
-    CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     CT.lifetime = 20
     
     sys = qs.System.from_units(ID='system_T6',
@@ -4825,7 +7121,7 @@ def create_T6_system(country_code='USA', size=10, operation_hours=7884, refinery
     # biocrude replacing crude oil of the same amount of energy
     # TODO: may need update the price to a more general number
     # 76.1 $/barrel crude oil, U.S. EIA, 2023 monthly average
-    HTL.outs[0].price = 76.1/_oil_barrel_to_m3/HTL.crude_oil_density/HTL.crude_oil_HHV*HTL.biocrude_HHV
+    HTL.outs[0].price = 76.1/_oil_barrel_to_m3/HTL.crude_oil_density/HTL.crude_oil_HHV*HTL.biocrude_HHV*country_PLI
     
     GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
                                        method='TRACI',
@@ -4834,22 +7130,68 @@ def create_T6_system(country_code='USA', size=10, operation_hours=7884, refinery
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
+    if country_code == 'CHE':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7008435167236161 + natural_gas_density/16*44)
+    elif country_code == 'DEU':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4549664070734295 + natural_gas_density/16*44)
+    elif country_code == 'ESP':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8874492234001324 + natural_gas_density/16*44)
+    elif country_code == 'GBR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4100646325467 + natural_gas_density/16*44)
+    elif country_code == 'BEL':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5685568661222136 + natural_gas_density/16*44)
+    elif country_code == 'USA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5735112177514514 + natural_gas_density/16*44)
+    elif country_code == 'TUR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7039019951758329 + natural_gas_density/16*44)
+    elif country_code == 'FRA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7228085846276232 + natural_gas_density/16*44)
+    elif country_code == 'NLD':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5732876065672489 + natural_gas_density/16*44)
+    elif country_code == 'MEX':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.583138412259907 + natural_gas_density/16*44)
+    elif country_code == 'ITA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7463130536072833 + natural_gas_density/16*44)
+    elif country_code == 'CAN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5424438688893909 + natural_gas_density/16*44)
+    elif country_code == 'JPN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8612532956914958 + natural_gas_density/16*44)
+    elif country_code == 'KOR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8632380439297898 + natural_gas_density/16*44)
+    elif country_code == 'CHN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6687205543269131 + natural_gas_density/16*44)
+    elif country_code in European_countries:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6884940098670117 + natural_gas_density/16*44)
+    else:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
     Deionized_water = qs.ImpactItem('Deionized_water', functional_unit='kg')
-    Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
+    if country_code == 'CHE':
+        Deionized_water.add_indicator(GlobalWarming, 0.0003052493660070587)
+    elif country_code in European_countries:
+        Deionized_water.add_indicator(GlobalWarming, 0.00039891058449043786)
+    else:
+        Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
     
     def deionized_water_quantity():
         try:
@@ -4866,22 +7208,51 @@ def create_T6_system(country_code='USA', size=10, operation_hours=7884, refinery
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # use market for petroleum to offset transportation and then add the transportation part
-    # 0.6254770020033417 kg CO2 eq/kg petroleum ('market for petroleum')
     # assume biocrude is used to produce biofuel for combustion
     # pertoleum is 84% C, https://en.wikipedia.org/wiki/Petroleum
-    qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.6254770020033417 + 0.84/12*44)/HTL.crude_oil_HHV*HTL.biocrude_HHV)
-    qs.StreamImpactItem(ID='Hydrochar', linked_stream=stream.hydrochar, GlobalWarming=0.018281422578429424)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.7522599436600327 + 0.84/12*44)/HTL.crude_oil_HHV*HTL.biocrude_HHV)
+    elif country_code == 'ZAF':
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.5891222858752428 + 0.84/12*44)/HTL.crude_oil_HHV*HTL.biocrude_HHV)
+    elif country_code == 'IND':
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.6375458980732374 + 0.84/12*44)/HTL.crude_oil_HHV*HTL.biocrude_HHV)
+    elif country_code == 'PER':
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.5735774071625496 + 0.84/12*44)/HTL.crude_oil_HHV*HTL.biocrude_HHV)
+    elif country_code == 'BRA':
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.33387058042913026 + 0.84/12*44)/HTL.crude_oil_HHV*HTL.biocrude_HHV)
+    elif country_code == 'COL':
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.35748879874422146 + 0.84/12*44)/HTL.crude_oil_HHV*HTL.biocrude_HHV)
+    elif country_code in European_countries:
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.5960832499896735 + 0.84/12*44)/HTL.crude_oil_HHV*HTL.biocrude_HHV)
+    elif country_code in Northern_American_countires:
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.5074316714055547 + 0.84/12*44)/HTL.crude_oil_HHV*HTL.biocrude_HHV)
+    else:
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.6254770020033417 + 0.84/12*44)/HTL.crude_oil_HHV*HTL.biocrude_HHV)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Hydrochar', linked_stream=stream.hydrochar, GlobalWarming=0.00946219748385128)
+    else:
+        qs.StreamImpactItem(ID='Hydrochar', linked_stream=stream.hydrochar, GlobalWarming=0.018281422578429424)
     qs.StreamImpactItem(ID='CHG_catalyst', linked_stream=stream.used_CHG_catalyst, GlobalWarming=1269.60621783954)
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.00946219748385128)
+    else:
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
     
     biocrude_trucking = qs.ImpactItem('Biocrude_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biocrude_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
+    if country_code == 'ZAF':
+        biocrude_trucking.add_indicator(GlobalWarming, 0.14059514852771382/1000)
+    elif country_code == 'BRA':
+        biocrude_trucking.add_indicator(GlobalWarming, 0.11982238243679814/1000)
+    elif country_code in European_countries:
+        biocrude_trucking.add_indicator(GlobalWarming, 0.15050202193852563/1000)
+    else:
+        biocrude_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), https://doi.org/10.1016/j.biortech.2010.03.136
-    biocrude_trucking.price = (5.67 + 0.07*HTL.biocrude_distance)/HTL.biocrude_density/HTL.biocrude_distance/GDPCTPI[2008]*GDPCTPI[2023]
+    biocrude_trucking.price = (5.67 + 0.07*HTL.biocrude_distance)/HTL.biocrude_density/HTL.biocrude_distance/GDPCTPI[2008]*GDPCTPI[2023]*country_PLI
     
     biocrude_transportation = qs.Transportation('Biocrude_transportation',
                                                 linked_unit=HTL,
@@ -4905,7 +7276,7 @@ def create_T6_system(country_code='USA', size=10, operation_hours=7884, refinery
            Deionized_water=lambda:deionized_water_quantity())
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -4931,7 +7302,31 @@ def create_T7_system(country_code='USA', size=10, operation_hours=7884, refinery
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -4950,12 +7345,13 @@ def create_T7_system(country_code='USA', size=10, operation_hours=7884, refinery
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     AerobicDigestion = lsu.AerobicDigestion(ID='AerobicDigestion', ins=(Thickening-0, 'air'),
                                             outs=('digested_sludge','offgas_AeD'), PLI=country_PLI)
@@ -4963,19 +7359,19 @@ def create_T7_system(country_code='USA', size=10, operation_hours=7884, refinery
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AerobicDigestion-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     HALT = lsu.HydrothermalAlkalineTreatment(ID='HALT', ins=(Dewatering-0, 'sodium_hydroxide', 'hydrochloric_acid', 'diesel_HALT'),
                                              outs=('biocrude','HALT_aqueous_undefined','hydrochar','offgas_HALT'),
                                              biocrude_distance=refinery_distance, hydrochar_distance=LA_distance, FOAK=FOAK)
     # 0.2384 2016$/lb, https://doi.org/10.2172/1483234
-    HALT.ins[1].price = 0.2384/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    HALT.ins[1].price = 0.2384/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     # 0.49 2020$/lb, from A.J.K. HALT model
-    HALT.ins[2].price = 0.49/_lb_to_kg/GDPCTPI[2020]*GDPCTPI[2023]
+    HALT.ins[2].price = 0.49/_lb_to_kg/GDPCTPI[2020]*GDPCTPI[2023]*country_PLI
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
-    HALT.ins[3].price = 4.224/_gal_to_liter*1000/diesel_density
+    HALT.ins[3].price = 4.224/_gal_to_liter*1000/diesel_density*country_PLI
     # 0 - 0.093 2018$, Figure 6 in https://www.sciencedirect.com/science/article/pii/S0306261919318021?via%3Dihub
-    HALT.outs[2].price = 0.0465/GDPCTPI[2018]*GDPCTPI[2023]
+    HALT.outs[2].price = 0.0465/GDPCTPI[2018]*GDPCTPI[2023]*country_PLI
     
     first_year_factor = HALT.plant_performance_factor/100
     
@@ -4990,31 +7386,32 @@ def create_T7_system(country_code='USA', size=10, operation_hours=7884, refinery
     CHG = lsu.CatalyticHydrothermalGasification(ID='CHG', ins=(Analyzer-0, 'virgin_CHG_catalyst'),
                                                 outs=('CHG_out','used_CHG_catalyst'))
     # CHG catalyst price, https://doi.org/10.2172/1126336
-    CHG.ins[1].price = 60/_lb_to_kg/GDPCTPI[2011]*GDPCTPI[2023]
+    CHG.ins[1].price = 60/_lb_to_kg/GDPCTPI[2011]*GDPCTPI[2023]*country_PLI
     
     V1 = IsenthalpicValve(ID='V1', ins=CHG-0, outs='depressurized_cooled_CHG', P=50*6894.76, vle=True)
     
+    # the purchase costs of Flash are related to bst.CE
     F1 = qsu.Flash(ID='F1', ins=V1-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
                    T=60+273.15, P=50*6894.76, thermo=settings.thermo.ideal())
     
     GasMixer = qsu.Mixer(ID='GasMixer', ins=(HALT-3, F1-0), outs=('fuel_gas'))
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(GasMixer-0, 'natural_gas_CHP', 'air_CHP'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+                                outs=('emission','ash_CHP'), unit_CAPEX=1225*country_PLI, supplement_power_utility=False)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    CHP.ins[1].price = 0.218
+    CHP.ins[1].price = 0.218*country_PLI
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
-    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     # treatment of CT residual is not considerd (since it is not in the model)
     # but ecoinvent has it and indicates it might be disposed of through landfilling
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
-    CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     # cooling_tower_chemicals: 1.7842 2016$/lb, https://doi.org/10.2172/1483234
-    CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     CT.lifetime = 20
     
     sys = qs.System.from_units(ID='system_T7',
@@ -5036,7 +7433,7 @@ def create_T7_system(country_code='USA', size=10, operation_hours=7884, refinery
     # biocrude replacing crude oil of the same amount of energy
     # TODO: may need update the price to a more general number
     # 76.1 $/barrel crude oil, U.S. EIA, 2023 monthly average
-    HALT.outs[0].price = 76.1/_oil_barrel_to_m3/HALT.crude_oil_density/HALT.crude_oil_HHV*HALT.biocrude_HHV
+    HALT.outs[0].price = 76.1/_oil_barrel_to_m3/HALT.crude_oil_density/HALT.crude_oil_HHV*HALT.biocrude_HHV*country_PLI
     
     GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
                                        method='TRACI',
@@ -5045,22 +7442,68 @@ def create_T7_system(country_code='USA', size=10, operation_hours=7884, refinery
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
+    if country_code == 'CHE':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7008435167236161 + natural_gas_density/16*44)
+    elif country_code == 'DEU':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4549664070734295 + natural_gas_density/16*44)
+    elif country_code == 'ESP':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8874492234001324 + natural_gas_density/16*44)
+    elif country_code == 'GBR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4100646325467 + natural_gas_density/16*44)
+    elif country_code == 'BEL':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5685568661222136 + natural_gas_density/16*44)
+    elif country_code == 'USA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5735112177514514 + natural_gas_density/16*44)
+    elif country_code == 'TUR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7039019951758329 + natural_gas_density/16*44)
+    elif country_code == 'FRA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7228085846276232 + natural_gas_density/16*44)
+    elif country_code == 'NLD':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5732876065672489 + natural_gas_density/16*44)
+    elif country_code == 'MEX':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.583138412259907 + natural_gas_density/16*44)
+    elif country_code == 'ITA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7463130536072833 + natural_gas_density/16*44)
+    elif country_code == 'CAN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5424438688893909 + natural_gas_density/16*44)
+    elif country_code == 'JPN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8612532956914958 + natural_gas_density/16*44)
+    elif country_code == 'KOR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8632380439297898 + natural_gas_density/16*44)
+    elif country_code == 'CHN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6687205543269131 + natural_gas_density/16*44)
+    elif country_code in European_countries:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6884940098670117 + natural_gas_density/16*44)
+    else:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
     Deionized_water = qs.ImpactItem('Deionized_water', functional_unit='kg')
-    Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
+    if country_code == 'CHE':
+        Deionized_water.add_indicator(GlobalWarming, 0.0003052493660070587)
+    elif country_code in European_countries:
+        Deionized_water.add_indicator(GlobalWarming, 0.00039891058449043786)
+    else:
+        Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
     
     def deionized_water_quantity():
         try:
@@ -5076,21 +7519,61 @@ def create_T7_system(country_code='USA', size=10, operation_hours=7884, refinery
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
-    qs.StreamImpactItem(ID='Sodium_hydroxide', linked_stream=stream.sodium_hydroxide, GlobalWarming=1.4080631253939493)
-    qs.StreamImpactItem(ID='Hydrochloric_acid', linked_stream=stream.hydrochloric_acid, GlobalWarming=0.8701969784483516)
+    if country_code in European_countries:
+        qs.StreamImpactItem(ID='Sodium_hydroxide', linked_stream=stream.sodium_hydroxide, GlobalWarming=0.9151448191617616)
+    else:
+        qs.StreamImpactItem(ID='Sodium_hydroxide', linked_stream=stream.sodium_hydroxide, GlobalWarming=1.4080631253939493)
+    if country_code in European_countries:
+        qs.StreamImpactItem(ID='Hydrochloric_acid', linked_stream=stream.hydrochloric_acid, GlobalWarming=0.5779004915128144)
+    else:
+        qs.StreamImpactItem(ID='Hydrochloric_acid', linked_stream=stream.hydrochloric_acid, GlobalWarming=0.8701969784483516)
     # use market for petroleum to offset transportation and then add the transportation part
-    # 0.6254770020033417 kg CO2 eq/kg petroleum ('market for petroleum')
     # assume biocrude is used to produce biofuel for combustion
     # pertoleum is 84% C, https://en.wikipedia.org/wiki/Petroleum
-    qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.6254770020033417 + 0.84/12*44)/HALT.crude_oil_HHV*HALT.biocrude_HHV)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.7522599436600327 + 0.84/12*44)/HALT.crude_oil_HHV*HALT.biocrude_HHV)
+    elif country_code == 'ZAF':
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.5891222858752428 + 0.84/12*44)/HALT.crude_oil_HHV*HALT.biocrude_HHV)
+    elif country_code == 'IND':
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.6375458980732374 + 0.84/12*44)/HALT.crude_oil_HHV*HALT.biocrude_HHV)
+    elif country_code == 'PER':
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.5735774071625496 + 0.84/12*44)/HALT.crude_oil_HHV*HALT.biocrude_HHV)
+    elif country_code == 'BRA':
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.33387058042913026 + 0.84/12*44)/HALT.crude_oil_HHV*HALT.biocrude_HHV)
+    elif country_code == 'COL':
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.35748879874422146 + 0.84/12*44)/HALT.crude_oil_HHV*HALT.biocrude_HHV)
+    elif country_code in European_countries:
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.5960832499896735 + 0.84/12*44)/HALT.crude_oil_HHV*HALT.biocrude_HHV)
+    elif country_code in Northern_American_countires:
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.5074316714055547 + 0.84/12*44)/HALT.crude_oil_HHV*HALT.biocrude_HHV)
+    else:
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.6254770020033417 + 0.84/12*44)/HALT.crude_oil_HHV*HALT.biocrude_HHV)
     qs.StreamImpactItem(ID='CHG_catalyst', linked_stream=stream.used_CHG_catalyst, GlobalWarming=1269.60621783954)
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.00946219748385128)
+    else:
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_HALT', linked_stream=stream.diesel_HALT, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Diesel_HALT', linked_stream=stream.diesel_HALT, GlobalWarming=0.8970860511867621 + 44*12/(12*12 + 23*1))
+    elif country_code == 'COL':
+        qs.StreamImpactItem(ID='Diesel_HALT', linked_stream=stream.diesel_HALT, GlobalWarming=0.6777889995887414 + 44*12/(12*12 + 23*1))
+    elif country_code == 'IND':
+        qs.StreamImpactItem(ID='Diesel_HALT', linked_stream=stream.diesel_HALT, GlobalWarming=0.9819236027859558 + 44*12/(12*12 + 23*1))
+    elif country_code == 'ZAF':
+        qs.StreamImpactItem(ID='Diesel_HALT', linked_stream=stream.diesel_HALT, GlobalWarming=0.8820480754893896 + 44*12/(12*12 + 23*1))
+    elif country_code == 'PER':
+        qs.StreamImpactItem(ID='Diesel_HALT', linked_stream=stream.diesel_HALT, GlobalWarming=0.8701113618791989 + 44*12/(12*12 + 23*1))
+    elif country_code == 'BRA':
+        qs.StreamImpactItem(ID='Diesel_HALT', linked_stream=stream.diesel_HALT, GlobalWarming=0.6239541867786678 + 44*12/(12*12 + 23*1))
+    elif country_code in European_countries:
+        qs.StreamImpactItem(ID='Diesel_HALT', linked_stream=stream.diesel_HALT, GlobalWarming=0.8730080399195541 + 44*12/(12*12 + 23*1))
+    else:
+        qs.StreamImpactItem(ID='Diesel_HALT', linked_stream=stream.diesel_HALT, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
     
     # carbon sequestration
     # directly using hydrochar, unlike landfilling, land application, and composting which have carbon dioxide as fake streams
@@ -5099,9 +7582,16 @@ def create_T7_system(country_code='USA', size=10, operation_hours=7884, refinery
     
     biocrude_trucking = qs.ImpactItem('Biocrude_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biocrude_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
+    if country_code == 'ZAF':
+        biocrude_trucking.add_indicator(GlobalWarming, 0.14059514852771382/1000)
+    elif country_code == 'BRA':
+        biocrude_trucking.add_indicator(GlobalWarming, 0.11982238243679814/1000)
+    elif country_code in European_countries:
+        biocrude_trucking.add_indicator(GlobalWarming, 0.15050202193852563/1000)
+    else:
+        biocrude_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), https://doi.org/10.1016/j.biortech.2010.03.136
-    biocrude_trucking.price = (5.67 + 0.07*HALT.biocrude_distance)/HALT.biocrude_density/HALT.biocrude_distance/GDPCTPI[2008]*GDPCTPI[2023]
+    biocrude_trucking.price = (5.67 + 0.07*HALT.biocrude_distance)/HALT.biocrude_density/HALT.biocrude_distance/GDPCTPI[2008]*GDPCTPI[2023]*country_PLI
     
     biocrude_transportation = qs.Transportation('Biocrude_transportation',
                                                 linked_unit=HALT,
@@ -5118,11 +7608,18 @@ def create_T7_system(country_code='USA', size=10, operation_hours=7884, refinery
     
     hydrochar_trucking = qs.ImpactItem('Hydrochar_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    hydrochar_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
+    if country_code == 'ZAF':
+        hydrochar_trucking.add_indicator(GlobalWarming, 0.14059514852771382/1000)
+    elif country_code == 'BRA':
+        hydrochar_trucking.add_indicator(GlobalWarming, 0.11982238243679814/1000)
+    elif country_code in European_countries:
+        hydrochar_trucking.add_indicator(GlobalWarming, 0.15050202193852563/1000)
+    else:
+        hydrochar_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
-    hydrochar_trucking.price = (0.00551 + 0.0000541*HALT.hydrochar_distance)/HALT.hydrochar_distance
+    hydrochar_trucking.price = (0.00551 + 0.0000541*HALT.hydrochar_distance)/HALT.hydrochar_distance*country_PLI
     
     hydrochar_transportation = qs.Transportation('Hydrochar_transportation',
                                                  linked_unit=HALT,
@@ -5146,7 +7643,7 @@ def create_T7_system(country_code='USA', size=10, operation_hours=7884, refinery
            Deionized_water=lambda:deionized_water_quantity())
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -5172,7 +7669,31 @@ def create_T8_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tru
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -5191,12 +7712,13 @@ def create_T8_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tru
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     AerobicDigestion = lsu.AerobicDigestion(ID='AerobicDigestion', ins=(Thickening-0, 'air'),
                                             outs=('digested_sludge','offgas_AeD'), PLI=country_PLI)
@@ -5204,11 +7726,11 @@ def create_T8_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tru
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AerobicDigestion-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     SCWO = lsu.SupercriticalWaterOxidation(ID='SCWO', ins=Dewatering-0, outs=('ash_SCWO','offgas_SCWO'), FOAK=FOAK)
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
-    SCWO.outs[0].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    SCWO.outs[0].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     first_year_factor = SCWO.plant_performance_factor/100
     
@@ -5220,9 +7742,9 @@ def create_T8_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tru
     # but ecoinvent has it and indicates it might be disposed of through landfilling
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
-    CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     # cooling_tower_chemicals: 1.7842 2016$/lb, https://doi.org/10.2172/1483234
-    CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     CT.lifetime = 20
     
     sys = qs.System.from_units(ID='system_T8',
@@ -5248,19 +7770,32 @@ def create_T8_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tru
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
     Deionized_water = qs.ImpactItem('Deionized_water', functional_unit='kg')
-    Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
+    if country_code == 'CHE':
+        Deionized_water.add_indicator(GlobalWarming, 0.0003052493660070587)
+    elif country_code in European_countries:
+        Deionized_water.add_indicator(GlobalWarming, 0.00039891058449043786)
+    else:
+        Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
     
     def deionized_water_quantity():
         try:
@@ -5276,10 +7811,13 @@ def create_T8_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tru
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
-    qs.StreamImpactItem(ID='Ash_SCWO', linked_stream=stream.ash_SCWO, GlobalWarming=0.018281422578429424)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Ash_SCWO', linked_stream=stream.ash_SCWO, GlobalWarming=0.00946219748385128)
+    else:
+        qs.StreamImpactItem(ID='Ash_SCWO', linked_stream=stream.ash_SCWO, GlobalWarming=0.018281422578429424)
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
     
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
@@ -5289,7 +7827,7 @@ def create_T8_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tru
            Deionized_water=lambda:deionized_water_quantity())
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -5315,7 +7853,31 @@ def create_T9_system(country_code='USA', size=10, operation_hours=7884, refinery
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -5334,12 +7896,13 @@ def create_T9_system(country_code='USA', size=10, operation_hours=7884, refinery
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     AerobicDigestion = lsu.AerobicDigestion(ID='AerobicDigestion', ins=(Thickening-0, 'air'),
                                             outs=('digested_sludge','offgas_AeD'), PLI=country_PLI)
@@ -5347,25 +7910,25 @@ def create_T9_system(country_code='USA', size=10, operation_hours=7884, refinery
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AerobicDigestion-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     HeatDrying = lsu.HeatDrying(ID='HeatDrying', ins=(Dewatering-0, 'natural_gas_heat_drying'),
                                 outs=('dried_solids','vapor'))
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    HeatDrying.ins[1].price = 0.218
+    HeatDrying.ins[1].price = 0.218*country_PLI
     
     Pyrolysis = lsu.Pyrolysis(ID='Pyrolysis', ins=(HeatDrying-0, 'diesel_pyrolysis'),
                               outs=('biooil','biochar','pyrogas'),
                               biooil_distance=refinery_distance, biochar_distance=LA_distance, FOAK=FOAK)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
-    Pyrolysis.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
+    Pyrolysis.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density*country_PLI
     # biooil replacing crude oil of the same amount of energy
     # TODO: may need update the price to a more general number
     # 76.1 $/barrel crude oil, U.S. EIA, 2023 monthly average
-    Pyrolysis.outs[0].price = 76.1/_oil_barrel_to_m3/Pyrolysis.crude_oil_density/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV
+    Pyrolysis.outs[0].price = 76.1/_oil_barrel_to_m3/Pyrolysis.crude_oil_density/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV*country_PLI
     # https://cloverly.com/blog/the-ultimate-business-guide-to-biochar-everything-you-need-to-know
-    Pyrolysis.outs[1].price = 0.131
+    Pyrolysis.outs[1].price = 0.131*country_PLI
     
     first_year_factor = Pyrolysis.plant_performance_factor/100
     
@@ -5374,21 +7937,21 @@ def create_T9_system(country_code='USA', size=10, operation_hours=7884, refinery
     operation_hours *= np.mean(performance_factor_list)
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(Pyrolysis-2, 'natural_gas_CHP', 'air_CHP'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+                                outs=('emission','ash_CHP'), unit_CAPEX=1225*country_PLI, supplement_power_utility=False)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    CHP.ins[1].price = 0.218
+    CHP.ins[1].price = 0.218*country_PLI
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
-    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     # treatment of CT residual is not considerd (since it is not in the model)
     # but ecoinvent has it and indicates it might be disposed of through landfilling
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
-    CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     # cooling_tower_chemicals: 1.7842 2016$/lb, https://doi.org/10.2172/1483234
-    CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     CT.lifetime = 20
     
     sys = qs.System.from_units(ID='system_T9',
@@ -5414,22 +7977,68 @@ def create_T9_system(country_code='USA', size=10, operation_hours=7884, refinery
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
+    if country_code == 'CHE':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7008435167236161 + natural_gas_density/16*44)
+    elif country_code == 'DEU':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4549664070734295 + natural_gas_density/16*44)
+    elif country_code == 'ESP':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8874492234001324 + natural_gas_density/16*44)
+    elif country_code == 'GBR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4100646325467 + natural_gas_density/16*44)
+    elif country_code == 'BEL':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5685568661222136 + natural_gas_density/16*44)
+    elif country_code == 'USA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5735112177514514 + natural_gas_density/16*44)
+    elif country_code == 'TUR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7039019951758329 + natural_gas_density/16*44)
+    elif country_code == 'FRA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7228085846276232 + natural_gas_density/16*44)
+    elif country_code == 'NLD':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5732876065672489 + natural_gas_density/16*44)
+    elif country_code == 'MEX':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.583138412259907 + natural_gas_density/16*44)
+    elif country_code == 'ITA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7463130536072833 + natural_gas_density/16*44)
+    elif country_code == 'CAN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5424438688893909 + natural_gas_density/16*44)
+    elif country_code == 'JPN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8612532956914958 + natural_gas_density/16*44)
+    elif country_code == 'KOR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8632380439297898 + natural_gas_density/16*44)
+    elif country_code == 'CHN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6687205543269131 + natural_gas_density/16*44)
+    elif country_code in European_countries:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6884940098670117 + natural_gas_density/16*44)
+    else:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
     Deionized_water = qs.ImpactItem('Deionized_water', functional_unit='kg')
-    Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
+    if country_code == 'CHE':
+        Deionized_water.add_indicator(GlobalWarming, 0.0003052493660070587)
+    elif country_code in European_countries:
+        Deionized_water.add_indicator(GlobalWarming, 0.00039891058449043786)
+    else:
+        Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
     
     def deionized_water_quantity():
         try:
@@ -5446,17 +8055,51 @@ def create_T9_system(country_code='USA', size=10, operation_hours=7884, refinery
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # use market for petroleum to offset transportation and then add the transportation part
-    # 0.6254770020033417 kg CO2 eq/kg petroleum ('market for petroleum')
     # assume biooil is used to produce biofuel for combustion
     # pertoleum is 84% C, https://en.wikipedia.org/wiki/Petroleum
-    qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.6254770020033417 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.7522599436600327 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
+    elif country_code == 'ZAF':
+        qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.5891222858752428 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
+    elif country_code == 'IND':
+        qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.6375458980732374 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
+    elif country_code == 'PER':
+        qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.5735774071625496 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
+    elif country_code == 'BRA':
+        qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.33387058042913026 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
+    elif country_code == 'COL':
+        qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.35748879874422146 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
+    elif country_code in European_countries:
+        qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.5960832499896735 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
+    elif country_code in Northern_American_countires:
+        qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.5074316714055547 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
+    else:
+        qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.6254770020033417 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.00946219748385128)
+    else:
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_pyrolysis', linked_stream=stream.diesel_pyrolysis, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Diesel_pyrolysis', linked_stream=stream.diesel_pyrolysis, GlobalWarming=0.8970860511867621 + 44*12/(12*12 + 23*1))
+    elif country_code == 'COL':
+        qs.StreamImpactItem(ID='Diesel_pyrolysis', linked_stream=stream.diesel_pyrolysis, GlobalWarming=0.6777889995887414 + 44*12/(12*12 + 23*1))
+    elif country_code == 'IND':
+        qs.StreamImpactItem(ID='Diesel_pyrolysis', linked_stream=stream.diesel_pyrolysis, GlobalWarming=0.9819236027859558 + 44*12/(12*12 + 23*1))
+    elif country_code == 'ZAF':
+        qs.StreamImpactItem(ID='Diesel_pyrolysis', linked_stream=stream.diesel_pyrolysis, GlobalWarming=0.8820480754893896 + 44*12/(12*12 + 23*1))
+    elif country_code == 'PER':
+        qs.StreamImpactItem(ID='Diesel_pyrolysis', linked_stream=stream.diesel_pyrolysis, GlobalWarming=0.8701113618791989 + 44*12/(12*12 + 23*1))
+    elif country_code == 'BRA':
+        qs.StreamImpactItem(ID='Diesel_pyrolysis', linked_stream=stream.diesel_pyrolysis, GlobalWarming=0.6239541867786678 + 44*12/(12*12 + 23*1))
+    elif country_code in European_countries:
+        qs.StreamImpactItem(ID='Diesel_pyrolysis', linked_stream=stream.diesel_pyrolysis, GlobalWarming=0.8730080399195541 + 44*12/(12*12 + 23*1))
+    else:
+        qs.StreamImpactItem(ID='Diesel_pyrolysis', linked_stream=stream.diesel_pyrolysis, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
     
     # carbon sequestration
     # the following number is consistent with the best guess from Table SI-12 in the SI of https://pubs.acs.org/doi/full/10.1021/acs.est.2c06083 (assuming 60% biochar is C)
@@ -5466,9 +8109,16 @@ def create_T9_system(country_code='USA', size=10, operation_hours=7884, refinery
     
     biooil_trucking = qs.ImpactItem('Biooil_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biooil_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
+    if country_code == 'ZAF':
+        biooil_trucking.add_indicator(GlobalWarming, 0.14059514852771382/1000)
+    elif country_code == 'BRA':
+        biooil_trucking.add_indicator(GlobalWarming, 0.11982238243679814/1000)
+    elif country_code in European_countries:
+        biooil_trucking.add_indicator(GlobalWarming, 0.15050202193852563/1000)
+    else:
+        biooil_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), https://doi.org/10.1016/j.biortech.2010.03.136
-    biooil_trucking.price = (5.67 + 0.07*Pyrolysis.biooil_distance)/Pyrolysis.biooil_density/Pyrolysis.biooil_distance/GDPCTPI[2008]*GDPCTPI[2023]
+    biooil_trucking.price = (5.67 + 0.07*Pyrolysis.biooil_distance)/Pyrolysis.biooil_density/Pyrolysis.biooil_distance/GDPCTPI[2008]*GDPCTPI[2023]*country_PLI
     
     biooil_transportation = qs.Transportation('Biooil_transportation',
                                               linked_unit=Pyrolysis,
@@ -5485,11 +8135,18 @@ def create_T9_system(country_code='USA', size=10, operation_hours=7884, refinery
     
     biochar_trucking = qs.ImpactItem('Biochar_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biochar_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
+    if country_code == 'ZAF':
+        biochar_trucking.add_indicator(GlobalWarming, 0.14059514852771382/1000)
+    elif country_code == 'BRA':
+        biochar_trucking.add_indicator(GlobalWarming, 0.11982238243679814/1000)
+    elif country_code in European_countries:
+        biochar_trucking.add_indicator(GlobalWarming, 0.15050202193852563/1000)
+    else:
+        biochar_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
-    biochar_trucking.price = (0.00551 + 0.0000541*Pyrolysis.biochar_distance)/Pyrolysis.biochar_distance
+    biochar_trucking.price = (0.00551 + 0.0000541*Pyrolysis.biochar_distance)/Pyrolysis.biochar_distance*country_PLI
     
     bioochar_transportation = qs.Transportation('Bioochar_transportation',
                                                 linked_unit=Pyrolysis,
@@ -5513,7 +8170,7 @@ def create_T9_system(country_code='USA', size=10, operation_hours=7884, refinery
            Deionized_water=lambda:deionized_water_quantity())
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -5539,7 +8196,31 @@ def create_T10_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tr
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -5558,12 +8239,13 @@ def create_T10_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tr
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     AerobicDigestion = lsu.AerobicDigestion(ID='AerobicDigestion', ins=(Thickening-0, 'air'),
                                             outs=('digested_sludge','offgas_AeD'), PLI=country_PLI)
@@ -5571,20 +8253,20 @@ def create_T10_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tr
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AerobicDigestion-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     HeatDrying = lsu.HeatDrying(ID='HeatDrying', ins=(Dewatering-0, 'natural_gas_heat_drying'),
                                 outs=('dried_solids','vapor'))
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    HeatDrying.ins[1].price = 0.218
+    HeatDrying.ins[1].price = 0.218*country_PLI
     
     Gasification = lsu.Gasification(ID='Gasification', ins=HeatDrying-0, outs=('tar','ash_gasification','syngas'), FOAK=FOAK)
     # 300 to 510 $·tonne-1, including removal, transport, and disposal as a Resource Conservation and Recovery Act (RCRA) permitted facility
     # https://www.profitableventure.com/cost-dispose-hazardous-waste-per-ton/
-    Gasification.outs[0].price = -0.405
+    Gasification.outs[0].price = -0.405*country_PLI
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
-    Gasification.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    Gasification.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     first_year_factor = Gasification.plant_performance_factor/100
     
@@ -5593,21 +8275,21 @@ def create_T10_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tr
     operation_hours *= np.mean(performance_factor_list)
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(Gasification-2, 'natural_gas_CHP', 'air_CHP'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+                                outs=('emission','ash_CHP'), unit_CAPEX=1225*country_PLI, supplement_power_utility=False)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    CHP.ins[1].price = 0.218
+    CHP.ins[1].price = 0.218*country_PLI
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
-    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     # treatment of CT residual is not considerd (since it is not in the model)
     # but ecoinvent has it and indicates it might be disposed of through landfilling
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
-    CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     # cooling_tower_chemicals: 1.7842 2016$/lb, https://doi.org/10.2172/1483234
-    CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     CT.lifetime = 20
     
     sys = qs.System.from_units(ID='system_T10',
@@ -5633,22 +8315,68 @@ def create_T10_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tr
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
+    if country_code == 'CHE':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7008435167236161 + natural_gas_density/16*44)
+    elif country_code == 'DEU':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4549664070734295 + natural_gas_density/16*44)
+    elif country_code == 'ESP':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8874492234001324 + natural_gas_density/16*44)
+    elif country_code == 'GBR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4100646325467 + natural_gas_density/16*44)
+    elif country_code == 'BEL':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5685568661222136 + natural_gas_density/16*44)
+    elif country_code == 'USA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5735112177514514 + natural_gas_density/16*44)
+    elif country_code == 'TUR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7039019951758329 + natural_gas_density/16*44)
+    elif country_code == 'FRA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7228085846276232 + natural_gas_density/16*44)
+    elif country_code == 'NLD':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5732876065672489 + natural_gas_density/16*44)
+    elif country_code == 'MEX':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.583138412259907 + natural_gas_density/16*44)
+    elif country_code == 'ITA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7463130536072833 + natural_gas_density/16*44)
+    elif country_code == 'CAN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5424438688893909 + natural_gas_density/16*44)
+    elif country_code == 'JPN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8612532956914958 + natural_gas_density/16*44)
+    elif country_code == 'KOR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8632380439297898 + natural_gas_density/16*44)
+    elif country_code == 'CHN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6687205543269131 + natural_gas_density/16*44)
+    elif country_code in European_countries:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6884940098670117 + natural_gas_density/16*44)
+    else:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
     Deionized_water = qs.ImpactItem('Deionized_water', functional_unit='kg')
-    Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
+    if country_code == 'CHE':
+        Deionized_water.add_indicator(GlobalWarming, 0.0003052493660070587)
+    elif country_code in European_countries:
+        Deionized_water.add_indicator(GlobalWarming, 0.00039891058449043786)
+    else:
+        Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
     
     def deionized_water_quantity():
         try:
@@ -5665,11 +8393,17 @@ def create_T10_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tr
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     qs.StreamImpactItem(ID='Tar', linked_stream=stream.tar, GlobalWarming=1.3479189232049629)
-    qs.StreamImpactItem(ID='Ash_gasification', linked_stream=stream.ash_gasification, GlobalWarming=0.018281422578429424)
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Ash_gasification', linked_stream=stream.ash_gasification, GlobalWarming=0.00946219748385128)
+    else:
+        qs.StreamImpactItem(ID='Ash_gasification', linked_stream=stream.ash_gasification, GlobalWarming=0.018281422578429424)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.00946219748385128)
+    else:
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
     
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
@@ -5680,7 +8414,7 @@ def create_T10_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tr
            Deionized_water=lambda:deionized_water_quantity())
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -5706,7 +8440,31 @@ def create_T11_system(country_code='USA', size=10, operation_hours=7884, refiner
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -5725,12 +8483,13 @@ def create_T11_system(country_code='USA', size=10, operation_hours=7884, refiner
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
@@ -5739,14 +8498,14 @@ def create_T11_system(country_code='USA', size=10, operation_hours=7884, refiner
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AnaerobicDigestion-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     HTL = lsu.HydrothermalLiquefaction(ID='HTL', ins=Dewatering-0,
                                        outs=('biocrude','HTL_aqueous_undefined','hydrochar','offgas_HTL'),
                                        biocrude_distance=refinery_distance, FOAK=FOAK)
     # assume hydrochar from HTL is disposed of by sending it to landfills
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
-    HTL.outs[2].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    HTL.outs[2].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     first_year_factor = HTL.plant_performance_factor/100
     
@@ -5761,10 +8520,11 @@ def create_T11_system(country_code='USA', size=10, operation_hours=7884, refiner
     CHG = lsu.CatalyticHydrothermalGasification(ID='CHG', ins=(Analyzer-0, 'virgin_CHG_catalyst'),
                                                 outs=('CHG_out','used_CHG_catalyst'))
     # CHG catalyst price, https://doi.org/10.2172/1126336
-    CHG.ins[1].price = 60/_lb_to_kg/GDPCTPI[2011]*GDPCTPI[2023]
+    CHG.ins[1].price = 60/_lb_to_kg/GDPCTPI[2011]*GDPCTPI[2023]*country_PLI
     
     V1 = IsenthalpicValve(ID='V1', ins=CHG-0, outs='depressurized_cooled_CHG', P=50*6894.76, vle=True)
     
+    # the purchase costs of Flash are related to bst.CE
     F1 = qsu.Flash(ID='F1', ins=V1-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
                    T=60+273.15, P=50*6894.76, thermo=settings.thermo.ideal())
     
@@ -5772,21 +8532,21 @@ def create_T11_system(country_code='USA', size=10, operation_hours=7884, refiner
                          outs=('fuel_gas'), init_with='WasteStream')
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(GasMixer-0, 'natural_gas_CHP', 'air_CHP'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+                                outs=('emission','ash_CHP'), unit_CAPEX=1225*country_PLI, supplement_power_utility=False)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    CHP.ins[1].price = 0.218
+    CHP.ins[1].price = 0.218*country_PLI
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
-    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     # treatment of CT residual is not considerd (since it is not in the model)
     # but ecoinvent has it and indicates it might be disposed of through landfilling
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
-    CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     # cooling_tower_chemicals: 1.7842 2016$/lb, https://doi.org/10.2172/1483234
-    CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     CT.lifetime = 20
     
     sys = qs.System.from_units(ID='system_T11',
@@ -5808,7 +8568,7 @@ def create_T11_system(country_code='USA', size=10, operation_hours=7884, refiner
     # biocrude replacing crude oil of the same amount of energy
     # TODO: may need update the price to a more general number
     # 76.1 $/barrel crude oil, U.S. EIA, 2023 monthly average, may need to update this to a more general number
-    HTL.outs[0].price = 76.1/_oil_barrel_to_m3/HTL.crude_oil_density/HTL.crude_oil_HHV*HTL.biocrude_HHV
+    HTL.outs[0].price = 76.1/_oil_barrel_to_m3/HTL.crude_oil_density/HTL.crude_oil_HHV*HTL.biocrude_HHV*country_PLI
     
     GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
                                        method='TRACI',
@@ -5817,22 +8577,68 @@ def create_T11_system(country_code='USA', size=10, operation_hours=7884, refiner
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
+    if country_code == 'CHE':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7008435167236161 + natural_gas_density/16*44)
+    elif country_code == 'DEU':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4549664070734295 + natural_gas_density/16*44)
+    elif country_code == 'ESP':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8874492234001324 + natural_gas_density/16*44)
+    elif country_code == 'GBR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4100646325467 + natural_gas_density/16*44)
+    elif country_code == 'BEL':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5685568661222136 + natural_gas_density/16*44)
+    elif country_code == 'USA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5735112177514514 + natural_gas_density/16*44)
+    elif country_code == 'TUR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7039019951758329 + natural_gas_density/16*44)
+    elif country_code == 'FRA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7228085846276232 + natural_gas_density/16*44)
+    elif country_code == 'NLD':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5732876065672489 + natural_gas_density/16*44)
+    elif country_code == 'MEX':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.583138412259907 + natural_gas_density/16*44)
+    elif country_code == 'ITA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7463130536072833 + natural_gas_density/16*44)
+    elif country_code == 'CAN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5424438688893909 + natural_gas_density/16*44)
+    elif country_code == 'JPN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8612532956914958 + natural_gas_density/16*44)
+    elif country_code == 'KOR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8632380439297898 + natural_gas_density/16*44)
+    elif country_code == 'CHN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6687205543269131 + natural_gas_density/16*44)
+    elif country_code in European_countries:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6884940098670117 + natural_gas_density/16*44)
+    else:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
     Deionized_water = qs.ImpactItem('Deionized_water', functional_unit='kg')
-    Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
+    if country_code == 'CHE':
+        Deionized_water.add_indicator(GlobalWarming, 0.0003052493660070587)
+    elif country_code in European_countries:
+        Deionized_water.add_indicator(GlobalWarming, 0.00039891058449043786)
+    else:
+        Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
     
     def deionized_water_quantity():
         try:
@@ -5849,23 +8655,52 @@ def create_T11_system(country_code='USA', size=10, operation_hours=7884, refiner
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # use market for petroleum to offset transportation and then add the transportation part
-    # 0.6254770020033417 kg CO2 eq/kg petroleum ('market for petroleum')
     # assume biocrude is used to produce biofuel for combustion
     # pertoleum is 84% C, https://en.wikipedia.org/wiki/Petroleum
-    qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.6254770020033417 + 0.84/12*44)/HTL.crude_oil_HHV*HTL.biocrude_HHV)
-    qs.StreamImpactItem(ID='Hydrochar', linked_stream=stream.hydrochar, GlobalWarming=0.018281422578429424)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.7522599436600327 + 0.84/12*44)/HTL.crude_oil_HHV*HTL.biocrude_HHV)
+    elif country_code == 'ZAF':
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.5891222858752428 + 0.84/12*44)/HTL.crude_oil_HHV*HTL.biocrude_HHV)
+    elif country_code == 'IND':
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.6375458980732374 + 0.84/12*44)/HTL.crude_oil_HHV*HTL.biocrude_HHV)
+    elif country_code == 'PER':
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.5735774071625496 + 0.84/12*44)/HTL.crude_oil_HHV*HTL.biocrude_HHV)
+    elif country_code == 'BRA':
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.33387058042913026 + 0.84/12*44)/HTL.crude_oil_HHV*HTL.biocrude_HHV)
+    elif country_code == 'COL':
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.35748879874422146 + 0.84/12*44)/HTL.crude_oil_HHV*HTL.biocrude_HHV)
+    elif country_code in European_countries:
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.5960832499896735 + 0.84/12*44)/HTL.crude_oil_HHV*HTL.biocrude_HHV)
+    elif country_code in Northern_American_countires:
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.5074316714055547 + 0.84/12*44)/HTL.crude_oil_HHV*HTL.biocrude_HHV)
+    else:
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.6254770020033417 + 0.84/12*44)/HTL.crude_oil_HHV*HTL.biocrude_HHV)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Hydrochar', linked_stream=stream.hydrochar, GlobalWarming=0.00946219748385128)
+    else:
+        qs.StreamImpactItem(ID='Hydrochar', linked_stream=stream.hydrochar, GlobalWarming=0.018281422578429424)
     qs.StreamImpactItem(ID='CHG_catalyst', linked_stream=stream.used_CHG_catalyst, GlobalWarming=1269.60621783954)
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.00946219748385128)
+    else:
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
     
     biocrude_trucking = qs.ImpactItem('Biocrude_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biocrude_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
+    if country_code == 'ZAF':
+        biocrude_trucking.add_indicator(GlobalWarming, 0.14059514852771382/1000)
+    elif country_code == 'BRA':
+        biocrude_trucking.add_indicator(GlobalWarming, 0.11982238243679814/1000)
+    elif country_code in European_countries:
+        biocrude_trucking.add_indicator(GlobalWarming, 0.15050202193852563/1000)
+    else:
+        biocrude_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), https://doi.org/10.1016/j.biortech.2010.03.136
-    biocrude_trucking.price = (5.67 + 0.07*HTL.biocrude_distance)/HTL.biocrude_density/HTL.biocrude_distance/GDPCTPI[2008]*GDPCTPI[2023]
+    biocrude_trucking.price = (5.67 + 0.07*HTL.biocrude_distance)/HTL.biocrude_density/HTL.biocrude_distance/GDPCTPI[2008]*GDPCTPI[2023]*country_PLI
     
     biocrude_transportation = qs.Transportation('Biocrude_transportation',
                                                 linked_unit=HTL,
@@ -5889,7 +8724,7 @@ def create_T11_system(country_code='USA', size=10, operation_hours=7884, refiner
            Deionized_water=lambda:deionized_water_quantity())
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -5915,7 +8750,31 @@ def create_T12_system(country_code='USA', size=10, operation_hours=7884, refiner
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -5934,12 +8793,13 @@ def create_T12_system(country_code='USA', size=10, operation_hours=7884, refiner
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
@@ -5948,19 +8808,19 @@ def create_T12_system(country_code='USA', size=10, operation_hours=7884, refiner
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AnaerobicDigestion-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     HALT = lsu.HydrothermalAlkalineTreatment(ID='HALT', ins=(Dewatering-0, 'sodium_hydroxide', 'hydrochloric_acid', 'diesel_HALT'),
                                              outs=('biocrude','HALT_aqueous_undefined','hydrochar','offgas_HALT'),
                                              biocrude_distance=refinery_distance, hydrochar_distance=LA_distance, FOAK=FOAK)
     # 0.2384 2016$/lb, https://doi.org/10.2172/1483234
-    HALT.ins[1].price = 0.2384/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    HALT.ins[1].price = 0.2384/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     # 0.49 2020$/lb, from A.J.K. HALT model
-    HALT.ins[2].price = 0.49/_lb_to_kg/GDPCTPI[2020]*GDPCTPI[2023]
+    HALT.ins[2].price = 0.49/_lb_to_kg/GDPCTPI[2020]*GDPCTPI[2023]*country_PLI
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
-    HALT.ins[3].price = 4.224/_gal_to_liter*1000/diesel_density
+    HALT.ins[3].price = 4.224/_gal_to_liter*1000/diesel_density*country_PLI
     # 0 - 0.093 2018$, Figure 6 in https://www.sciencedirect.com/science/article/pii/S0306261919318021?via%3Dihub
-    HALT.outs[2].price = 0.0465/GDPCTPI[2018]*GDPCTPI[2023]
+    HALT.outs[2].price = 0.0465/GDPCTPI[2018]*GDPCTPI[2023]*country_PLI
     
     first_year_factor = HALT.plant_performance_factor/100
     
@@ -5975,10 +8835,11 @@ def create_T12_system(country_code='USA', size=10, operation_hours=7884, refiner
     CHG = lsu.CatalyticHydrothermalGasification(ID='CHG', ins=(Analyzer-0, 'virgin_CHG_catalyst'),
                                                 outs=('CHG_out','used_CHG_catalyst'))
     # CHG catalyst price, https://doi.org/10.2172/1126336
-    CHG.ins[1].price = 60/_lb_to_kg/GDPCTPI[2011]*GDPCTPI[2023]
+    CHG.ins[1].price = 60/_lb_to_kg/GDPCTPI[2011]*GDPCTPI[2023]*country_PLI
     
     V1 = IsenthalpicValve(ID='V1', ins=CHG-0, outs='depressurized_cooled_CHG', P=50*6894.76, vle=True)
     
+    # the purchase costs of Flash are related to bst.CE
     F1 = qsu.Flash(ID='F1', ins=V1-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
                    T=60+273.15, P=50*6894.76, thermo=settings.thermo.ideal())
     
@@ -5986,21 +8847,21 @@ def create_T12_system(country_code='USA', size=10, operation_hours=7884, refiner
                          outs=('fuel_gas'), init_with='WasteStream')
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(GasMixer-0, 'natural_gas_CHP', 'air_CHP'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+                                outs=('emission','ash_CHP'), unit_CAPEX=1225*country_PLI, supplement_power_utility=False)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    CHP.ins[1].price = 0.218
+    CHP.ins[1].price = 0.218*country_PLI
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
-    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     # treatment of CT residual is not considerd (since it is not in the model)
     # but ecoinvent has it and indicates it might be disposed of through landfilling
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
-    CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     # cooling_tower_chemicals: 1.7842 2016$/lb, https://doi.org/10.2172/1483234
-    CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     CT.lifetime = 20
     
     sys = qs.System.from_units(ID='system_T12',
@@ -6022,7 +8883,7 @@ def create_T12_system(country_code='USA', size=10, operation_hours=7884, refiner
     # biocrude replacing crude oil of the same amount of energy
     # TODO: may need update the price to a more general number
     # 76.1 $/barrel crude oil, U.S. EIA, 2023 monthly average
-    HALT.outs[0].price = 76.1/_oil_barrel_to_m3/HALT.crude_oil_density/HALT.crude_oil_HHV*HALT.biocrude_HHV
+    HALT.outs[0].price = 76.1/_oil_barrel_to_m3/HALT.crude_oil_density/HALT.crude_oil_HHV*HALT.biocrude_HHV*country_PLI
     
     GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
                                        method='TRACI',
@@ -6031,22 +8892,68 @@ def create_T12_system(country_code='USA', size=10, operation_hours=7884, refiner
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
+    if country_code == 'CHE':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7008435167236161 + natural_gas_density/16*44)
+    elif country_code == 'DEU':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4549664070734295 + natural_gas_density/16*44)
+    elif country_code == 'ESP':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8874492234001324 + natural_gas_density/16*44)
+    elif country_code == 'GBR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4100646325467 + natural_gas_density/16*44)
+    elif country_code == 'BEL':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5685568661222136 + natural_gas_density/16*44)
+    elif country_code == 'USA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5735112177514514 + natural_gas_density/16*44)
+    elif country_code == 'TUR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7039019951758329 + natural_gas_density/16*44)
+    elif country_code == 'FRA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7228085846276232 + natural_gas_density/16*44)
+    elif country_code == 'NLD':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5732876065672489 + natural_gas_density/16*44)
+    elif country_code == 'MEX':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.583138412259907 + natural_gas_density/16*44)
+    elif country_code == 'ITA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7463130536072833 + natural_gas_density/16*44)
+    elif country_code == 'CAN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5424438688893909 + natural_gas_density/16*44)
+    elif country_code == 'JPN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8612532956914958 + natural_gas_density/16*44)
+    elif country_code == 'KOR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8632380439297898 + natural_gas_density/16*44)
+    elif country_code == 'CHN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6687205543269131 + natural_gas_density/16*44)
+    elif country_code in European_countries:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6884940098670117 + natural_gas_density/16*44)
+    else:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
     Deionized_water = qs.ImpactItem('Deionized_water', functional_unit='kg')
-    Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
+    if country_code == 'CHE':
+        Deionized_water.add_indicator(GlobalWarming, 0.0003052493660070587)
+    elif country_code in European_countries:
+        Deionized_water.add_indicator(GlobalWarming, 0.00039891058449043786)
+    else:
+        Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
     
     def deionized_water_quantity():
         try:
@@ -6062,22 +8969,62 @@ def create_T12_system(country_code='USA', size=10, operation_hours=7884, refiner
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
-    qs.StreamImpactItem(ID='Sodium_hydroxide', linked_stream=stream.sodium_hydroxide, GlobalWarming=1.4080631253939493)
-    qs.StreamImpactItem(ID='Hydrochloric_acid', linked_stream=stream.hydrochloric_acid, GlobalWarming=0.8701969784483516)
+    if country_code in European_countries:
+        qs.StreamImpactItem(ID='Sodium_hydroxide', linked_stream=stream.sodium_hydroxide, GlobalWarming=0.9151448191617616)
+    else:
+        qs.StreamImpactItem(ID='Sodium_hydroxide', linked_stream=stream.sodium_hydroxide, GlobalWarming=1.4080631253939493)
+    if country_code in European_countries:
+        qs.StreamImpactItem(ID='Hydrochloric_acid', linked_stream=stream.hydrochloric_acid, GlobalWarming=0.5779004915128144)
+    else:
+        qs.StreamImpactItem(ID='Hydrochloric_acid', linked_stream=stream.hydrochloric_acid, GlobalWarming=0.8701969784483516)
     # use market for petroleum to offset transportation and then add the transportation part
-    # 0.6254770020033417 kg CO2 eq/kg petroleum ('market for petroleum')
     # assume biocrude is used to produce biofuel for combustion
     # pertoleum is 84% C, https://en.wikipedia.org/wiki/Petroleum
-    qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.6254770020033417 + 0.84/12*44)/HALT.crude_oil_HHV*HALT.biocrude_HHV)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.7522599436600327 + 0.84/12*44)/HALT.crude_oil_HHV*HALT.biocrude_HHV)
+    elif country_code == 'ZAF':
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.5891222858752428 + 0.84/12*44)/HALT.crude_oil_HHV*HALT.biocrude_HHV)
+    elif country_code == 'IND':
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.6375458980732374 + 0.84/12*44)/HALT.crude_oil_HHV*HALT.biocrude_HHV)
+    elif country_code == 'PER':
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.5735774071625496 + 0.84/12*44)/HALT.crude_oil_HHV*HALT.biocrude_HHV)
+    elif country_code == 'BRA':
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.33387058042913026 + 0.84/12*44)/HALT.crude_oil_HHV*HALT.biocrude_HHV)
+    elif country_code == 'COL':
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.35748879874422146 + 0.84/12*44)/HALT.crude_oil_HHV*HALT.biocrude_HHV)
+    elif country_code in European_countries:
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.5960832499896735 + 0.84/12*44)/HALT.crude_oil_HHV*HALT.biocrude_HHV)
+    elif country_code in Northern_American_countires:
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.5074316714055547 + 0.84/12*44)/HALT.crude_oil_HHV*HALT.biocrude_HHV)
+    else:
+        qs.StreamImpactItem(ID='Biocrude', linked_stream=stream.biocrude, GlobalWarming=-(0.6254770020033417 + 0.84/12*44)/HALT.crude_oil_HHV*HALT.biocrude_HHV)
     qs.StreamImpactItem(ID='CHG_catalyst', linked_stream=stream.used_CHG_catalyst, GlobalWarming=1269.60621783954)
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.00946219748385128)
+    else:
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_HALT', linked_stream=stream.diesel_HALT, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Diesel_HALT', linked_stream=stream.diesel_HALT, GlobalWarming=0.8970860511867621 + 44*12/(12*12 + 23*1))
+    elif country_code == 'COL':
+        qs.StreamImpactItem(ID='Diesel_HALT', linked_stream=stream.diesel_HALT, GlobalWarming=0.6777889995887414 + 44*12/(12*12 + 23*1))
+    elif country_code == 'IND':
+        qs.StreamImpactItem(ID='Diesel_HALT', linked_stream=stream.diesel_HALT, GlobalWarming=0.9819236027859558 + 44*12/(12*12 + 23*1))
+    elif country_code == 'ZAF':
+        qs.StreamImpactItem(ID='Diesel_HALT', linked_stream=stream.diesel_HALT, GlobalWarming=0.8820480754893896 + 44*12/(12*12 + 23*1))
+    elif country_code == 'PER':
+        qs.StreamImpactItem(ID='Diesel_HALT', linked_stream=stream.diesel_HALT, GlobalWarming=0.8701113618791989 + 44*12/(12*12 + 23*1))
+    elif country_code == 'BRA':
+        qs.StreamImpactItem(ID='Diesel_HALT', linked_stream=stream.diesel_HALT, GlobalWarming=0.6239541867786678 + 44*12/(12*12 + 23*1))
+    elif country_code in European_countries:
+        qs.StreamImpactItem(ID='Diesel_HALT', linked_stream=stream.diesel_HALT, GlobalWarming=0.8730080399195541 + 44*12/(12*12 + 23*1))
+    else:
+        qs.StreamImpactItem(ID='Diesel_HALT', linked_stream=stream.diesel_HALT, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
     
     # carbon sequestration
     # directly using hydrochar, unlike landfilling, land application, and composting which have carbon dioxide as fake streams
@@ -6086,9 +9033,16 @@ def create_T12_system(country_code='USA', size=10, operation_hours=7884, refiner
     
     biocrude_trucking = qs.ImpactItem('Biocrude_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biocrude_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
+    if country_code == 'ZAF':
+        biocrude_trucking.add_indicator(GlobalWarming, 0.14059514852771382/1000)
+    elif country_code == 'BRA':
+        biocrude_trucking.add_indicator(GlobalWarming, 0.11982238243679814/1000)
+    elif country_code in European_countries:
+        biocrude_trucking.add_indicator(GlobalWarming, 0.15050202193852563/1000)
+    else:
+        biocrude_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), https://doi.org/10.1016/j.biortech.2010.03.136
-    biocrude_trucking.price = (5.67 + 0.07*HALT.biocrude_distance)/HALT.biocrude_density/HALT.biocrude_distance/GDPCTPI[2008]*GDPCTPI[2023]
+    biocrude_trucking.price = (5.67 + 0.07*HALT.biocrude_distance)/HALT.biocrude_density/HALT.biocrude_distance/GDPCTPI[2008]*GDPCTPI[2023]*country_PLI
     
     biocrude_transportation = qs.Transportation('Biocrude_transportation',
                                                 linked_unit=HALT,
@@ -6105,11 +9059,18 @@ def create_T12_system(country_code='USA', size=10, operation_hours=7884, refiner
     
     hydrochar_trucking = qs.ImpactItem('Hydrochar_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    hydrochar_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
+    if country_code == 'ZAF':
+        hydrochar_trucking.add_indicator(GlobalWarming, 0.14059514852771382/1000)
+    elif country_code == 'BRA':
+        hydrochar_trucking.add_indicator(GlobalWarming, 0.11982238243679814/1000)
+    elif country_code in European_countries:
+        hydrochar_trucking.add_indicator(GlobalWarming, 0.15050202193852563/1000)
+    else:
+        hydrochar_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
-    hydrochar_trucking.price = (0.00551 + 0.0000541*HALT.hydrochar_distance)/HALT.hydrochar_distance
+    hydrochar_trucking.price = (0.00551 + 0.0000541*HALT.hydrochar_distance)/HALT.hydrochar_distance*country_PLI
     
     hydrochar_transportation = qs.Transportation('Hydrochar_transportation',
                                                  linked_unit=HALT,
@@ -6133,7 +9094,7 @@ def create_T12_system(country_code='USA', size=10, operation_hours=7884, refiner
            Deionized_water=lambda:deionized_water_quantity())
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -6159,7 +9120,31 @@ def create_T13_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tr
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -6178,12 +9163,13 @@ def create_T13_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tr
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
@@ -6192,11 +9178,11 @@ def create_T13_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tr
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AnaerobicDigestion-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     SCWO = lsu.SupercriticalWaterOxidation(ID='SCWO', ins=Dewatering-0, outs=('ash_SCWO','offgas_SCWO'), FOAK=FOAK)
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
-    SCWO.outs[0].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    SCWO.outs[0].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     first_year_factor = SCWO.plant_performance_factor/100
     
@@ -6205,21 +9191,21 @@ def create_T13_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tr
     operation_hours *= np.mean(performance_factor_list)
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air_CHP'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+                                outs=('emission','ash_CHP'), unit_CAPEX=1225*country_PLI, supplement_power_utility=False)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    CHP.ins[1].price = 0.218
+    CHP.ins[1].price = 0.218*country_PLI
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
-    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     # treatment of CT residual is not considerd (since it is not in the model)
     # but ecoinvent has it and indicates it might be disposed of through landfilling
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
-    CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     # cooling_tower_chemicals: 1.7842 2016$/lb, https://doi.org/10.2172/1483234
-    CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     CT.lifetime = 20
     
     sys = qs.System.from_units(ID='system_T13',
@@ -6244,22 +9230,68 @@ def create_T13_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tr
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
+    if country_code == 'CHE':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7008435167236161 + natural_gas_density/16*44)
+    elif country_code == 'DEU':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4549664070734295 + natural_gas_density/16*44)
+    elif country_code == 'ESP':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8874492234001324 + natural_gas_density/16*44)
+    elif country_code == 'GBR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4100646325467 + natural_gas_density/16*44)
+    elif country_code == 'BEL':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5685568661222136 + natural_gas_density/16*44)
+    elif country_code == 'USA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5735112177514514 + natural_gas_density/16*44)
+    elif country_code == 'TUR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7039019951758329 + natural_gas_density/16*44)
+    elif country_code == 'FRA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7228085846276232 + natural_gas_density/16*44)
+    elif country_code == 'NLD':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5732876065672489 + natural_gas_density/16*44)
+    elif country_code == 'MEX':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.583138412259907 + natural_gas_density/16*44)
+    elif country_code == 'ITA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7463130536072833 + natural_gas_density/16*44)
+    elif country_code == 'CAN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5424438688893909 + natural_gas_density/16*44)
+    elif country_code == 'JPN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8612532956914958 + natural_gas_density/16*44)
+    elif country_code == 'KOR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8632380439297898 + natural_gas_density/16*44)
+    elif country_code == 'CHN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6687205543269131 + natural_gas_density/16*44)
+    elif country_code in European_countries:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6884940098670117 + natural_gas_density/16*44)
+    else:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
     Deionized_water = qs.ImpactItem('Deionized_water', functional_unit='kg')
-    Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
+    if country_code == 'CHE':
+        Deionized_water.add_indicator(GlobalWarming, 0.0003052493660070587)
+    elif country_code in European_countries:
+        Deionized_water.add_indicator(GlobalWarming, 0.00039891058449043786)
+    else:
+        Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
     
     def deionized_water_quantity():
         try:
@@ -6275,12 +9307,18 @@ def create_T13_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tr
     
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
-    qs.StreamImpactItem(ID='Ash_SCWO', linked_stream=stream.ash_SCWO, GlobalWarming=0.018281422578429424)
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Ash_SCWO', linked_stream=stream.ash_SCWO, GlobalWarming=0.00946219748385128)
+    else:
+        qs.StreamImpactItem(ID='Ash_SCWO', linked_stream=stream.ash_SCWO, GlobalWarming=0.018281422578429424)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.00946219748385128)
+    else:
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
     
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
@@ -6291,7 +9329,7 @@ def create_T13_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tr
            Deionized_water=lambda:deionized_water_quantity())
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -6317,7 +9355,31 @@ def create_T14_system(country_code='USA', size=10, operation_hours=7884, refiner
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -6336,12 +9398,13 @@ def create_T14_system(country_code='USA', size=10, operation_hours=7884, refiner
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
@@ -6350,25 +9413,25 @@ def create_T14_system(country_code='USA', size=10, operation_hours=7884, refiner
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AnaerobicDigestion-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     HeatDrying = lsu.HeatDrying(ID='HeatDrying', ins=(Dewatering-0, 'natural_gas_heat_drying'),
                                 outs=('dried_solids','vapor'))
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    HeatDrying.ins[1].price = 0.218
+    HeatDrying.ins[1].price = 0.218*country_PLI
     
     Pyrolysis = lsu.Pyrolysis(ID='Pyrolysis', ins=(HeatDrying-0, 'diesel_pyrolysis'),
                               outs=('biooil','biochar','pyrogas'),
                               biooil_distance=refinery_distance, biochar_distance=LA_distance, FOAK=FOAK)
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
-    Pyrolysis.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density
+    Pyrolysis.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density*country_PLI
     # biooil replacing crude oil of the same amount of energy
     # TODO: may need update the price to a more general number
     # 76.1 $/barrel crude oil, U.S. EIA, 2023 monthly average
-    Pyrolysis.outs[0].price = 76.1/_oil_barrel_to_m3/Pyrolysis.crude_oil_density/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV
+    Pyrolysis.outs[0].price = 76.1/_oil_barrel_to_m3/Pyrolysis.crude_oil_density/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV*country_PLI
     # https://cloverly.com/blog/the-ultimate-business-guide-to-biochar-everything-you-need-to-know
-    Pyrolysis.outs[1].price = 0.131
+    Pyrolysis.outs[1].price = 0.131*country_PLI
     
     first_year_factor = Pyrolysis.plant_performance_factor/100
     
@@ -6380,21 +9443,21 @@ def create_T14_system(country_code='USA', size=10, operation_hours=7884, refiner
                          outs=('fuel_gas'), init_with='WasteStream')
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(GasMixer-0, 'natural_gas_CHP', 'air_CHP'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+                                outs=('emission','ash_CHP'), unit_CAPEX=1225*country_PLI, supplement_power_utility=False)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    CHP.ins[1].price = 0.218
+    CHP.ins[1].price = 0.218*country_PLI
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
-    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     # treatment of CT residual is not considerd (since it is not in the model)
     # but ecoinvent has it and indicates it might be disposed of through landfilling
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
-    CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     # cooling_tower_chemicals: 1.7842 2016$/lb, https://doi.org/10.2172/1483234
-    CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     CT.lifetime = 20
     
     sys = qs.System.from_units(ID='system_T14',
@@ -6420,22 +9483,68 @@ def create_T14_system(country_code='USA', size=10, operation_hours=7884, refiner
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
+    if country_code == 'CHE':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7008435167236161 + natural_gas_density/16*44)
+    elif country_code == 'DEU':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4549664070734295 + natural_gas_density/16*44)
+    elif country_code == 'ESP':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8874492234001324 + natural_gas_density/16*44)
+    elif country_code == 'GBR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4100646325467 + natural_gas_density/16*44)
+    elif country_code == 'BEL':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5685568661222136 + natural_gas_density/16*44)
+    elif country_code == 'USA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5735112177514514 + natural_gas_density/16*44)
+    elif country_code == 'TUR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7039019951758329 + natural_gas_density/16*44)
+    elif country_code == 'FRA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7228085846276232 + natural_gas_density/16*44)
+    elif country_code == 'NLD':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5732876065672489 + natural_gas_density/16*44)
+    elif country_code == 'MEX':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.583138412259907 + natural_gas_density/16*44)
+    elif country_code == 'ITA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7463130536072833 + natural_gas_density/16*44)
+    elif country_code == 'CAN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5424438688893909 + natural_gas_density/16*44)
+    elif country_code == 'JPN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8612532956914958 + natural_gas_density/16*44)
+    elif country_code == 'KOR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8632380439297898 + natural_gas_density/16*44)
+    elif country_code == 'CHN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6687205543269131 + natural_gas_density/16*44)
+    elif country_code in European_countries:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6884940098670117 + natural_gas_density/16*44)
+    else:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
     Deionized_water = qs.ImpactItem('Deionized_water', functional_unit='kg')
-    Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
+    if country_code == 'CHE':
+        Deionized_water.add_indicator(GlobalWarming, 0.0003052493660070587)
+    elif country_code in European_countries:
+        Deionized_water.add_indicator(GlobalWarming, 0.00039891058449043786)
+    else:
+        Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
     
     def deionized_water_quantity():
         try:
@@ -6452,18 +9561,52 @@ def create_T14_system(country_code='USA', size=10, operation_hours=7884, refiner
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     # use market for petroleum to offset transportation and then add the transportation part
-    # 0.6254770020033417 kg CO2 eq/kg petroleum ('market for petroleum')
     # assume biooil is used to produce biofuel for combustion
     # pertoleum is 84% C, https://en.wikipedia.org/wiki/Petroleum
-    qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.6254770020033417 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.7522599436600327 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
+    elif country_code == 'ZAF':
+        qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.5891222858752428 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
+    elif country_code == 'IND':
+        qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.6375458980732374 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
+    elif country_code == 'PER':
+        qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.5735774071625496 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
+    elif country_code == 'BRA':
+        qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.33387058042913026 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
+    elif country_code == 'COL':
+        qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.35748879874422146 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
+    elif country_code in European_countries:
+        qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.5960832499896735 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
+    elif country_code in Northern_American_countires:
+        qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.5074316714055547 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
+    else:
+        qs.StreamImpactItem(ID='Biooil', linked_stream=stream.biooil, GlobalWarming=-(0.6254770020033417 + 0.84/12*44)/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.00946219748385128)
+    else:
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     # diesel average chemical formula: C12H23
     # https://en.wikipedia.org/wiki/Diesel_fuel (accessed 2025-08-15)
-    qs.StreamImpactItem(ID='Diesel_pyrolysis', linked_stream=stream.diesel_pyrolysis, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Diesel_pyrolysis', linked_stream=stream.diesel_pyrolysis, GlobalWarming=0.8970860511867621 + 44*12/(12*12 + 23*1))
+    elif country_code == 'COL':
+        qs.StreamImpactItem(ID='Diesel_pyrolysis', linked_stream=stream.diesel_pyrolysis, GlobalWarming=0.6777889995887414 + 44*12/(12*12 + 23*1))
+    elif country_code == 'IND':
+        qs.StreamImpactItem(ID='Diesel_pyrolysis', linked_stream=stream.diesel_pyrolysis, GlobalWarming=0.9819236027859558 + 44*12/(12*12 + 23*1))
+    elif country_code == 'ZAF':
+        qs.StreamImpactItem(ID='Diesel_pyrolysis', linked_stream=stream.diesel_pyrolysis, GlobalWarming=0.8820480754893896 + 44*12/(12*12 + 23*1))
+    elif country_code == 'PER':
+        qs.StreamImpactItem(ID='Diesel_pyrolysis', linked_stream=stream.diesel_pyrolysis, GlobalWarming=0.8701113618791989 + 44*12/(12*12 + 23*1))
+    elif country_code == 'BRA':
+        qs.StreamImpactItem(ID='Diesel_pyrolysis', linked_stream=stream.diesel_pyrolysis, GlobalWarming=0.6239541867786678 + 44*12/(12*12 + 23*1))
+    elif country_code in European_countries:
+        qs.StreamImpactItem(ID='Diesel_pyrolysis', linked_stream=stream.diesel_pyrolysis, GlobalWarming=0.8730080399195541 + 44*12/(12*12 + 23*1))
+    else:
+        qs.StreamImpactItem(ID='Diesel_pyrolysis', linked_stream=stream.diesel_pyrolysis, GlobalWarming=0.8608804649420178 + 44*12/(12*12 + 23*1))
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
     
     # carbon sequestration
     # the following number is consistent with the best guess from Table SI-12 in the SI of https://pubs.acs.org/doi/full/10.1021/acs.est.2c06083 (assuming 60% biochar is C)
@@ -6473,9 +9616,16 @@ def create_T14_system(country_code='USA', size=10, operation_hours=7884, refiner
     
     biooil_trucking = qs.ImpactItem('Biooil_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biooil_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
+    if country_code == 'ZAF':
+        biooil_trucking.add_indicator(GlobalWarming, 0.14059514852771382/1000)
+    elif country_code == 'BRA':
+        biooil_trucking.add_indicator(GlobalWarming, 0.11982238243679814/1000)
+    elif country_code in European_countries:
+        biooil_trucking.add_indicator(GlobalWarming, 0.15050202193852563/1000)
+    else:
+        biooil_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # transportation cost: 5.67 2008$/m3 (fixed cost) and 0.07 2008$/m3/km (variable cost), https://doi.org/10.1016/j.biortech.2010.03.136
-    biooil_trucking.price = (5.67 + 0.07*Pyrolysis.biooil_distance)/Pyrolysis.biooil_density/Pyrolysis.biooil_distance/GDPCTPI[2008]*GDPCTPI[2023]
+    biooil_trucking.price = (5.67 + 0.07*Pyrolysis.biooil_distance)/Pyrolysis.biooil_density/Pyrolysis.biooil_distance/GDPCTPI[2008]*GDPCTPI[2023]*country_PLI
     
     biooil_transportation = qs.Transportation('Biooil_transportation',
                                               linked_unit=Pyrolysis,
@@ -6492,11 +9642,18 @@ def create_T14_system(country_code='USA', size=10, operation_hours=7884, refiner
     
     biochar_trucking = qs.ImpactItem('Biochar_trucking', functional_unit='kg*km')
     # based on one-way distance, empty return trips included
-    biochar_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
+    if country_code == 'ZAF':
+        biochar_trucking.add_indicator(GlobalWarming, 0.14059514852771382/1000)
+    elif country_code == 'BRA':
+        biochar_trucking.add_indicator(GlobalWarming, 0.11982238243679814/1000)
+    elif country_code in European_countries:
+        biochar_trucking.add_indicator(GlobalWarming, 0.15050202193852563/1000)
+    else:
+        biochar_trucking.add_indicator(GlobalWarming, 0.1611858456466717/1000)
     # for sludge (with an assumed density of 1040 kg/m3): 4.56 $/m3, 0.072 $/m3/mile (likely 2015$)
     # https://doi.org/10.1016/j.tra.2015.02.001
     # converted to 2023$/kg/km
-    biochar_trucking.price = (0.00551 + 0.0000541*Pyrolysis.biochar_distance)/Pyrolysis.biochar_distance
+    biochar_trucking.price = (0.00551 + 0.0000541*Pyrolysis.biochar_distance)/Pyrolysis.biochar_distance*country_PLI
     
     bioochar_transportation = qs.Transportation('Bioochar_transportation',
                                                 linked_unit=Pyrolysis,
@@ -6520,7 +9677,7 @@ def create_T14_system(country_code='USA', size=10, operation_hours=7884, refiner
            Deionized_water=lambda:deionized_water_quantity())
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),
@@ -6546,7 +9703,31 @@ def create_T15_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tr
     
     bst.CE = qs.CEPCI_by_year[2023]*country_PLI
     
-    bst.PowerUtility.price = 0.16
+    bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
+    
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            heating_agent.regeneration_price = 0.2378*country_PLI
+        if heating_agent.ID == 'medium_pressure_steam':
+            heating_agent.regeneration_price = 0.2756*country_PLI
+        if heating_agent.ID == 'high_pressure_steam':
+            heating_agent.regeneration_price = 0.3171*country_PLI
+        if heating_agent.ID == 'natural_gas':
+            heating_agent.regeneration_price = 3.49672*country_PLI
+    
+    for cooling_agent in bst.HeatUtility.cooling_agents:
+        if cooling_agent.ID == 'cooling_water':
+            cooling_agent.regeneration_price = 0.00048785*country_PLI
+        if cooling_agent.ID == 'chilled_water':
+            cooling_agent.heat_transfer_price = 5e-06*country_PLI
+        if cooling_agent.ID == 'chilled_brine':
+            cooling_agent.heat_transfer_price = 8.145e-06*country_PLI
+        if cooling_agent.ID == 'propane':
+            cooling_agent.heat_transfer_price = 1.317e-05*country_PLI
+        if cooling_agent.ID == 'propylene':
+            cooling_agent.heat_transfer_price = 1.654e-05*country_PLI
+        if cooling_agent.ID == 'ethylene':
+            cooling_agent.heat_transfer_price = 3.32e-05*country_PLI
     
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
@@ -6565,12 +9746,13 @@ def create_T15_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tr
                     sludge_dw_ash=0.436,
                     sludge_afdw_lipid=0.193,
                     sludge_afdw_protein=0.510,
-                    sludge_wet_density=1040)
+                    sludge_wet_density=1040,
+                    PLI=country_PLI)
     
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Thickening = lsu.Thickening(ID='Thickening', ins=(WRRF-0, 'polymer_thickening'),
                                 outs=('thickened_sludge','reject_thickening'), PLI=country_PLI)
-    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Thickening.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     AnaerobicDigestion = lsu.AnaerobicDigestion(ID='AnaerobicDigestion', ins=Thickening-0,
                                                 outs=('digested_sludge','natural_gas_AD','methane_AD','carbon_dioxide_AD'),
@@ -6579,20 +9761,20 @@ def create_T15_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tr
     # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
     Dewatering = lsu.Dewatering(ID='Dewatering', ins=(AnaerobicDigestion-0, 'polymer_dewatering'),
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
-    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     HeatDrying = lsu.HeatDrying(ID='HeatDrying', ins=(Dewatering-0, 'natural_gas_heat_drying'),
                                 outs=('dried_solids','vapor'))
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    HeatDrying.ins[1].price = 0.218
+    HeatDrying.ins[1].price = 0.218*country_PLI
     
     Gasification = lsu.Gasification(ID='Gasification', ins=HeatDrying-0, outs=('tar','ash_gasification','syngas'), FOAK=FOAK)
     # 300 to 510 $·tonne-1, including removal, transport, and disposal as a Resource Conservation and Recovery Act (RCRA) permitted facility
     # https://www.profitableventure.com/cost-dispose-hazardous-waste-per-ton/
-    Gasification.outs[0].price = -0.405
+    Gasification.outs[0].price = -0.405*country_PLI
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
-    Gasification.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    Gasification.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     first_year_factor = Gasification.plant_performance_factor/100
     
@@ -6604,21 +9786,21 @@ def create_T15_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tr
                          outs=('fuel_gas'), init_with='WasteStream')
     
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(GasMixer-0, 'natural_gas_CHP', 'air_CHP'),
-                                outs=('emission','ash_CHP'), supplement_power_utility=False)
+                                outs=('emission','ash_CHP'), unit_CAPEX=1225*country_PLI, supplement_power_utility=False)
     CHP.lifetime = 20
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
-    CHP.ins[1].price = 0.218
+    CHP.ins[1].price = 0.218*country_PLI
     # 1.41 MM 2016$/year for 4270/4279 kg/h ash, 7880 annual operating hours, https://doi.org/10.2172/1483234
-    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]
+    CHP.outs[1].price = -1.41*10**6/7880/4270/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
     # treatment of CT residual is not considerd (since it is not in the model)
     # but ecoinvent has it and indicates it might be disposed of through landfilling
     CT = bst.facilities.CoolingTower(ID='CT')
     # cooling_tower_makeup_water
-    CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     # cooling_tower_chemicals: 1.7842 2016$/lb, https://doi.org/10.2172/1483234
-    CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]
+    CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     CT.lifetime = 20
     
     sys = qs.System.from_units(ID='system_T15',
@@ -6644,22 +9826,68 @@ def create_T15_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tr
                                        description='Global Warming Potential')
     
     Electricity = qs.ImpactItem('Electricity', functional_unit='kWh')
-    Electricity.add_indicator(GlobalWarming, 0.691007559959689)
+    Electricity.add_indicator(GlobalWarming, electricity_CI[electricity_CI['country_ISO_A3'] == country_code]['CI'].iloc[0])
     
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
-    Steam.add_indicator(GlobalWarming, 0.12677990083093105)
+    if country_code in European_countries:
+        Steam.add_indicator(GlobalWarming, 0.11060848018844378)
+    else:
+        Steam.add_indicator(GlobalWarming, 0.12677990083093105)
     
     Natural_gas_E = qs.ImpactItem('Natural_gas_E', functional_unit='MJ')
-    Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
+    if country_code == 'CHE':
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03046327520942905)
+    elif country_code in European_countries:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.05508049077244834)
+    else:
+        Natural_gas_E.add_indicator(GlobalWarming, 0.03882149971451173)
     
     Natural_gas_V = qs.ImpactItem('Natural_gas_V', functional_unit='m3')
-    Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
+    if country_code == 'CHE':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7008435167236161 + natural_gas_density/16*44)
+    elif country_code == 'DEU':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4549664070734295 + natural_gas_density/16*44)
+    elif country_code == 'ESP':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8874492234001324 + natural_gas_density/16*44)
+    elif country_code == 'GBR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.4100646325467 + natural_gas_density/16*44)
+    elif country_code == 'BEL':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5685568661222136 + natural_gas_density/16*44)
+    elif country_code == 'USA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5735112177514514 + natural_gas_density/16*44)
+    elif country_code == 'TUR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7039019951758329 + natural_gas_density/16*44)
+    elif country_code == 'FRA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7228085846276232 + natural_gas_density/16*44)
+    elif country_code == 'NLD':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5732876065672489 + natural_gas_density/16*44)
+    elif country_code == 'MEX':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.583138412259907 + natural_gas_density/16*44)
+    elif country_code == 'ITA':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.7463130536072833 + natural_gas_density/16*44)
+    elif country_code == 'CAN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5424438688893909 + natural_gas_density/16*44)
+    elif country_code == 'JPN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8612532956914958 + natural_gas_density/16*44)
+    elif country_code == 'KOR':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.8632380439297898 + natural_gas_density/16*44)
+    elif country_code == 'CHN':
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6687205543269131 + natural_gas_density/16*44)
+    elif country_code in European_countries:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.6884940098670117 + natural_gas_density/16*44)
+    else:
+        Natural_gas_V.add_indicator(GlobalWarming, 0.5780189368532676 + natural_gas_density/16*44)
         
     Cooling = qs.ImpactItem('Cooling', functional_unit='MJ')
     Cooling.add_indicator(GlobalWarming, 0.0680678777230173)
     
     Deionized_water = qs.ImpactItem('Deionized_water', functional_unit='kg')
-    Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
+    if country_code == 'CHE':
+        Deionized_water.add_indicator(GlobalWarming, 0.0003052493660070587)
+    elif country_code in European_countries:
+        Deionized_water.add_indicator(GlobalWarming, 0.00039891058449043786)
+    else:
+        Deionized_water.add_indicator(GlobalWarming, 0.00047332694442793645)
     
     def deionized_water_quantity():
         try:
@@ -6676,12 +9904,18 @@ def create_T15_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tr
     qs.StreamImpactItem(ID='Polymer_thickening', linked_stream=stream.polymer_thickening, GlobalWarming=3.670217713628895)
     qs.StreamImpactItem(ID='Polymer_dewatering', linked_stream=stream.polymer_dewatering, GlobalWarming=3.670217713628895)
     qs.StreamImpactItem(ID='Tar', linked_stream=stream.tar, GlobalWarming=1.3479189232049629)
-    qs.StreamImpactItem(ID='Ash_gasification', linked_stream=stream.ash_gasification, GlobalWarming=0.018281422578429424)
-    qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Ash_gasification', linked_stream=stream.ash_gasification, GlobalWarming=0.00946219748385128)
+    else:
+        qs.StreamImpactItem(ID='Ash_gasification', linked_stream=stream.ash_gasification, GlobalWarming=0.018281422578429424)
+    if country_code == 'CHE':
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.00946219748385128)
+    else:
+        qs.StreamImpactItem(ID='Ash_CHP', linked_stream=stream.ash_CHP, GlobalWarming=0.018281422578429424)
     
     # fugitive emissions
-    qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=29.8)
-    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=29.8)
+    qs.StreamImpactItem(ID='Methane_AD', linked_stream=stream.methane_AD, GlobalWarming=27)
+    qs.StreamImpactItem(ID='Methane_dewatering', linked_stream=stream.methane_dewatering, GlobalWarming=27)
     
     qs.LCA(system=sys, lifetime=lifetime, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*lifetime,
@@ -6692,7 +9926,7 @@ def create_T15_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tr
            Deionized_water=lambda:deionized_water_quantity())
     
     FTE_labor_cost = (0.34/labor_index[2014]*labor_index[2023]+\
-                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6
+                      0.48/labor_index[2014]*labor_index[2023]*size/100)*10**6*labor_cost[labor_cost['country_code'] == country_code]['labor_index'].iloc[0]
     
     create_tea(sys,
                duration=(2023, 2023+lifetime),

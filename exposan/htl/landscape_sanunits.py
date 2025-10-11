@@ -23,25 +23,6 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-# TODO: capital costs udpate process (units not listed below are adjusted through CEPCI, and do not double applying PLI e.g., to both baseline_purchase_costs and cost decorators which are based on CEPCI)
-# DONE: Thickening
-# DONE: AerobicDigestion (the pump was replaces since the purchase costs of the original one do not change with PLI)
-# DONE: AnaerobicDigestion (the pump was replaces since the purchase costs of the original one do not change with PLI)
-# DONE: Dewatering
-# TODO: AlkalineStabilization
-# DONE: Composting
-# DONE: Landfilling (tipping fee adjusted)
-# DONE: LandApplication (only biosolids price adjusted, other chemicals have not been updated)
-# TODO: CHP
-# TODO: HydrothermalLiquefaction (auxiliary units only, if necessary)
-# TODO: flash
-# TODO: HydrothermalAlkalineTreatment (auxiliary units only, if necessary)
-# TODO: CatalyticHydrothermalGasification (auxiliary units only, if necessary)
-# TODO: Pyrolysis (auxiliary units only, if necessary)
-# TODO: Gasification (auxiliary units only, if necessary)
-# TODO: SupercriticalWaterOxidation (auxiliary units only, if necessary)
-# TODO: check all units again
-
 import os, qsdsan as qs, biosteam as bst
 from qsdsan import SanUnit
 from qsdsan.sanunits import SludgePump, HXutility, HXprocess, Pump
@@ -165,6 +146,8 @@ class WRRF(SanUnit):
         Normalized sludge transportation distance, [km].
     wage_adjustment : float
         A coefficient to adjust labor cost.
+    PLI : float
+        price level index as an approximation to adjust CAPEX, [-].
     
     References
     ----------
@@ -189,7 +172,7 @@ class WRRF(SanUnit):
                  sludge_moisture=0.99, sludge_dw_ash=0.257, 
                  sludge_afdw_lipid=0.204, sludge_afdw_protein=0.463,
                  sludge_wet_density=1040, # [2]
-                 sludge_distance=100, wage_adjustment=1):
+                 sludge_distance=100, wage_adjustment=1, PLI=1):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.ww_2_dry_sludge = ww_2_dry_sludge
         self.sludge_moisture = sludge_moisture
@@ -199,6 +182,7 @@ class WRRF(SanUnit):
         self.sludge_wet_density = sludge_wet_density
         self.sludge_distance = sludge_distance
         self.wage_adjustment = wage_adjustment
+        self.PLI = PLI
         ID = self.ID
         sludge = self.outs[0].proxy(f'{ID}_sludge')
         self.sludge_pump = SludgePump(f'.{ID}_sludge_pump', ins=sludge, init_with=init_with)
@@ -229,6 +213,11 @@ class WRRF(SanUnit):
     
     def _design(self):
         self.sludge_pump.simulate()
+    
+    def _cost(self):
+        for C in [self.baseline_purchase_costs] + [unit.baseline_purchase_costs for unit in self.auxiliary_units]:
+            for item in C.keys():
+                C[item] = C[item]*self.PLI
     
     @property
     def unit_process(self):
@@ -383,6 +372,7 @@ class AerobicDigestion(SanUnit):
     excavation_unit_cost : float
         unit cost of the excavation activity, [$/ft3].
     PLI : float
+        price level index as an approximation to adjust CAPEX, [-].
     
     References
     ----------
@@ -1151,7 +1141,7 @@ class AlkalineStabilization(SanUnit):
     Parameters
     ----------
     ins : iterable
-        dewatered_sludge, lime, natural_Gas.
+        dewatered_sludge, lime.
     outs : iterable
         stabilized_solids.
     lime_dose : float
@@ -2294,6 +2284,7 @@ class HydrothermalLiquefaction(SanUnit):
         self.eff_P = eff_P
         pump_in = Stream(f'{ID}_pump_in')
         pump_out = Stream(f'{ID}_pump_out')
+        # purchase costs for Pump are related to bst.CE
         self.pump = Pump(ID=f'.{ID}_pump', ins=pump_in, outs=pump_out, P=P)
         inf_pre_hx = Stream(f'{ID}_inf_pre_hx')
         eff_pre_hx = Stream(f'{ID}_eff_pre_hx')
@@ -2445,6 +2436,9 @@ class HydrothermalLiquefaction(SanUnit):
         # eff_hx.simulate_as_auxiliary_exchanger(ins=eff_hx.ins, outs=eff_hx.outs, duty=duty)
     
     def _cost(self):
+        self.hx.baseline_purchase_costs.clear()
+        self.inf_hx.baseline_purchase_costs.clear()
+        self.eff_hx.baseline_purchase_costs.clear()
         self._decorated_cost()
         
         if self.FOAK:
@@ -2560,7 +2554,7 @@ class HydrothermalAlkalineTreatment(SanUnit):
     Parameters
     ----------
     ins : iterable
-        dewatered_solids, sodium_hydroxide, hydrochloric_acid.
+        dewatered_solids, sodium_hydroxide, hydrochloric_acid, diesel.
     outs : iterable
         biocrude, HALTaqueous, hydrochar, offgas.
     NaOH_conc : float
@@ -2681,6 +2675,7 @@ class HydrothermalAlkalineTreatment(SanUnit):
         self.eff_P = eff_P
         pump_in = Stream(f'{ID}_pump_in')
         pump_out = Stream(f'{ID}_pump_out')
+        # purchase costs for Pump are related to bst.CE
         self.pump = Pump(ID=f'.{ID}_pump', ins=pump_in, outs=pump_out, P=P)
         inf_pre_hx = Stream(f'{ID}_inf_pre_hx')
         eff_pre_hx = Stream(f'{ID}_eff_pre_hx')
@@ -2851,6 +2846,9 @@ class HydrothermalAlkalineTreatment(SanUnit):
         # eff_hx.simulate_as_auxiliary_exchanger(ins=eff_hx.ins, outs=eff_hx.outs, duty=duty)
     
     def _cost(self):
+        self.hx.baseline_purchase_costs.clear()
+        self.inf_hx.baseline_purchase_costs.clear()
+        self.eff_hx.baseline_purchase_costs.clear()
         self._decorated_cost()
         
         if self.FOAK:
@@ -3085,6 +3083,7 @@ class CatalyticHydrothermalGasification(SanUnit):
         self.eff_P = eff_P
         pump_in = Stream(f'{ID}_pump_in')
         pump_out = Stream(f'{ID}_pump_out')
+        # purchase costs for Pump are related to bst.CE
         self.pump = Pump(ID=f'.{ID}_pump', ins=pump_in, outs=pump_out, P=P)
         inf_pre_hx = Stream(f'{ID}_inf_pre_hx')
         eff_pre_hx = Stream(f'{ID}_eff_pre_hx')
@@ -3466,6 +3465,7 @@ class Pyrolysis(SanUnit):
         else:
             self.cost_growth_factor = 1
         
+        # no auxiliary unit
         for C in [self.baseline_purchase_costs] + [unit.baseline_purchase_costs for unit in self.auxiliary_units]:
             for item in C.keys():
                 C[item] = C[item]/self.cost_growth_factor
@@ -3694,6 +3694,7 @@ class Gasification(SanUnit):
         else:
             self.cost_growth_factor = 1
         
+        # no auxiliary unit
         for C in [self.baseline_purchase_costs] + [unit.baseline_purchase_costs for unit in self.auxiliary_units]:
             for item in C.keys():
                 C[item] = C[item]/self.cost_growth_factor
@@ -3902,6 +3903,7 @@ class SupercriticalWaterOxidation(SanUnit):
         # eff_hx.simulate_as_auxiliary_exchanger(ins=eff_hx.ins, outs=eff_hx.outs, duty=duty)
     
     def _cost(self):
+        self.pump.baseline_purchase_costs.clear()
         self.hx.baseline_purchase_costs.clear()
         self.inf_hx.baseline_purchase_costs.clear()
         self.eff_hx.baseline_purchase_costs.clear()
@@ -3914,6 +3916,7 @@ class SupercriticalWaterOxidation(SanUnit):
         else:
             self.cost_growth_factor = 1
         
+        # no auxiliary unit
         for C in [self.baseline_purchase_costs] + [unit.baseline_purchase_costs for unit in self.auxiliary_units]:
             for item in C.keys():
                 C[item] = C[item]/self.cost_growth_factor
