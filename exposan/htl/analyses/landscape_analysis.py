@@ -1947,8 +1947,6 @@ for cap in bp['caps']:
 
 # TODO: as a kind of uncertainty analysis, show the minimum values on maps in the SI
 
-# TODO: assign electricity price and CI (any other parameters?) for each country
-
 filterwarnings('ignore')
 
 # TODO: the cost for T NOAK with carbon credits can be calculated using T NOAK cost, T NOAK CI, and C CI
@@ -1968,11 +1966,11 @@ T_cost_NOAK_min = []
 T_CI_NOAK_min = []
 
 # run in different consoles to speed up
-# do not round all together since the application memory is not enough
+# do not run all together since the application memory is not enough
 # first round: 3000 and 6000
 # second round: 9000 and 12000
 # last round: 14000 and len(WRRF_filtered)
-for i in range(0, len(WRRF_filtered)):
+for i in range(3000, 6000):
     if i%100 == 0:
         print(i)
     
@@ -1987,11 +1985,7 @@ for i in range(0, len(WRRF_filtered)):
                      create_C19_system, create_C20_system, create_C21_system,
                      create_C22_system, create_C23_system, create_C24_system,
                      create_C25_system):
-        sys = function(country_code=XXX, size=WRRF_filtered.iloc[i]['dry_solids_tonne_per_day'])
-        
-        # TODO: is it really reasonable to use PLI to convert capital and transportation costs?
-        # TODO: update electricity price, electricity CI, chemical costs, capital costs, transportation costs
-        # TODO: test after updating numbers, do TEA and LCA results change correctly?
+        sys = function(country_code=WRRF_filtered.iloc[i]['CNTRY_ISO'], size=WRRF_filtered.iloc[i]['dry_solids_tonne_per_day'])
         
         C_TEA.append(-sys.TEA.solve_price(sys.flowsheet.raw_wastewater)*3785411.78)
         C_LCA.append(sys.LCA.get_total_impacts(operation_only=True,
@@ -2010,11 +2004,7 @@ for i in range(0, len(WRRF_filtered)):
                      create_T7_system, create_T8_system, create_T9_system,
                      create_T10_system, create_T11_system, create_T12_system,
                      create_T13_system, create_T14_system, create_T15_system):
-        sys = function(country_code=XXX, size=WRRF_filtered.iloc[i]['dry_solids_tonne_per_day'], FOAK=True)
-        
-        # TODO: is it really reasonable to use PLI to convert capital and transportation costs?
-        # TODO: update electricity price, electricity CI, chemical costs, capital costs, transportation costs
-        # TODO: test after updating numbers, do TEA and LCA results change correctly?
+        sys = function(country_code=WRRF_filtered.iloc[i]['CNTRY_ISO'], size=WRRF_filtered.iloc[i]['dry_solids_tonne_per_day'], FOAK=True)
         
         T_FOAK_TEA.append(-sys.TEA.solve_price(sys.flowsheet.raw_wastewater)*3785411.78)
         T_FOAK_LCA.append(sys.LCA.get_total_impacts(operation_only=True,
@@ -2033,11 +2023,7 @@ for i in range(0, len(WRRF_filtered)):
                      create_T7_system, create_T8_system, create_T9_system,
                      create_T10_system, create_T11_system, create_T12_system,
                      create_T13_system, create_T14_system, create_T15_system):
-        sys = function(country_code=XXX, size=WRRF_filtered.iloc[i]['dry_solids_tonne_per_day'], FOAK=False)
-        
-        # TODO: is it really reasonable to use PLI to convert capital and transportation costs?
-        # TODO: update electricity price, electricity CI, chemical costs, capital costs, transportation costs
-        # TODO: test after updating numbers, do TEA and LCA results change correctly?
+        sys = function(country_code=WRRF_filtered.iloc[i]['CNTRY_ISO'], size=WRRF_filtered.iloc[i]['dry_solids_tonne_per_day'], FOAK=False)
         
         T_NOAK_TEA.append(-sys.TEA.solve_price(sys.flowsheet.raw_wastewater)*3785411.78)
         T_NOAK_LCA.append(sys.LCA.get_total_impacts(operation_only=True,
@@ -2049,14 +2035,23 @@ for i in range(0, len(WRRF_filtered)):
     T_cost_NOAK_min.append(np.min(T_NOAK_TEA))
     T_CI_NOAK_min.append(np.min(T_NOAK_LCA))
 
-country_result = pd.DataFrame({'C_cost_mean': C_cost_mean,
-                               'C_CI_mean': C_CI_mean,
-                               'T_cost_FOAK_mean': T_cost_FOAK_mean,
-                               'T_CI_FOAK_mean': T_CI_FOAK_mean,
-                               'T_cost_NOAK_mean': T_cost_NOAK_mean,
-                               'T_CI_NOAK_mean': T_CI_NOAK_mean,})
+country_mean_result = pd.DataFrame({'C_cost_mean': C_cost_mean,
+                                    'C_CI_mean': C_CI_mean,
+                                    'T_cost_FOAK_mean': T_cost_FOAK_mean,
+                                    'T_CI_FOAK_mean': T_CI_FOAK_mean,
+                                    'T_cost_NOAK_mean': T_cost_NOAK_mean,
+                                    'T_CI_NOAK_mean': T_CI_NOAK_mean})
 
-country_result.to_excel(folder + f'results/country_results_{date.today()}_{i}.xlsx')
+country_min_result = pd.DataFrame({'C_cost_min': C_cost_min,
+                                    'C_CI_min': C_CI_min,
+                                    'T_cost_FOAK_min': T_cost_FOAK_min,
+                                    'T_CI_FOAK_min': T_CI_FOAK_min,
+                                    'T_cost_NOAK_min': T_cost_NOAK_min,
+                                    'T_CI_NOAK_min': T_CI_NOAK_min})
+
+country_mean_result.to_excel(folder + f'results/country_mean_result_{date.today()}_{i}.xlsx')
+
+country_min_result.to_excel(folder + f'results/country_min_result_{date.today()}_{i}.xlsx')
 
 #%% merge country results
 
