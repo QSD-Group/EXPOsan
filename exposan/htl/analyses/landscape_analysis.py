@@ -2023,7 +2023,7 @@ T_CI_NOAK_max = []
 # first round: 3000 and 6000
 # second round: 9000 and 12000
 # last round: 14000 and len(WRRF_filtered)
-for i in range(3000, 6000):
+for i in range(0, len(WRRF_filtered)):
     if i%100 == 0:
         print(i)
     
@@ -2238,12 +2238,12 @@ world_median = world.merge(WRRF_median, how='left', left_on='ISO_A3', right_on='
 # min
 # =============================================================================
 # TODO: cost and CI minimums may not come from the same system
-country_min_1 = pd.read_excel(folder + 'results/country_min_2025-10-12_2999.xlsx')
-country_min_2 = pd.read_excel(folder + 'results/country_min_2025-10-12_5999.xlsx')
-country_min_3 = pd.read_excel(folder + 'results/country_min_2025-10-12_8999.xlsx')
-country_min_4 = pd.read_excel(folder + 'results/country_min_2025-10-12_11999.xlsx')
-country_min_5 = pd.read_excel(folder + 'results/country_min_2025-10-12_13999.xlsx')
-country_min_6 = pd.read_excel(folder + 'results/country_min_2025-10-12_15964.xlsx')
+country_min_1 = pd.read_excel(folder + 'results/country_min_2025-10-16_2999.xlsx')
+country_min_2 = pd.read_excel(folder + 'results/country_min_2025-10-16_5999.xlsx')
+country_min_3 = pd.read_excel(folder + 'results/country_min_2025-10-16_8999.xlsx')
+country_min_4 = pd.read_excel(folder + 'results/country_min_2025-10-16_11999.xlsx')
+country_min_5 = pd.read_excel(folder + 'results/country_min_2025-10-16_13999.xlsx')
+country_min_6 = pd.read_excel(folder + 'results/country_min_2025-10-16_15964.xlsx')
 
 integrated_country_min = pd.concat([country_min_1, country_min_2, country_min_3, country_min_4, country_min_5, country_min_6])
 integrated_country_min.reset_index(inplace=True)
@@ -2287,12 +2287,12 @@ world_min = world.merge(WRRF_min, how='left', left_on='ISO_A3', right_on='CNTRY_
 # max
 # =============================================================================
 # TODO: cost and CI maximums may not come from the same system
-country_max_1 = pd.read_excel(folder + 'results/country_max_2025-10-12_2999.xlsx')
-country_max_2 = pd.read_excel(folder + 'results/country_max_2025-10-12_5999.xlsx')
-country_max_3 = pd.read_excel(folder + 'results/country_max_2025-10-12_8999.xlsx')
-country_max_4 = pd.read_excel(folder + 'results/country_max_2025-10-12_11999.xlsx')
-country_max_5 = pd.read_excel(folder + 'results/country_max_2025-10-12_13999.xlsx')
-country_max_6 = pd.read_excel(folder + 'results/country_max_2025-10-12_15964.xlsx')
+country_max_1 = pd.read_excel(folder + 'results/country_max_2025-10-16_2999.xlsx')
+country_max_2 = pd.read_excel(folder + 'results/country_max_2025-10-16_5999.xlsx')
+country_max_3 = pd.read_excel(folder + 'results/country_max_2025-10-16_8999.xlsx')
+country_max_4 = pd.read_excel(folder + 'results/country_max_2025-10-16_11999.xlsx')
+country_max_5 = pd.read_excel(folder + 'results/country_max_2025-10-16_13999.xlsx')
+country_max_6 = pd.read_excel(folder + 'results/country_max_2025-10-16_15964.xlsx')
 
 integrated_country_max = pd.concat([country_max_1, country_max_2, country_max_3, country_max_4, country_max_5, country_max_6])
 integrated_country_max.reset_index(inplace=True)
@@ -2532,30 +2532,114 @@ ax.set_aspect(1)
 
 ax.set_axis_off()
 
+#%% country order
+
+country_order = WRRF_filtered['COUNTRY'].value_counts().head(50).index.tolist()[::-1]
+
 #%% cost ranges for C and T systems
 
-# TODO: on one figure, can make this figure and the cost change figure taller if needed
+cost_min = WRRF_min.copy()
+cost_min = cost_min.set_index('COUNTRY').loc[country_order]
 
+assert (cost_min.index != country_order).sum() == 0
 
-
-
-#%% cost change bars - data preparation
-
-cost_change = WRRF_mean.copy()
-cost_change['cost_difference'] = cost_change['T_cost_NOAK_weighted_average'] - cost_change['C_cost_weighted_average']
-cost_change.sort_values(by='cost_difference', inplace=True)
-cost_change = cost_change[cost_change['COUNTRY'].isin(WRRF_filtered['COUNTRY'].value_counts().head(50).index.tolist())]
-
-print([i for i in cost_change['COUNTRY'] if (i not in global_north_countries_regions) and (i not in global_south_countries_regions)])
+print([i for i in cost_min.index if (i not in global_north_countries_regions) and (i not in global_south_countries_regions)])
 
 global_north_countries_regions.append('Hong Kong')
 global_north_countries_regions.append('Czech Republic')
 global_north_countries_regions.append('Taiwan')
 
-assert(len([i for i in cost_change['COUNTRY'] if (i not in global_north_countries_regions) and (i not in global_south_countries_regions)]) == 0)
+assert(len([i for i in cost_min.index if (i not in global_north_countries_regions) and (i not in global_south_countries_regions)]) == 0)
 
-cost_change.loc[cost_change['COUNTRY'].isin(global_north_countries_regions), 'color'] = la
-cost_change.loc[cost_change['COUNTRY'].isin(global_south_countries_regions), 'color'] = y
+cost_min.loc[cost_min.index.isin(global_north_countries_regions), 'color'] = la
+cost_min.loc[cost_min.index.isin(global_south_countries_regions), 'color'] = y
+
+cost_max = WRRF_max.copy()
+cost_max = cost_max.set_index('COUNTRY').loc[country_order]
+
+assert (cost_max.index != country_order).sum() == 0
+
+print([i for i in cost_max.index if (i not in global_north_countries_regions) and (i not in global_south_countries_regions)])
+
+global_north_countries_regions.append('Hong Kong')
+global_north_countries_regions.append('Czech Republic')
+global_north_countries_regions.append('Taiwan')
+
+assert(len([i for i in cost_max.index if (i not in global_north_countries_regions) and (i not in global_south_countries_regions)]) == 0)
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 36
+plt.rcParams['ytick.labelsize'] = 36
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+
+fig, ax = plt.subplots(figsize=(10, 50))
+
+ax = plt.gca()
+
+ax.set_xlim([-300, 1500])
+ax.set_ylim([0.25, 50.75])
+
+ax.tick_params(axis='x', direction='inout', length=20, width=3, pad=5)
+ax.tick_params(axis='y', direction='inout', length=20, width=3, pad=5)
+
+index = np.arange(1, len(country_order)+1, 1)
+
+ax.barh(y=index+0.1875,
+        width=cost_max['C_cost_weighted_average'] - cost_min['C_cost_weighted_average'],
+        height=0.375,
+        color=lb,
+        edgecolor='k',
+        linewidth=3,
+        left=cost_min['C_cost_weighted_average'])
+
+ax.barh(y=index-0.1875,
+        width=cost_max['T_cost_NOAK_weighted_average'] - cost_min['T_cost_NOAK_weighted_average'],
+        height=0.375,
+        color=db,
+        edgecolor='k',
+        linewidth=3,
+        left=cost_min['T_cost_NOAK_weighted_average'])
+
+plt.xticks(np.arange(-300, 1800, 300), fontname='Arial')
+plt.yticks(index, cost_max['CNTRY_ISO'], fontname='Arial')
+
+ax.set_xlabel('$\mathbf{Cost}$ [\$·${tonne^{-1}}$]',
+              fontname='Arial', fontsize=36)
+
+ax_top = ax.twiny()
+
+ax_top.set_xlim([-300, 1500])
+
+ax_top.tick_params(axis='x', direction='inout', length=20, width=3, pad=5)
+
+plt.xticks(np.arange(-300, 1800, 300), fontname='Arial')
+plt.yticks(index, cost_max['CNTRY_ISO'], fontname='Arial')
+
+#%% cost change bars - data preparation
+
+cost_change = WRRF_mean.copy()
+cost_change['cost_difference'] = cost_change['T_cost_NOAK_weighted_average'] - cost_change['C_cost_weighted_average']
+cost_change = cost_change.set_index('COUNTRY').loc[country_order]
+
+assert (cost_change.index != country_order).sum() == 0
+
+print([i for i in cost_change.index if (i not in global_north_countries_regions) and (i not in global_south_countries_regions)])
+
+global_north_countries_regions.append('Hong Kong')
+global_north_countries_regions.append('Czech Republic')
+global_north_countries_regions.append('Taiwan')
+
+assert(len([i for i in cost_change.index if (i not in global_north_countries_regions) and (i not in global_south_countries_regions)]) == 0)
+
+cost_change.loc[cost_change.index.isin(global_north_countries_regions), 'color'] = la
+cost_change.loc[cost_change.index.isin(global_south_countries_regions), 'color'] = y
 
 #%% cost change bars - visualization
 
@@ -2571,12 +2655,12 @@ plt.rcParams.update({'mathtext.fontset':'custom'})
 plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
-fig, ax = plt.subplots(figsize=(10, 30))
+fig, ax = plt.subplots(figsize=(10, 50))
 
 ax = plt.gca()
 
-ax.set_xlim([-100, 400])
-ax.set_ylim([0, 51])
+ax.set_xlim([-100, 500])
+ax.set_ylim([0.25, 50.75])
 
 ax.plot([0, 0],
         [0, 51],
@@ -2586,15 +2670,16 @@ ax.plot([0, 0],
 ax.tick_params(axis='x', direction='inout', length=20, width=3, pad=5)
 ax.tick_params(axis='y', direction='inout', length=20, width=3, pad=5)
 
-index = np.arange(1, len(cost_change)+1, 1)
+index = np.arange(1, len(country_order)+1, 1)
 
 ax.barh(y=index,
         width=cost_change['cost_difference'],
-        height=0.7,
+        height=0.75,
         color=cost_change['color'],
         edgecolor='k',
         linewidth=3)
 
+plt.xticks(np.arange(-100, 600, 100), fontname='Arial')
 plt.yticks(index, cost_change['CNTRY_ISO'], fontname='Arial')
 
 ax.set_xlabel('$\mathbf{Cost\ change}$ [\$·${tonne^{-1}}$]',
@@ -2602,27 +2687,170 @@ ax.set_xlabel('$\mathbf{Cost\ change}$ [\$·${tonne^{-1}}$]',
 
 ax_top = ax.twiny()
 
-ax_top.set_xlim([-100, 400])
+ax_top.set_xlim([-100, 500])
 
 ax_top.tick_params(axis='x', direction='inout', length=20, width=3, pad=5)
 
+plt.xticks(np.arange(-100, 600, 100), fontname='Arial')
+plt.yticks(index, cost_change['CNTRY_ISO'], fontname='Arial')
+
 #%% CI ranges for C and T systems
 
-# TODO: on one figure, can make this figure and the CI change figure taller if needed
+CI_min = WRRF_min.copy()
+CI_min = CI_min.set_index('COUNTRY').loc[country_order]
 
+assert (CI_min.index != country_order).sum() == 0
+
+print([i for i in CI_min.index if (i not in global_north_countries_regions) and (i not in global_south_countries_regions)])
+
+global_north_countries_regions.append('Hong Kong')
+global_north_countries_regions.append('Czech Republic')
+global_north_countries_regions.append('Taiwan')
+
+assert(len([i for i in CI_min.index if (i not in global_north_countries_regions) and (i not in global_south_countries_regions)]) == 0)
+
+CI_min.loc[CI_min.index.isin(global_north_countries_regions), 'color'] = la
+CI_min.loc[CI_min.index.isin(global_south_countries_regions), 'color'] = y
+
+CI_max = WRRF_max.copy()
+CI_max = CI_max.set_index('COUNTRY').loc[country_order]
+
+assert (CI_max.index != country_order).sum() == 0
+
+print([i for i in CI_max.index if (i not in global_north_countries_regions) and (i not in global_south_countries_regions)])
+
+global_north_countries_regions.append('Hong Kong')
+global_north_countries_regions.append('Czech Republic')
+global_north_countries_regions.append('Taiwan')
+
+assert(len([i for i in CI_max.index if (i not in global_north_countries_regions) and (i not in global_south_countries_regions)]) == 0)
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 36
+plt.rcParams['ytick.labelsize'] = 36
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+
+fig, ax = plt.subplots(figsize=(10, 50))
+
+ax = plt.gca()
+
+ax.set_xlim([-3, 2.5])
+ax.set_ylim([0.25, 50.75])
+
+ax.tick_params(axis='x', direction='inout', length=20, width=3, pad=5)
+ax.tick_params(axis='y', direction='inout', length=20, width=3, pad=5)
+
+index = np.arange(1, len(country_order)+1, 1)
+
+ax.barh(y=index+0.1875,
+        width=(CI_max['C_CI_weighted_average'] - CI_min['C_CI_weighted_average'])/1000,
+        height=0.375,
+        color=lg,
+        edgecolor='k',
+        linewidth=3,
+        left=CI_min['C_CI_weighted_average']/1000)
+
+ax.barh(y=index-0.1875,
+        width=(CI_max['T_CI_NOAK_weighted_average'] - CI_min['T_CI_NOAK_weighted_average'])/1000,
+        height=0.375,
+        color=dg,
+        edgecolor='k',
+        linewidth=3,
+        left=CI_min['T_CI_NOAK_weighted_average']/1000)
+
+plt.xticks(np.arange(-3, 4, 1), fontname='Arial')
+plt.yticks(index, CI_max['CNTRY_ISO'], fontname='Arial')
+
+ax.set_xlabel('$\mathbf{CI}$ [tonne CO${_{2}}$e·${tonne^{-1}}$]',
+              fontname='Arial', fontsize=36)
+
+ax_top = ax.twiny()
+
+ax_top.set_xlim([-3, 2.5])
+
+ax_top.tick_params(axis='x', direction='inout', length=20, width=3, pad=5)
+
+plt.xticks(np.arange(-3, 4, 1), fontname='Arial')
+plt.yticks(index, CI_max['CNTRY_ISO'], fontname='Arial')
 
 #%% CI change bars - data preparation
 
-# TODO: add
+CI_change = WRRF_mean.copy()
+CI_change['CI_difference'] = CI_change['T_CI_NOAK_weighted_average'] - CI_change['C_CI_weighted_average']
+CI_change = CI_change.set_index('COUNTRY').loc[country_order]
 
+assert (CI_change.index != country_order).sum() == 0
+
+print([i for i in CI_change.index if (i not in global_north_countries_regions) and (i not in global_south_countries_regions)])
+
+global_north_countries_regions.append('Hong Kong')
+global_north_countries_regions.append('Czech Republic')
+global_north_countries_regions.append('Taiwan')
+
+assert(len([i for i in CI_change.index if (i not in global_north_countries_regions) and (i not in global_south_countries_regions)]) == 0)
+
+CI_change.loc[CI_change.index.isin(global_north_countries_regions), 'color'] = la
+CI_change.loc[CI_change.index.isin(global_south_countries_regions), 'color'] = y
 
 #%% CI change bars - visualization
 
-# TODO: add
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 36
+plt.rcParams['ytick.labelsize'] = 36
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
 
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
+fig, ax = plt.subplots(figsize=(10, 50))
 
+ax = plt.gca()
 
+ax.set_xlim([-900, 0])
+ax.set_ylim([0.25, 50.75])
+
+ax.plot([0, 0],
+        [0, 51],
+        c='k',
+        linewidth=3)
+
+ax.tick_params(axis='x', direction='inout', length=20, width=3, pad=5)
+ax.tick_params(axis='y', direction='inout', length=20, width=3, pad=5)
+
+index = np.arange(1, len(country_order)+1, 1)
+
+ax.barh(y=index,
+        width=CI_change['CI_difference'],
+        height=0.75,
+        color=CI_change['color'],
+        edgecolor='k',
+        linewidth=3)
+
+plt.xticks(np.arange(-900, 150, 150), fontname='Arial')
+plt.yticks(index, CI_change['CNTRY_ISO'], fontname='Arial')
+
+ax.set_xlabel('$\mathbf{CI\ change}$ [kg CO${_{2}}$e·${tonne^{-1}}$]',
+              fontname='Arial', fontsize=36)
+
+ax_top = ax.twiny()
+
+ax_top.set_xlim([-900, 0])
+
+ax_top.tick_params(axis='x', direction='inout', length=20, width=3, pad=5)
+
+plt.xticks(np.arange(-900, 150, 150), fontname='Arial')
+plt.yticks(index, CI_change['CNTRY_ISO'], fontname='Arial')
 
 #%% global equity
 
