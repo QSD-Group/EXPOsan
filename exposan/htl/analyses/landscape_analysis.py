@@ -83,6 +83,49 @@ dp = Color('dark_purple', (76, 56, 90)).HEX
 world = gpd.read_file(folder + 'analyses/World Bank Official Boundaries - Admin 0_all_layers/WB_GAD_ADM0_complete.shp')
 
 # =============================================================================
+# global north / south countries and regions
+# =============================================================================
+global_north_countries_regions = ['United States','Russia','Mexico','Japan','Turkey','Germany',
+                                  'United Kingdom','France','Italy','South Korea','Spain',
+                                  'Canada','Ukraine','Poland','Uzbekistan','Australia','Kazakhstan',
+                                  'Romania','Netherlands','Belgium','Sweden','Portugal','Azerbaijan',
+                                  'Greece','Hungary','Israel','Austria','Belarus','Switzerland',
+                                  'Kyrgyzstan','Bulgaria','Serbia','Denmark','Finland','Norway',
+                                  'Slovakia','Ireland','New Zealand','Croatia','Georgia',
+                                  'Moldova','Armenia','Lithuania','Albania','Slovenia','Latvia',
+                                  'North Macedonia','Cyprus','Estonia','Luxembourg','Montenegro',
+                                  'Malta','Iceland','Andorra','Liechtenstein','Monaco','San Marino',
+                                  'Palau','Tuvalu','Vatican City']
+
+global_south_countries_regions = ['India','China','Indonesia','Pakistan','Nigeria','Brazil',
+                                  'Bangladesh','Ethiopia','Egypt','Philippines','DR Congo',
+                                  'Vietnam','Iran','Thailand','Tanzania','South Africa',
+                                  'Kenya','Myanmar','Colombia','Sudan','Uganda','Algeria',
+                                  'Iraq','Argentina','Afghanistan','Yemen','Angola','Morocco',
+                                  'Malaysia','Mozambique','Ghana','Peru','Saudi Arabia',
+                                  'Madagascar','Ivory Coast','Cameroon','Nepal','Venezuela',
+                                  'Niger','North Korea','Syria','Mali','Burkina Faso','Sri Lanka',
+                                  'Malawi','Zambia','Chad','Chile','Somalia','Senegal',
+                                  'Guatemala','Ecuador','Cambodia','Zimbabwe','Guinea',
+                                  'Benin','Rwanda','Burundi','Bolivia','Tunisia','South Sudan',
+                                  'Haiti','Jordan','Dominican Republic','United Arab Emirates',
+                                  'Honduras','Cuba','Tajikistan','Papua New Guinea','Togo',
+                                  'Sierra Leone','Laos','Turkmenistan','Libya','Paraguay',
+                                  'Nicaragua','Republic of the Congo','El Salvador','Singapore',
+                                  'Lebanon','Liberia','Palestine','Central African Republic',
+                                  'Oman','Mauritania','Costa Rica','Kuwait','Panama','Eritrea',
+                                  'Mongolia','Uruguay','Bosnia and Herzegovina','Qatar',
+                                  'Namibia','Jamaica','Gambia','Gabon','Botswana','Lesotho',
+                                  'Guinea-Bissau','Equatorial Guinea','Bahrain','Trinidad and Tobago',
+                                  'Timor-Leste','Mauritius','Eswatini','Djibouti','Fiji',
+                                  'Comoros','Solomon Islands','Guyana','Bhutan','Suriname',
+                                  'Maldives','Cape Verde','Brunei','Belize','Bahamas','Vanuatu',
+                                  'Barbados','Sao Tome and Principe','Samoa','Saint Lucia',
+                                  'Kiribati','Seychelles','Grenada','Micronesia','Tonga',
+                                  'Saint Vincent and the Grenadines','Antigua and Barbuda',
+                                  'Dominica','Saint Kitts and Nevis','Marshall Islands','Nauru']
+
+# =============================================================================
 # WRRF
 # =============================================================================
 WRRF = pd.read_csv(folder + 'analyses/HydroWASTE_v10/HydroWASTE_v10.csv', encoding='latin-1')
@@ -1945,11 +1988,8 @@ for cap in bp['caps']:
 
 #%% country average
 
-# TODO: as a kind of uncertainty analysis, show the minimum values on maps in the SI
-
 filterwarnings('ignore')
 
-# TODO: the cost for T NOAK with carbon credits can be calculated using T NOAK cost, T NOAK CI, and C CI
 C_cost_mean = []
 C_CI_mean = []
 T_cost_FOAK_mean = []
@@ -1957,13 +1997,26 @@ T_CI_FOAK_mean = []
 T_cost_NOAK_mean = []
 T_CI_NOAK_mean = []
 
-# TODO: the cost for T NOAK with carbon credits can be calculated using T NOAK cost, T NOAK CI, and C CI
+C_cost_median = []
+C_CI_median = []
+T_cost_FOAK_median = []
+T_CI_FOAK_median = []
+T_cost_NOAK_median = []
+T_CI_NOAK_median = []
+
 C_cost_min = []
 C_CI_min = []
 T_cost_FOAK_min = []
 T_CI_FOAK_min = []
 T_cost_NOAK_min = []
 T_CI_NOAK_min = []
+
+C_cost_max = []
+C_CI_max = []
+T_cost_FOAK_max = []
+T_CI_FOAK_max = []
+T_cost_NOAK_max = []
+T_CI_NOAK_max = []
 
 # run in different consoles to speed up
 # do not run all together since the application memory is not enough
@@ -1992,10 +2045,14 @@ for i in range(3000, 6000):
                                                exclude=(sys.flowsheet.raw_wastewater,),
                                                annual=True)['GlobalWarming']/sys.flowsheet.raw_wastewater.F_vol/2.3141471786573806)
     
-    C_cost_mean.append(np.median(C_TEA))
-    C_CI_mean.append(np.median(C_LCA))
+    C_cost_mean.append(np.mean(C_TEA))
+    C_CI_mean.append(np.mean(C_LCA))
+    C_cost_median.append(np.median(C_TEA))
+    C_CI_median.append(np.median(C_LCA))
     C_cost_min.append(np.min(C_TEA))
     C_CI_min.append(np.min(C_LCA))
+    C_cost_max.append(np.max(C_TEA))
+    C_CI_max.append(np.max(C_LCA))
     
     T_FOAK_TEA = []
     T_FOAK_LCA = []
@@ -2011,10 +2068,14 @@ for i in range(3000, 6000):
                                                     exclude=(sys.flowsheet.raw_wastewater,),
                                                     annual=True)['GlobalWarming']/sys.flowsheet.raw_wastewater.F_vol/2.3141471786573806)
     
-    T_cost_FOAK_mean.append(np.median(T_FOAK_TEA))
-    T_CI_FOAK_mean.append(np.median(T_FOAK_LCA))
+    T_cost_FOAK_mean.append(np.mean(T_FOAK_TEA))
+    T_CI_FOAK_mean.append(np.mean(T_FOAK_LCA))
+    T_cost_FOAK_median.append(np.median(T_FOAK_TEA))
+    T_CI_FOAK_median.append(np.median(T_FOAK_LCA))
     T_cost_FOAK_min.append(np.min(T_FOAK_TEA))
     T_CI_FOAK_min.append(np.min(T_FOAK_LCA))
+    T_cost_FOAK_max.append(np.max(T_FOAK_TEA))
+    T_CI_FOAK_max.append(np.max(T_FOAK_LCA))
     
     T_NOAK_TEA = []
     T_NOAK_LCA = []
@@ -2030,74 +2091,248 @@ for i in range(3000, 6000):
                                                     exclude=(sys.flowsheet.raw_wastewater,),
                                                     annual=True)['GlobalWarming']/sys.flowsheet.raw_wastewater.F_vol/2.3141471786573806)
     
-    T_cost_NOAK_mean.append(np.median(T_NOAK_TEA))
-    T_CI_NOAK_mean.append(np.median(T_NOAK_LCA))
+    T_cost_NOAK_mean.append(np.mean(T_NOAK_TEA))
+    T_CI_NOAK_mean.append(np.mean(T_NOAK_LCA))
+    T_cost_NOAK_median.append(np.median(T_NOAK_TEA))
+    T_CI_NOAK_median.append(np.median(T_NOAK_LCA))
     T_cost_NOAK_min.append(np.min(T_NOAK_TEA))
     T_CI_NOAK_min.append(np.min(T_NOAK_LCA))
+    T_cost_NOAK_max.append(np.max(T_NOAK_TEA))
+    T_CI_NOAK_max.append(np.max(T_NOAK_LCA))
 
-country_mean_result = pd.DataFrame({'C_cost_mean': C_cost_mean,
-                                    'C_CI_mean': C_CI_mean,
-                                    'T_cost_FOAK_mean': T_cost_FOAK_mean,
-                                    'T_CI_FOAK_mean': T_CI_FOAK_mean,
-                                    'T_cost_NOAK_mean': T_cost_NOAK_mean,
-                                    'T_CI_NOAK_mean': T_CI_NOAK_mean})
+country_mean = pd.DataFrame({'C_cost_mean': C_cost_mean,
+                             'C_CI_mean': C_CI_mean,
+                             'T_cost_FOAK_mean': T_cost_FOAK_mean,
+                             'T_CI_FOAK_mean': T_CI_FOAK_mean,
+                             'T_cost_NOAK_mean': T_cost_NOAK_mean,
+                             'T_CI_NOAK_mean': T_CI_NOAK_mean})
 
-country_min_result = pd.DataFrame({'C_cost_min': C_cost_min,
-                                    'C_CI_min': C_CI_min,
-                                    'T_cost_FOAK_min': T_cost_FOAK_min,
-                                    'T_CI_FOAK_min': T_CI_FOAK_min,
-                                    'T_cost_NOAK_min': T_cost_NOAK_min,
-                                    'T_CI_NOAK_min': T_CI_NOAK_min})
+country_median = pd.DataFrame({'C_cost_median': C_cost_median,
+                               'C_CI_median': C_CI_median,
+                               'T_cost_FOAK_median': T_cost_FOAK_median,
+                               'T_CI_FOAK_median': T_CI_FOAK_median,
+                               'T_cost_NOAK_median': T_cost_NOAK_median,
+                               'T_CI_NOAK_median': T_CI_NOAK_median})
 
-country_mean_result.to_excel(folder + f'results/country_mean_result_{date.today()}_{i}.xlsx')
+country_min = pd.DataFrame({'C_cost_min': C_cost_min,
+                            'C_CI_min': C_CI_min,
+                            'T_cost_FOAK_min': T_cost_FOAK_min,
+                            'T_CI_FOAK_min': T_CI_FOAK_min,
+                            'T_cost_NOAK_min': T_cost_NOAK_min,
+                            'T_CI_NOAK_min': T_CI_NOAK_min})
 
-country_min_result.to_excel(folder + f'results/country_min_result_{date.today()}_{i}.xlsx')
+country_max = pd.DataFrame({'C_cost_max': C_cost_max,
+                            'C_CI_max': C_CI_max,
+                            'T_cost_FOAK_max': T_cost_FOAK_max,
+                            'T_CI_FOAK_max': T_CI_FOAK_max,
+                            'T_cost_NOAK_max': T_cost_NOAK_max,
+                            'T_CI_NOAK_max': T_CI_NOAK_max})
+
+country_mean.to_excel(folder + f'results/country_mean_{date.today()}_{i}.xlsx')
+
+country_median.to_excel(folder + f'results/country_median_{date.today()}_{i}.xlsx')
+
+country_min.to_excel(folder + f'results/country_min_{date.today()}_{i}.xlsx')
+
+country_max.to_excel(folder + f'results/country_max_{date.today()}_{i}.xlsx')
 
 #%% merge country results
 
-country_result_1 = pd.read_excel(folder + 'results/country_results_2025-09-15_2999.xlsx')
-country_result_2 = pd.read_excel(folder + 'results/country_results_2025-09-15_5999.xlsx')
-country_result_3 = pd.read_excel(folder + 'results/country_results_2025-09-15_8999.xlsx')
-country_result_4 = pd.read_excel(folder + 'results/country_results_2025-09-15_11999.xlsx')
-country_result_5 = pd.read_excel(folder + 'results/country_results_2025-09-15_13999.xlsx')
-country_result_6 = pd.read_excel(folder + 'results/country_results_2025-09-15_15964.xlsx')
+# =============================================================================
+# mean
+# =============================================================================
+country_mean_1 = pd.read_excel(folder + 'results/country_mean_2025-10-16_2999.xlsx')
+country_mean_2 = pd.read_excel(folder + 'results/country_mean_2025-10-16_5999.xlsx')
+country_mean_3 = pd.read_excel(folder + 'results/country_mean_2025-10-16_8999.xlsx')
+country_mean_4 = pd.read_excel(folder + 'results/country_mean_2025-10-16_11999.xlsx')
+country_mean_5 = pd.read_excel(folder + 'results/country_mean_2025-10-16_13999.xlsx')
+country_mean_6 = pd.read_excel(folder + 'results/country_mean_2025-10-16_15964.xlsx')
 
-integrated_country_result = pd.concat([country_result_1, country_result_2, country_result_3, country_result_4, country_result_5, country_result_6])
-integrated_country_result.reset_index(inplace=True)
-integrated_country_result = integrated_country_result[['C_cost_mean','C_CI_mean','T_cost_FOAK_mean','T_CI_FOAK_mean','T_cost_NOAK_mean','T_CI_NOAK_mean']]
+integrated_country_mean = pd.concat([country_mean_1, country_mean_2, country_mean_3, country_mean_4, country_mean_5, country_mean_6])
+integrated_country_mean.reset_index(inplace=True)
+integrated_country_mean = integrated_country_mean[['C_cost_mean','C_CI_mean','T_cost_FOAK_mean','T_CI_FOAK_mean','T_cost_NOAK_mean','T_CI_NOAK_mean']]
 
-WRRF_result = pd.concat([WRRF_filtered, integrated_country_result], axis=1)
+WRRF_mean = pd.concat([WRRF_filtered, integrated_country_mean], axis=1)
 
-WRRF_result['C_cost_times_mass_flow'] = WRRF_result['C_cost_mean']*WRRF_result['dry_solids_tonne_per_day']
-WRRF_result['C_CI_times_mass_flow'] = WRRF_result['C_CI_mean']*WRRF_result['dry_solids_tonne_per_day']
-WRRF_result['T_cost_FOAK_times_mass_flow'] = WRRF_result['T_cost_FOAK_mean']*WRRF_result['dry_solids_tonne_per_day']
-WRRF_result['T_CI_FOAK_times_mass_flow'] = WRRF_result['T_CI_FOAK_mean']*WRRF_result['dry_solids_tonne_per_day']
-WRRF_result['T_cost_NOAK_times_mass_flow'] = WRRF_result['T_cost_NOAK_mean']*WRRF_result['dry_solids_tonne_per_day']
-WRRF_result['T_CI_NOAK_times_mass_flow'] = WRRF_result['T_CI_NOAK_mean']*WRRF_result['dry_solids_tonne_per_day']
+WRRF_mean['C_cost_times_mass_flow'] = WRRF_mean['C_cost_mean']*WRRF_mean['dry_solids_tonne_per_day']
+WRRF_mean['C_CI_times_mass_flow'] = WRRF_mean['C_CI_mean']*WRRF_mean['dry_solids_tonne_per_day']
+WRRF_mean['T_cost_FOAK_times_mass_flow'] = WRRF_mean['T_cost_FOAK_mean']*WRRF_mean['dry_solids_tonne_per_day']
+WRRF_mean['T_CI_FOAK_times_mass_flow'] = WRRF_mean['T_CI_FOAK_mean']*WRRF_mean['dry_solids_tonne_per_day']
+WRRF_mean['T_cost_NOAK_times_mass_flow'] = WRRF_mean['T_cost_NOAK_mean']*WRRF_mean['dry_solids_tonne_per_day']
+WRRF_mean['T_CI_NOAK_times_mass_flow'] = WRRF_mean['T_CI_NOAK_mean']*WRRF_mean['dry_solids_tonne_per_day']
 
-WRRF_result = WRRF_result[['COUNTRY','dry_solids_tonne_per_day','C_cost_times_mass_flow','C_CI_times_mass_flow','T_cost_FOAK_times_mass_flow','T_CI_FOAK_times_mass_flow','T_cost_NOAK_times_mass_flow','T_CI_NOAK_times_mass_flow']]
+WRRF_mean = WRRF_mean[['COUNTRY','dry_solids_tonne_per_day','C_cost_times_mass_flow','C_CI_times_mass_flow',
+                       'T_cost_FOAK_times_mass_flow','T_CI_FOAK_times_mass_flow','T_cost_NOAK_times_mass_flow','T_CI_NOAK_times_mass_flow']]
 
-WRRF_result = WRRF_result.groupby('COUNTRY').sum()
+WRRF_mean = WRRF_mean.groupby('COUNTRY').sum()
 
-WRRF_result['C_cost_weighted_average'] = WRRF_result['C_cost_times_mass_flow']/WRRF_result['dry_solids_tonne_per_day']
-WRRF_result['C_CI_weighted_average'] = WRRF_result['C_CI_times_mass_flow']/WRRF_result['dry_solids_tonne_per_day']
-WRRF_result['T_cost_FOAK_weighted_average'] = WRRF_result['T_cost_FOAK_times_mass_flow']/WRRF_result['dry_solids_tonne_per_day']
-WRRF_result['T_CI_FOAK_weighted_average'] = WRRF_result['T_CI_FOAK_times_mass_flow']/WRRF_result['dry_solids_tonne_per_day']
-WRRF_result['T_cost_NOAK_weighted_average'] = WRRF_result['T_cost_NOAK_times_mass_flow']/WRRF_result['dry_solids_tonne_per_day']
-WRRF_result['T_CI_NOAK_weighted_average'] = WRRF_result['T_CI_NOAK_times_mass_flow']/WRRF_result['dry_solids_tonne_per_day']
+WRRF_mean['C_cost_weighted_average'] = WRRF_mean['C_cost_times_mass_flow']/WRRF_mean['dry_solids_tonne_per_day']
+WRRF_mean['C_CI_weighted_average'] = WRRF_mean['C_CI_times_mass_flow']/WRRF_mean['dry_solids_tonne_per_day']
+WRRF_mean['T_cost_FOAK_weighted_average'] = WRRF_mean['T_cost_FOAK_times_mass_flow']/WRRF_mean['dry_solids_tonne_per_day']
+WRRF_mean['T_CI_FOAK_weighted_average'] = WRRF_mean['T_CI_FOAK_times_mass_flow']/WRRF_mean['dry_solids_tonne_per_day']
+WRRF_mean['T_cost_NOAK_weighted_average'] = WRRF_mean['T_cost_NOAK_times_mass_flow']/WRRF_mean['dry_solids_tonne_per_day']
+WRRF_mean['T_CI_NOAK_weighted_average'] = WRRF_mean['T_CI_NOAK_times_mass_flow']/WRRF_mean['dry_solids_tonne_per_day']
 
-WRRF_result = WRRF_result[['C_cost_weighted_average','C_CI_weighted_average','T_cost_FOAK_weighted_average',
-                           'T_CI_FOAK_weighted_average', 'T_cost_NOAK_weighted_average', 'T_CI_NOAK_weighted_average']]
+WRRF_mean = WRRF_mean[['C_cost_weighted_average','C_CI_weighted_average','T_cost_FOAK_weighted_average',
+                       'T_CI_FOAK_weighted_average', 'T_cost_NOAK_weighted_average', 'T_CI_NOAK_weighted_average']]
 
-WRRF_result.reset_index(inplace=True)
+WRRF_mean['carbon_credit_needed'] = (WRRF_mean['T_cost_NOAK_weighted_average'] - WRRF_mean['C_cost_weighted_average'])/(WRRF_mean['C_CI_weighted_average'] - WRRF_mean['T_CI_NOAK_weighted_average'])*1000
 
-WRRF_result = WRRF_result.merge(WRRF_filtered[['COUNTRY','CNTRY_ISO']].drop_duplicates(), how='left', on='COUNTRY')
+WRRF_mean.reset_index(inplace=True)
+
+WRRF_mean = WRRF_mean.merge(WRRF_filtered[['COUNTRY','CNTRY_ISO']].drop_duplicates(), how='left', on='COUNTRY')
 
 # TODO: make sure no meaningful results are removed after merging these two datasets
 # TODO: may need to check the country code with https://www.iban.com/country-codes
-world_result = world.merge(WRRF_result, how='left', left_on='ISO_A3', right_on='CNTRY_ISO')
+world_mean = world.merge(WRRF_mean, how='left', left_on='ISO_A3', right_on='CNTRY_ISO')
 
-#%% world map visualization - C cost
+# =============================================================================
+# median
+# =============================================================================
+country_median_1 = pd.read_excel(folder + 'results/country_median_2025-10-16_2999.xlsx')
+country_median_2 = pd.read_excel(folder + 'results/country_median_2025-10-16_5999.xlsx')
+country_median_3 = pd.read_excel(folder + 'results/country_median_2025-10-16_8999.xlsx')
+country_median_4 = pd.read_excel(folder + 'results/country_median_2025-10-16_11999.xlsx')
+country_median_5 = pd.read_excel(folder + 'results/country_median_2025-10-16_13999.xlsx')
+country_median_6 = pd.read_excel(folder + 'results/country_median_2025-10-16_15964.xlsx')
+
+integrated_country_median = pd.concat([country_median_1, country_median_2, country_median_3, country_median_4, country_median_5, country_median_6])
+integrated_country_median.reset_index(inplace=True)
+integrated_country_median = integrated_country_median[['C_cost_median','C_CI_median','T_cost_FOAK_median','T_CI_FOAK_median','T_cost_NOAK_median','T_CI_NOAK_median']]
+
+WRRF_median = pd.concat([WRRF_filtered, integrated_country_median], axis=1)
+
+WRRF_median['C_cost_times_mass_flow'] = WRRF_median['C_cost_median']*WRRF_median['dry_solids_tonne_per_day']
+WRRF_median['C_CI_times_mass_flow'] = WRRF_median['C_CI_median']*WRRF_median['dry_solids_tonne_per_day']
+WRRF_median['T_cost_FOAK_times_mass_flow'] = WRRF_median['T_cost_FOAK_median']*WRRF_median['dry_solids_tonne_per_day']
+WRRF_median['T_CI_FOAK_times_mass_flow'] = WRRF_median['T_CI_FOAK_median']*WRRF_median['dry_solids_tonne_per_day']
+WRRF_median['T_cost_NOAK_times_mass_flow'] = WRRF_median['T_cost_NOAK_median']*WRRF_median['dry_solids_tonne_per_day']
+WRRF_median['T_CI_NOAK_times_mass_flow'] = WRRF_median['T_CI_NOAK_median']*WRRF_median['dry_solids_tonne_per_day']
+
+WRRF_median = WRRF_median[['COUNTRY','dry_solids_tonne_per_day','C_cost_times_mass_flow','C_CI_times_mass_flow',
+                           'T_cost_FOAK_times_mass_flow','T_CI_FOAK_times_mass_flow','T_cost_NOAK_times_mass_flow','T_CI_NOAK_times_mass_flow']]
+
+WRRF_median = WRRF_median.groupby('COUNTRY').sum()
+
+WRRF_median['C_cost_weighted_average'] = WRRF_median['C_cost_times_mass_flow']/WRRF_median['dry_solids_tonne_per_day']
+WRRF_median['C_CI_weighted_average'] = WRRF_median['C_CI_times_mass_flow']/WRRF_median['dry_solids_tonne_per_day']
+WRRF_median['T_cost_FOAK_weighted_average'] = WRRF_median['T_cost_FOAK_times_mass_flow']/WRRF_median['dry_solids_tonne_per_day']
+WRRF_median['T_CI_FOAK_weighted_average'] = WRRF_median['T_CI_FOAK_times_mass_flow']/WRRF_median['dry_solids_tonne_per_day']
+WRRF_median['T_cost_NOAK_weighted_average'] = WRRF_median['T_cost_NOAK_times_mass_flow']/WRRF_median['dry_solids_tonne_per_day']
+WRRF_median['T_CI_NOAK_weighted_average'] = WRRF_median['T_CI_NOAK_times_mass_flow']/WRRF_median['dry_solids_tonne_per_day']
+
+WRRF_median = WRRF_median[['C_cost_weighted_average','C_CI_weighted_average','T_cost_FOAK_weighted_average',
+                           'T_CI_FOAK_weighted_average', 'T_cost_NOAK_weighted_average', 'T_CI_NOAK_weighted_average']]
+
+WRRF_median['carbon_credit_needed'] = (WRRF_median['T_cost_NOAK_weighted_average'] - WRRF_median['C_cost_weighted_average'])/(WRRF_median['C_CI_weighted_average'] - WRRF_median['T_CI_NOAK_weighted_average'])*1000
+
+WRRF_median.reset_index(inplace=True)
+
+WRRF_median = WRRF_median.merge(WRRF_filtered[['COUNTRY','CNTRY_ISO']].drop_duplicates(), how='left', on='COUNTRY')
+
+# TODO: make sure no meaningful results are removed after merging these two datasets
+# TODO: may need to check the country code with https://www.iban.com/country-codes
+world_median = world.merge(WRRF_median, how='left', left_on='ISO_A3', right_on='CNTRY_ISO')
+
+# =============================================================================
+# min
+# =============================================================================
+# TODO: cost and CI minimums may not come from the same system
+country_min_1 = pd.read_excel(folder + 'results/country_min_2025-10-12_2999.xlsx')
+country_min_2 = pd.read_excel(folder + 'results/country_min_2025-10-12_5999.xlsx')
+country_min_3 = pd.read_excel(folder + 'results/country_min_2025-10-12_8999.xlsx')
+country_min_4 = pd.read_excel(folder + 'results/country_min_2025-10-12_11999.xlsx')
+country_min_5 = pd.read_excel(folder + 'results/country_min_2025-10-12_13999.xlsx')
+country_min_6 = pd.read_excel(folder + 'results/country_min_2025-10-12_15964.xlsx')
+
+integrated_country_min = pd.concat([country_min_1, country_min_2, country_min_3, country_min_4, country_min_5, country_min_6])
+integrated_country_min.reset_index(inplace=True)
+integrated_country_min = integrated_country_min[['C_cost_min','C_CI_min','T_cost_FOAK_min','T_CI_FOAK_min','T_cost_NOAK_min','T_CI_NOAK_min']]
+
+WRRF_min = pd.concat([WRRF_filtered, integrated_country_min], axis=1)
+
+WRRF_min['C_cost_times_mass_flow'] = WRRF_min['C_cost_min']*WRRF_min['dry_solids_tonne_per_day']
+WRRF_min['C_CI_times_mass_flow'] = WRRF_min['C_CI_min']*WRRF_min['dry_solids_tonne_per_day']
+WRRF_min['T_cost_FOAK_times_mass_flow'] = WRRF_min['T_cost_FOAK_min']*WRRF_min['dry_solids_tonne_per_day']
+WRRF_min['T_CI_FOAK_times_mass_flow'] = WRRF_min['T_CI_FOAK_min']*WRRF_min['dry_solids_tonne_per_day']
+WRRF_min['T_cost_NOAK_times_mass_flow'] = WRRF_min['T_cost_NOAK_min']*WRRF_min['dry_solids_tonne_per_day']
+WRRF_min['T_CI_NOAK_times_mass_flow'] = WRRF_min['T_CI_NOAK_min']*WRRF_min['dry_solids_tonne_per_day']
+
+WRRF_min = WRRF_min[['COUNTRY','dry_solids_tonne_per_day','C_cost_times_mass_flow','C_CI_times_mass_flow',
+                     'T_cost_FOAK_times_mass_flow','T_CI_FOAK_times_mass_flow','T_cost_NOAK_times_mass_flow','T_CI_NOAK_times_mass_flow']]
+
+WRRF_min = WRRF_min.groupby('COUNTRY').sum()
+
+WRRF_min['C_cost_weighted_average'] = WRRF_min['C_cost_times_mass_flow']/WRRF_min['dry_solids_tonne_per_day']
+WRRF_min['C_CI_weighted_average'] = WRRF_min['C_CI_times_mass_flow']/WRRF_min['dry_solids_tonne_per_day']
+WRRF_min['T_cost_FOAK_weighted_average'] = WRRF_min['T_cost_FOAK_times_mass_flow']/WRRF_min['dry_solids_tonne_per_day']
+WRRF_min['T_CI_FOAK_weighted_average'] = WRRF_min['T_CI_FOAK_times_mass_flow']/WRRF_min['dry_solids_tonne_per_day']
+WRRF_min['T_cost_NOAK_weighted_average'] = WRRF_min['T_cost_NOAK_times_mass_flow']/WRRF_min['dry_solids_tonne_per_day']
+WRRF_min['T_CI_NOAK_weighted_average'] = WRRF_min['T_CI_NOAK_times_mass_flow']/WRRF_min['dry_solids_tonne_per_day']
+
+WRRF_min = WRRF_min[['C_cost_weighted_average','C_CI_weighted_average','T_cost_FOAK_weighted_average',
+                     'T_CI_FOAK_weighted_average', 'T_cost_NOAK_weighted_average', 'T_CI_NOAK_weighted_average']]
+
+WRRF_min['carbon_credit_needed'] = (WRRF_min['T_cost_NOAK_weighted_average'] - WRRF_min['C_cost_weighted_average'])/(WRRF_min['C_CI_weighted_average'] - WRRF_min['T_CI_NOAK_weighted_average'])*1000
+
+WRRF_min.reset_index(inplace=True)
+
+WRRF_min = WRRF_min.merge(WRRF_filtered[['COUNTRY','CNTRY_ISO']].drop_duplicates(), how='left', on='COUNTRY')
+
+# TODO: make sure no meaningful results are removed after merging these two datasets
+# TODO: may need to check the country code with https://www.iban.com/country-codes
+world_min = world.merge(WRRF_min, how='left', left_on='ISO_A3', right_on='CNTRY_ISO')
+
+# =============================================================================
+# max
+# =============================================================================
+# TODO: cost and CI maximums may not come from the same system
+country_max_1 = pd.read_excel(folder + 'results/country_max_2025-10-12_2999.xlsx')
+country_max_2 = pd.read_excel(folder + 'results/country_max_2025-10-12_5999.xlsx')
+country_max_3 = pd.read_excel(folder + 'results/country_max_2025-10-12_8999.xlsx')
+country_max_4 = pd.read_excel(folder + 'results/country_max_2025-10-12_11999.xlsx')
+country_max_5 = pd.read_excel(folder + 'results/country_max_2025-10-12_13999.xlsx')
+country_max_6 = pd.read_excel(folder + 'results/country_max_2025-10-12_15964.xlsx')
+
+integrated_country_max = pd.concat([country_max_1, country_max_2, country_max_3, country_max_4, country_max_5, country_max_6])
+integrated_country_max.reset_index(inplace=True)
+integrated_country_max = integrated_country_max[['C_cost_max','C_CI_max','T_cost_FOAK_max','T_CI_FOAK_max','T_cost_NOAK_max','T_CI_NOAK_max']]
+
+WRRF_max = pd.concat([WRRF_filtered, integrated_country_max], axis=1)
+
+WRRF_max['C_cost_times_mass_flow'] = WRRF_max['C_cost_max']*WRRF_max['dry_solids_tonne_per_day']
+WRRF_max['C_CI_times_mass_flow'] = WRRF_max['C_CI_max']*WRRF_max['dry_solids_tonne_per_day']
+WRRF_max['T_cost_FOAK_times_mass_flow'] = WRRF_max['T_cost_FOAK_max']*WRRF_max['dry_solids_tonne_per_day']
+WRRF_max['T_CI_FOAK_times_mass_flow'] = WRRF_max['T_CI_FOAK_max']*WRRF_max['dry_solids_tonne_per_day']
+WRRF_max['T_cost_NOAK_times_mass_flow'] = WRRF_max['T_cost_NOAK_max']*WRRF_max['dry_solids_tonne_per_day']
+WRRF_max['T_CI_NOAK_times_mass_flow'] = WRRF_max['T_CI_NOAK_max']*WRRF_max['dry_solids_tonne_per_day']
+
+WRRF_max = WRRF_max[['COUNTRY','dry_solids_tonne_per_day','C_cost_times_mass_flow','C_CI_times_mass_flow',
+                     'T_cost_FOAK_times_mass_flow','T_CI_FOAK_times_mass_flow','T_cost_NOAK_times_mass_flow','T_CI_NOAK_times_mass_flow']]
+
+WRRF_max = WRRF_max.groupby('COUNTRY').sum()
+
+WRRF_max['C_cost_weighted_average'] = WRRF_max['C_cost_times_mass_flow']/WRRF_max['dry_solids_tonne_per_day']
+WRRF_max['C_CI_weighted_average'] = WRRF_max['C_CI_times_mass_flow']/WRRF_max['dry_solids_tonne_per_day']
+WRRF_max['T_cost_FOAK_weighted_average'] = WRRF_max['T_cost_FOAK_times_mass_flow']/WRRF_max['dry_solids_tonne_per_day']
+WRRF_max['T_CI_FOAK_weighted_average'] = WRRF_max['T_CI_FOAK_times_mass_flow']/WRRF_max['dry_solids_tonne_per_day']
+WRRF_max['T_cost_NOAK_weighted_average'] = WRRF_max['T_cost_NOAK_times_mass_flow']/WRRF_max['dry_solids_tonne_per_day']
+WRRF_max['T_CI_NOAK_weighted_average'] = WRRF_max['T_CI_NOAK_times_mass_flow']/WRRF_max['dry_solids_tonne_per_day']
+
+WRRF_max = WRRF_max[['C_cost_weighted_average','C_CI_weighted_average','T_cost_FOAK_weighted_average',
+                     'T_CI_FOAK_weighted_average', 'T_cost_NOAK_weighted_average', 'T_CI_NOAK_weighted_average']]
+
+WRRF_max['carbon_credit_needed'] = (WRRF_max['T_cost_NOAK_weighted_average'] - WRRF_max['C_cost_weighted_average'])/(WRRF_max['C_CI_weighted_average'] - WRRF_max['T_CI_NOAK_weighted_average'])*1000
+
+WRRF_max.reset_index(inplace=True)
+
+WRRF_max = WRRF_max.merge(WRRF_filtered[['COUNTRY','CNTRY_ISO']].drop_duplicates(), how='left', on='COUNTRY')
+
+# TODO: make sure no meaningful results are removed after merging these two datasets
+# TODO: may need to check the country code with https://www.iban.com/country-codes
+world_max = world.merge(WRRF_max, how='left', left_on='ISO_A3', right_on='CNTRY_ISO')
+
+#%% world map visualization - C cost mean
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
@@ -2113,14 +2348,18 @@ plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 fig, ax = plt.subplots(figsize=(30, 30))
 
-color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', [b, g, y, o, r])
+color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['w', b, db])
 
-world_result.plot(column='C_cost_weighted_average', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, vmin=0, vmax=3500)
+world.plot(ax=ax, color='none', edgecolor='k', hatch='//', linewidth=1)
+
+world_mean.plot(column='C_cost_weighted_average', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, vmin=0, vmax=1000)
 
 world.plot(ax=ax, color='none', edgecolor='k', linewidth=1)
 
-fig.axes[1].set_ylabel('$\mathbf{Cost}$\n[\$·${tonne^{−1}}$]', fontname='Arial', fontsize=35)
+fig.axes[1].set_ylabel('$\mathbf{Cost}$ [\$·${tonne^{−1}}$]', fontname='Arial', fontsize=36)
 fig.axes[1].tick_params(length=10, width=3)
+fig.axes[1].set_yticks([0, 200, 400, 600, 800, 1000])
+fig.axes[1].set_yticklabels(['<0','200','400','600','800','>1000'], fontname='Arial', fontsize=36)
 
 pos1 = fig.axes[1].get_position()
 pos2 = [pos1.x0-0.035, pos1.y0, pos1.width, pos1.height] 
@@ -2133,7 +2372,7 @@ ax.set_aspect(1)
 
 ax.set_axis_off()
 
-#%% world map visualization - T NOAK cost
+#%% world map visualization - T NOAK cost mean
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
@@ -2149,14 +2388,18 @@ plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 fig, ax = plt.subplots(figsize=(30, 30))
 
-color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', [b, g, y, o, r])
+color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['w', b, db])
 
-world_result.plot(column='T_cost_NOAK_weighted_average', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, vmin=0, vmax=3500)
+world.plot(ax=ax, color='none', edgecolor='k', hatch='//', linewidth=1)
+
+world_mean.plot(column='T_cost_NOAK_weighted_average', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, vmin=0, vmax=1000)
 
 world.plot(ax=ax, color='none', edgecolor='k', linewidth=1)
 
-fig.axes[1].set_ylabel('$\mathbf{Cost}$\n[\$·${tonne^{−1}}$]', fontname='Arial', fontsize=35)
+fig.axes[1].set_ylabel('$\mathbf{Cost}$ [\$·${tonne^{−1}}$]', fontname='Arial', fontsize=36)
 fig.axes[1].tick_params(length=10, width=3)
+fig.axes[1].set_yticks([0, 200, 400, 600, 800, 1000])
+fig.axes[1].set_yticklabels(['<0','200','400','600','800','>1000'], fontname='Arial', fontsize=36)
 
 pos1 = fig.axes[1].get_position()
 pos2 = [pos1.x0-0.035, pos1.y0, pos1.width, pos1.height] 
@@ -2168,6 +2411,218 @@ fig.axes[1].set_position(pos2)
 ax.set_aspect(1)
 
 ax.set_axis_off()
+
+#%% world map visualization - C CI mean
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 36
+plt.rcParams['ytick.labelsize'] = 36
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+
+fig, ax = plt.subplots(figsize=(30, 30))
+
+color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['w', g, dg])
+
+world.plot(ax=ax, color='none', edgecolor='k', hatch='//', linewidth=1)
+
+world_mean.plot(column='C_CI_weighted_average', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, vmin=-300, vmax=600)
+
+world.plot(ax=ax, color='none', edgecolor='k', linewidth=1)
+
+fig.axes[1].set_ylabel('$\mathbf{CI}$ [kg CO${_{2}}$e·${tonne^{−1}}$]', fontname='Arial', fontsize=36)
+fig.axes[1].tick_params(length=10, width=3)
+fig.axes[1].set_yticks([-300, -150, 0, 150, 300, 450, 600])
+fig.axes[1].set_yticklabels(['-300','-150','0','150','300','450','600'], fontname='Arial', fontsize=36)
+
+pos1 = fig.axes[1].get_position()
+pos2 = [pos1.x0-0.035, pos1.y0, pos1.width, pos1.height] 
+fig.axes[1].set_position(pos2)
+
+# comment out the following line if the colorbar is needed
+# fig.delaxes(fig.axes[1])
+
+ax.set_aspect(1)
+
+ax.set_axis_off()
+
+#%% world map visualization - T NOAK CI mean
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 36
+plt.rcParams['ytick.labelsize'] = 36
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+
+fig, ax = plt.subplots(figsize=(30, 30))
+
+color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['w', g, dg])
+
+world.plot(ax=ax, color='none', edgecolor='k', hatch='//', linewidth=1)
+
+world_mean.plot(column='T_CI_NOAK_weighted_average', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, vmin=-300, vmax=600)
+
+world.plot(ax=ax, color='none', edgecolor='k', linewidth=1)
+
+fig.axes[1].set_ylabel('$\mathbf{CI}$ [kg CO${_{2}}$e·${tonne^{−1}}$]', fontname='Arial', fontsize=36)
+fig.axes[1].tick_params(length=10, width=3)
+fig.axes[1].set_yticks([-300, -150, 0, 150, 300, 450, 600])
+fig.axes[1].set_yticklabels(['-300','-150','0','150','300','450','600'], fontname='Arial', fontsize=36)
+
+pos1 = fig.axes[1].get_position()
+pos2 = [pos1.x0-0.035, pos1.y0, pos1.width, pos1.height] 
+fig.axes[1].set_position(pos2)
+
+# comment out the following line if the colorbar is needed
+# fig.delaxes(fig.axes[1])
+
+ax.set_aspect(1)
+
+ax.set_axis_off()
+
+#%% world map visualization - carbon credit needed
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 36
+plt.rcParams['ytick.labelsize'] = 36
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+
+fig, ax = plt.subplots(figsize=(30, 30))
+
+color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['w', r, dr])
+
+world.plot(ax=ax, color='none', edgecolor='k', hatch='//', linewidth=1)
+
+world_mean.plot(column='carbon_credit_needed', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, vmin=0, vmax=1000)
+
+world.plot(ax=ax, color='none', edgecolor='k', linewidth=1)
+
+fig.axes[1].set_ylabel('$\mathbf{Carbon\ credit}$ [\$·${tonne\ CO_{2}e^{−1}}$]', fontname='Arial', fontsize=36)
+fig.axes[1].tick_params(length=10, width=3)
+
+pos1 = fig.axes[1].get_position()
+pos2 = [pos1.x0-0.035, pos1.y0, pos1.width, pos1.height] 
+fig.axes[1].set_position(pos2)
+
+fig.axes[1].set_yticklabels(['<0','200','400','600','800','>1000'], fontname='Arial', fontsize=36)
+
+# comment out the following line if the colorbar is needed
+# fig.delaxes(fig.axes[1])
+
+ax.set_aspect(1)
+
+ax.set_axis_off()
+
+#%% cost ranges for C and T systems
+
+# TODO: on one figure, can make this figure and the cost change figure taller if needed
+
+
+
+
+#%% cost change bars - data preparation
+
+cost_change = WRRF_mean.copy()
+cost_change['cost_difference'] = cost_change['T_cost_NOAK_weighted_average'] - cost_change['C_cost_weighted_average']
+cost_change.sort_values(by='cost_difference', inplace=True)
+cost_change = cost_change[cost_change['COUNTRY'].isin(WRRF_filtered['COUNTRY'].value_counts().head(50).index.tolist())]
+
+print([i for i in cost_change['COUNTRY'] if (i not in global_north_countries_regions) and (i not in global_south_countries_regions)])
+
+global_north_countries_regions.append('Hong Kong')
+global_north_countries_regions.append('Czech Republic')
+global_north_countries_regions.append('Taiwan')
+
+assert(len([i for i in cost_change['COUNTRY'] if (i not in global_north_countries_regions) and (i not in global_south_countries_regions)]) == 0)
+
+cost_change.loc[cost_change['COUNTRY'].isin(global_north_countries_regions), 'color'] = la
+cost_change.loc[cost_change['COUNTRY'].isin(global_south_countries_regions), 'color'] = y
+
+#%% cost change bars - visualization
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 36
+plt.rcParams['ytick.labelsize'] = 36
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+
+fig, ax = plt.subplots(figsize=(10, 30))
+
+ax = plt.gca()
+
+ax.set_xlim([-100, 400])
+ax.set_ylim([0, 51])
+
+ax.plot([0, 0],
+        [0, 51],
+        c='k',
+        linewidth=3)
+
+ax.tick_params(axis='x', direction='inout', length=20, width=3, pad=5)
+ax.tick_params(axis='y', direction='inout', length=20, width=3, pad=5)
+
+index = np.arange(1, len(cost_change)+1, 1)
+
+ax.barh(y=index,
+        width=cost_change['cost_difference'],
+        height=0.7,
+        color=cost_change['color'],
+        edgecolor='k',
+        linewidth=3)
+
+plt.yticks(index, cost_change['CNTRY_ISO'], fontname='Arial')
+
+ax.set_xlabel('$\mathbf{Cost\ change}$ [\$·${tonne^{-1}}$]',
+              fontname='Arial', fontsize=36)
+
+ax_top = ax.twiny()
+
+ax_top.set_xlim([-100, 400])
+
+ax_top.tick_params(axis='x', direction='inout', length=20, width=3, pad=5)
+
+#%% CI ranges for C and T systems
+
+# TODO: on one figure, can make this figure and the CI change figure taller if needed
+
+
+#%% CI change bars - data preparation
+
+# TODO: add
+
+
+#%% CI change bars - visualization
+
+# TODO: add
+
+
+
+
 
 #%% global equity
 
