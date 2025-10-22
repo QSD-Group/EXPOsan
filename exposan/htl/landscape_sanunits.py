@@ -246,7 +246,7 @@ class Thickening(SanUnit):
     
     scope 1 emission: N/A
     scope 2 emission: electricity
-    scope 3 emission: polymer
+    scope 3 emission: polymer (polyacrylamide)
     
     Parameters
     ----------
@@ -642,7 +642,7 @@ class AnaerobicDigestion(SanUnit):
     Anaerobic digestion of thickened (and conditioned) sludge, with the assumption
     that no water evaporizes.
     
-    scope 1 emission: fugitive methane, natural gas combustion
+    scope 1 emission: carbon dioxide (natural gas combustion), fugitive methane
     scope 2 emission: electricity, natural gas upstream
     scope 3 emission: N/A
     
@@ -1005,7 +1005,7 @@ class Dewatering(SanUnit):
     
     scope 1 emission: fugitive methane (if from anaerobically digested biosolids)
     scope 2 emission: electricity
-    scope 3 emission: polymer
+    scope 3 emission: polymer (polyacrylamide)
     
     Parameters
     ----------
@@ -1117,7 +1117,7 @@ class AlkalineStabilization(SanUnit):
     The BEAM model assumes the use of fuel for class A bisolids, which is removed
     since it is atypical to use any fuel in lime stabilization.
     
-    scope 1 emission: natural gas combustion
+    scope 1 emission: CO2 (natural gas combustion)
     scope 2 emission: electricity, natural gas upstream
     scope 3 emission: lime
     
@@ -1166,10 +1166,9 @@ class AlkalineStabilization(SanUnit):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', lifetime=25, lime_dose=0.3,
-                 natural_gas_emission=15.6, unit_electricity=4.9):
+                 unit_electricity=4.9):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
         self.lime_dose = lime_dose
-        self.natural_gas_emission = natural_gas_emission
         self.unit_electricity = unit_electricity
     
     def _run(self):
@@ -1216,9 +1215,9 @@ class Composting(SanUnit):
     Fugitive emissions, carbon sequestration, electricity-related emissions,
     and fertilizers-related emissions are based on wastewater residual solids only (based on the BEAM model).
     
-    scope 1 emission: bulking agent (sawdust), diesel, fugitive methane, fugitive nitrous oxide, carbon sequestration
+    scope 1 emission: CO2 (diesel combustion), fugitive methane, fugitive nitrous oxide
     scope 2 emission: electricity
-    scope 3 emission: nitrogen, phosphorus
+    scope 3 emission: diesel, bulking agent (sawdust)
     
     Parameters
     ----------
@@ -1427,7 +1426,7 @@ class HeatDrying(SanUnit):
     '''
     Heat drying of sludge or biosolids.
     
-    scope 1 emission: natural gas combustion
+    scope 1 emission: CO2 (natural gas combustion)
     scope 2 emission: electricity, natural gas upstream
     scope 3 emission: N/A
     
@@ -1520,9 +1519,9 @@ class HeatDrying(SanUnit):
 class Landfilling(SanUnit):
     '''
     Landfilling of sludge or biosolids, without accounting for solids remaining
-    the landfills in the mass balance.
+    in landfills in the mass balance.
     
-    scope 1 emission: fugitive methane, fugitive nitrous oxide, carbon sequestration
+    scope 1 emission: fugitive methane, fugitive nitrous oxide
     scope 2 emission: electricity
     scope 3 emission: N/A
     
@@ -1720,9 +1719,9 @@ class LandApplication(SanUnit):
     during other processes should be biogenic or directly from air), while the
     BEAM model does (though the contribution is limited).
     
-    scope 1 emission: diesel, fugitive methane, fugitive nitrous oxide, carbon sequestration, CaCO3
+    scope 1 emission: CO2 (diesel combustion), fugitive methane, fugitive nitrous oxide
     scope 2 emission: N/A
-    scope 3 emission: nitrogen, phosphorus
+    scope 3 emission: N/A
     
     Parameters
     ----------
@@ -1920,7 +1919,7 @@ class Incineration(SanUnit):
     
     scope 1 emission: fugitive methane, fugitive nitrous oxide
     scope 2 emission: electricity
-    scope 3 emission: phosphorus
+    scope 3 emission: N/A
     
     from [2]: I = 2.3507×C0.7753, where I is the investment cost in million
     dollars and C is the plant capacity (1000 metric tons of waste/year).
@@ -2152,6 +2151,10 @@ class HydrothermalLiquefaction(SanUnit):
     '''
     HTL converts feedstock to gas, aqueous, biocrude, (hydro)char
     under elevated temperature and pressure.
+    
+    scope 1 emission: N/A
+    scope 2 emission: electricity
+    scope 3 emission: N/A
     
     Parameters
     ----------
@@ -2547,9 +2550,15 @@ class HydrothermalLiquefaction(SanUnit):
       cost=4670532, S=306198, CE=qs.CEPCI_by_year[2011], n=0.6, BM=1.4)
 class HydrothermalAlkalineTreatment(SanUnit):
     '''
-    HTL converts feedstock to gas, aqueous, biocrude, (hydro)char
+    HALT converts feedstock to gas, aqueous, biocrude, (hydro)char
     under elevated temperature and pressure. Land application of (hydro)char is
     included.
+    
+    Note diesel is used for land application and is therefore not listed here,
+    though it is included in the model
+    scope 1 emission: N/A
+    scope 2 emission: electricity
+    scope 3 emission: NaOH, HCl
     
     Parameters
     ----------
@@ -3011,6 +3020,10 @@ class CatalyticHydrothermalGasification(SanUnit):
     gas under elevated temperature (350°C) and pressure. The outlet will be
     cooled down and separated by a flash unit.
     
+    scope 1 emission: N/A
+    scope 2 emission: electricity
+    scope 3 emission: 7.8% Ru/C
+    
     Parameters
     ----------
     ins : iterable
@@ -3243,7 +3256,9 @@ class Pyrolysis(SanUnit):
     
     Biooil and pyrogas yields are based on [2].
     
-    scope 1 emission: fugitive methane, fugitive nitrous oxide
+    Note diesel is used for land application and is therefore not listed here,
+    though it is included in the model
+    scope 1 emission: N/A
     scope 2 emission: electricity
     scope 3 emission: N/A
     
@@ -3494,7 +3509,9 @@ class Gasification(SanUnit):
     
     Capital costs are based on [1].
     
-    scope 1 emission: fugitive methane, fugitive nitrous oxide
+    Note diesel is used for land application and is therefore not listed here,
+    though it is included in the model
+    scope 1 emission: N/A
     scope 2 emission: electricity
     scope 3 emission: N/A
     
@@ -3723,6 +3740,10 @@ class SupercriticalWaterOxidation(SanUnit):
     temperature and pressure.
     
     Capital costs are based on [1].
+    
+    scope 1 emission: N/A
+    scope 2 emission: electricity
+    scope 3 emission: N/A
     
     Parameters
     ----------

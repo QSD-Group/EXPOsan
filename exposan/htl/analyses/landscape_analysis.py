@@ -858,7 +858,7 @@ ARCs_WWRS_MC = pd.DataFrame()
 
 ARCs_WRRS = sample[0]*sample[1]*sample[2]*sample[4]
 
-# TODO: assume ARGs can not be degraded during wastewater treatment processes
+# assume ARGs can not be degraded during wastewater treatment processes
 ARCs_human_to_environment = sample[0]*sample[1]
 ARCs_animal_to_environment = (1 - sample[0])*sample[3]
 
