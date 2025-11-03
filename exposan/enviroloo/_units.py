@@ -1198,142 +1198,140 @@ windSolar_path = os.path.join(EL_su_data_path, '_EL_photovoltaic_wind.tsv')
 
 @price_ratio()
 class EL_WindSolar(CSTR):
-    
-    '''
-    
-    The photovoltaic and wind power configuration of the EnviroLoo System,
-    which is composed of solar panels, batteries, inverters, cables, carport,
-    charger, turbine, backplates, and other parts. Costs include sales tax, licensing, 
-    consulting, and installation fees.
+    """
+    The photovoltaic, wind, and grid power configuration of the EnviroLoo System.
+    The hybrid system draws 80% of its electricity from wind/solar sources and
+    20% from the grid.
 
-    This is a non-reactive unit (i.e., the effluent is copied from the influent).
+    Grid cost and contribution are added to OPEX without LCA impact.
 
     Parameters
     ----------
     user_scale_up : float
         Scaling up of consumables, electricity demand, capital parts,
-        and replacement parts based on number of input users compared to the
-        baseline design number of users
+        and replacement parts based on number of input users compared to
+        the baseline design number of users.
+    """
 
-    References
-    ----------
-   '''
-
-    _N_ins = 1 # treated water, PAC, blower
-    _N_outs = 1  # treated water, CH4, N2O
+    _N_ins = 1
+    _N_outs = 1
     _ins_size_is_fixed = False
     _outs_size_is_fixed = False
     exponent_scale = 0.1
     pl = el.ppl
     baseline_ppl = el.baseline_ppl
-    
     _D_O2 = 2.10e-9   # m2/s
 
     def __init__(self, 
                  ID='', ins=None, outs=(), split=None, thermo=None,
-                 init_with='WasteStream', V_max=12, W_tank = None, 
-                 # D_tank = 3.65,
-                 # freeboard = 0.61, 
-                 t_wall = None, t_slab = None, aeration=None, 
+                 init_with='WasteStream', V_max=12, W_tank=None, 
+                 t_wall=None, t_slab=None, aeration=None, 
                  DO_ID='S_O2', suspended_growth_model=None, 
                  gas_stripping=False, gas_IDs=None, stripping_kLa_min=None, 
                  K_Henry=None, D_gas=None, p_gas_atm=None,
                  isdynamic=True, exogenous_vars=(), **kwargs):
         super().__init__(
             ID=ID, ins=ins, outs=outs, split=split, thermo=thermo,
-            init_with=init_with, V_max=V_max, W_tank = W_tank, 
-            # D_tank = D_tank,
-            # freeboard = freeboard, 
-            t_wall = t_wall, t_slab = t_slab, aeration=aeration, 
-            DO_ID=DO_ID, suspended_growth_model=suspended_growth_model, 
-            gas_stripping=gas_stripping, gas_IDs=gas_IDs, 
-            stripping_kLa_min=stripping_kLa_min, 
+            init_with=init_with, V_max=V_max, W_tank=W_tank,
+            t_wall=t_wall, t_slab=t_slab, aeration=aeration,
+            DO_ID=DO_ID, suspended_growth_model=suspended_growth_model,
+            gas_stripping=gas_stripping, gas_IDs=gas_IDs,
+            stripping_kLa_min=stripping_kLa_min,
             K_Henry=K_Henry, D_gas=D_gas, p_gas_atm=p_gas_atm,
             isdynamic=isdynamic, exogenous_vars=exogenous_vars, **kwargs
-            )
-       
-        data = load_data(path = windSolar_path)
+        )
+
+        data = load_data(path=windSolar_path)
         for para in data.index:
             value = float(data.loc[para]['expected'])
             setattr(self, para, value)
         del data
-    
+
         for attr, value in kwargs.items():
-            setattr(self, attr, value)    
-        ############################################### 
-        
+            setattr(self, attr, value)
+
+        # ---------------- HYBRID SYSTEM PARAMETERS ----------------
+        self.total_energy_demand_kWh = 911 * 12  # Annual total energy demand (kWh)
+        self.grid_share = 0.2
+        self.wind_solar_share = 0.8
+        self.grid_cost_per_kWh = 0.13  # USD per kWh
+        self.grid_fixed_monthly_cost = 42  # USD per month
+        # -----------------------------------------------------------
+
     def _init_lca(self):
         self.construction = [
             Construction(item='PhotovoltaicPanel', linked_unit=self, quantity_unit='m2'),
-            Construction(item='Battery', linked_unit=self, quantity_unit='kg',),
+            Construction(item='Battery', linked_unit=self, quantity_unit='kg'),
             Construction(item='ElectricCables', linked_unit=self, quantity_unit='m'),
             Construction(item='Aluminum', linked_unit=self, quantity_unit='kg'),
-            Construction(item='Steel', linked_unit=self, quantity_unit='kg')            
-            ]
+            Construction(item='Steel', linked_unit=self, quantity_unit='kg')
+        ]
 
     def _design(self):
         design = self.design_results
         constr = self.construction
-        # user_scale_up = self.user_scale_up
-        design['PhotovoltaicPanel'] = self.construction[0].quantity = self.pv_photovoltaic_panel_area # * (user_scale_up**0.6)
-        design['Battery'] = constr[1].quantity = self.el_battery_weight        #* (user_scale_up**0.6)
+        design['PhotovoltaicPanel'] = constr[0].quantity = self.pv_photovoltaic_panel_area
+        design['Battery'] = constr[1].quantity = self.el_battery_weight
         design['ElectricCables'] = constr[2].quantity = self.pv_cable_length
-        # design['Aluminum'] = constr[3].quantity = self.pv_aluminum_weight
-        # design['Aluminum'] = constr[4].quantity = self.pv_aluminum_weight
-        design['Steel'] = constr[4].quantity = self.el_wind_galvanized_steel_weight 
-        + self.pv_carport_weight_galvanized_metal + self.pv_inverter_weight_steel 
-        + self.pv_charger_weight_steel
+        design['Steel'] = constr[4].quantity = (
+            self.el_wind_galvanized_steel_weight +
+            self.pv_carport_weight_galvanized_metal +
+            self.pv_inverter_weight_steel +
+            self.pv_charger_weight_steel
+        )
 
     def _cost(self):
         C = self.baseline_purchase_costs
-        C['Battery'] = (
-            self.el_battery
-            )
-        #C['Battery'] += self.pv_battery * (self.user_scale_up**0.6) optional scale-up ratio
-
+        C['Battery'] = self.el_battery
         C['PhotovoltaicPanel'] = (
-            #self.el_panels * (self.user_scale_up**0.6) +
-            self.el_panels + 
+            self.el_panels +
             self.el_carport +
             self.el_backplate
-            )
+        )
         C['Misc'] = (
             self.el_template +
             self.el_controller +
             self.el_certificate +
             self.el_consulting +
             self.el_installation +
-            self.el_inverter + 
+            self.el_inverter +
             self.el_charger +
             self.el_meter
-            )
-        C['Wind'] = (
-            self.el_wind_turbine
-            )
-        
+        )
+        C['Wind'] = self.el_wind_turbine
+
         ratio = self.price_ratio
         for equipment, cost in C.items():
             C[equipment] = cost * ratio
 
-        self.add_OPEX = self._calc_replacement_cost() + self._calc_maintenance_labor_cost()
+        # ---------------- GRID COST ADDITION ----------------
+        annual_grid_energy = self.grid_share * self.total_energy_demand_kWh
+        annual_grid_cost = (annual_grid_energy * self.grid_cost_per_kWh) + (self.grid_fixed_monthly_cost * 12)
+        grid_cost_per_hour = annual_grid_cost / (365 * 24)  # Convert to USD/hr
+        # ----------------------------------------------------
+
+        self.add_OPEX = (
+            self._calc_replacement_cost() +
+            self._calc_maintenance_labor_cost() +
+            grid_cost_per_hour  # Add grid electricity OPEX
+        )
 
     def _calc_replacement_cost(self):
-        battery_replacememt_parts_annual_cost = self.el_battery / self.el_battery_lifetime
+        battery_replacement_parts_annual_cost = self.el_battery / self.el_battery_lifetime
         wind_replacement_cost = self.el_wind_turbine / self.wind_turbine_lifetime
         photovoltaic_replacement_cost = self.el_panels / self.el_panel_lifetime
         misc_replacement_cost = self.el_inverter / self.el_inverter_lifetime
-        
+
         total_replacement_cost = (
-            battery_replacememt_parts_annual_cost +
+            battery_replacement_parts_annual_cost +
             wind_replacement_cost +
             photovoltaic_replacement_cost +
             misc_replacement_cost
-            )
-        return total_replacement_cost/ (365 * 24) * self.price_ratio # USD/hr
+        )
+        return total_replacement_cost / (365 * 24) * self.price_ratio  # USD/hr
 
     def _calc_maintenance_labor_cost(self):
-        photovoltaic_maintenance_labor = (
-            self.pv_labor_replacement_misc_repairs
-            ) * self.wages
-        return photovoltaic_maintenance_labor/ (365 * 24) # USD/hr
+        photovoltaic_maintenance_labor = self.pv_labor_replacement_misc_repairs * self.wages
+        return photovoltaic_maintenance_labor / (365 * 24)  # USD/hr
+
         

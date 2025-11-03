@@ -37,8 +37,8 @@ household_size = 5  # refer to EXPOsan/exposan/pou_disinfection/__init__.py wher
 household_per_toilet = 20
 get_toilet_users = lambda: household_size * household_per_toilet
 
-ppl = 363 # the number of people served by the EL system. #TOCHANGE
-baseline_ppl = 363 # the number of people served by the EL system. #TOCHANGE
+ppl = 3000 # the number of people served by the EL system. #TOCHANGE
+baseline_ppl = 3000 # the number of people served by the EL system. #TOCHANGE
 scale_factor = ppl / 363 #scale_factor for flow and dosing rates
 dosing_flow = 1 #L/h base scenario
 
@@ -99,7 +99,7 @@ def update_resource_recovery_settings():
         }
     
     GWP_dct = {
-        'Electricity': 0.00, # kg CO2-eq/kWh Assumption because system only contains renewables and is not grid-tied
+        'Electricity': 0.94, # kg CO2-eq/kWh Assumption because system only contains renewables and is not grid-tied
         #'Electricity': 0.69, # kg CO2-eq/kWh If system is grid-tied
         'CH4': 34.0, # kg CO2-eq/g CH4
         'N2O': 298.0, # kg CO2-eq/g N2O
@@ -246,7 +246,11 @@ from .Enviroloo_system import *
 _system_loaded = False
 def _load_system():
     qs.currency = 'USD'
-    qs.PowerUtility.price = price_dct['Electricity']
+    
+    ############ Chnage this if you want to remove electrcity price ##################
+    qs.PowerUtility.price = price_dct['Electricity'] or 0.15  # placeholder for grid price if needed
+    ##################################################################################
+    
     global sysEL, teaEL, lcaEL, _system_loaded
     sysEL = create_systemEL('EL')
     teaEL = sysEL.TEA
@@ -412,6 +416,7 @@ def get_LCA_metrics(system, include_breakdown=False):
         lambda: lca.total_transportation_impacts['GlobalWarming'] / lca.lifetime / ppl, # means transportation fee
         lambda: lca.total_stream_impacts['GlobalWarming'] / lca.lifetime / ppl, # means stream impacts including fugitive gases and offsets
         lambda: lca.total_other_impacts['GlobalWarming'] / lca.lifetime / ppl, # means other impacts in GWP
+        lambda: lca.total_electricity_impacts['GlobalWarming'] / lca.lifetime / ppl,  # <--- Add this
         ]
 
 def get_LCA_metrics_breakdown(system, include_breakdown=True):

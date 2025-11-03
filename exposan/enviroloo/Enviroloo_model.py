@@ -51,6 +51,7 @@ __all__ = ('create_model', 'run_uncertainty',)
 # --- GWP emission conversion functions ---
 GWP_CH4 = 27.2  # or your model's default #CH4_CO2_EQ
 GWP_N2O = 273.0  # update these if different in your setup #N2O_CO2_eq
+ELECTRICITY_EF = 0.94  # kg CO2-eq per kWh of grid electricity
 
 # Shared dictionary for emission factors (used across parameter and metric functions)
 EFs = {
@@ -58,6 +59,7 @@ EFs = {
     'CH4_EF_A1': None,
     'N2O_EF_O1': None,
     'N2O_EF_B1': None,
+    'ELEC_EF': ELECTRICITY_EF,
 }
 
  
@@ -81,6 +83,13 @@ def calc_N2O_emissions_from_unit(unit, N2O_EF):
     
     return N2O_emissions
 
+def calc_electricity_emissions(system):
+    """Calculate electricity-related CO2-eq emissions per capita per year."""
+    PV = system.flowsheet.unit.PV  # WindSolar unit (photovoltaic + grid hybrid)
+    annual_grid_energy = PV.grid_share * PV.total_energy_demand_kWh  # kWh/year from grid
+    annual_emission = annual_grid_energy * EFs['ELEC_EF']  # kg CO2/year
+    return annual_emission / el.ppl  # kg CO2-eq/cap/yr
+
 
 
 def add_metrics(model):
@@ -94,11 +103,16 @@ def add_metrics(model):
     cat = 'LCA results'  # assign the same index to all LCA metrics
     metrics = [
         Metric('Annualized CAPEX', get_TEA_metrics(system)[1], f'{qs.currency}/cap/yr', 'TEA results'),
-        Metric('Annual electricity consumption', get_TEA_metrics(system)[2], 'kWh/cap/yr', 'TEA results'),
+        Metric('Annual electricity cost', get_TEA_metrics(system)[2], f'{qs.currency}/cap/yr', 'TEA results'),
+        # Metric('Annual electricity cost', get_TEA_metrics(system)[2] * qs.electricity_price, f'{qs.currency}/cap/yr', 'TEA results'),
         Metric('Annual labor cost', get_TEA_metrics(system)[3], f'{qs.currency}/cap/yr', 'TEA results'),
         Metric('OPEX excluding labor/energy', get_TEA_metrics(system)[4], f'{qs.currency}/cap/yr', 'TEA results'),
         Metric('Revenue', get_TEA_metrics(system)[5], f'{qs.currency}/cap/yr', 'TEA results'),
+        
+        # 🔽 LCA Metrics
         Metric('GlobalWarming', funcs[0], 'kg CO2-eq/cap/yr', 'LCA results'),
+        # Metric('Grid electricity emissions', lambda: system.power_utility.consumption * ImpactItem.get_item('e_item').CFs['GlobalWarming'] / el.ppl, 'kg CO2-eq/cap/yr', 'LCA results'),
+        # Metric('Grid electricity emissions', get_TEA_metrics(system)[2] * qs.grid_emission_factor, 'kg CO2-eq/cap/yr', 'LCA results'),
         Metric('Construction_GWP', funcs[4], 'kg CO2-eq/cap/yr', 'LCA results'),
         Metric('Stream_GWP', funcs[6], 'kg CO2-eq/cap/yr', 'LCA results'),
         Metric('H_Ecosystems', funcs[1], 'points/cap/yr', 'LCA results'),
@@ -139,18 +153,23 @@ def add_metrics(model):
     metrics.extend([
     Metric('CH4 from CT', lambda: calc_CH4_emissions_from_unit(system.flowsheet.unit.CT, CH4_EF=EFs['CH4_EF_CT']),
            'kg CO2-eq/cap/yr', 'CH4 emissions'),
-    
+
     Metric('CH4 from A1', lambda: calc_CH4_emissions_from_unit(system.flowsheet.unit.A1, CH4_EF=EFs['CH4_EF_A1']),
            'kg CO2-eq/cap/yr', 'CH4 emissions'),
-    
+
     Metric('N2O from O1', lambda: calc_N2O_emissions_from_unit(system.flowsheet.unit.O1, N2O_EF=EFs['N2O_EF_O1']),
            'kg CO2-eq/cap/yr', 'N2O emissions'),
-    
+
     Metric('N2O from B1', lambda: calc_N2O_emissions_from_unit(system.flowsheet.unit.B1, N2O_EF=EFs['N2O_EF_B1']),
            'kg CO2-eq/cap/yr', 'N2O emissions'),
-    ])
 
+    # ✅ Include electricity emissions metric *inside* the list
+    Metric('Grid electricity emissions', lambda: calc_electricity_emissions(system),
+           'kg CO2-eq/cap/yr', 'Electricity emissions'),
+    ])
+    
     model.metrics = metrics
+
 
     
 # %%
@@ -303,7 +322,19 @@ def add_parameters(model, unit_dct, country_specific=False):
     # EL PV system
     PV_unit = unit_dct['PhotovoltaicWind']
     batch_setting_unit_params(photovoltaic_wind_data, model, PV_unit)
-   
+    
+    
+    ########### Remove if Grid share needs to be remoed ######################
+    # === Add grid-share uncertainty (optional new parameter) ===
+    b = PV_unit.grid_share
+    D = shape.Uniform(lower=0.1, upper=0.4)
+    @param(name='Grid share', element='PhotovoltaicWind', kind='coupled', units='fraction',
+           baseline=b, distribution=D)
+    def set_grid_share(i):
+        PV_unit.grid_share = i
+        PV_unit.wind_solar_share = 1 - i
+
+   ###########################################################################
     # EL housing
     ELH_unit = unit_dct['Housing']
     batch_setting_unit_params(housing_data, model, ELH_unit)
@@ -680,6 +711,21 @@ def add_parameters(model, unit_dct, country_specific=False):
            units='gN2O-N/g TN load', baseline=b, distribution=D)
     def set_N2O_EF_B1(i):
         EFs['N2O_EF_B1'] = i
+        
+    
+    ELECTRICITY_EF_dist = shape.Uniform(0.94 * 0.7, 0.94 * 1.3)
+
+    @model.parameter(name='Electricity emission factor (kg CO2/kWh)',
+                     element='System', kind='isolated',
+                     baseline=0.94, distribution=ELECTRICITY_EF_dist)
+    def set_electricity_EF(value):
+        EFs['ELEC_EF'] = value
+
+        
+        
+
+    
+
 
 
             
