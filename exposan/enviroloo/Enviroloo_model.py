@@ -720,13 +720,20 @@ def add_parameters(model, unit_dct, country_specific=False):
                      baseline=0.94, distribution=ELECTRICITY_EF_dist)
     def set_electricity_EF(value):
         EFs['ELEC_EF'] = value
-
         
-        
+    # PV_unit = unit_dct['PhotovoltaicWind']
 
+    # Grid cost per kWh (USD/kWh)
+    D = shape.Uniform(0.14, 0.26)
+    @model.parameter(name='Grid cost per kWh',
+                     element='System',
+                     kind='isolated',
+                     # units='USD/kWh',
+                     baseline=0.13,
+                     distribution=D)
+    def set_grid_cost_per_kWh(value):
+        EFs['Grid_cost_per_kWh'] = value
     
-
-
 
             
 

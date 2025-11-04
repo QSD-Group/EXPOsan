@@ -26,3 +26,7 @@ wind_turbine_lifetime		y	25	17.5	32.5	uniform	assumption
 el_panel_lifetime		y	20	14	26	uniform	assumption		
 pv_labor_replacement_misc_repairs		hr/y	20			constant	assumption		
 wages		USD/hr	5			constant	assumption		
+grid_cost_per_kWh		USD/kWh	0.13	0.14	0.26	uniform	https://www.overstrand.gov.za/electricity-tariffs-cost-of-supply-monthly-basket-of-tariffs-excluding-vat/		
+grid_fixed_monthly_cost		USD	42			constant	https://www.overstrand.gov.za/electricity-tariffs-cost-of-supply-monthly-basket-of-tariffs-excluding-vat/		
+total_energy_demand_kWh		kWh	10932	7652	14212	uniform	Estimated from Bill of Materials EnviroLoo - For LCA Work		
+Electricity emission factor (kg CO2/kWh)		kgCO2/kWh	0.94	0.658	1.222	uniform	https://www.dffe.gov.za/sites/default/files/legislations/publication_SAgridemissionfactorsreport_g53079gon6454.pdf		
