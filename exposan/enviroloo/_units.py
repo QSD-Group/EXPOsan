@@ -1199,18 +1199,21 @@ windSolar_path = os.path.join(EL_su_data_path, '_EL_photovoltaic_wind.tsv')
 @price_ratio()
 class EL_WindSolar(CSTR):
     """
-    The photovoltaic, wind, and grid power configuration of the EnviroLoo System.
-    The hybrid system draws 80% of its electricity from wind/solar sources and
-    20% from the grid.
+    Hybrid photovoltaic, wind, and grid power configuration of the EnviroLoo System.
 
-    Grid cost and contribution are added to OPEX without LCA impact.
+    - The hybrid system draws 80% of its electricity from wind/solar sources
+      and 20% from the grid.
+    - Grid cost and contribution are added to OPEX (no LCA emissions).
+    - Electricity cost is calculated using Overstrand Municipality tariffs
+      (Prepaid 60 A Single Phase, 2024–2025).
 
-    Parameters
-    ----------
-    user_scale_up : float
-        Scaling up of consumables, electricity demand, capital parts,
-        and replacement parts based on number of input users compared to
-        the baseline design number of users.
+    Assumptions
+    -----------
+    • Annual electricity demand = 911 kWh × 12 months = 10 932 kWh / year  
+    • Grid share = 20 % → 2 186 kWh / year ≈ 182 kWh / month  
+    • Fixed monthly charge = 632.15 ZAR (≈ \$37 USD @ 17.1 ZAR/USD)  
+    • Variable tariff = 2.0033 ZAR / kWh (≈ \$0.117 USD / kWh)  
+    • Effective blended electricity price ≈ \$0.32 USD / kWh
     """
 
     _N_ins = 1
@@ -1222,12 +1225,12 @@ class EL_WindSolar(CSTR):
     baseline_ppl = el.baseline_ppl
     _D_O2 = 2.10e-9   # m2/s
 
-    def __init__(self, 
+    def __init__(self,
                  ID='', ins=None, outs=(), split=None, thermo=None,
-                 init_with='WasteStream', V_max=12, W_tank=None, 
-                 t_wall=None, t_slab=None, aeration=None, 
-                 DO_ID='S_O2', suspended_growth_model=None, 
-                 gas_stripping=False, gas_IDs=None, stripping_kLa_min=None, 
+                 init_with='WasteStream', V_max=12, W_tank=None,
+                 t_wall=None, t_slab=None, aeration=None,
+                 DO_ID='S_O2', suspended_growth_model=None,
+                 gas_stripping=False, gas_IDs=None, stripping_kLa_min=None,
                  K_Henry=None, D_gas=None, p_gas_atm=None,
                  isdynamic=True, exogenous_vars=(), **kwargs):
         super().__init__(
@@ -1251,12 +1254,14 @@ class EL_WindSolar(CSTR):
             setattr(self, attr, value)
 
         # ---------------- HYBRID SYSTEM PARAMETERS ----------------
-        self.total_energy_demand_kWh = 911 * 12  # Annual total energy demand (kWh)
+        self.total_energy_demand_kWh = 911 * 12   # Annual total demand (kWh)
         self.grid_share = 0.2
         self.wind_solar_share = 0.8
-        self.grid_cost_per_kWh = 0.13  # USD per kWh
-        self.grid_fixed_monthly_cost = 42  # USD per month
-        # -----------------------------------------------------------
+
+        # ---- Electricity cost assumptions (updated from Overstrand tariffs) ----
+        self.grid_cost_per_kWh = 0.32              # USD per kWh (effective cost incl. fixed)
+        self.grid_fixed_monthly_cost = 37          # USD/month (≈ 632 ZAR/month)
+        # ------------------------------------------------------------------------
 
     def _init_lca(self):
         self.construction = [
@@ -1307,13 +1312,13 @@ class EL_WindSolar(CSTR):
         # ---------------- GRID COST ADDITION ----------------
         annual_grid_energy = self.grid_share * self.total_energy_demand_kWh
         annual_grid_cost = (annual_grid_energy * self.grid_cost_per_kWh) + (self.grid_fixed_monthly_cost * 12)
-        grid_cost_per_hour = annual_grid_cost / (365 * 24)  # Convert to USD/hr
+        grid_cost_per_hour = annual_grid_cost / (365 * 24)  # USD/hr
         # ----------------------------------------------------
 
         self.add_OPEX = (
             self._calc_replacement_cost() +
             self._calc_maintenance_labor_cost() +
-            grid_cost_per_hour  # Add grid electricity OPEX
+            grid_cost_per_hour
         )
 
     def _calc_replacement_cost(self):
