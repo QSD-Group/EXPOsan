@@ -33,12 +33,11 @@ pipe_length = 150 # ft
 min_velocity = 2.5 # ft, based on minimum flowrate suggestion from manual of practice No. 8 6th ed page 173
 gas_pressure = 10/12 # ft, positive gas pressure in anaerobic digestor
 
-@cost(basis='Solids loading', ID='SolidsSeparation', units='kg/d',
-      cost=215000, S=750*0.453592, N = 'Number of centrifuges',
-      CE=CEPCI_by_year[2000], n=0.6, BM=650000/215000)
-    # the cost is for one centrifuge unit, baseline cost and solids loading is from EPA fact sheet 2000
-    #!!! check what exponential scaling factor to use? Normal values are 2.1 or 2.3, but the EPA design manual provided 3.023
-    #!!! exponent n: 0.6 is considered default in chemical engineering and 0.3 is considered stronge economy of scale
+@cost(basis='Power', ID='SolidsSeparation', units='hp',
+      cost=2620000, S=1, N = 'Number of centrifuges',
+      CE=CEPCI_by_year[2014], n=0.7021, BM=1)
+# parameters in @cost are obtained from CapdetWorks, exponential is calculated by fitting unit costs of different power requirement, 
+# BM is set to 1 because CapdetWorks lumps equipment and construction costs.
 class SolidsSeparation(SanUnit):
     '''
     Function of unit:

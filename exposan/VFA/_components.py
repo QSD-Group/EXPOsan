@@ -49,7 +49,7 @@ def create_components(set_thermo=True):
                           degradability='Readily', organic=True)
     add_V_from_rho(Hexanoate, 930)
     Hexanoate.mu.add_model(0.0032)
-    
+    # all acids are now in the protonated form, might change to deprotonated form in the future and add supplementary ions for charge balance
     Digestate_solids = Component('Digestate_solids', formula='C5H7O2N', phase='s', particle_size='Particulate',
                                  degradability='Degradable', organic=True)
     # !!! Assuming digestate solids are undegradable because will leave system as sludge
