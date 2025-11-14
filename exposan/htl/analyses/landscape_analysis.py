@@ -18,13 +18,14 @@ for license details.
 
 #%% initialization
 
-import numpy as np, pandas as pd, geopandas as gpd, matplotlib.pyplot as plt, matplotlib.colors as colors, chaospy as cp, json
-from matplotlib.animation import FuncAnimation
-from matplotlib.mathtext import _mathtext as mathtext
+import numpy as np, pandas as pd, geopandas as gpd, matplotlib.pyplot as plt, matplotlib.colors as colors, matplotlib.ticker as mtick, chaospy as cp, json
 from colorpalette import Color
 from matplotlib.colors import to_hex
+from matplotlib.animation import FuncAnimation
+from matplotlib.mathtext import _mathtext as mathtext
+from matplotlib.gridspec import GridSpec
 from chaospy import distributions as shape
-from scipy.stats import qmc
+from scipy.stats import qmc, linregress
 from warnings import filterwarnings
 from datetime import date
 from qsdsan.utils import auom
@@ -43,12 +44,12 @@ from exposan.htl import (create_C1_system, create_C2_system, create_C3_system,
                          create_T12_system, create_T13_system, create_T14_system,
                          create_T15_system)
 
-folder = '/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_landscape/'
+folder = '/Users/jiananfeng/Desktop/UIUC_PhD/PhD_CEE/NSF_PFAS/HTL_landscape/'
 
+_ton_to_tonne = auom('ton').conversion_factor('tonne')
 _MMgal_to_m3 = auom('gal').conversion_factor('m3')*1000000
-# TODO: this can be highly uncertain
-# tonne/MG
-ww_2_dry_solids = 1
+# 1 ton dry WWRS/MG wastewater, MOP 8, converted to tonne dry WWRS/MG
+ww_2_dry_solids = 1*_ton_to_tonne
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
@@ -85,7 +86,7 @@ world = gpd.read_file(folder + 'analyses/World Bank Official Boundaries - Admin 
 # =============================================================================
 # global north / south countries and regions
 # =============================================================================
-global_north_countries_regions = ['United States','Russia','Mexico','Japan','Turkey','Germany',
+global_north_countries_regions = ['United States','Russia','Japan','Turkey','Germany',
                                   'United Kingdom','France','Italy','South Korea','Spain',
                                   'Canada','Ukraine','Poland','Uzbekistan','Australia','Kazakhstan',
                                   'Romania','Netherlands','Belgium','Sweden','Portugal','Azerbaijan',
@@ -97,7 +98,7 @@ global_north_countries_regions = ['United States','Russia','Mexico','Japan','Tur
                                   'Malta','Iceland','Andorra','Liechtenstein','Monaco','San Marino',
                                   'Palau','Tuvalu','Vatican City']
 
-global_south_countries_regions = ['India','China','Indonesia','Pakistan','Nigeria','Brazil',
+global_south_countries_regions = ['India','China','Mexico','Indonesia','Pakistan','Nigeria','Brazil',
                                   'Bangladesh','Ethiopia','Egypt','Philippines','DR Congo',
                                   'Vietnam','Iran','Thailand','Tanzania','South Africa',
                                   'Kenya','Myanmar','Colombia','Sudan','Uganda','Algeria',
@@ -133,14 +134,12 @@ WRRF = pd.read_csv(folder + 'analyses/HydroWASTE_v10/HydroWASTE_v10.csv', encodi
 WRRF = WRRF[WRRF['WASTE_DIS'] != 0]
 WRRF = WRRF[~WRRF['STATUS'].isin(['Closed','Decommissioned','Non-Operational'])]
 WRRF['dry_solids_tonne_per_day'] = WRRF['WASTE_DIS']/_MMgal_to_m3*ww_2_dry_solids
-# TODO: add this to the manuscript or SI
-# TODO: to demonstrate this, may look at the ITO dataset, see how much percentage of WRRF with the WWRF mass flow < 1 dry tonne/day is lagoon
-# models will not be accurate when the WWRS mass flow rate is < 1 dry tonne/day (in reality, those WRRFs may use other WRRS treatment methods, e.g., lagoon, wetland, etc.)
-# only keep WRRFs with ≥ 1 tonne dry solids per day
-WRRF_filtered = WRRF[WRRF['dry_solids_tonne_per_day'] >= 1]
+# only keep WRRFs with ≥ 5 dry tonne WWRS/day for more feasible thermochemical technology deployment (5 dry tonne/day is from the HTL geospatial paper)
+WRRF_filtered = WRRF[WRRF['dry_solids_tonne_per_day'] >= 5]
 WRRF_filtered.reset_index(inplace=True)
 # TODO: add this to the manuscript or SI
 print(f"{WRRF_filtered['dry_solids_tonne_per_day'].sum()/WRRF['dry_solids_tonne_per_day'].sum()*100:.1f}% global WWRS are included." )
+print(f"{len(WRRF_filtered)} WRRFs are included." )
 print(f"{len(set(WRRF_filtered['COUNTRY']))} countires are included." )
 
 WRRF_filtered = gpd.GeoDataFrame(WRRF_filtered, crs='EPSG:4269',
@@ -201,8 +200,6 @@ PLI = PLI[['Country Name','Country Code','PLI']]
 PLI.rename(columns={'Country Name':'country',
                     'Country Code':'country_code'},
            inplace=True)
-
-# TODO: index for capital costs (any others, like transportation and utilities, but these two are less important and may use other indexes or just the same globally - if other indexes are not very different, so these remains not important, like if capital cost in country A is 0.01% of U.S., in this case, if still keep transportation cost the U.S. value, the transporation may become the most impactful driver)
 
 #%% data processing
 
@@ -450,12 +447,12 @@ plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 ax = plt.gca()
 ax.set_xlim([0, 1])
-ax.set_ylim([0, 100])
+ax.set_ylim([0, 40])
 ax.tick_params(direction='inout', length=20, width=3, labelbottom=False, bottom=False, top=False, left=True, right=False)
 
-plt.yticks(np.arange(0, 120, 20), fontname='Arial')
+plt.yticks(np.arange(0, 50, 10), fontname='Arial')
 
-ax.set_ylabel('$\mathbf{Passage}$ [%]',
+ax.set_ylabel('$\mathbf{Capture}$ [%]',
               fontname='Arial',
               fontsize=45,
               labelpad=13)
@@ -464,14 +461,7 @@ ax_right = ax.twinx()
 ax_right.set_ylim(ax.get_ylim())
 ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
 
-plt.yticks(np.arange(0, 120, 20), fontname='Arial')
-
-ax.bar(0.5,
-       100,
-       width=0.7,
-       color=lr,
-       edgecolor='k',
-       linewidth=3)
+plt.yticks(np.arange(0, 50, 10), fontname='Arial')
 
 ax.bar(0.5,
        np.quantile(MPs_WWRS_MC, 0.5)*100,
@@ -481,6 +471,87 @@ ax.bar(0.5,
        color=dr,
        edgecolor='k',
        linewidth=3)
+
+#%% MPs destruction
+
+MPs_destruction = pd.read_excel(folder + 'analyses/EC_destruction_data.xlsx','MPs_summary')
+
+conventional_MPs_destruction = MPs_destruction[MPs_destruction['process'] == 'C']
+wet_thermochemical_MPs_destruction = MPs_destruction[MPs_destruction['process'] == 'wet_T']
+dry_thermochemical_MPs_destruction = MPs_destruction[MPs_destruction['process'] == 'dry_T']
+
+fig = plt.figure(figsize=(10.86, 8))
+gs = GridSpec(1, 2, width_ratios=[3, 1], wspace=0.05)
+
+ax = fig.add_subplot(gs[0, 0])
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 36
+plt.rcParams['ytick.labelsize'] = 36
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+
+ax = plt.gca()
+ax.set_xlim([0, 600])
+ax.set_ylim([0, 100])
+ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False)
+
+ax.yaxis.set_major_formatter(mtick.PercentFormatter())
+
+plt.xticks(np.arange(0, 700, 100), fontname='Arial')
+plt.yticks(np.arange(0, 120, 20), fontname='Arial')
+
+ax.set_xlabel('$\mathbf{Temperature}$ [°C]',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=13)
+
+ax.set_ylabel('$\mathbf{MPs\ removal}$',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=13)
+
+ax_top = ax.twiny()
+ax_top.set_xlim(ax.get_xlim())
+ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
+
+plt.xticks(np.arange(0, 700, 100), fontname='Arial')
+
+ax_right = ax.twinx()
+ax_right.set_ylim(ax.get_ylim())
+ax_right.tick_params(direction='inout', length=20, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
+
+plt.yticks(np.arange(0, 120, 20), fontname='Arial')
+
+ax.scatter(conventional_MPs_destruction['temperature'], conventional_MPs_destruction['reduction']*100, color=a, s=600, edgecolor='k', linewidth=3)
+ax.scatter(wet_thermochemical_MPs_destruction['temperature'], wet_thermochemical_MPs_destruction['reduction']*100, color=b, s=600, edgecolor='k', linewidth=3)
+ax.scatter(dry_thermochemical_MPs_destruction['temperature'], dry_thermochemical_MPs_destruction['reduction']*100, color=r, s=600, edgecolor='k', linewidth=3)
+
+ax_box = fig.add_subplot(gs[0, 1], sharey=ax)
+
+data = [conventional_MPs_destruction['reduction']*100, wet_thermochemical_MPs_destruction['reduction']*100, dry_thermochemical_MPs_destruction['reduction']*100]
+bp = ax_box.boxplot(data, vert=True, whis=[5, 95], showfliers=False, widths=0.8, patch_artist=True)
+    
+bp['boxes'][0].set(color='k', facecolor=a, linewidth=3)
+bp['boxes'][1].set(color='k', facecolor=b, linewidth=3)
+bp['boxes'][2].set(color='k', facecolor=r, linewidth=3)
+
+for whisker in bp['whiskers']:
+    whisker.set(color='k', linewidth=3)
+
+for median in bp['medians']:
+    median.set(color='k', linewidth=3)
+
+for cap in bp['caps']:
+    cap.set(color='k', linewidth=3)
+
+ax_box.axis('off')
 
 #%% PhACs concentration
 
@@ -542,7 +613,6 @@ sediment_PhACs['MEC standardized'] *= 1000
 air_PhACs = pd.read_excel(folder + 'analyses/EC_data.xlsx','PhACs_summary')
 
 # water
-# TODO: include all kinds of water for now (except sewage-related water)
 water_PhACs = PhACs[PhACs['Matrix'].isin(['Drinking Water',
                                           'Groundwater',
                                           'Infiltration water',
@@ -563,7 +633,7 @@ water_PhACs = PhACs[PhACs['Matrix'].isin(['Drinking Water',
                                           'Tap Water',
                                           'Well Water (untreated)'])]
 set(water_PhACs['Unit standard'])
-# TODO: just remove 'mg/kg dry-weight' and assume others are roughly to be the same as per volume
+# just remove 'mg/kg dry-weight' and assume others are roughly to be the same as per volume
 water_PhACs = water_PhACs[water_PhACs['Unit standard'].isin(['mg/kg','mg/kg moist-weight','µg/L'])]
 water_PhACs.loc[water_PhACs['Unit standard'].isin(['mg/kg','mg/kg moist-weight']), 'MEC standardized'] *= 1000
 
@@ -679,12 +749,12 @@ plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 ax = plt.gca()
 ax.set_xlim([0, 1])
-ax.set_ylim([0, 100])
+ax.set_ylim([0, 40])
 ax.tick_params(direction='inout', length=20, width=3, labelbottom=False, bottom=False, top=False, left=True, right=False)
 
-plt.yticks(np.arange(0, 120, 20), fontname='Arial')
+plt.yticks(np.arange(0, 50, 10), fontname='Arial')
 
-ax.set_ylabel('$\mathbf{Passage}$ [%]',
+ax.set_ylabel('$\mathbf{Capture}$ [%]',
               fontname='Arial',
               fontsize=45,
               labelpad=13)
@@ -693,14 +763,7 @@ ax_right = ax.twinx()
 ax_right.set_ylim(ax.get_ylim())
 ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
 
-plt.yticks(np.arange(0, 120, 20), fontname='Arial')
-
-ax.bar(0.5,
-       100,
-       width=0.7,
-       color=lo,
-       edgecolor='k',
-       linewidth=3)
+plt.yticks(np.arange(0, 50, 10), fontname='Arial')
 
 ax.bar(0.5,
        np.quantile(PhACs_WWRS_MC, 0.5)*100,
@@ -710,6 +773,87 @@ ax.bar(0.5,
        color=do,
        edgecolor='k',
        linewidth=3)
+
+#%% PhACs destruction
+
+PhACs_destruction = pd.read_excel(folder + 'analyses/EC_destruction_data.xlsx','PhACs_summary')
+
+conventional_PhACs_destruction = PhACs_destruction[PhACs_destruction['process'] == 'C']
+wet_thermochemical_PhACs_destruction = PhACs_destruction[PhACs_destruction['process'] == 'wet_T']
+dry_thermochemical_PhACs_destruction = PhACs_destruction[PhACs_destruction['process'] == 'dry_T']
+
+fig = plt.figure(figsize=(10.86, 8))
+gs = GridSpec(1, 2, width_ratios=[3, 1], wspace=0.05)
+
+ax = fig.add_subplot(gs[0, 0])
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 36
+plt.rcParams['ytick.labelsize'] = 36
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+
+ax = plt.gca()
+ax.set_xlim([0, 600])
+ax.set_ylim([-200, 100])
+ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False)
+
+ax.yaxis.set_major_formatter(mtick.PercentFormatter())
+
+plt.xticks(np.arange(0, 700, 100), fontname='Arial')
+plt.yticks(np.arange(-200, 150, 50), fontname='Arial')
+
+ax.set_xlabel('$\mathbf{Temperature}$ [°C]',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=13)
+
+ax.set_ylabel('$\mathbf{PhACs\ removal}$',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=13)
+
+ax_top = ax.twiny()
+ax_top.set_xlim(ax.get_xlim())
+ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
+
+plt.xticks(np.arange(0, 700, 100), fontname='Arial')
+
+ax_right = ax.twinx()
+ax_right.set_ylim(ax.get_ylim())
+ax_right.tick_params(direction='inout', length=20, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
+
+plt.yticks(np.arange(-200, 150, 50), fontname='Arial')
+
+ax.scatter(conventional_PhACs_destruction['temperature'], conventional_PhACs_destruction['reduction']*100, color=a, s=600, edgecolor='k', linewidth=3)
+ax.scatter(wet_thermochemical_PhACs_destruction['temperature'], wet_thermochemical_PhACs_destruction['reduction']*100, color=b, s=600, edgecolor='k', linewidth=3)
+ax.scatter(dry_thermochemical_PhACs_destruction['temperature'], dry_thermochemical_PhACs_destruction['reduction']*100, color=r, s=600, edgecolor='k', linewidth=3)
+
+ax_box = fig.add_subplot(gs[0, 1], sharey=ax)
+
+data = [conventional_PhACs_destruction['reduction']*100, wet_thermochemical_PhACs_destruction['reduction']*100, dry_thermochemical_PhACs_destruction['reduction']*100]
+bp = ax_box.boxplot(data, vert=True, whis=[5, 95], showfliers=False, widths=0.8, patch_artist=True)
+    
+bp['boxes'][0].set(color='k', facecolor=a, linewidth=3)
+bp['boxes'][1].set(color='k', facecolor=b, linewidth=3)
+bp['boxes'][2].set(color='k', facecolor=r, linewidth=3)
+
+for whisker in bp['whiskers']:
+    whisker.set(color='k', linewidth=3)
+
+for median in bp['medians']:
+    median.set(color='k', linewidth=3)
+
+for cap in bp['caps']:
+    cap.set(color='k', linewidth=3)
+
+ax_box.axis('off')
 
 #%% ARGs concentration
 
@@ -854,15 +998,15 @@ joint = cp.distributions.J(human_use, human_excretion, excretion_to_WRRF,
 
 sample = joint.sample(100000)
 
-ARCs_WWRS_MC = pd.DataFrame()
+ARGs_WWRS_MC = pd.DataFrame()
 
-ARCs_WRRS = sample[0]*sample[1]*sample[2]*sample[4]
+ARGs_WRRS = sample[0]*sample[1]*sample[2]*sample[4]
 
 # assume ARGs can not be degraded during wastewater treatment processes
-ARCs_human_to_environment = sample[0]*sample[1]
-ARCs_animal_to_environment = (1 - sample[0])*sample[3]
+ARGs_human_to_environment = sample[0]*sample[1]
+ARGs_animal_to_environment = (1 - sample[0])*sample[3]
 
-ARCs_WWRS_MC = ARCs_WRRS/(ARCs_human_to_environment + ARCs_animal_to_environment)
+ARGs_WWRS_MC = ARGs_WRRS/(ARGs_human_to_environment + ARGs_animal_to_environment)
 
 fig, ax = plt.subplots(figsize=(2.5, 5))
 
@@ -880,12 +1024,12 @@ plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 ax = plt.gca()
 ax.set_xlim([0, 1])
-ax.set_ylim([0, 100])
+ax.set_ylim([0, 40])
 ax.tick_params(direction='inout', length=20, width=3, labelbottom=False, bottom=False, top=False, left=True, right=False)
 
-plt.yticks(np.arange(0, 120, 20), fontname='Arial')
+plt.yticks(np.arange(0, 50, 10), fontname='Arial')
 
-ax.set_ylabel('$\mathbf{Passage}$ [%]',
+ax.set_ylabel('$\mathbf{Capture}$ [%]',
               fontname='Arial',
               fontsize=45,
               labelpad=13)
@@ -894,23 +1038,95 @@ ax_right = ax.twinx()
 ax_right.set_ylim(ax.get_ylim())
 ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
 
-plt.yticks(np.arange(0, 120, 20), fontname='Arial')
+plt.yticks(np.arange(0, 50, 10), fontname='Arial')
 
 ax.bar(0.5,
-       100,
-       width=0.7,
-       color=lg,
-       edgecolor='k',
-       linewidth=3)
-
-ax.bar(0.5,
-       np.quantile(ARCs_WWRS_MC, 0.5)*100,
-       yerr=np.array([[(np.quantile(ARCs_WWRS_MC, 0.5) - np.quantile(ARCs_WWRS_MC, 0.05))*100], [(np.quantile(ARCs_WWRS_MC, 0.95) - np.quantile(ARCs_WWRS_MC, 0.5))*100]]),
+       np.quantile(ARGs_WWRS_MC, 0.5)*100,
+       yerr=np.array([[(np.quantile(ARGs_WWRS_MC, 0.5) - np.quantile(ARGs_WWRS_MC, 0.05))*100], [(np.quantile(ARGs_WWRS_MC, 0.95) - np.quantile(ARGs_WWRS_MC, 0.5))*100]]),
        error_kw=dict(capsize=15, lw=3, capthick=3),
        width=0.7,
        color=dg,
        edgecolor='k',
        linewidth=3)
+
+#%% ARGs destruction
+
+ARGs_destruction = pd.read_excel(folder + 'analyses/EC_destruction_data.xlsx','ARGs_summary')
+
+conventional_ARGs_destruction = ARGs_destruction[ARGs_destruction['process'] == 'C']
+wet_thermochemical_ARGs_destruction = ARGs_destruction[ARGs_destruction['process'] == 'wet_T']
+dry_thermochemical_ARGs_destruction = ARGs_destruction[ARGs_destruction['process'] == 'dry_T']
+
+fig = plt.figure(figsize=(10.86, 8))
+gs = GridSpec(1, 2, width_ratios=[3, 1], wspace=0.05)
+
+ax = fig.add_subplot(gs[0, 0])
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 36
+plt.rcParams['ytick.labelsize'] = 36
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+
+ax = plt.gca()
+ax.set_xlim([0, 600])
+ax.set_ylim([-2, 5])
+ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False)
+
+plt.xticks(np.arange(0, 700, 100), fontname='Arial')
+plt.yticks(np.arange(-2, 6, 1), fontname='Arial')
+
+ax.set_xlabel('$\mathbf{Temperature}$ [°C]',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=13)
+
+ax.set_ylabel('$\mathbf{ARGs\ log\ removal}$',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=13)
+
+ax_top = ax.twiny()
+ax_top.set_xlim(ax.get_xlim())
+ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
+
+plt.xticks(np.arange(0, 700, 100), fontname='Arial')
+
+ax_right = ax.twinx()
+ax_right.set_ylim(ax.get_ylim())
+ax_right.tick_params(direction='inout', length=20, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
+
+plt.yticks(np.arange(-2, 6, 1), fontname='Arial')
+
+ax.scatter(conventional_ARGs_destruction['temperature'], conventional_ARGs_destruction['reduction'], color=a, s=600, edgecolor='k', linewidth=3)
+ax.scatter(wet_thermochemical_ARGs_destruction['temperature'], wet_thermochemical_ARGs_destruction['reduction'], color=b, s=600, edgecolor='k', linewidth=3)
+ax.scatter(dry_thermochemical_ARGs_destruction['temperature'], dry_thermochemical_ARGs_destruction['reduction'], color=r, s=600, edgecolor='k', linewidth=3)
+
+ax_box = fig.add_subplot(gs[0, 1], sharey=ax)
+
+data = [conventional_ARGs_destruction['reduction'], wet_thermochemical_ARGs_destruction['reduction'], dry_thermochemical_ARGs_destruction['reduction']]
+bp = ax_box.boxplot(data, vert=True, whis=[5, 95], showfliers=False, widths=0.8, patch_artist=True)
+    
+bp['boxes'][0].set(color='k', facecolor=a, linewidth=3)
+bp['boxes'][1].set(color='k', facecolor=b, linewidth=3)
+bp['boxes'][2].set(color='k', facecolor=r, linewidth=3)
+
+for whisker in bp['whiskers']:
+    whisker.set(color='k', linewidth=3)
+
+for median in bp['medians']:
+    median.set(color='k', linewidth=3)
+
+for cap in bp['caps']:
+    cap.set(color='k', linewidth=3)
+
+ax_box.axis('off')
 
 #%% PFAS concentration data processing 1 - EU - data cleaning to reduce the file size
 
@@ -1637,8 +1853,7 @@ air_PBDEs = [x for sublist in CN_PBDEs_air['valid_data'] for x in sublist]
 
 # water
 set(CN_PBDEs_water['Unit'])
-# TODO: check if it is reasonable to remove 'ng/kg dw''
-CN_PBDEs_air = CN_PBDEs_air[CN_PBDEs_air['Unit'] != 'ng/kg dw']
+CN_PBDEs_water = CN_PBDEs_water[CN_PBDEs_water['Unit'] != 'ng/kg dw']
 # assume the density of water is 1000 kg/m3
 CN_PBDEs_water[['Min','Max','Mean','Median']] *= (1/1000)
 CN_PBDEs_water['valid_data'] = CN_PBDEs_water.apply(add_data, axis=1)
@@ -2019,11 +2234,8 @@ T_cost_NOAK_max = []
 T_CI_NOAK_max = []
 
 # run in different consoles to speed up
-# do not run all together since the application memory is not enough
-# first round: 3000 and 6000
-# second round: 9000 and 12000
-# last round: 14000 and len(WRRF_filtered)
-for i in range(0, len(WRRF_filtered)):
+# do not have more than two consoles running together since the application memory is not enough
+for i in range(2500, len(WRRF_filtered)):
     if i%100 == 0:
         print(i)
     
@@ -2136,19 +2348,211 @@ country_min.to_excel(folder + f'results/country_min_{date.today()}_{i}.xlsx')
 
 country_max.to_excel(folder + f'results/country_max_{date.today()}_{i}.xlsx')
 
-#%% merge country results
+#%% merge country results - using 1 dry tonne/day as the cutoff size
+
+# # =============================================================================
+# # mean
+# # =============================================================================
+# country_mean_1 = pd.read_excel(folder + 'results/country_mean_2025-10-16_2999.xlsx')
+# country_mean_2 = pd.read_excel(folder + 'results/country_mean_2025-10-16_5999.xlsx')
+# country_mean_3 = pd.read_excel(folder + 'results/country_mean_2025-10-16_8999.xlsx')
+# country_mean_4 = pd.read_excel(folder + 'results/country_mean_2025-10-16_11999.xlsx')
+# country_mean_5 = pd.read_excel(folder + 'results/country_mean_2025-10-16_13999.xlsx')
+# country_mean_6 = pd.read_excel(folder + 'results/country_mean_2025-10-16_15964.xlsx')
+
+# integrated_country_mean = pd.concat([country_mean_1, country_mean_2, country_mean_3, country_mean_4, country_mean_5, country_mean_6])
+# integrated_country_mean.reset_index(inplace=True)
+# integrated_country_mean = integrated_country_mean[['C_cost_mean','C_CI_mean','T_cost_FOAK_mean','T_CI_FOAK_mean','T_cost_NOAK_mean','T_CI_NOAK_mean']]
+
+# WRRF_mean = pd.concat([WRRF_filtered, integrated_country_mean], axis=1)
+
+# WRRF_mean['C_cost_times_mass_flow'] = WRRF_mean['C_cost_mean']*WRRF_mean['dry_solids_tonne_per_day']
+# WRRF_mean['C_CI_times_mass_flow'] = WRRF_mean['C_CI_mean']*WRRF_mean['dry_solids_tonne_per_day']
+# WRRF_mean['T_cost_FOAK_times_mass_flow'] = WRRF_mean['T_cost_FOAK_mean']*WRRF_mean['dry_solids_tonne_per_day']
+# WRRF_mean['T_CI_FOAK_times_mass_flow'] = WRRF_mean['T_CI_FOAK_mean']*WRRF_mean['dry_solids_tonne_per_day']
+# WRRF_mean['T_cost_NOAK_times_mass_flow'] = WRRF_mean['T_cost_NOAK_mean']*WRRF_mean['dry_solids_tonne_per_day']
+# WRRF_mean['T_CI_NOAK_times_mass_flow'] = WRRF_mean['T_CI_NOAK_mean']*WRRF_mean['dry_solids_tonne_per_day']
+
+# WRRF_mean = WRRF_mean[['COUNTRY','dry_solids_tonne_per_day','C_cost_times_mass_flow','C_CI_times_mass_flow',
+#                        'T_cost_FOAK_times_mass_flow','T_CI_FOAK_times_mass_flow','T_cost_NOAK_times_mass_flow','T_CI_NOAK_times_mass_flow']]
+
+# WRRF_mean = WRRF_mean.groupby('COUNTRY').sum()
+
+# WRRF_mean['C_cost_weighted_average'] = WRRF_mean['C_cost_times_mass_flow']/WRRF_mean['dry_solids_tonne_per_day']
+# WRRF_mean['C_CI_weighted_average'] = WRRF_mean['C_CI_times_mass_flow']/WRRF_mean['dry_solids_tonne_per_day']
+# WRRF_mean['T_cost_FOAK_weighted_average'] = WRRF_mean['T_cost_FOAK_times_mass_flow']/WRRF_mean['dry_solids_tonne_per_day']
+# WRRF_mean['T_CI_FOAK_weighted_average'] = WRRF_mean['T_CI_FOAK_times_mass_flow']/WRRF_mean['dry_solids_tonne_per_day']
+# WRRF_mean['T_cost_NOAK_weighted_average'] = WRRF_mean['T_cost_NOAK_times_mass_flow']/WRRF_mean['dry_solids_tonne_per_day']
+# WRRF_mean['T_CI_NOAK_weighted_average'] = WRRF_mean['T_CI_NOAK_times_mass_flow']/WRRF_mean['dry_solids_tonne_per_day']
+
+# WRRF_mean = WRRF_mean[['C_cost_weighted_average','C_CI_weighted_average','T_cost_FOAK_weighted_average',
+#                        'T_CI_FOAK_weighted_average', 'T_cost_NOAK_weighted_average', 'T_CI_NOAK_weighted_average']]
+
+# WRRF_mean['carbon_credit_needed'] = (WRRF_mean['T_cost_NOAK_weighted_average'] - WRRF_mean['C_cost_weighted_average'])/(WRRF_mean['C_CI_weighted_average'] - WRRF_mean['T_CI_NOAK_weighted_average'])*1000
+
+# WRRF_mean.reset_index(inplace=True)
+
+# WRRF_mean = WRRF_mean.merge(WRRF_filtered[['COUNTRY','CNTRY_ISO']].drop_duplicates(), how='left', on='COUNTRY')
+
+# # TODO: make sure no meaningful results are removed after merging these two datasets
+# # TODO: may need to check the country code with https://www.iban.com/country-codes
+# world_mean = world.merge(WRRF_mean, how='left', left_on='ISO_A3', right_on='CNTRY_ISO')
+
+# # =============================================================================
+# # median
+# # =============================================================================
+# country_median_1 = pd.read_excel(folder + 'results/country_median_2025-10-16_2999.xlsx')
+# country_median_2 = pd.read_excel(folder + 'results/country_median_2025-10-16_5999.xlsx')
+# country_median_3 = pd.read_excel(folder + 'results/country_median_2025-10-16_8999.xlsx')
+# country_median_4 = pd.read_excel(folder + 'results/country_median_2025-10-16_11999.xlsx')
+# country_median_5 = pd.read_excel(folder + 'results/country_median_2025-10-16_13999.xlsx')
+# country_median_6 = pd.read_excel(folder + 'results/country_median_2025-10-16_15964.xlsx')
+
+# integrated_country_median = pd.concat([country_median_1, country_median_2, country_median_3, country_median_4, country_median_5, country_median_6])
+# integrated_country_median.reset_index(inplace=True)
+# integrated_country_median = integrated_country_median[['C_cost_median','C_CI_median','T_cost_FOAK_median','T_CI_FOAK_median','T_cost_NOAK_median','T_CI_NOAK_median']]
+
+# WRRF_median = pd.concat([WRRF_filtered, integrated_country_median], axis=1)
+
+# WRRF_median['C_cost_times_mass_flow'] = WRRF_median['C_cost_median']*WRRF_median['dry_solids_tonne_per_day']
+# WRRF_median['C_CI_times_mass_flow'] = WRRF_median['C_CI_median']*WRRF_median['dry_solids_tonne_per_day']
+# WRRF_median['T_cost_FOAK_times_mass_flow'] = WRRF_median['T_cost_FOAK_median']*WRRF_median['dry_solids_tonne_per_day']
+# WRRF_median['T_CI_FOAK_times_mass_flow'] = WRRF_median['T_CI_FOAK_median']*WRRF_median['dry_solids_tonne_per_day']
+# WRRF_median['T_cost_NOAK_times_mass_flow'] = WRRF_median['T_cost_NOAK_median']*WRRF_median['dry_solids_tonne_per_day']
+# WRRF_median['T_CI_NOAK_times_mass_flow'] = WRRF_median['T_CI_NOAK_median']*WRRF_median['dry_solids_tonne_per_day']
+
+# WRRF_median = WRRF_median[['COUNTRY','dry_solids_tonne_per_day','C_cost_times_mass_flow','C_CI_times_mass_flow',
+#                            'T_cost_FOAK_times_mass_flow','T_CI_FOAK_times_mass_flow','T_cost_NOAK_times_mass_flow','T_CI_NOAK_times_mass_flow']]
+
+# WRRF_median = WRRF_median.groupby('COUNTRY').sum()
+
+# WRRF_median['C_cost_weighted_average'] = WRRF_median['C_cost_times_mass_flow']/WRRF_median['dry_solids_tonne_per_day']
+# WRRF_median['C_CI_weighted_average'] = WRRF_median['C_CI_times_mass_flow']/WRRF_median['dry_solids_tonne_per_day']
+# WRRF_median['T_cost_FOAK_weighted_average'] = WRRF_median['T_cost_FOAK_times_mass_flow']/WRRF_median['dry_solids_tonne_per_day']
+# WRRF_median['T_CI_FOAK_weighted_average'] = WRRF_median['T_CI_FOAK_times_mass_flow']/WRRF_median['dry_solids_tonne_per_day']
+# WRRF_median['T_cost_NOAK_weighted_average'] = WRRF_median['T_cost_NOAK_times_mass_flow']/WRRF_median['dry_solids_tonne_per_day']
+# WRRF_median['T_CI_NOAK_weighted_average'] = WRRF_median['T_CI_NOAK_times_mass_flow']/WRRF_median['dry_solids_tonne_per_day']
+
+# WRRF_median = WRRF_median[['C_cost_weighted_average','C_CI_weighted_average','T_cost_FOAK_weighted_average',
+#                            'T_CI_FOAK_weighted_average', 'T_cost_NOAK_weighted_average', 'T_CI_NOAK_weighted_average']]
+
+# WRRF_median['carbon_credit_needed'] = (WRRF_median['T_cost_NOAK_weighted_average'] - WRRF_median['C_cost_weighted_average'])/(WRRF_median['C_CI_weighted_average'] - WRRF_median['T_CI_NOAK_weighted_average'])*1000
+
+# WRRF_median.reset_index(inplace=True)
+
+# WRRF_median = WRRF_median.merge(WRRF_filtered[['COUNTRY','CNTRY_ISO']].drop_duplicates(), how='left', on='COUNTRY')
+
+# # TODO: make sure no meaningful results are removed after merging these two datasets
+# # TODO: may need to check the country code with https://www.iban.com/country-codes
+# world_median = world.merge(WRRF_median, how='left', left_on='ISO_A3', right_on='CNTRY_ISO')
+
+# # =============================================================================
+# # min
+# # =============================================================================
+# # TODO: cost and CI minimums may not come from the same system
+# country_min_1 = pd.read_excel(folder + 'results/country_min_2025-10-16_2999.xlsx')
+# country_min_2 = pd.read_excel(folder + 'results/country_min_2025-10-16_5999.xlsx')
+# country_min_3 = pd.read_excel(folder + 'results/country_min_2025-10-16_8999.xlsx')
+# country_min_4 = pd.read_excel(folder + 'results/country_min_2025-10-16_11999.xlsx')
+# country_min_5 = pd.read_excel(folder + 'results/country_min_2025-10-16_13999.xlsx')
+# country_min_6 = pd.read_excel(folder + 'results/country_min_2025-10-16_15964.xlsx')
+
+# integrated_country_min = pd.concat([country_min_1, country_min_2, country_min_3, country_min_4, country_min_5, country_min_6])
+# integrated_country_min.reset_index(inplace=True)
+# integrated_country_min = integrated_country_min[['C_cost_min','C_CI_min','T_cost_FOAK_min','T_CI_FOAK_min','T_cost_NOAK_min','T_CI_NOAK_min']]
+
+# WRRF_min = pd.concat([WRRF_filtered, integrated_country_min], axis=1)
+
+# WRRF_min['C_cost_times_mass_flow'] = WRRF_min['C_cost_min']*WRRF_min['dry_solids_tonne_per_day']
+# WRRF_min['C_CI_times_mass_flow'] = WRRF_min['C_CI_min']*WRRF_min['dry_solids_tonne_per_day']
+# WRRF_min['T_cost_FOAK_times_mass_flow'] = WRRF_min['T_cost_FOAK_min']*WRRF_min['dry_solids_tonne_per_day']
+# WRRF_min['T_CI_FOAK_times_mass_flow'] = WRRF_min['T_CI_FOAK_min']*WRRF_min['dry_solids_tonne_per_day']
+# WRRF_min['T_cost_NOAK_times_mass_flow'] = WRRF_min['T_cost_NOAK_min']*WRRF_min['dry_solids_tonne_per_day']
+# WRRF_min['T_CI_NOAK_times_mass_flow'] = WRRF_min['T_CI_NOAK_min']*WRRF_min['dry_solids_tonne_per_day']
+
+# WRRF_min = WRRF_min[['COUNTRY','dry_solids_tonne_per_day','C_cost_times_mass_flow','C_CI_times_mass_flow',
+#                      'T_cost_FOAK_times_mass_flow','T_CI_FOAK_times_mass_flow','T_cost_NOAK_times_mass_flow','T_CI_NOAK_times_mass_flow']]
+
+# WRRF_min = WRRF_min.groupby('COUNTRY').sum()
+
+# WRRF_min['C_cost_weighted_average'] = WRRF_min['C_cost_times_mass_flow']/WRRF_min['dry_solids_tonne_per_day']
+# WRRF_min['C_CI_weighted_average'] = WRRF_min['C_CI_times_mass_flow']/WRRF_min['dry_solids_tonne_per_day']
+# WRRF_min['T_cost_FOAK_weighted_average'] = WRRF_min['T_cost_FOAK_times_mass_flow']/WRRF_min['dry_solids_tonne_per_day']
+# WRRF_min['T_CI_FOAK_weighted_average'] = WRRF_min['T_CI_FOAK_times_mass_flow']/WRRF_min['dry_solids_tonne_per_day']
+# WRRF_min['T_cost_NOAK_weighted_average'] = WRRF_min['T_cost_NOAK_times_mass_flow']/WRRF_min['dry_solids_tonne_per_day']
+# WRRF_min['T_CI_NOAK_weighted_average'] = WRRF_min['T_CI_NOAK_times_mass_flow']/WRRF_min['dry_solids_tonne_per_day']
+
+# WRRF_min = WRRF_min[['C_cost_weighted_average','C_CI_weighted_average','T_cost_FOAK_weighted_average',
+#                      'T_CI_FOAK_weighted_average', 'T_cost_NOAK_weighted_average', 'T_CI_NOAK_weighted_average']]
+
+# WRRF_min['carbon_credit_needed'] = (WRRF_min['T_cost_NOAK_weighted_average'] - WRRF_min['C_cost_weighted_average'])/(WRRF_min['C_CI_weighted_average'] - WRRF_min['T_CI_NOAK_weighted_average'])*1000
+
+# WRRF_min.reset_index(inplace=True)
+
+# WRRF_min = WRRF_min.merge(WRRF_filtered[['COUNTRY','CNTRY_ISO']].drop_duplicates(), how='left', on='COUNTRY')
+
+# # TODO: make sure no meaningful results are removed after merging these two datasets
+# # TODO: may need to check the country code with https://www.iban.com/country-codes
+# world_min = world.merge(WRRF_min, how='left', left_on='ISO_A3', right_on='CNTRY_ISO')
+
+# # =============================================================================
+# # max
+# # =============================================================================
+# # TODO: cost and CI maximums may not come from the same system
+# country_max_1 = pd.read_excel(folder + 'results/country_max_2025-10-16_2999.xlsx')
+# country_max_2 = pd.read_excel(folder + 'results/country_max_2025-10-16_5999.xlsx')
+# country_max_3 = pd.read_excel(folder + 'results/country_max_2025-10-16_8999.xlsx')
+# country_max_4 = pd.read_excel(folder + 'results/country_max_2025-10-16_11999.xlsx')
+# country_max_5 = pd.read_excel(folder + 'results/country_max_2025-10-16_13999.xlsx')
+# country_max_6 = pd.read_excel(folder + 'results/country_max_2025-10-16_15964.xlsx')
+
+# integrated_country_max = pd.concat([country_max_1, country_max_2, country_max_3, country_max_4, country_max_5, country_max_6])
+# integrated_country_max.reset_index(inplace=True)
+# integrated_country_max = integrated_country_max[['C_cost_max','C_CI_max','T_cost_FOAK_max','T_CI_FOAK_max','T_cost_NOAK_max','T_CI_NOAK_max']]
+
+# WRRF_max = pd.concat([WRRF_filtered, integrated_country_max], axis=1)
+
+# WRRF_max['C_cost_times_mass_flow'] = WRRF_max['C_cost_max']*WRRF_max['dry_solids_tonne_per_day']
+# WRRF_max['C_CI_times_mass_flow'] = WRRF_max['C_CI_max']*WRRF_max['dry_solids_tonne_per_day']
+# WRRF_max['T_cost_FOAK_times_mass_flow'] = WRRF_max['T_cost_FOAK_max']*WRRF_max['dry_solids_tonne_per_day']
+# WRRF_max['T_CI_FOAK_times_mass_flow'] = WRRF_max['T_CI_FOAK_max']*WRRF_max['dry_solids_tonne_per_day']
+# WRRF_max['T_cost_NOAK_times_mass_flow'] = WRRF_max['T_cost_NOAK_max']*WRRF_max['dry_solids_tonne_per_day']
+# WRRF_max['T_CI_NOAK_times_mass_flow'] = WRRF_max['T_CI_NOAK_max']*WRRF_max['dry_solids_tonne_per_day']
+
+# WRRF_max = WRRF_max[['COUNTRY','dry_solids_tonne_per_day','C_cost_times_mass_flow','C_CI_times_mass_flow',
+#                      'T_cost_FOAK_times_mass_flow','T_CI_FOAK_times_mass_flow','T_cost_NOAK_times_mass_flow','T_CI_NOAK_times_mass_flow']]
+
+# WRRF_max = WRRF_max.groupby('COUNTRY').sum()
+
+# WRRF_max['C_cost_weighted_average'] = WRRF_max['C_cost_times_mass_flow']/WRRF_max['dry_solids_tonne_per_day']
+# WRRF_max['C_CI_weighted_average'] = WRRF_max['C_CI_times_mass_flow']/WRRF_max['dry_solids_tonne_per_day']
+# WRRF_max['T_cost_FOAK_weighted_average'] = WRRF_max['T_cost_FOAK_times_mass_flow']/WRRF_max['dry_solids_tonne_per_day']
+# WRRF_max['T_CI_FOAK_weighted_average'] = WRRF_max['T_CI_FOAK_times_mass_flow']/WRRF_max['dry_solids_tonne_per_day']
+# WRRF_max['T_cost_NOAK_weighted_average'] = WRRF_max['T_cost_NOAK_times_mass_flow']/WRRF_max['dry_solids_tonne_per_day']
+# WRRF_max['T_CI_NOAK_weighted_average'] = WRRF_max['T_CI_NOAK_times_mass_flow']/WRRF_max['dry_solids_tonne_per_day']
+
+# WRRF_max = WRRF_max[['C_cost_weighted_average','C_CI_weighted_average','T_cost_FOAK_weighted_average',
+#                      'T_CI_FOAK_weighted_average', 'T_cost_NOAK_weighted_average', 'T_CI_NOAK_weighted_average']]
+
+# WRRF_max['carbon_credit_needed'] = (WRRF_max['T_cost_NOAK_weighted_average'] - WRRF_max['C_cost_weighted_average'])/(WRRF_max['C_CI_weighted_average'] - WRRF_max['T_CI_NOAK_weighted_average'])*1000
+
+# WRRF_max.reset_index(inplace=True)
+
+# WRRF_max = WRRF_max.merge(WRRF_filtered[['COUNTRY','CNTRY_ISO']].drop_duplicates(), how='left', on='COUNTRY')
+
+# # TODO: make sure no meaningful results are removed after merging these two datasets
+# # TODO: may need to check the country code with https://www.iban.com/country-codes
+# world_max = world.merge(WRRF_max, how='left', left_on='ISO_A3', right_on='CNTRY_ISO')
+
+#%% merge country results - using 5 dry tonne/day as the cutoff size
 
 # =============================================================================
 # mean
 # =============================================================================
-country_mean_1 = pd.read_excel(folder + 'results/country_mean_2025-10-16_2999.xlsx')
-country_mean_2 = pd.read_excel(folder + 'results/country_mean_2025-10-16_5999.xlsx')
-country_mean_3 = pd.read_excel(folder + 'results/country_mean_2025-10-16_8999.xlsx')
-country_mean_4 = pd.read_excel(folder + 'results/country_mean_2025-10-16_11999.xlsx')
-country_mean_5 = pd.read_excel(folder + 'results/country_mean_2025-10-16_13999.xlsx')
-country_mean_6 = pd.read_excel(folder + 'results/country_mean_2025-10-16_15964.xlsx')
+country_mean_1 = pd.read_excel(folder + 'results/country_mean_2025-11-14_2499.xlsx')
+country_mean_2 = pd.read_excel(folder + 'results/country_mean_2025-11-14_4726.xlsx')
 
-integrated_country_mean = pd.concat([country_mean_1, country_mean_2, country_mean_3, country_mean_4, country_mean_5, country_mean_6])
+integrated_country_mean = pd.concat([country_mean_1, country_mean_2])
 integrated_country_mean.reset_index(inplace=True)
 integrated_country_mean = integrated_country_mean[['C_cost_mean','C_CI_mean','T_cost_FOAK_mean','T_CI_FOAK_mean','T_cost_NOAK_mean','T_CI_NOAK_mean']]
 
@@ -2189,14 +2593,10 @@ world_mean = world.merge(WRRF_mean, how='left', left_on='ISO_A3', right_on='CNTR
 # =============================================================================
 # median
 # =============================================================================
-country_median_1 = pd.read_excel(folder + 'results/country_median_2025-10-16_2999.xlsx')
-country_median_2 = pd.read_excel(folder + 'results/country_median_2025-10-16_5999.xlsx')
-country_median_3 = pd.read_excel(folder + 'results/country_median_2025-10-16_8999.xlsx')
-country_median_4 = pd.read_excel(folder + 'results/country_median_2025-10-16_11999.xlsx')
-country_median_5 = pd.read_excel(folder + 'results/country_median_2025-10-16_13999.xlsx')
-country_median_6 = pd.read_excel(folder + 'results/country_median_2025-10-16_15964.xlsx')
+country_median_1 = pd.read_excel(folder + 'results/country_median_2025-11-14_2499.xlsx')
+country_median_2 = pd.read_excel(folder + 'results/country_median_2025-11-14_4726.xlsx')
 
-integrated_country_median = pd.concat([country_median_1, country_median_2, country_median_3, country_median_4, country_median_5, country_median_6])
+integrated_country_median = pd.concat([country_median_1, country_median_2])
 integrated_country_median.reset_index(inplace=True)
 integrated_country_median = integrated_country_median[['C_cost_median','C_CI_median','T_cost_FOAK_median','T_CI_FOAK_median','T_cost_NOAK_median','T_CI_NOAK_median']]
 
@@ -2238,14 +2638,10 @@ world_median = world.merge(WRRF_median, how='left', left_on='ISO_A3', right_on='
 # min
 # =============================================================================
 # TODO: cost and CI minimums may not come from the same system
-country_min_1 = pd.read_excel(folder + 'results/country_min_2025-10-16_2999.xlsx')
-country_min_2 = pd.read_excel(folder + 'results/country_min_2025-10-16_5999.xlsx')
-country_min_3 = pd.read_excel(folder + 'results/country_min_2025-10-16_8999.xlsx')
-country_min_4 = pd.read_excel(folder + 'results/country_min_2025-10-16_11999.xlsx')
-country_min_5 = pd.read_excel(folder + 'results/country_min_2025-10-16_13999.xlsx')
-country_min_6 = pd.read_excel(folder + 'results/country_min_2025-10-16_15964.xlsx')
+country_min_1 = pd.read_excel(folder + 'results/country_min_2025-11-14_2499.xlsx')
+country_min_2 = pd.read_excel(folder + 'results/country_min_2025-11-14_4726.xlsx')
 
-integrated_country_min = pd.concat([country_min_1, country_min_2, country_min_3, country_min_4, country_min_5, country_min_6])
+integrated_country_min = pd.concat([country_min_1, country_min_2])
 integrated_country_min.reset_index(inplace=True)
 integrated_country_min = integrated_country_min[['C_cost_min','C_CI_min','T_cost_FOAK_min','T_CI_FOAK_min','T_cost_NOAK_min','T_CI_NOAK_min']]
 
@@ -2287,14 +2683,10 @@ world_min = world.merge(WRRF_min, how='left', left_on='ISO_A3', right_on='CNTRY_
 # max
 # =============================================================================
 # TODO: cost and CI maximums may not come from the same system
-country_max_1 = pd.read_excel(folder + 'results/country_max_2025-10-16_2999.xlsx')
-country_max_2 = pd.read_excel(folder + 'results/country_max_2025-10-16_5999.xlsx')
-country_max_3 = pd.read_excel(folder + 'results/country_max_2025-10-16_8999.xlsx')
-country_max_4 = pd.read_excel(folder + 'results/country_max_2025-10-16_11999.xlsx')
-country_max_5 = pd.read_excel(folder + 'results/country_max_2025-10-16_13999.xlsx')
-country_max_6 = pd.read_excel(folder + 'results/country_max_2025-10-16_15964.xlsx')
+country_max_1 = pd.read_excel(folder + 'results/country_max_2025-11-14_2499.xlsx')
+country_max_2 = pd.read_excel(folder + 'results/country_max_2025-11-14_4726.xlsx')
 
-integrated_country_max = pd.concat([country_max_1, country_max_2, country_max_3, country_max_4, country_max_5, country_max_6])
+integrated_country_max = pd.concat([country_max_1, country_max_2])
 integrated_country_max.reset_index(inplace=True)
 integrated_country_max = integrated_country_max[['C_cost_max','C_CI_max','T_cost_FOAK_max','T_CI_FOAK_max','T_cost_NOAK_max','T_CI_NOAK_max']]
 
@@ -2332,6 +2724,39 @@ WRRF_max = WRRF_max.merge(WRRF_filtered[['COUNTRY','CNTRY_ISO']].drop_duplicates
 # TODO: may need to check the country code with https://www.iban.com/country-codes
 world_max = world.merge(WRRF_max, how='left', left_on='ISO_A3', right_on='CNTRY_ISO')
 
+#%% world map visualization - cost legend
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 54.5
+plt.rcParams['ytick.labelsize'] = 54.5
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+
+fig, ax = plt.subplots(figsize=(30, 30))
+
+color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['w', b, db])
+
+world_mean.plot(column='C_cost_weighted_average', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, vmin=-200, vmax=1000)
+
+fig.axes[1].set_ylabel('$\mathbf{Cost}$ [\$·${tonne^{−1}}$]', fontname='Arial', fontsize=54.5)
+fig.axes[1].tick_params(length=15, width=3)
+fig.axes[1].set_yticks([-200, 0, 200, 400, 600, 800, 1000])
+fig.axes[1].set_yticklabels(['-200','0','200','400','600','800','1000'], fontname='Arial', fontsize=54.5)
+
+pos1 = fig.axes[1].get_position()
+pos2 = [pos1.x0-0.035, pos1.y0, pos1.width, pos1.height] 
+fig.axes[1].set_position(pos2)
+
+ax.set_aspect(1)
+
+ax.set_axis_off()
+
 #%% world map visualization - C cost mean
 
 plt.rcParams['axes.linewidth'] = 3
@@ -2352,14 +2777,14 @@ color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['
 
 world.plot(ax=ax, color='none', edgecolor='k', hatch='//', linewidth=1)
 
-world_mean.plot(column='C_cost_weighted_average', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, vmin=0, vmax=1000)
+world_mean.plot(column='C_cost_weighted_average', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, vmin=-200, vmax=1000)
 
 world.plot(ax=ax, color='none', edgecolor='k', linewidth=1)
 
 fig.axes[1].set_ylabel('$\mathbf{Cost}$ [\$·${tonne^{−1}}$]', fontname='Arial', fontsize=36)
 fig.axes[1].tick_params(length=10, width=3)
-fig.axes[1].set_yticks([0, 200, 400, 600, 800, 1000])
-fig.axes[1].set_yticklabels(['<0','200','400','600','800','>1000'], fontname='Arial', fontsize=36)
+fig.axes[1].set_yticks([-200, 0, 200, 400, 600, 800, 1000])
+fig.axes[1].set_yticklabels(['-200','0','200','400','600','800','1000'], fontname='Arial', fontsize=36)
 
 pos1 = fig.axes[1].get_position()
 pos2 = [pos1.x0-0.035, pos1.y0, pos1.width, pos1.height] 
@@ -2392,14 +2817,14 @@ color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['
 
 world.plot(ax=ax, color='none', edgecolor='k', hatch='//', linewidth=1)
 
-world_mean.plot(column='T_cost_NOAK_weighted_average', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, vmin=0, vmax=1000)
+world_mean.plot(column='T_cost_NOAK_weighted_average', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, vmin=-200, vmax=1000)
 
 world.plot(ax=ax, color='none', edgecolor='k', linewidth=1)
 
 fig.axes[1].set_ylabel('$\mathbf{Cost}$ [\$·${tonne^{−1}}$]', fontname='Arial', fontsize=36)
 fig.axes[1].tick_params(length=10, width=3)
-fig.axes[1].set_yticks([0, 200, 400, 600, 800, 1000])
-fig.axes[1].set_yticklabels(['<0','200','400','600','800','>1000'], fontname='Arial', fontsize=36)
+fig.axes[1].set_yticks([-200, 0, 200, 400, 600, 800, 1000])
+fig.axes[1].set_yticklabels(['-200','0','200','400','600','800','1000'], fontname='Arial', fontsize=36)
 
 pos1 = fig.axes[1].get_position()
 pos2 = [pos1.x0-0.035, pos1.y0, pos1.width, pos1.height] 
@@ -2407,6 +2832,39 @@ fig.axes[1].set_position(pos2)
 
 # comment out the following line if the colorbar is needed
 # fig.delaxes(fig.axes[1])
+
+ax.set_aspect(1)
+
+ax.set_axis_off()
+
+#%% world map visualization - CI legend
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 54.5
+plt.rcParams['ytick.labelsize'] = 54.5
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+
+fig, ax = plt.subplots(figsize=(30, 30))
+
+color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['w', g, dg])
+
+world_mean.plot(column='C_CI_weighted_average', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, vmin=-300, vmax=900)
+
+fig.axes[1].set_ylabel('$\mathbf{CI}$ [kg CO${_{2}}$e·${tonne^{−1}}$]', fontname='Arial', fontsize=54.5)
+fig.axes[1].tick_params(length=15, width=3)
+fig.axes[1].set_yticks([-300, -150, 0, 150, 300, 450, 600, 750, 900])
+fig.axes[1].set_yticklabels(['-300','-150','0','150','300','450','600','750','900'], fontname='Arial', fontsize=54.5)
+
+pos1 = fig.axes[1].get_position()
+pos2 = [pos1.x0-0.035, pos1.y0, pos1.width, pos1.height] 
+fig.axes[1].set_position(pos2)
 
 ax.set_aspect(1)
 
@@ -2432,14 +2890,14 @@ color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['
 
 world.plot(ax=ax, color='none', edgecolor='k', hatch='//', linewidth=1)
 
-world_mean.plot(column='C_CI_weighted_average', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, vmin=-300, vmax=600)
+world_mean.plot(column='C_CI_weighted_average', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, vmin=-300, vmax=900)
 
 world.plot(ax=ax, color='none', edgecolor='k', linewidth=1)
 
 fig.axes[1].set_ylabel('$\mathbf{CI}$ [kg CO${_{2}}$e·${tonne^{−1}}$]', fontname='Arial', fontsize=36)
 fig.axes[1].tick_params(length=10, width=3)
-fig.axes[1].set_yticks([-300, -150, 0, 150, 300, 450, 600])
-fig.axes[1].set_yticklabels(['-300','-150','0','150','300','450','600'], fontname='Arial', fontsize=36)
+fig.axes[1].set_yticks([-300, -150, 0, 150, 300, 450, 600, 750, 900])
+fig.axes[1].set_yticklabels(['-300','-150','0','150','300','450','600','750','900'], fontname='Arial', fontsize=36)
 
 pos1 = fig.axes[1].get_position()
 pos2 = [pos1.x0-0.035, pos1.y0, pos1.width, pos1.height] 
@@ -2472,14 +2930,14 @@ color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['
 
 world.plot(ax=ax, color='none', edgecolor='k', hatch='//', linewidth=1)
 
-world_mean.plot(column='T_CI_NOAK_weighted_average', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, vmin=-300, vmax=600)
+world_mean.plot(column='T_CI_NOAK_weighted_average', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, vmin=-300, vmax=900)
 
 world.plot(ax=ax, color='none', edgecolor='k', linewidth=1)
 
 fig.axes[1].set_ylabel('$\mathbf{CI}$ [kg CO${_{2}}$e·${tonne^{−1}}$]', fontname='Arial', fontsize=36)
 fig.axes[1].tick_params(length=10, width=3)
-fig.axes[1].set_yticks([-300, -150, 0, 150, 300, 450, 600])
-fig.axes[1].set_yticklabels(['-300','-150','0','150','300','450','600'], fontname='Arial', fontsize=36)
+fig.axes[1].set_yticks([-300, -150, 0, 150, 300, 450, 600, 750, 900])
+fig.axes[1].set_yticklabels(['-300','-150','0','150','300','450','600','750','900'], fontname='Arial', fontsize=36)
 
 pos1 = fig.axes[1].get_position()
 pos2 = [pos1.x0-0.035, pos1.y0, pos1.width, pos1.height] 
@@ -2534,7 +2992,9 @@ ax.set_axis_off()
 
 #%% country order
 
-country_order = WRRF_filtered['COUNTRY'].value_counts().head(50).index.tolist()[::-1]
+country_order = WRRF_filtered['COUNTRY'].value_counts()
+
+country_order = country_order[country_order > 10].index.tolist()[::-1]
 
 #%% cost ranges for C and T systems
 
@@ -2569,8 +3029,8 @@ assert(len([i for i in cost_max.index if (i not in global_north_countries_region
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
-plt.rcParams['xtick.labelsize'] = 36
-plt.rcParams['ytick.labelsize'] = 36
+plt.rcParams['xtick.labelsize'] = 48
+plt.rcParams['ytick.labelsize'] = 48
 plt.rcParams['font.sans-serif'] = 'Arial'
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['ps.fonttype'] = 42
@@ -2579,15 +3039,15 @@ plt.rcParams.update({'mathtext.fontset':'custom'})
 plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
-fig, ax = plt.subplots(figsize=(10, 50))
+fig, ax = plt.subplots(figsize=(11.5, 50))
 
 ax = plt.gca()
 
-ax.set_xlim([-300, 1500])
-ax.set_ylim([0.25, 50.75])
+ax.set_xlim([-300, 1200])
+ax.set_ylim([0.25, len(country_order) + 0.75])
 
-ax.tick_params(axis='x', direction='inout', length=20, width=3, pad=5)
-ax.tick_params(axis='y', direction='inout', length=20, width=3, pad=5)
+ax.tick_params(axis='x', direction='inout', length=30, width=3, pad=5)
+ax.tick_params(axis='y', direction='inout', length=30, width=3, pad=5)
 
 index = np.arange(1, len(country_order)+1, 1)
 
@@ -2607,19 +3067,19 @@ ax.barh(y=index-0.1875,
         linewidth=3,
         left=cost_min['T_cost_NOAK_weighted_average'])
 
-plt.xticks(np.arange(-300, 1800, 300), fontname='Arial')
+plt.xticks(np.arange(-300, 1500, 300), fontname='Arial')
 plt.yticks(index, cost_max['CNTRY_ISO'], fontname='Arial')
 
 ax.set_xlabel('$\mathbf{Cost}$ [\$·${tonne^{-1}}$]',
-              fontname='Arial', fontsize=36)
+              fontname='Arial', fontsize=48)
 
 ax_top = ax.twiny()
 
-ax_top.set_xlim([-300, 1500])
+ax_top.set_xlim([-300, 1200])
 
-ax_top.tick_params(axis='x', direction='inout', length=20, width=3, pad=5)
+ax_top.tick_params(axis='x', direction='inout', length=30, width=3, pad=-5)
 
-plt.xticks(np.arange(-300, 1800, 300), fontname='Arial')
+plt.xticks(np.arange(-300, 1500, 300), fontname='Arial')
 plt.yticks(index, cost_max['CNTRY_ISO'], fontname='Arial')
 
 #%% cost change bars - data preparation
@@ -2645,8 +3105,8 @@ cost_change.loc[cost_change.index.isin(global_south_countries_regions), 'color']
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
-plt.rcParams['xtick.labelsize'] = 36
-plt.rcParams['ytick.labelsize'] = 36
+plt.rcParams['xtick.labelsize'] = 48
+plt.rcParams['ytick.labelsize'] = 48
 plt.rcParams['font.sans-serif'] = 'Arial'
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['ps.fonttype'] = 42
@@ -2655,20 +3115,20 @@ plt.rcParams.update({'mathtext.fontset':'custom'})
 plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
-fig, ax = plt.subplots(figsize=(10, 50))
+fig, ax = plt.subplots(figsize=(11.5, 50))
 
 ax = plt.gca()
 
-ax.set_xlim([-100, 500])
-ax.set_ylim([0.25, 50.75])
+ax.set_xlim([-100, 300])
+ax.set_ylim([0.25, len(country_order) + 0.75])
 
 ax.plot([0, 0],
         [0, 51],
         c='k',
         linewidth=3)
 
-ax.tick_params(axis='x', direction='inout', length=20, width=3, pad=5)
-ax.tick_params(axis='y', direction='inout', length=20, width=3, pad=5)
+ax.tick_params(axis='x', direction='inout', length=30, width=3, pad=5)
+ax.tick_params(axis='y', direction='inout', length=30, width=3, pad=5)
 
 index = np.arange(1, len(country_order)+1, 1)
 
@@ -2679,19 +3139,19 @@ ax.barh(y=index,
         edgecolor='k',
         linewidth=3)
 
-plt.xticks(np.arange(-100, 600, 100), fontname='Arial')
+plt.xticks(np.arange(-100, 400, 100), fontname='Arial')
 plt.yticks(index, cost_change['CNTRY_ISO'], fontname='Arial')
 
 ax.set_xlabel('$\mathbf{Cost\ change}$ [\$·${tonne^{-1}}$]',
-              fontname='Arial', fontsize=36)
+              fontname='Arial', fontsize=48)
 
 ax_top = ax.twiny()
 
-ax_top.set_xlim([-100, 500])
+ax_top.set_xlim([-100, 300])
 
-ax_top.tick_params(axis='x', direction='inout', length=20, width=3, pad=5)
+ax_top.tick_params(axis='x', direction='inout', length=30, width=3, pad=-5)
 
-plt.xticks(np.arange(-100, 600, 100), fontname='Arial')
+plt.xticks(np.arange(-100, 400, 100), fontname='Arial')
 plt.yticks(index, cost_change['CNTRY_ISO'], fontname='Arial')
 
 #%% CI ranges for C and T systems
@@ -2727,8 +3187,8 @@ assert(len([i for i in CI_max.index if (i not in global_north_countries_regions)
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
-plt.rcParams['xtick.labelsize'] = 36
-plt.rcParams['ytick.labelsize'] = 36
+plt.rcParams['xtick.labelsize'] = 48
+plt.rcParams['ytick.labelsize'] = 48
 plt.rcParams['font.sans-serif'] = 'Arial'
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['ps.fonttype'] = 42
@@ -2737,22 +3197,22 @@ plt.rcParams.update({'mathtext.fontset':'custom'})
 plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
-fig, ax = plt.subplots(figsize=(10, 50))
+fig, ax = plt.subplots(figsize=(11.5, 50))
 
 ax = plt.gca()
 
 ax.set_xlim([-3, 2.5])
-ax.set_ylim([0.25, 50.75])
+ax.set_ylim([0.25, len(country_order) + 0.75])
 
-ax.tick_params(axis='x', direction='inout', length=20, width=3, pad=5)
-ax.tick_params(axis='y', direction='inout', length=20, width=3, pad=5)
+ax.tick_params(axis='x', direction='inout', length=30, width=3, pad=5)
+ax.tick_params(axis='y', direction='inout', length=30, width=3, pad=5)
 
 index = np.arange(1, len(country_order)+1, 1)
 
 ax.barh(y=index+0.1875,
         width=(CI_max['C_CI_weighted_average'] - CI_min['C_CI_weighted_average'])/1000,
         height=0.375,
-        color=lg,
+        color=dg,
         edgecolor='k',
         linewidth=3,
         left=CI_min['C_CI_weighted_average']/1000)
@@ -2760,7 +3220,7 @@ ax.barh(y=index+0.1875,
 ax.barh(y=index-0.1875,
         width=(CI_max['T_CI_NOAK_weighted_average'] - CI_min['T_CI_NOAK_weighted_average'])/1000,
         height=0.375,
-        color=dg,
+        color=lg,
         edgecolor='k',
         linewidth=3,
         left=CI_min['T_CI_NOAK_weighted_average']/1000)
@@ -2769,13 +3229,13 @@ plt.xticks(np.arange(-3, 4, 1), fontname='Arial')
 plt.yticks(index, CI_max['CNTRY_ISO'], fontname='Arial')
 
 ax.set_xlabel('$\mathbf{CI}$ [tonne CO${_{2}}$e·${tonne^{-1}}$]',
-              fontname='Arial', fontsize=36)
+              fontname='Arial', fontsize=48)
 
 ax_top = ax.twiny()
 
 ax_top.set_xlim([-3, 2.5])
 
-ax_top.tick_params(axis='x', direction='inout', length=20, width=3, pad=5)
+ax_top.tick_params(axis='x', direction='inout', length=30, width=3, pad=-5)
 
 plt.xticks(np.arange(-3, 4, 1), fontname='Arial')
 plt.yticks(index, CI_max['CNTRY_ISO'], fontname='Arial')
@@ -2803,8 +3263,8 @@ CI_change.loc[CI_change.index.isin(global_south_countries_regions), 'color'] = y
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
-plt.rcParams['xtick.labelsize'] = 36
-plt.rcParams['ytick.labelsize'] = 36
+plt.rcParams['xtick.labelsize'] = 48
+plt.rcParams['ytick.labelsize'] = 48
 plt.rcParams['font.sans-serif'] = 'Arial'
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['ps.fonttype'] = 42
@@ -2813,20 +3273,20 @@ plt.rcParams.update({'mathtext.fontset':'custom'})
 plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
-fig, ax = plt.subplots(figsize=(10, 50))
+fig, ax = plt.subplots(figsize=(11.5, 50))
 
 ax = plt.gca()
 
-ax.set_xlim([-900, 0])
-ax.set_ylim([0.25, 50.75])
+ax.set_xlim([-1200, 0])
+ax.set_ylim([0.25, len(country_order) + 0.75])
 
 ax.plot([0, 0],
         [0, 51],
         c='k',
         linewidth=3)
 
-ax.tick_params(axis='x', direction='inout', length=20, width=3, pad=5)
-ax.tick_params(axis='y', direction='inout', length=20, width=3, pad=5)
+ax.tick_params(axis='x', direction='inout', length=30, width=3, pad=5)
+ax.tick_params(axis='y', direction='inout', length=30, width=3, pad=5)
 
 index = np.arange(1, len(country_order)+1, 1)
 
@@ -2837,20 +3297,53 @@ ax.barh(y=index,
         edgecolor='k',
         linewidth=3)
 
-plt.xticks(np.arange(-900, 150, 150), fontname='Arial')
+plt.xticks(np.arange(-1200, 300, 300), fontname='Arial')
 plt.yticks(index, CI_change['CNTRY_ISO'], fontname='Arial')
 
 ax.set_xlabel('$\mathbf{CI\ change}$ [kg CO${_{2}}$e·${tonne^{-1}}$]',
-              fontname='Arial', fontsize=36)
+              fontname='Arial', fontsize=48)
 
 ax_top = ax.twiny()
 
-ax_top.set_xlim([-900, 0])
+ax_top.set_xlim([-1200, 0])
 
-ax_top.tick_params(axis='x', direction='inout', length=20, width=3, pad=5)
+ax_top.tick_params(axis='x', direction='inout', length=30, width=3, pad=-5)
 
-plt.xticks(np.arange(-900, 150, 150), fontname='Arial')
+plt.xticks(np.arange(-1200, 300, 300), fontname='Arial')
 plt.yticks(index, CI_change['CNTRY_ISO'], fontname='Arial')
+
+#%% unit capital cost equation
+
+sys_size = [1, 5, 25, 125, 625]
+scaling_stream = []
+purchase_cost = []
+# replace systems and units as needed
+for i in sys_size:
+    sys = create_C1_system(size=i)
+    scaling_stream.append(sys.flowsheet.Thickening.ins[0].F_mass/1000)
+    purchase_cost.append(sys.flowsheet.Thickening.purchase_cost)
+
+log_scaling_stream = np.log(scaling_stream)
+log_purchase_cost = np.log(purchase_cost)
+
+slope, intercept, r_value, p_value, std_err = linregress(log_scaling_stream, log_purchase_cost)
+
+a = np.exp(intercept)
+b = slope
+
+print(f'fitted model: cost = {a:.3g} * size^{b:.3g}')
+print(f'R² = {r_value**2:.3g}')
+
+#%% unit capital cost BM
+
+# replace systems and units as needed
+sys = create_C1_system(size=10)
+purchase_cost = sys.flowsheet.Thickening.purchase_cost
+installed_cost = sys.flowsheet.Thickening.installed_cost
+
+BM = installed_cost/purchase_cost
+
+print(f'BM: {BM:.3g}')
 
 #%% global equity
 
@@ -2932,70 +3425,32 @@ ax.plot([0.8, 0.8],
         linestyle='--',
         linewidth=3)
 
-# TODO: update
-# plt.savefig('/Users/jiananfeng/Desktop/Figure_XXX.pdf', transparent=True, bbox_inches='tight')
+#%% writing
 
-#%% WWTP random sampling
+WRRF_mean['C_cost_weighted_average'].min()
+WRRF_mean['C_cost_weighted_average'].max()
 
-# TODO: adjust typology if including AD and AeD (any any units before them)
-# all use uniform distribution (not Monte Carlo)
-# for now, assume WRRFs are only responsible for the transportation of e.g., solids (and ash) to landfills, biocrude to oil refineries
-# for other products, assume they can be sold at the gate of WRRFs
-typology_bounds = {
-    # tonne/day
-    'solids_mass_flow': (0, 250),
-    # dry weight ratio
-    'solids_dw_ash': (0.15, 0.45),
-    # ash free dry weight ratio
-    'solids_afdw_lipid': (0.05, 0.35),
-    # ash free dry weight ratio
-    'solids_afdw_protein': (0.3, 0.55),
-    # $/kWh
-    'electricity_cost': (0.05, 0.2),
-    # kg CO2 eq/kWh
-    'electricity_CI': (0, 1.5),
-    # km
-    'landfill_distance': (0, 1500),
-    # km
-    'biofuel_distance': (0, 1500)
-    }
+WRRF_mean['T_cost_NOAK_weighted_average'].min()
+WRRF_mean['T_cost_NOAK_weighted_average'].max()
 
-typology_keys = list(typology_bounds.keys())
+cost_change = WRRF_mean.copy()
+cost_change['cost_difference'] = cost_change['T_cost_NOAK_weighted_average'] - cost_change['C_cost_weighted_average']
+cost_change[cost_change['COUNTRY'].isin(global_north_countries_regions)]['cost_difference'].mean()
+cost_change[cost_change['COUNTRY'].isin(['India','Egypt','Peru','Thailand','Indonesia'])]
 
-# Latin Hypercube Sampling
-sampler = qmc.LatinHypercube(d=len(typology_keys), seed=3221)
-# TODO: decide the sample size to balance the sample representativeness and the computation burden
-LHS_unit = sampler.random(n=10000)
+CI_change = WRRF_mean.copy()
+CI_change['CI_difference'] = CI_change['T_CI_NOAK_weighted_average'] - CI_change['C_CI_weighted_average']
+CI_change['CI_difference'].min()
+CI_change['CI_difference'].max()
 
-typology_mins = np.array([typology_bounds[key][0] for key in typology_keys])
-typology_maxs = np.array([typology_bounds[key][1] for key in typology_keys])
-LHS_samples = qmc.scale(LHS_unit, typology_mins, typology_maxs)
+WRRF_mean['carbon_credit_needed'].min()
+WRRF_mean['carbon_credit_needed'].max()
 
-typology = {key: LHS_samples[:, i] for i, key in enumerate(typology_keys)}
+WRRF_mean[WRRF_mean['carbon_credit_needed']<0]
 
-# the biochemical composition parameters here not only affect HTL/HALT, but other through affecting the volatile solids content
-lipid = typology['solids_afdw_lipid']
-protein = typology['solids_afdw_protein']
-carbohydrate = 1 - lipid - protein
-# no negative carb
-mask = carbohydrate >= 0
-typology = {k: v[mask] for k, v in typology.items()}
-typology['solids_afdw_carbohydrate'] = carbohydrate[mask]
-
-for i in range(len(LHS_samples)):
-    solids_mass_flow = typology['solids_mass_flow'][i]
-    solids_dw_ash = typology['solids_dw_ash'][i]
-    solids_afdw_lipid = typology['solids_afdw_lipid'][i]
-    solids_afdw_protein = typology['solids_afdw_protein'][i]
-    solids_afdw_carbohydrate = typology['solids_afdw_carbohydrate'][i]
-    electricity_cost = typology['electricity_cost'][i]
-    electricity_CI = typology['electricity_CI'][i]
-    landfill_distance = typology['landfill_distance'][i]
-    biofuel_distance = typology['biofuel_distance'][i]
-    
-    # TODO: compare the baseline cost and GHG results from different systems
-    # TODO: for each typology, identify a winner
-    # TODO: plot 5th and 95th percentiles to represent the opportunity space
+plt.boxplot([electricity_price[electricity_price['country'].isin(global_north_countries_regions)]['US_cents_per_kWh'], electricity_price[electricity_price['country'].isin(global_south_countries_regions)]['US_cents_per_kWh']])
+plt.boxplot([labor_cost[labor_cost['country'].isin(global_north_countries_regions)]['average_annual_income_USD'], labor_cost[labor_cost['country'].isin(global_south_countries_regions)]['average_annual_income_USD']])
+plt.boxplot([PLI[PLI['country'].isin(global_north_countries_regions)]['PLI'], PLI[PLI['country'].isin(global_south_countries_regions)]['PLI']])
 
 #%% preliminary utility check
 
@@ -3037,7 +3492,7 @@ for function in (create_C1_system, create_C2_system, create_C3_system,
                  create_T9_system, create_T10_system, create_T11_system,
                  create_T12_system, create_T13_system, create_T14_system,
                  create_T15_system):
-    sys = function(country_code='CHN', size=10)
+    sys = function(country_code='CHN', size=0.907185)
     
     print('\n' + sys.ID)
     
@@ -3050,7 +3505,7 @@ for function in (create_T1_system, create_T2_system, create_T3_system,
                  create_T7_system, create_T8_system, create_T9_system,
                  create_T10_system, create_T11_system, create_T12_system,
                  create_T13_system, create_T14_system, create_T15_system):
-    sys = function(country_code='CHN', size=10, FOAK=False)
+    sys = function(country_code='CHN', size=0.907185, FOAK=False)
     
     print('\n' + sys.ID + ' nth plant')
     
@@ -3130,7 +3585,7 @@ print(np.quantile(LCA_results[40:55], 0.05))
 print(np.quantile(LCA_results[40:55], 0.5))
 print(np.quantile(LCA_results[40:55], 0.95))
 
-# TODO: LCA_results[25:40] and LCA_results[40:55] may have differences after the parameter plant_performance_factor is implemented
+# LCA_results[25:40] and LCA_results[40:55] may have differences after the parameter plant_performance_factor is implemented
 plt.boxplot((LCA_results[0:25], LCA_results[25:40], LCA_results[40:55]), whis=[5, 95], showfliers=False)
 
 #%% preliminary TEA and LCA animation

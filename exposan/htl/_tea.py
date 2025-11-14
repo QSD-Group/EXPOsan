@@ -212,7 +212,7 @@ def create_tea(system, OSBL_units=None, cls=None, **kwargs):
         'duration': (2022, 2052),
         'depreciation': 'MACRS7', # Jones et al. 2014
         'income_tax': 0.275, # Davis et al. 2018
-        'operating_days': 330, # Jones et al. 2014
+        'operating_days': system.operating_hours/24, # Jones et al. 2014
         'lang_factor': None, # related to expansion, not needed here
         'construction_schedule': (0.08, 0.60, 0.32), # Jones et al. 2014
         'startup_months': 6, # Jones et al. 2014

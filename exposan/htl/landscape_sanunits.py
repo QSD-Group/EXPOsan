@@ -81,7 +81,6 @@ folder = os.path.dirname(__file__)
 
 # numbers without citations are likely from the BEAM*2024 model
 
-# TODO: consider putting units in order based on the first letter, if necessary (but the current order is based on the use order in the landscape_systems.py and separate C and T units, which is fine)
 __all__ = (
     'WRRF',
     'Thickening',
@@ -169,8 +168,8 @@ class WRRF(SanUnit):
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', 
                  ww_2_dry_sludge=1, # [1]
-                 sludge_moisture=0.99, sludge_dw_ash=0.257, 
-                 sludge_afdw_lipid=0.204, sludge_afdw_protein=0.463,
+                 sludge_moisture=0.99, sludge_dw_ash=0.231, 
+                 sludge_afdw_lipid=0.206, sludge_afdw_protein=0.456,
                  sludge_wet_density=1040, # [2]
                  sludge_distance=100, wage_adjustment=1, PLI=1):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
@@ -1391,7 +1390,8 @@ class Composting(SanUnit):
     
     def _cost(self):
         C = self.baseline_purchase_costs
-        # based on [1], 1593.7 is marshall and swift equipment cost index 2017, 751 is the baseline marshall and swift equipment cost index
+        # based on [1], this is likely to be the installed cost
+        # based on [1], 1593.7 is marshall and swift equipment cost index 2017, 751 is the baseline marshall and swift equipment cost index, assuming this index has the same trend as CEPCI
         C['Composting equipment'] = (1560*self.ins[0].F_mass/1000*24 + 450000)*1593.7/qs.CEPCI_by_year[2017]*qs.CEPCI_by_year[2022]/751
         
         for C in [self.baseline_purchase_costs] + [unit.baseline_purchase_costs for unit in self.auxiliary_units]:
@@ -1549,11 +1549,12 @@ class Landfilling(SanUnit):
                    0.65 for partially digested biosolids,
                    0.8 for undigested sludge.
     k_decay : float
-        OC decay rate constant, [-].
+        OC decay rate constant, [year-1].
         typically, 0.06 for cool & dry environment,
                    0.185 for cool & wet environment,
                    0.085 for warm & dry environment,
                    0.4 for warm & wet environment.
+        use the average (0.18) if no environment information is considered.
     flare_fugitive_ratio : float
         ratio of fugitive biogas during flaring, [-].
         typically, 0.01 for default, 0 for enclosed, 0.05 for candlestick.
@@ -1756,7 +1757,7 @@ class LandApplication(SanUnit):
     fine_textured_ratio : float
         ratio of soils with fine textures, [-].
     nitrous_oxide_N_TN_ratio : float
-        ratio of N emitted as N2O, [-].
+        ratio of N emitted as N2O-N, [-].
     min_solids_content_nitrous_oxide_reduction : float
         minimum solids content for N2O reduction, [-].
     nitrous_oxide_reduction_ratio : float
@@ -1876,9 +1877,9 @@ class LandApplication(SanUnit):
         fugitive_nitrous_oxide_land_application_reduction = -fugitive_nitrous_oxide_land_application*fugitive_nitrous_oxide_land_application_reduction_ratio
         
         if self.climate == 'humid':
-            fugitive_nitrous_oxide.imass['N2O'] = fugitive_nitrous_oxide_land_application +\
-                                                  fugitive_nitrous_oxide_land_application_reduction +\
-                                                  fugitive_nitrous_oxide_storage
+            fugitive_nitrous_oxide.imass['N2O'] = fugitive_nitrous_oxide_storage +\
+                                                  fugitive_nitrous_oxide_land_application +\
+                                                  fugitive_nitrous_oxide_land_application_reduction
         elif self.climate == 'arid':
             fugitive_nitrous_oxide.imass['N2O'] = fugitive_nitrous_oxide_storage
         else:
@@ -1952,8 +1953,8 @@ class Incineration(SanUnit):
         for nitrous oxide calculation, [-].
     suzuki_lowest_temperature : float
         the lowest temperature to apply Suzuki equation, [°C].
-    urea_catalyst : bool
-        whether the urea catalyst is used during incineration, [True, False]
+    SNCR : bool
+        whether the urea-based selective noncatalytic reduction emissions system is used, [True, False]
     N2O_adjustment_factor_urea : float
         N2O adjustment factor due to the use of the urea catalyst, [-].
     heat_solids_incineration : float
@@ -1999,7 +2000,7 @@ class Incineration(SanUnit):
                  heat_water_removal=4.5, fugitive_methane_incineration=0.0000097,
                  protein_2_N=0.159, N_2_P=0.3927, suzuki_constant_1=161.3,
                  suzuki_constant_2=0.14, suzuki_lowest_temperature=750,
-                 urea_catalyst=True, N2O_adjustment_factor_urea=0.2,
+                 SNCR=False, N2O_adjustment_factor_urea=0.2,
                  heat_solids_incineration=12000, additional_fuel_ratio=0,
                  heat_recovery_ratio=0.5, heat_recovery_efficiency=0.8,
                  electricity_recovery_ratio=0,
@@ -2015,7 +2016,7 @@ class Incineration(SanUnit):
         self.suzuki_constant_1 = suzuki_constant_1
         self.suzuki_constant_2 = suzuki_constant_2
         self.suzuki_lowest_temperature = suzuki_lowest_temperature
-        self.urea_catalyst = urea_catalyst
+        self.SNCR = SNCR
         self.N2O_adjustment_factor_urea = N2O_adjustment_factor_urea
         self.heat_solids_incineration = heat_solids_incineration
         self.additional_fuel_ratio = additional_fuel_ratio
@@ -2056,22 +2057,22 @@ class Incineration(SanUnit):
             # tonne N2O/day
             N2O_before_adjustment = (N_mass_flow*(self.suzuki_constant_1 - (self.suzuki_constant_2*(max(self.incineration_temperature, self.suzuki_lowest_temperature) + _C_to_K)))/100*_N_to_N2O)
         
-        if self.urea_catalyst:
+        if self.SNCR:
             # tonne N2O/day
             N2O_urea_catalyst = N2O_before_adjustment*self.N2O_adjustment_factor_urea
         else:
             # tonne N2O/day
             N2O_urea_catalyst = 0
         
-        if 1 - self.ash_moisture_content < 0.24:
+        if self.dry_solids*1000/dried_solids.F_mass >= 0.87:
             # - 
-            N2O_reduction_ratio = 0
-        elif 1 - self.ash_moisture_content < 0.87:
+            N2O_reduction_ratio = 0.6
+        elif self.dry_solids*1000/dried_solids.F_mass >= 0.24:
             # - 
             N2O_reduction_ratio = 0.5
         else:
             # - 
-            N2O_reduction_ratio = 0.6
+            N2O_reduction_ratio = 0
         
         # tonne N2O/day
         N2O_reduction = -N2O_before_adjustment*N2O_reduction_ratio
@@ -3234,8 +3235,6 @@ class CatalyticHydrothermalGasification(SanUnit):
 # =============================================================================
 # Pyrolysis
 # =============================================================================
-
-# TODO: Aaron (Cusick Group) has an emperical pyrolysis model (check thesis if that is available)
 
 # the cost here include heat drying (in addition to the heat drying unit in the system), HX, and other auxiliary units
 # n=0.7 and BM=2 to be similar to HTL-based systems

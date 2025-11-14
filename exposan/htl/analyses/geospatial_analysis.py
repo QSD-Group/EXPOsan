@@ -45,7 +45,7 @@ from numba import njit
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
-folder = '/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_geospatial/'
+folder = '/Users/jiananfeng/Desktop/UIUC_PhD/PhD_CEE/NSF_PFAS/HTL_geospatial/'
 
 # color palette
 b = Color('blue', (96, 193, 207)).HEX

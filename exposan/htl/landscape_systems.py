@@ -14,18 +14,8 @@ for license details.
 
 #%% housekeeping
 
-# TODO: this becomes more doable now for only a comparison between country FOAK and NOAK costs, instead of the previous 3 economic strategies for the transition roadmap analysis, but can still study the effect of each parameter quantitatively
-# TODO: consider update TEA parameters for pioneer T systems based on the suggestions in Poddar, T. K.; Scown, C. D. Technoeconomic Analysis for Near-Term Scale-up of Bioprocesses. Current Opinion in Biotechnology 2025, 92, 103258. https://doi.org/10.1016/j.copbio.2025.103258
-
 # TODO: https://www.globalpetrolprices.com/electricity_prices/ also has prices for electricty, diesel, natural gas, etc.
 # TODO: make sure to use the price for the industrial sector
-# TODO: 0.16 is the median electricity of of 77 countries in Lohman et al. may need update later, and need to ensure using the industrial electricity price (may use https://www.globalpetrolprices.com/electricity_prices/)
-
-# TODO: check all parameters in TEA, especially the ones listed here
-# TODO: consider adding IRR as a WRRF typology parameter (20250917 update: no more typology)
-# TODO: income tax may be found in Steward et al. ES&T, 2023
-
-# TODO: check if all necessary pumps are included        
 
 #%% initialization
 
@@ -36,7 +26,7 @@ from qsdsan.utils import auom, clear_lca_registries, tea_indices
 from exposan.htl import _load_components, landscape_sanunits as lsu, create_tea
 from biosteam.units import IsenthalpicValve
 
-folder = '/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_landscape/'
+folder = '/Users/jiananfeng/Desktop/UIUC_PhD/PhD_CEE/NSF_PFAS/HTL_landscape/'
 
 # use methane density, probably consistent with BioSTEAM, kg/m3
 # https://en.wikipedia.org/wiki/Methane (accessed 2025-02-10)
@@ -214,10 +204,10 @@ def create_C1_system(country_code='USA', size=10, operation_hours=7884, LF_dista
                                 outs=('dewatered_solids','reject_dewatering','methane_dewatering'), PLI=country_PLI)
     Dewatering.ins[1].price = 2.6282/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
     
-    # TODO: landfilling tipping fees can be an uncertainty parameter or a typology parameter
     Landfilling = lsu.Landfilling(ID='Landfilling',
                                   ins=Dewatering-0,
                                   outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'),
+                                  OC_decomposition_ratio=0.8, k_decay=0.18,
                                   solids_distance=LF_distance)
     # see exposan/htl/data/landfilling_tipping_fee.xlsx
     # U.S. average: 56.8 $·wet ton-1 ~ 62.6 $·wet tonne-1
@@ -391,6 +381,7 @@ def create_C2_system(country_code='USA', size=10, operation_hours=7884, LF_dista
     Landfilling = lsu.Landfilling(ID='Landfilling',
                                   ins=AlkalineStabilization-0,
                                   outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'),
+                                  OC_decomposition_ratio=0.8, k_decay=0.18,
                                   solids_distance=LF_distance)
     # see exposan/htl/data/landfilling_tipping_fee.xlsx
     # U.S. average: 56.8 $·wet ton-1 ~ 62.6 $·wet tonne-1
@@ -982,6 +973,7 @@ def create_C5_system(country_code='USA', size=10, operation_hours=7884, LF_dista
     Landfilling = lsu.Landfilling(ID='Landfilling',
                                   ins=HeatDrying-0,
                                   outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'),
+                                  OC_decomposition_ratio=0.8, k_decay=0.18,
                                   solids_distance=LF_distance)
     # see exposan/htl/data/landfilling_tipping_fee.xlsx
     # U.S. average: 56.8 $·wet ton-1 ~ 62.6 $·wet tonne-1
@@ -1431,7 +1423,8 @@ def create_C7_system(country_code='USA', size=10, operation_hours=7884, FTE=0.4,
     
     Incineration = lsu.Incineration(ID='Incineration',
                                     ins=(HeatDrying-0, 'natural_gas_incineration'),
-                                    outs=('ash_incineration','vapor_incineration','methane_IN','nitrous_oxide_IN'))
+                                    outs=('ash_incineration','vapor_incineration','methane_IN','nitrous_oxide_IN'),
+                                    heat_solids_incineration=23000)
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
     Incineration.ins[1].price = 0.218*country_PLI
@@ -1614,6 +1607,7 @@ def create_C8_system(country_code='USA', size=10, operation_hours=7884, LF_dista
     Landfilling = lsu.Landfilling(ID='Landfilling',
                                   ins=Dewatering-0,
                                   outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'),
+                                  OC_decomposition_ratio=0.5, k_decay=0.18,
                                   solids_distance=LF_distance)
     # see exposan/htl/data/landfilling_tipping_fee.xlsx
     # U.S. average: 56.8 $·wet ton-1 ~ 62.6 $·wet tonne-1
@@ -2199,6 +2193,7 @@ def create_C11_system(country_code='USA', size=10, operation_hours=7884, LF_dist
     Landfilling = lsu.Landfilling(ID='Landfilling',
                                   ins=HeatDrying-0,
                                   outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'),
+                                  OC_decomposition_ratio=0.5, k_decay=0.18,
                                   solids_distance=LF_distance)
     # see exposan/htl/data/landfilling_tipping_fee.xlsx
     # U.S. average: 56.8 $·wet ton-1 ~ 62.6 $·wet tonne-1
@@ -2654,7 +2649,8 @@ def create_C13_system(country_code='USA', size=10, operation_hours=7884, FTE=0.5
     
     Incineration = lsu.Incineration(ID='Incineration',
                                     ins=(HeatDrying-0, 'natural_gas_incineration'),
-                                    outs=('ash_incineration','vapor_incineration','methane_IN','nitrous_oxide_IN'))
+                                    outs=('ash_incineration','vapor_incineration','methane_IN','nitrous_oxide_IN'),
+                                    heat_solids_incineration=12000)
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
     Incineration.ins[1].price = 0.218*country_PLI
@@ -2841,6 +2837,7 @@ def create_C14_system(country_code='USA', size=10, operation_hours=7884, LF_dist
     Landfilling = lsu.Landfilling(ID='Landfilling',
                                   ins=Dewatering-0,
                                   outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'),
+                                  OC_decomposition_ratio=0.5, k_decay=0.18,
                                   solids_distance=LF_distance)
     # see exposan/htl/data/landfilling_tipping_fee.xlsx
     # U.S. average: 56.8 $·wet ton-1 ~ 62.6 $·wet tonne-1
@@ -3552,6 +3549,7 @@ def create_C17_system(country_code='USA', size=10, operation_hours=7884, LF_dist
     Landfilling = lsu.Landfilling(ID='Landfilling',
                                   ins=HeatDrying-0,
                                   outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'),
+                                  OC_decomposition_ratio=0.5, k_decay=0.18,
                                   solids_distance=LF_distance)
     # see exposan/htl/data/landfilling_tipping_fee.xlsx
     # U.S. average: 56.8 $·wet ton-1 ~ 62.6 $·wet tonne-1
@@ -4017,7 +4015,8 @@ def create_C19_system(country_code='USA', size=10, operation_hours=7884, FTE=0.5
     
     Incineration = lsu.Incineration(ID='Incineration',
                                     ins=(HeatDrying-0, 'natural_gas_incineration'),
-                                    outs=('ash_incineration','vapor_incineration','methane_IN','nitrous_oxide_IN'))
+                                    outs=('ash_incineration','vapor_incineration','methane_IN','nitrous_oxide_IN'),
+                                    heat_solids_incineration=12000)
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
     Incineration.ins[1].price = 0.218*country_PLI
@@ -4202,6 +4201,7 @@ def create_C20_system(country_code='USA', size=10, operation_hours=7884, LF_dist
     Landfilling = lsu.Landfilling(ID='Landfilling',
                                   ins=Dewatering-0,
                                   outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'),
+                                  OC_decomposition_ratio=0.5, k_decay=0.18,
                                   solids_distance=LF_distance)
     # see exposan/htl/data/landfilling_tipping_fee.xlsx
     # U.S. average: 56.8 $·wet ton-1 ~ 62.6 $·wet tonne-1
@@ -4943,6 +4943,7 @@ def create_C23_system(country_code='USA', size=10, operation_hours=7884, LF_dist
     Landfilling = lsu.Landfilling(ID='Landfilling',
                                   ins=HeatDrying-0,
                                   outs=('landfilled_solids','methane_LF','nitrous_oxide_LF','sequestered_carbon_dioxide_LF'),
+                                  OC_decomposition_ratio=0.5, k_decay=0.18,
                                   solids_distance=LF_distance)
     # see exposan/htl/data/landfilling_tipping_fee.xlsx
     # U.S. average: 56.8 $·wet ton-1 ~ 62.6 $·wet tonne-1
@@ -5428,7 +5429,8 @@ def create_C25_system(country_code='USA', size=10, operation_hours=7884, FTE=0.7
     
     Incineration = lsu.Incineration(ID='Incineration',
                                     ins=(HeatDrying-0, 'natural_gas_incineration'),
-                                    outs=('ash_incineration','vapor_incineration','methane_IN','nitrous_oxide_IN'))
+                                    outs=('ash_incineration','vapor_incineration','methane_IN','nitrous_oxide_IN'),
+                                    heat_solids_incineration=12000)
     # from _heat_utility.py (BioSTEAM): 3.49672 $/kmol
     # assume the MW of natural gas is 16.04 g/mol (same as CH4, probably consistent with BioSTEAM)
     Incineration.ins[1].price = 0.218*country_PLI
@@ -5685,7 +5687,6 @@ def create_T1_system(country_code='USA', size=10, operation_hours=7884, refinery
             sys.simulate()
     
     # biocrude replacing crude oil of the same amount of energy
-    # TODO: may need update the price to a more general number
     # 76.1 $/barrel crude oil, U.S. EIA, 2023 monthly average
     HTL.outs[0].price = 76.1/_oil_barrel_to_m3/HTL.crude_oil_density/HTL.crude_oil_HHV*HTL.biocrude_HHV*country_PLI
     
@@ -5995,7 +5996,6 @@ def create_T2_system(country_code='USA', size=10, operation_hours=7884, refinery
             sys.simulate()
     
     # biocrude replacing crude oil of the same amount of energy
-    # TODO: may need update the price to a more general number
     # 76.1 $/barrel crude oil, U.S. EIA, 2023 monthly average
     HALT.outs[0].price = 76.1/_oil_barrel_to_m3/HALT.crude_oil_density/HALT.crude_oil_HHV*HALT.biocrude_HHV*country_PLI
     
@@ -6482,7 +6482,6 @@ def create_T4_system(country_code='USA', size=10, operation_hours=7884, refinery
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     Pyrolysis.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density*country_PLI
     # biooil replacing crude oil of the same amount of energy
-    # TODO: may need update the price to a more general number
     # 76.1 $/barrel crude oil, U.S. EIA, 2023 monthly average
     Pyrolysis.outs[0].price = 76.1/_oil_barrel_to_m3/Pyrolysis.crude_oil_density/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV*country_PLI
     # https://cloverly.com/blog/the-ultimate-business-guide-to-biochar-everything-you-need-to-know
@@ -7119,7 +7118,6 @@ def create_T6_system(country_code='USA', size=10, operation_hours=7884, refinery
             sys.simulate()
     
     # biocrude replacing crude oil of the same amount of energy
-    # TODO: may need update the price to a more general number
     # 76.1 $/barrel crude oil, U.S. EIA, 2023 monthly average
     HTL.outs[0].price = 76.1/_oil_barrel_to_m3/HTL.crude_oil_density/HTL.crude_oil_HHV*HTL.biocrude_HHV*country_PLI
     
@@ -7431,7 +7429,6 @@ def create_T7_system(country_code='USA', size=10, operation_hours=7884, refinery
             sys.simulate()
     
     # biocrude replacing crude oil of the same amount of energy
-    # TODO: may need update the price to a more general number
     # 76.1 $/barrel crude oil, U.S. EIA, 2023 monthly average
     HALT.outs[0].price = 76.1/_oil_barrel_to_m3/HALT.crude_oil_density/HALT.crude_oil_HHV*HALT.biocrude_HHV*country_PLI
     
@@ -7924,7 +7921,6 @@ def create_T9_system(country_code='USA', size=10, operation_hours=7884, refinery
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     Pyrolysis.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density*country_PLI
     # biooil replacing crude oil of the same amount of energy
-    # TODO: may need update the price to a more general number
     # 76.1 $/barrel crude oil, U.S. EIA, 2023 monthly average
     Pyrolysis.outs[0].price = 76.1/_oil_barrel_to_m3/Pyrolysis.crude_oil_density/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV*country_PLI
     # https://cloverly.com/blog/the-ultimate-business-guide-to-biochar-everything-you-need-to-know
@@ -8566,7 +8562,6 @@ def create_T11_system(country_code='USA', size=10, operation_hours=7884, refiner
             sys.simulate()
     
     # biocrude replacing crude oil of the same amount of energy
-    # TODO: may need update the price to a more general number
     # 76.1 $/barrel crude oil, U.S. EIA, 2023 monthly average, may need to update this to a more general number
     HTL.outs[0].price = 76.1/_oil_barrel_to_m3/HTL.crude_oil_density/HTL.crude_oil_HHV*HTL.biocrude_HHV*country_PLI
     
@@ -8881,7 +8876,6 @@ def create_T12_system(country_code='USA', size=10, operation_hours=7884, refiner
             sys.simulate()
     
     # biocrude replacing crude oil of the same amount of energy
-    # TODO: may need update the price to a more general number
     # 76.1 $/barrel crude oil, U.S. EIA, 2023 monthly average
     HALT.outs[0].price = 76.1/_oil_barrel_to_m3/HALT.crude_oil_density/HALT.crude_oil_HHV*HALT.biocrude_HHV*country_PLI
     
@@ -9427,7 +9421,6 @@ def create_T14_system(country_code='USA', size=10, operation_hours=7884, refiner
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     Pyrolysis.ins[1].price = 4.224/_gal_to_liter*1000/diesel_density*country_PLI
     # biooil replacing crude oil of the same amount of energy
-    # TODO: may need update the price to a more general number
     # 76.1 $/barrel crude oil, U.S. EIA, 2023 monthly average
     Pyrolysis.outs[0].price = 76.1/_oil_barrel_to_m3/Pyrolysis.crude_oil_density/Pyrolysis.crude_oil_HHV*Pyrolysis.biooil_HHV*country_PLI
     # https://cloverly.com/blog/the-ultimate-business-guide-to-biochar-everything-you-need-to-know
