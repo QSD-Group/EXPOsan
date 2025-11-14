@@ -86,45 +86,54 @@ world = gpd.read_file(folder + 'analyses/World Bank Official Boundaries - Admin 
 # =============================================================================
 # global north / south countries and regions
 # =============================================================================
+# this classification may not be accurate for all countries but it is accurate for countries included in the figures
 global_north_countries_regions = ['United States','Russia','Japan','Turkey','Germany',
-                                  'United Kingdom','France','Italy','South Korea','Spain',
-                                  'Canada','Ukraine','Poland','Uzbekistan','Australia','Kazakhstan',
-                                  'Romania','Netherlands','Belgium','Sweden','Portugal','Azerbaijan',
-                                  'Greece','Hungary','Israel','Austria','Belarus','Switzerland',
-                                  'Kyrgyzstan','Bulgaria','Serbia','Denmark','Finland','Norway',
-                                  'Slovakia','Ireland','New Zealand','Croatia','Georgia',
-                                  'Moldova','Armenia','Lithuania','Albania','Slovenia','Latvia',
-                                  'North Macedonia','Cyprus','Estonia','Luxembourg','Montenegro',
-                                  'Malta','Iceland','Andorra','Liechtenstein','Monaco','San Marino',
+                                  'United Kingdom','France','Italy','South Korea',
+                                  'Spain','Canada','Ukraine','Poland','Uzbekistan',
+                                  'Australia','Kazakhstan','Romania','Netherlands',
+                                  'Belgium','Sweden','Portugal','Azerbaijan','Greece',
+                                  'Hungary','Israel','Austria','Belarus','Switzerland',
+                                  'Kyrgyzstan','Bulgaria','Serbia','Denmark','Finland',
+                                  'Norway','Slovakia','Ireland','New Zealand','Croatia',
+                                  'Georgia','Moldova','Armenia','Lithuania','Albania',
+                                  'Slovenia','Latvia','North Macedonia','Cyprus',
+                                  'Estonia','Luxembourg','Montenegro','Malta','Iceland',
+                                  'Andorra','Liechtenstein','Monaco','San Marino',
                                   'Palau','Tuvalu','Vatican City']
 
-global_south_countries_regions = ['India','China','Mexico','Indonesia','Pakistan','Nigeria','Brazil',
-                                  'Bangladesh','Ethiopia','Egypt','Philippines','DR Congo',
-                                  'Vietnam','Iran','Thailand','Tanzania','South Africa',
-                                  'Kenya','Myanmar','Colombia','Sudan','Uganda','Algeria',
-                                  'Iraq','Argentina','Afghanistan','Yemen','Angola','Morocco',
-                                  'Malaysia','Mozambique','Ghana','Peru','Saudi Arabia',
-                                  'Madagascar','Ivory Coast','Cameroon','Nepal','Venezuela',
-                                  'Niger','North Korea','Syria','Mali','Burkina Faso','Sri Lanka',
-                                  'Malawi','Zambia','Chad','Chile','Somalia','Senegal',
-                                  'Guatemala','Ecuador','Cambodia','Zimbabwe','Guinea',
-                                  'Benin','Rwanda','Burundi','Bolivia','Tunisia','South Sudan',
-                                  'Haiti','Jordan','Dominican Republic','United Arab Emirates',
-                                  'Honduras','Cuba','Tajikistan','Papua New Guinea','Togo',
-                                  'Sierra Leone','Laos','Turkmenistan','Libya','Paraguay',
-                                  'Nicaragua','Republic of the Congo','El Salvador','Singapore',
-                                  'Lebanon','Liberia','Palestine','Central African Republic',
-                                  'Oman','Mauritania','Costa Rica','Kuwait','Panama','Eritrea',
-                                  'Mongolia','Uruguay','Bosnia and Herzegovina','Qatar',
-                                  'Namibia','Jamaica','Gambia','Gabon','Botswana','Lesotho',
-                                  'Guinea-Bissau','Equatorial Guinea','Bahrain','Trinidad and Tobago',
-                                  'Timor-Leste','Mauritius','Eswatini','Djibouti','Fiji',
-                                  'Comoros','Solomon Islands','Guyana','Bhutan','Suriname',
-                                  'Maldives','Cape Verde','Brunei','Belize','Bahamas','Vanuatu',
-                                  'Barbados','Sao Tome and Principe','Samoa','Saint Lucia',
-                                  'Kiribati','Seychelles','Grenada','Micronesia','Tonga',
-                                  'Saint Vincent and the Grenadines','Antigua and Barbuda',
-                                  'Dominica','Saint Kitts and Nevis','Marshall Islands','Nauru']
+# this classification may not be accurate for all countries but it is accurate for countries included in the figures
+global_south_countries_regions = ['India','China','Mexico','Indonesia','Pakistan',
+                                  'Nigeria','Brazil','Bangladesh','Ethiopia','Egypt',
+                                  'Philippines','DR Congo','Vietnam','Iran','Thailand',
+                                  'Tanzania','South Africa','Kenya','Myanmar','Colombia',
+                                  'Sudan','Uganda','Algeria','Iraq','Argentina',
+                                  'Afghanistan','Yemen','Angola','Morocco','Malaysia',
+                                  'Mozambique','Ghana','Peru','Saudi Arabia','Madagascar',
+                                  'Ivory Coast','Cameroon','Nepal','Venezuela',
+                                  'Niger','North Korea','Syria','Mali','Burkina Faso',
+                                  'Sri Lanka','Malawi','Zambia','Chad','Chile',
+                                  'Somalia','Senegal','Guatemala','Ecuador','Cambodia',
+                                  'Zimbabwe','Guinea','Benin','Rwanda','Burundi',
+                                  'Bolivia','Tunisia','South Sudan','Haiti','Jordan',
+                                  'Dominican Republic','United Arab Emirates','Honduras',
+                                  'Cuba','Tajikistan','Papua New Guinea','Togo',
+                                  'Sierra Leone','Laos','Turkmenistan','Libya',
+                                  'Paraguay','Nicaragua','Republic of the Congo',
+                                  'El Salvador','Singapore','Lebanon','Liberia',
+                                  'Palestine','Central African Republic','Oman',
+                                  'Mauritania','Costa Rica','Kuwait','Panama','Eritrea',
+                                  'Mongolia','Uruguay','Bosnia and Herzegovina',
+                                  'Qatar','Namibia','Jamaica','Gambia','Gabon',
+                                  'Botswana','Lesotho','Guinea-Bissau','Equatorial Guinea',
+                                  'Bahrain','Trinidad and Tobago','Timor-Leste',
+                                  'Mauritius','Eswatini','Djibouti','Fiji','Comoros',
+                                  'Solomon Islands','Guyana','Bhutan','Suriname',
+                                  'Maldives','Cape Verde','Brunei','Belize','Bahamas',
+                                  'Vanuatu','Barbados','Sao Tome and Principe',
+                                  'Samoa','Saint Lucia','Kiribati','Seychelles',
+                                  'Grenada','Micronesia','Tonga','Saint Vincent and the Grenadines',
+                                  'Antigua and Barbuda','Dominica','Saint Kitts and Nevis',
+                                  'Marshall Islands','Nauru']
 
 # =============================================================================
 # WRRF
@@ -2970,7 +2979,7 @@ color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['
 
 world.plot(ax=ax, color='none', edgecolor='k', hatch='//', linewidth=1)
 
-world_mean.plot(column='carbon_credit_needed', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, vmin=0, vmax=1000)
+world_mean.plot(column='carbon_credit_needed', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, vmin=0, vmax=600)
 
 world.plot(ax=ax, color='none', edgecolor='k', linewidth=1)
 
@@ -2981,10 +2990,7 @@ pos1 = fig.axes[1].get_position()
 pos2 = [pos1.x0-0.035, pos1.y0, pos1.width, pos1.height] 
 fig.axes[1].set_position(pos2)
 
-fig.axes[1].set_yticklabels(['<0','200','400','600','800','>1000'], fontname='Arial', fontsize=36)
-
-# comment out the following line if the colorbar is needed
-# fig.delaxes(fig.axes[1])
+fig.axes[1].set_yticklabels(['<0','100','200','300','400','500','600'], fontname='Arial', fontsize=36)
 
 ax.set_aspect(1)
 
@@ -3433,6 +3439,10 @@ WRRF_mean['C_cost_weighted_average'].max()
 WRRF_mean['T_cost_NOAK_weighted_average'].min()
 WRRF_mean['T_cost_NOAK_weighted_average'].max()
 
+plt.boxplot([electricity_price[electricity_price['country'].isin(global_north_countries_regions)]['US_cents_per_kWh'], electricity_price[electricity_price['country'].isin(global_south_countries_regions)]['US_cents_per_kWh']])
+plt.boxplot([labor_cost[labor_cost['country'].isin(global_north_countries_regions)]['average_annual_income_USD'], labor_cost[labor_cost['country'].isin(global_south_countries_regions)]['average_annual_income_USD']])
+plt.boxplot([PLI[PLI['country'].isin(global_north_countries_regions)]['PLI'], PLI[PLI['country'].isin(global_south_countries_regions)]['PLI']])
+
 cost_change = WRRF_mean.copy()
 cost_change['cost_difference'] = cost_change['T_cost_NOAK_weighted_average'] - cost_change['C_cost_weighted_average']
 cost_change[cost_change['COUNTRY'].isin(global_north_countries_regions)]['cost_difference'].mean()
@@ -3447,10 +3457,6 @@ WRRF_mean['carbon_credit_needed'].min()
 WRRF_mean['carbon_credit_needed'].max()
 
 WRRF_mean[WRRF_mean['carbon_credit_needed']<0]
-
-plt.boxplot([electricity_price[electricity_price['country'].isin(global_north_countries_regions)]['US_cents_per_kWh'], electricity_price[electricity_price['country'].isin(global_south_countries_regions)]['US_cents_per_kWh']])
-plt.boxplot([labor_cost[labor_cost['country'].isin(global_north_countries_regions)]['average_annual_income_USD'], labor_cost[labor_cost['country'].isin(global_south_countries_regions)]['average_annual_income_USD']])
-plt.boxplot([PLI[PLI['country'].isin(global_north_countries_regions)]['PLI'], PLI[PLI['country'].isin(global_south_countries_regions)]['PLI']])
 
 #%% preliminary utility check
 
