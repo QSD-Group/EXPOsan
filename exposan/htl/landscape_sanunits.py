@@ -438,8 +438,6 @@ class AerobicDigestion(SanUnit):
                  F_BM=default_F_BM):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
         self.O2_requirement = O2_requirement
-        # TODO: this becomes less important if the results of 25 / 15 systems are aggregated
-        # TODO: use different reduction ratios for lipid, protein, and carbohydrate
         self.VS_reduction = VS_reduction
         self.HRT = HRT
         self.SRT = SRT
@@ -764,8 +762,6 @@ class AnaerobicDigestion(SanUnit):
                  # !!! 0.2 is an assumption, subject to wide uncertainties
                  gas_collection_cost_factor=0.2, PLI=1, F_BM=default_F_BM):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
-        # TODO: this becomes less important if the results of 25 / 15 systems are aggregated
-        # TODO: use different reduction ratios for lipid, protein, and carbohydrate
         self.VS_reduction = VS_reduction
         self.biogas_yield = biogas_yield
         self.methane_biogas = methane_biogas

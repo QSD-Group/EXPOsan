@@ -710,7 +710,6 @@ unused_PhACs = shape.Uniform(0.15, 0.98)
 take_back = shape.Triangle(0.136, 0.169, 0.203)
 toilet_trash_ratio = shape.Triangle(0.319, 0.399, 0.479)
 toilet_to_WRRF = shape.Uniform(0.398, 0.596)
-# trash_to_combustion = shape.Uniform(0.152, 0.228)
 
 human_use = shape.Uniform(0.784, 1)
 human_excretion = shape.Triangle(0.02, 0.39, 0.862)

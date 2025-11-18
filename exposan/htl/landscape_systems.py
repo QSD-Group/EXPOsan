@@ -9184,6 +9184,9 @@ def create_T13_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tr
     
     operation_hours *= np.mean(performance_factor_list)
     
+    # comparing C14 to C19 vs. C20 to C25 indicates using CHP for CH4 from AD is better for both TEA and LCA,
+    # at least for WRRFs producing 10 tonne WWRS per day,
+    # therefore, even SCWO only generates CO2, CH4 from AD goes to CHP (adding a CHP is also consistent with other T systems)
     CHP = qsu.CombinedHeatPower(ID='CHP', ins=(AnaerobicDigestion-1, 'natural_gas_CHP', 'air_CHP'),
                                 outs=('emission','ash_CHP'), unit_CAPEX=1225*country_PLI, supplement_power_utility=False)
     CHP.lifetime = 20
