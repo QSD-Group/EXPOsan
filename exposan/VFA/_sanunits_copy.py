@@ -35,9 +35,9 @@ gas_pressure = 10/12 # ft, positive gas pressure in anaerobic digestor
 
 @cost(basis='Power', ID='SolidsSeparation', units='hp',
       cost=2620000, S=1, N = 'Number of centrifuges',
-      CE=CEPCI_by_year[2014], n=0.7021, BM=1)
+      CE=CEPCI_by_year[2014], n=0.7021)
 # parameters in @cost are obtained from CapdetWorks, exponential is calculated by fitting unit costs of different power requirement, 
-# BM is set to 1 because CapdetWorks lumps equipment and construction costs.
+# the default BM of 1 is used because CapdetWorks lumps equipment and construction costs.
 class SolidsSeparation(SanUnit):
     '''
     Function of unit:
@@ -72,9 +72,10 @@ class SolidsSeparation(SanUnit):
     
     '''
 # !!! This is the first unit of the system, the in flow would be AD effluent   
-    _N_ins = 1
+    _N_ins = 2
     _N_outs = 2
-    _units = {'Flow rate': 'm3/hr'}
+    _units = {'Flow rate': 'm3/hr',
+              'Power': 'hp'}
     flow_rate_range = (0.95, 3.42) 
     # solids loading rate for solid boal centrifuge determined from reported cases in the EPA design manual
     m3_per_gal = 0.00378541
@@ -83,23 +84,30 @@ class SolidsSeparation(SanUnit):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream', 
                  removal_rate = 0.82, sludge_moisture = 0.926, polymer_dose = 0.0054, 
-                 disposal_cost = 125/907.18474, kWhr_per_m3_per_s = 85.74, 
-                 operating_hour = 5127.86, labor_hour = 1.088, auger_cost = 500,
+                 disposal_cost = 125/907.18474, kW_per_m3_per_hr = 85.74, 
+                 operating_hours = 5127.86, labor_hour = 1.088, auger_cost = 500,
                  conveyor_belt_cost = 229.67, sludge_density = 1.03*998.2, 
-                 feed_flowrate = 1.50, **kwargs):
+                 feed_flowrate = 1.50, material_repair_and_replacement_cost = 0.035, 
+                 conveyer_power = 50, centrifuge_power = 1, auger_conveyer_cost = 0.0004, wages = 5, **kwargs):
         SanUnit.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with,
                          F_BM_default=1)
         self.tss_removal = removal_rate
         self.sludge_moisture = sludge_moisture
         self.polymer_dose = polymer_dose
         self.disposal_cost = disposal_cost
-        self.kWhr_per_m3_per_s = kWhr_per_m3_per_s # power consumption per gpm of sludge into the centrifuge
-        self.operating_hour = operating_hour # this is number of operations per year
+        self.kW_per_m3_per_hr = kW_per_m3_per_hr # power consumption per gpm of sludge into the centrifuge
+        self.operating_hours = operating_hours # this is number of operations per year
         self.labor_hour = labor_hour
         self.auger_cost = auger_cost
         self.conveyor_belt_cost = conveyor_belt_cost
         self.sludge_density = sludge_density
         self.feed_flowrate = feed_flowrate
+        self.material_repair_and_replacement_cost = material_repair_and_replacement_cost
+        self.conveyer_power = conveyer_power # kW
+        # !!! replace place holder value for conveyer_power
+        self.centrifuge_power = centrifuge_power
+        self.auger_conveyer_cost = auger_conveyer_cost
+        self.wages = wages
         # sludge density is estimated by specific gravity of primary slidge + WAS and water density at 20 C from MtCalf&Eddy; density of AD effluent was not foudn in the book
 # !!! Disposal cost is a place holder value taken from Yalin's sludge thickening unit, check recent value
 # !!! Find recent polymer costs or adjust inflation for EPA design manual numbers
@@ -152,7 +160,7 @@ class SolidsSeparation(SanUnit):
         liquid_stream.imass[solubles] = inf.imass[solubles] - solid_stream.imass[solubles]
         liquid_stream.imass['H2O'] = inf.imass['H2O'] - solid_stream.imass['H2O']
         
-        polymer.imass['Polymer'] = inf.imass[solids] * self.polymer_dose
+        polymer.imass['Polymer'] = inf.imass[solids].sum() * self.polymer_dose
         
         pipe_diameter = sqrt(4 * self.feed_flowrate * 35.3147/3600 / pi / min_velocity)
         friction_head = 3.02 * pipe_length * (min_velocity ** 1.85) * \
@@ -174,23 +182,29 @@ class SolidsSeparation(SanUnit):
         if feeding_rate < lower_bound:
             lb_warning(self, 'Feeding rate', feeding_rate, 'm3/hr', lower_bound)
         self.design_results['Number of centrifuges'] = ceil(feeding_rate/upper_bound) 
-        self.power_utility(self.F_vol_in * self.kWhr_per_m3_hr + self.conveyor_power * 
-                           self.operating_hour) # this is electricity consumption not including pumping
+        self.power_utility(self.F_vol_in * self.kW_per_m3_per_hr + self.conveyer_power * 
+                           self.operating_hours) # this is electricity consumption not including pumping
     
         
     def _cost(self):
         # capital cost for auger and conveyor belt for sludge removal
         ts_out = self.outs[-1].F_mass
-        self.baseline_purchase_costs['Auger'] = self.auger_cost * (ts_out ** 0.6) * current_CE / CE #!!! scale with total solids and multiply with the number of auger?
-        self.F_BM['Auger'] = 2.03
-        self.baseline_purchase_costs['Conveyor belt'] = self.conveyor_belt_cost * current_CE / CE #!!! scale with total solids?
-        self.F_BM['Conveyor belt'] = 2.03
-        # !!! find the auger and conveyor belt costs, also find the corresponding CE valeus and bare module factors
-        #OPEX = sludge disposal, material replacement, labor, electricity, and polymer dosage
-        self.add_OPEX = {'Sludge disposal': ts_out * self.disposal_cost, 
-                         'Labor': self.wages * self.operating_hours * self.labor_hour} # two operators per shift
+        self.baseline_purchase_costs['centrifuge'] = 3E6 * self.centrifuge_power ** 0.7021 * CEPCI_by_year[2023] / CEPCI_by_year[2014]
+        self.F_BM['centrifuge']= 1
+        self.baseline_purchase_costs['Auger_conveyer'] = self.baseline_purchase_costs['centrifuge'] * self.auger_conveyer_cost 
+        # using a ratio here becasue it's time consuming to find accurate price that statisfied the solids loading rate as well as the scaling factors
+        self.F_BM['Auger_conveyer'] = 1
+        # using 1 because we icluded the other construction costs in the purchase cost
+        tot_equip_and_constr = sum(self.baseline_purchase_costs.values())
+
+        # OPEX = sludge disposal, material replacement (include as a ratio), labor, 
+        # electricity (scale with flow in the design fxn), and polymer dosage (scale with flow int he design fxn)
+        self.add_OPEX = {'Sludge disposal': ts_out * 24 * self.disposal_cost, 
+                         'Labor': self.wages * self.operating_hours / 365 * self.labor_hour,
+                         'Maintenance': tot_equip_and_constr * self.material_repair_and_replacement_cost / 365} # two operators per shift
+        # units all converted to $ per day: sludge disposal - kg/hr * hr/day * $/kg; labor - $/hr * hr/year / (day/year) * hr/hr
         # !!! find costs in the add_OPEX dictionary
-        for p in (self.feed_pump, self.dose_pump, self.centrate_pump): p.simulate()
+        for p in (self.feed_pump, self.dosing_pump, self.centrate_pump): p.simulate()
 
 #%% Pretreatment: solids separation using microfiltration       
 class SludgeThickening(SanUnit, Splitter):
