@@ -149,7 +149,7 @@ WRRF_filtered.reset_index(inplace=True)
 # TODO: add this to the manuscript or SI
 print(f"{WRRF_filtered['dry_solids_tonne_per_day'].sum()/WRRF['dry_solids_tonne_per_day'].sum()*100:.1f}% global WWRS are included." )
 print(f"{len(WRRF_filtered)} WRRFs are included." )
-print(f"{len(set(WRRF_filtered['COUNTRY']))} countires are included." )
+print(f"{len(set(WRRF_filtered['COUNTRY']))} countires or regions ('Taiwan' listed separately) are included." )
 
 WRRF_filtered = gpd.GeoDataFrame(WRRF_filtered, crs='EPSG:4269',
                                  geometry=gpd.points_from_xy(x=WRRF_filtered.LON_WWTP,
@@ -2356,202 +2356,6 @@ country_min.to_excel(folder + f'results/country_min_{date.today()}_{i}.xlsx')
 
 country_max.to_excel(folder + f'results/country_max_{date.today()}_{i}.xlsx')
 
-#%% merge country results - using 1 dry tonne/day as the cutoff size
-
-# # =============================================================================
-# # mean
-# # =============================================================================
-# country_mean_1 = pd.read_excel(folder + 'results/country_mean_2025-10-16_2999.xlsx')
-# country_mean_2 = pd.read_excel(folder + 'results/country_mean_2025-10-16_5999.xlsx')
-# country_mean_3 = pd.read_excel(folder + 'results/country_mean_2025-10-16_8999.xlsx')
-# country_mean_4 = pd.read_excel(folder + 'results/country_mean_2025-10-16_11999.xlsx')
-# country_mean_5 = pd.read_excel(folder + 'results/country_mean_2025-10-16_13999.xlsx')
-# country_mean_6 = pd.read_excel(folder + 'results/country_mean_2025-10-16_15964.xlsx')
-
-# integrated_country_mean = pd.concat([country_mean_1, country_mean_2, country_mean_3, country_mean_4, country_mean_5, country_mean_6])
-# integrated_country_mean.reset_index(inplace=True)
-# integrated_country_mean = integrated_country_mean[['C_cost_mean','C_CI_mean','T_cost_FOAK_mean','T_CI_FOAK_mean','T_cost_NOAK_mean','T_CI_NOAK_mean']]
-
-# WRRF_mean = pd.concat([WRRF_filtered, integrated_country_mean], axis=1)
-
-# WRRF_mean['C_cost_times_mass_flow'] = WRRF_mean['C_cost_mean']*WRRF_mean['dry_solids_tonne_per_day']
-# WRRF_mean['C_CI_times_mass_flow'] = WRRF_mean['C_CI_mean']*WRRF_mean['dry_solids_tonne_per_day']
-# WRRF_mean['T_cost_FOAK_times_mass_flow'] = WRRF_mean['T_cost_FOAK_mean']*WRRF_mean['dry_solids_tonne_per_day']
-# WRRF_mean['T_CI_FOAK_times_mass_flow'] = WRRF_mean['T_CI_FOAK_mean']*WRRF_mean['dry_solids_tonne_per_day']
-# WRRF_mean['T_cost_NOAK_times_mass_flow'] = WRRF_mean['T_cost_NOAK_mean']*WRRF_mean['dry_solids_tonne_per_day']
-# WRRF_mean['T_CI_NOAK_times_mass_flow'] = WRRF_mean['T_CI_NOAK_mean']*WRRF_mean['dry_solids_tonne_per_day']
-
-# WRRF_mean = WRRF_mean[['COUNTRY','dry_solids_tonne_per_day','C_cost_times_mass_flow','C_CI_times_mass_flow',
-#                        'T_cost_FOAK_times_mass_flow','T_CI_FOAK_times_mass_flow','T_cost_NOAK_times_mass_flow','T_CI_NOAK_times_mass_flow']]
-
-# WRRF_mean = WRRF_mean.groupby('COUNTRY').sum()
-
-# WRRF_mean['C_cost_weighted_average'] = WRRF_mean['C_cost_times_mass_flow']/WRRF_mean['dry_solids_tonne_per_day']
-# WRRF_mean['C_CI_weighted_average'] = WRRF_mean['C_CI_times_mass_flow']/WRRF_mean['dry_solids_tonne_per_day']
-# WRRF_mean['T_cost_FOAK_weighted_average'] = WRRF_mean['T_cost_FOAK_times_mass_flow']/WRRF_mean['dry_solids_tonne_per_day']
-# WRRF_mean['T_CI_FOAK_weighted_average'] = WRRF_mean['T_CI_FOAK_times_mass_flow']/WRRF_mean['dry_solids_tonne_per_day']
-# WRRF_mean['T_cost_NOAK_weighted_average'] = WRRF_mean['T_cost_NOAK_times_mass_flow']/WRRF_mean['dry_solids_tonne_per_day']
-# WRRF_mean['T_CI_NOAK_weighted_average'] = WRRF_mean['T_CI_NOAK_times_mass_flow']/WRRF_mean['dry_solids_tonne_per_day']
-
-# WRRF_mean = WRRF_mean[['C_cost_weighted_average','C_CI_weighted_average','T_cost_FOAK_weighted_average',
-#                        'T_CI_FOAK_weighted_average', 'T_cost_NOAK_weighted_average', 'T_CI_NOAK_weighted_average']]
-
-# WRRF_mean['carbon_credit_needed'] = (WRRF_mean['T_cost_NOAK_weighted_average'] - WRRF_mean['C_cost_weighted_average'])/(WRRF_mean['C_CI_weighted_average'] - WRRF_mean['T_CI_NOAK_weighted_average'])*1000
-
-# WRRF_mean.reset_index(inplace=True)
-
-# WRRF_mean = WRRF_mean.merge(WRRF_filtered[['COUNTRY','CNTRY_ISO']].drop_duplicates(), how='left', on='COUNTRY')
-
-# # TODO: make sure no meaningful results are removed after merging these two datasets
-# # TODO: may need to check the country code with https://www.iban.com/country-codes
-# world_mean = world.merge(WRRF_mean, how='left', left_on='ISO_A3', right_on='CNTRY_ISO')
-
-# # =============================================================================
-# # median
-# # =============================================================================
-# country_median_1 = pd.read_excel(folder + 'results/country_median_2025-10-16_2999.xlsx')
-# country_median_2 = pd.read_excel(folder + 'results/country_median_2025-10-16_5999.xlsx')
-# country_median_3 = pd.read_excel(folder + 'results/country_median_2025-10-16_8999.xlsx')
-# country_median_4 = pd.read_excel(folder + 'results/country_median_2025-10-16_11999.xlsx')
-# country_median_5 = pd.read_excel(folder + 'results/country_median_2025-10-16_13999.xlsx')
-# country_median_6 = pd.read_excel(folder + 'results/country_median_2025-10-16_15964.xlsx')
-
-# integrated_country_median = pd.concat([country_median_1, country_median_2, country_median_3, country_median_4, country_median_5, country_median_6])
-# integrated_country_median.reset_index(inplace=True)
-# integrated_country_median = integrated_country_median[['C_cost_median','C_CI_median','T_cost_FOAK_median','T_CI_FOAK_median','T_cost_NOAK_median','T_CI_NOAK_median']]
-
-# WRRF_median = pd.concat([WRRF_filtered, integrated_country_median], axis=1)
-
-# WRRF_median['C_cost_times_mass_flow'] = WRRF_median['C_cost_median']*WRRF_median['dry_solids_tonne_per_day']
-# WRRF_median['C_CI_times_mass_flow'] = WRRF_median['C_CI_median']*WRRF_median['dry_solids_tonne_per_day']
-# WRRF_median['T_cost_FOAK_times_mass_flow'] = WRRF_median['T_cost_FOAK_median']*WRRF_median['dry_solids_tonne_per_day']
-# WRRF_median['T_CI_FOAK_times_mass_flow'] = WRRF_median['T_CI_FOAK_median']*WRRF_median['dry_solids_tonne_per_day']
-# WRRF_median['T_cost_NOAK_times_mass_flow'] = WRRF_median['T_cost_NOAK_median']*WRRF_median['dry_solids_tonne_per_day']
-# WRRF_median['T_CI_NOAK_times_mass_flow'] = WRRF_median['T_CI_NOAK_median']*WRRF_median['dry_solids_tonne_per_day']
-
-# WRRF_median = WRRF_median[['COUNTRY','dry_solids_tonne_per_day','C_cost_times_mass_flow','C_CI_times_mass_flow',
-#                            'T_cost_FOAK_times_mass_flow','T_CI_FOAK_times_mass_flow','T_cost_NOAK_times_mass_flow','T_CI_NOAK_times_mass_flow']]
-
-# WRRF_median = WRRF_median.groupby('COUNTRY').sum()
-
-# WRRF_median['C_cost_weighted_average'] = WRRF_median['C_cost_times_mass_flow']/WRRF_median['dry_solids_tonne_per_day']
-# WRRF_median['C_CI_weighted_average'] = WRRF_median['C_CI_times_mass_flow']/WRRF_median['dry_solids_tonne_per_day']
-# WRRF_median['T_cost_FOAK_weighted_average'] = WRRF_median['T_cost_FOAK_times_mass_flow']/WRRF_median['dry_solids_tonne_per_day']
-# WRRF_median['T_CI_FOAK_weighted_average'] = WRRF_median['T_CI_FOAK_times_mass_flow']/WRRF_median['dry_solids_tonne_per_day']
-# WRRF_median['T_cost_NOAK_weighted_average'] = WRRF_median['T_cost_NOAK_times_mass_flow']/WRRF_median['dry_solids_tonne_per_day']
-# WRRF_median['T_CI_NOAK_weighted_average'] = WRRF_median['T_CI_NOAK_times_mass_flow']/WRRF_median['dry_solids_tonne_per_day']
-
-# WRRF_median = WRRF_median[['C_cost_weighted_average','C_CI_weighted_average','T_cost_FOAK_weighted_average',
-#                            'T_CI_FOAK_weighted_average', 'T_cost_NOAK_weighted_average', 'T_CI_NOAK_weighted_average']]
-
-# WRRF_median['carbon_credit_needed'] = (WRRF_median['T_cost_NOAK_weighted_average'] - WRRF_median['C_cost_weighted_average'])/(WRRF_median['C_CI_weighted_average'] - WRRF_median['T_CI_NOAK_weighted_average'])*1000
-
-# WRRF_median.reset_index(inplace=True)
-
-# WRRF_median = WRRF_median.merge(WRRF_filtered[['COUNTRY','CNTRY_ISO']].drop_duplicates(), how='left', on='COUNTRY')
-
-# # TODO: make sure no meaningful results are removed after merging these two datasets
-# # TODO: may need to check the country code with https://www.iban.com/country-codes
-# world_median = world.merge(WRRF_median, how='left', left_on='ISO_A3', right_on='CNTRY_ISO')
-
-# # =============================================================================
-# # min
-# # =============================================================================
-# # TODO: cost and CI minimums may not come from the same system
-# country_min_1 = pd.read_excel(folder + 'results/country_min_2025-10-16_2999.xlsx')
-# country_min_2 = pd.read_excel(folder + 'results/country_min_2025-10-16_5999.xlsx')
-# country_min_3 = pd.read_excel(folder + 'results/country_min_2025-10-16_8999.xlsx')
-# country_min_4 = pd.read_excel(folder + 'results/country_min_2025-10-16_11999.xlsx')
-# country_min_5 = pd.read_excel(folder + 'results/country_min_2025-10-16_13999.xlsx')
-# country_min_6 = pd.read_excel(folder + 'results/country_min_2025-10-16_15964.xlsx')
-
-# integrated_country_min = pd.concat([country_min_1, country_min_2, country_min_3, country_min_4, country_min_5, country_min_6])
-# integrated_country_min.reset_index(inplace=True)
-# integrated_country_min = integrated_country_min[['C_cost_min','C_CI_min','T_cost_FOAK_min','T_CI_FOAK_min','T_cost_NOAK_min','T_CI_NOAK_min']]
-
-# WRRF_min = pd.concat([WRRF_filtered, integrated_country_min], axis=1)
-
-# WRRF_min['C_cost_times_mass_flow'] = WRRF_min['C_cost_min']*WRRF_min['dry_solids_tonne_per_day']
-# WRRF_min['C_CI_times_mass_flow'] = WRRF_min['C_CI_min']*WRRF_min['dry_solids_tonne_per_day']
-# WRRF_min['T_cost_FOAK_times_mass_flow'] = WRRF_min['T_cost_FOAK_min']*WRRF_min['dry_solids_tonne_per_day']
-# WRRF_min['T_CI_FOAK_times_mass_flow'] = WRRF_min['T_CI_FOAK_min']*WRRF_min['dry_solids_tonne_per_day']
-# WRRF_min['T_cost_NOAK_times_mass_flow'] = WRRF_min['T_cost_NOAK_min']*WRRF_min['dry_solids_tonne_per_day']
-# WRRF_min['T_CI_NOAK_times_mass_flow'] = WRRF_min['T_CI_NOAK_min']*WRRF_min['dry_solids_tonne_per_day']
-
-# WRRF_min = WRRF_min[['COUNTRY','dry_solids_tonne_per_day','C_cost_times_mass_flow','C_CI_times_mass_flow',
-#                      'T_cost_FOAK_times_mass_flow','T_CI_FOAK_times_mass_flow','T_cost_NOAK_times_mass_flow','T_CI_NOAK_times_mass_flow']]
-
-# WRRF_min = WRRF_min.groupby('COUNTRY').sum()
-
-# WRRF_min['C_cost_weighted_average'] = WRRF_min['C_cost_times_mass_flow']/WRRF_min['dry_solids_tonne_per_day']
-# WRRF_min['C_CI_weighted_average'] = WRRF_min['C_CI_times_mass_flow']/WRRF_min['dry_solids_tonne_per_day']
-# WRRF_min['T_cost_FOAK_weighted_average'] = WRRF_min['T_cost_FOAK_times_mass_flow']/WRRF_min['dry_solids_tonne_per_day']
-# WRRF_min['T_CI_FOAK_weighted_average'] = WRRF_min['T_CI_FOAK_times_mass_flow']/WRRF_min['dry_solids_tonne_per_day']
-# WRRF_min['T_cost_NOAK_weighted_average'] = WRRF_min['T_cost_NOAK_times_mass_flow']/WRRF_min['dry_solids_tonne_per_day']
-# WRRF_min['T_CI_NOAK_weighted_average'] = WRRF_min['T_CI_NOAK_times_mass_flow']/WRRF_min['dry_solids_tonne_per_day']
-
-# WRRF_min = WRRF_min[['C_cost_weighted_average','C_CI_weighted_average','T_cost_FOAK_weighted_average',
-#                      'T_CI_FOAK_weighted_average', 'T_cost_NOAK_weighted_average', 'T_CI_NOAK_weighted_average']]
-
-# WRRF_min['carbon_credit_needed'] = (WRRF_min['T_cost_NOAK_weighted_average'] - WRRF_min['C_cost_weighted_average'])/(WRRF_min['C_CI_weighted_average'] - WRRF_min['T_CI_NOAK_weighted_average'])*1000
-
-# WRRF_min.reset_index(inplace=True)
-
-# WRRF_min = WRRF_min.merge(WRRF_filtered[['COUNTRY','CNTRY_ISO']].drop_duplicates(), how='left', on='COUNTRY')
-
-# # TODO: make sure no meaningful results are removed after merging these two datasets
-# # TODO: may need to check the country code with https://www.iban.com/country-codes
-# world_min = world.merge(WRRF_min, how='left', left_on='ISO_A3', right_on='CNTRY_ISO')
-
-# # =============================================================================
-# # max
-# # =============================================================================
-# # TODO: cost and CI maximums may not come from the same system
-# country_max_1 = pd.read_excel(folder + 'results/country_max_2025-10-16_2999.xlsx')
-# country_max_2 = pd.read_excel(folder + 'results/country_max_2025-10-16_5999.xlsx')
-# country_max_3 = pd.read_excel(folder + 'results/country_max_2025-10-16_8999.xlsx')
-# country_max_4 = pd.read_excel(folder + 'results/country_max_2025-10-16_11999.xlsx')
-# country_max_5 = pd.read_excel(folder + 'results/country_max_2025-10-16_13999.xlsx')
-# country_max_6 = pd.read_excel(folder + 'results/country_max_2025-10-16_15964.xlsx')
-
-# integrated_country_max = pd.concat([country_max_1, country_max_2, country_max_3, country_max_4, country_max_5, country_max_6])
-# integrated_country_max.reset_index(inplace=True)
-# integrated_country_max = integrated_country_max[['C_cost_max','C_CI_max','T_cost_FOAK_max','T_CI_FOAK_max','T_cost_NOAK_max','T_CI_NOAK_max']]
-
-# WRRF_max = pd.concat([WRRF_filtered, integrated_country_max], axis=1)
-
-# WRRF_max['C_cost_times_mass_flow'] = WRRF_max['C_cost_max']*WRRF_max['dry_solids_tonne_per_day']
-# WRRF_max['C_CI_times_mass_flow'] = WRRF_max['C_CI_max']*WRRF_max['dry_solids_tonne_per_day']
-# WRRF_max['T_cost_FOAK_times_mass_flow'] = WRRF_max['T_cost_FOAK_max']*WRRF_max['dry_solids_tonne_per_day']
-# WRRF_max['T_CI_FOAK_times_mass_flow'] = WRRF_max['T_CI_FOAK_max']*WRRF_max['dry_solids_tonne_per_day']
-# WRRF_max['T_cost_NOAK_times_mass_flow'] = WRRF_max['T_cost_NOAK_max']*WRRF_max['dry_solids_tonne_per_day']
-# WRRF_max['T_CI_NOAK_times_mass_flow'] = WRRF_max['T_CI_NOAK_max']*WRRF_max['dry_solids_tonne_per_day']
-
-# WRRF_max = WRRF_max[['COUNTRY','dry_solids_tonne_per_day','C_cost_times_mass_flow','C_CI_times_mass_flow',
-#                      'T_cost_FOAK_times_mass_flow','T_CI_FOAK_times_mass_flow','T_cost_NOAK_times_mass_flow','T_CI_NOAK_times_mass_flow']]
-
-# WRRF_max = WRRF_max.groupby('COUNTRY').sum()
-
-# WRRF_max['C_cost_weighted_average'] = WRRF_max['C_cost_times_mass_flow']/WRRF_max['dry_solids_tonne_per_day']
-# WRRF_max['C_CI_weighted_average'] = WRRF_max['C_CI_times_mass_flow']/WRRF_max['dry_solids_tonne_per_day']
-# WRRF_max['T_cost_FOAK_weighted_average'] = WRRF_max['T_cost_FOAK_times_mass_flow']/WRRF_max['dry_solids_tonne_per_day']
-# WRRF_max['T_CI_FOAK_weighted_average'] = WRRF_max['T_CI_FOAK_times_mass_flow']/WRRF_max['dry_solids_tonne_per_day']
-# WRRF_max['T_cost_NOAK_weighted_average'] = WRRF_max['T_cost_NOAK_times_mass_flow']/WRRF_max['dry_solids_tonne_per_day']
-# WRRF_max['T_CI_NOAK_weighted_average'] = WRRF_max['T_CI_NOAK_times_mass_flow']/WRRF_max['dry_solids_tonne_per_day']
-
-# WRRF_max = WRRF_max[['C_cost_weighted_average','C_CI_weighted_average','T_cost_FOAK_weighted_average',
-#                      'T_CI_FOAK_weighted_average', 'T_cost_NOAK_weighted_average', 'T_CI_NOAK_weighted_average']]
-
-# WRRF_max['carbon_credit_needed'] = (WRRF_max['T_cost_NOAK_weighted_average'] - WRRF_max['C_cost_weighted_average'])/(WRRF_max['C_CI_weighted_average'] - WRRF_max['T_CI_NOAK_weighted_average'])*1000
-
-# WRRF_max.reset_index(inplace=True)
-
-# WRRF_max = WRRF_max.merge(WRRF_filtered[['COUNTRY','CNTRY_ISO']].drop_duplicates(), how='left', on='COUNTRY')
-
-# # TODO: make sure no meaningful results are removed after merging these two datasets
-# # TODO: may need to check the country code with https://www.iban.com/country-codes
-# world_max = world.merge(WRRF_max, how='left', left_on='ISO_A3', right_on='CNTRY_ISO')
-
 #%% merge country results - using 5 dry tonne/day as the cutoff size
 
 # =============================================================================
@@ -2576,6 +2380,9 @@ WRRF_mean['T_CI_NOAK_times_mass_flow'] = WRRF_mean['T_CI_NOAK_mean']*WRRF_mean['
 WRRF_mean = WRRF_mean[['COUNTRY','dry_solids_tonne_per_day','C_cost_times_mass_flow','C_CI_times_mass_flow',
                        'T_cost_FOAK_times_mass_flow','T_CI_FOAK_times_mass_flow','T_cost_NOAK_times_mass_flow','T_CI_NOAK_times_mass_flow']]
 
+# the world map data include 'Taiwan' as part of 'China'
+WRRF_mean.loc[WRRF_mean['COUNTRY'] == 'Taiwan', 'COUNTRY'] = 'China'
+
 WRRF_mean = WRRF_mean.groupby('COUNTRY').sum()
 
 WRRF_mean['C_cost_weighted_average'] = WRRF_mean['C_cost_times_mass_flow']/WRRF_mean['dry_solids_tonne_per_day']
@@ -2594,9 +2401,11 @@ WRRF_mean.reset_index(inplace=True)
 
 WRRF_mean = WRRF_mean.merge(WRRF_filtered[['COUNTRY','CNTRY_ISO']].drop_duplicates(), how='left', on='COUNTRY')
 
-# TODO: make sure no meaningful results are removed after merging these two datasets
-# TODO: may need to check the country code with https://www.iban.com/country-codes
 world_mean = world.merge(WRRF_mean, how='left', left_on='ISO_A3', right_on='CNTRY_ISO')
+
+assert len(WRRF_mean) == len(world_mean[world_mean['CNTRY_ISO'].notna()]['ISO_A3'].drop_duplicates())
+
+# world_mean.to_excel(folder + f'results/country_mean_{date.today()}_summary.xlsx')
 
 # =============================================================================
 # median
@@ -2620,6 +2429,9 @@ WRRF_median['T_CI_NOAK_times_mass_flow'] = WRRF_median['T_CI_NOAK_median']*WRRF_
 WRRF_median = WRRF_median[['COUNTRY','dry_solids_tonne_per_day','C_cost_times_mass_flow','C_CI_times_mass_flow',
                            'T_cost_FOAK_times_mass_flow','T_CI_FOAK_times_mass_flow','T_cost_NOAK_times_mass_flow','T_CI_NOAK_times_mass_flow']]
 
+# the world map data include 'Taiwan' as part of 'China'
+WRRF_median.loc[WRRF_median['COUNTRY'] == 'Taiwan', 'COUNTRY'] = 'China'
+
 WRRF_median = WRRF_median.groupby('COUNTRY').sum()
 
 WRRF_median['C_cost_weighted_average'] = WRRF_median['C_cost_times_mass_flow']/WRRF_median['dry_solids_tonne_per_day']
@@ -2638,14 +2450,16 @@ WRRF_median.reset_index(inplace=True)
 
 WRRF_median = WRRF_median.merge(WRRF_filtered[['COUNTRY','CNTRY_ISO']].drop_duplicates(), how='left', on='COUNTRY')
 
-# TODO: make sure no meaningful results are removed after merging these two datasets
-# TODO: may need to check the country code with https://www.iban.com/country-codes
 world_median = world.merge(WRRF_median, how='left', left_on='ISO_A3', right_on='CNTRY_ISO')
+
+assert len(WRRF_median) == len(world_median[world_median['CNTRY_ISO'].notna()]['ISO_A3'].drop_duplicates())
+
+# world_median.to_excel(folder + f'results/country_median_{date.today()}_summary.xlsx')
 
 # =============================================================================
 # min
 # =============================================================================
-# TODO: cost and CI minimums may not come from the same system
+# note cost and CI minimums may not come from the same system (this is fine for identifying the possible range)
 country_min_1 = pd.read_excel(folder + 'results/country_min_2025-11-14_2499.xlsx')
 country_min_2 = pd.read_excel(folder + 'results/country_min_2025-11-14_4726.xlsx')
 
@@ -2665,6 +2479,9 @@ WRRF_min['T_CI_NOAK_times_mass_flow'] = WRRF_min['T_CI_NOAK_min']*WRRF_min['dry_
 WRRF_min = WRRF_min[['COUNTRY','dry_solids_tonne_per_day','C_cost_times_mass_flow','C_CI_times_mass_flow',
                      'T_cost_FOAK_times_mass_flow','T_CI_FOAK_times_mass_flow','T_cost_NOAK_times_mass_flow','T_CI_NOAK_times_mass_flow']]
 
+# the world map data include 'Taiwan' as part of 'China'
+WRRF_min.loc[WRRF_min['COUNTRY'] == 'Taiwan', 'COUNTRY'] = 'China'
+
 WRRF_min = WRRF_min.groupby('COUNTRY').sum()
 
 WRRF_min['C_cost_weighted_average'] = WRRF_min['C_cost_times_mass_flow']/WRRF_min['dry_solids_tonne_per_day']
@@ -2683,14 +2500,16 @@ WRRF_min.reset_index(inplace=True)
 
 WRRF_min = WRRF_min.merge(WRRF_filtered[['COUNTRY','CNTRY_ISO']].drop_duplicates(), how='left', on='COUNTRY')
 
-# TODO: make sure no meaningful results are removed after merging these two datasets
-# TODO: may need to check the country code with https://www.iban.com/country-codes
 world_min = world.merge(WRRF_min, how='left', left_on='ISO_A3', right_on='CNTRY_ISO')
+
+assert len(WRRF_min) == len(world_min[world_min['CNTRY_ISO'].notna()]['ISO_A3'].drop_duplicates())
+
+# world_min.to_excel(folder + f'results/country_min_{date.today()}_summary.xlsx')
 
 # =============================================================================
 # max
 # =============================================================================
-# TODO: cost and CI maximums may not come from the same system
+# note cost and CI maximums may not come from the same system (this is fine for identifying the possible range)
 country_max_1 = pd.read_excel(folder + 'results/country_max_2025-11-14_2499.xlsx')
 country_max_2 = pd.read_excel(folder + 'results/country_max_2025-11-14_4726.xlsx')
 
@@ -2710,6 +2529,9 @@ WRRF_max['T_CI_NOAK_times_mass_flow'] = WRRF_max['T_CI_NOAK_max']*WRRF_max['dry_
 WRRF_max = WRRF_max[['COUNTRY','dry_solids_tonne_per_day','C_cost_times_mass_flow','C_CI_times_mass_flow',
                      'T_cost_FOAK_times_mass_flow','T_CI_FOAK_times_mass_flow','T_cost_NOAK_times_mass_flow','T_CI_NOAK_times_mass_flow']]
 
+# the world map data include 'Taiwan' as part of 'China'
+WRRF_max.loc[WRRF_max['COUNTRY'] == 'Taiwan', 'COUNTRY'] = 'China'
+
 WRRF_max = WRRF_max.groupby('COUNTRY').sum()
 
 WRRF_max['C_cost_weighted_average'] = WRRF_max['C_cost_times_mass_flow']/WRRF_max['dry_solids_tonne_per_day']
@@ -2728,9 +2550,11 @@ WRRF_max.reset_index(inplace=True)
 
 WRRF_max = WRRF_max.merge(WRRF_filtered[['COUNTRY','CNTRY_ISO']].drop_duplicates(), how='left', on='COUNTRY')
 
-# TODO: make sure no meaningful results are removed after merging these two datasets
-# TODO: may need to check the country code with https://www.iban.com/country-codes
 world_max = world.merge(WRRF_max, how='left', left_on='ISO_A3', right_on='CNTRY_ISO')
+
+assert len(WRRF_max) == len(world_max[world_max['CNTRY_ISO'].notna()]['ISO_A3'].drop_duplicates())
+
+# world_max.to_excel(folder + f'results/country_max_{date.today()}_summary.xlsx')
 
 #%% world map visualization - cost legend
 
@@ -2999,6 +2823,9 @@ ax.set_axis_off()
 
 country_order = WRRF_filtered['COUNTRY'].value_counts()
 
+# 'Taiwan' and 'China' data are merged
+country_order = country_order[country_order.index != 'Taiwan']
+
 country_order = country_order[country_order > 10].index.tolist()[::-1]
 
 #%% cost ranges for C and T systems
@@ -3012,7 +2839,6 @@ print([i for i in cost_min.index if (i not in global_north_countries_regions) an
 
 global_north_countries_regions.append('Hong Kong')
 global_north_countries_regions.append('Czech Republic')
-global_north_countries_regions.append('Taiwan')
 
 assert(len([i for i in cost_min.index if (i not in global_north_countries_regions) and (i not in global_south_countries_regions)]) == 0)
 
@@ -3028,7 +2854,6 @@ print([i for i in cost_max.index if (i not in global_north_countries_regions) an
 
 global_north_countries_regions.append('Hong Kong')
 global_north_countries_regions.append('Czech Republic')
-global_north_countries_regions.append('Taiwan')
 
 assert(len([i for i in cost_max.index if (i not in global_north_countries_regions) and (i not in global_south_countries_regions)]) == 0)
 
@@ -3099,7 +2924,6 @@ print([i for i in cost_change.index if (i not in global_north_countries_regions)
 
 global_north_countries_regions.append('Hong Kong')
 global_north_countries_regions.append('Czech Republic')
-global_north_countries_regions.append('Taiwan')
 
 assert(len([i for i in cost_change.index if (i not in global_north_countries_regions) and (i not in global_south_countries_regions)]) == 0)
 
@@ -3170,7 +2994,6 @@ print([i for i in CI_min.index if (i not in global_north_countries_regions) and 
 
 global_north_countries_regions.append('Hong Kong')
 global_north_countries_regions.append('Czech Republic')
-global_north_countries_regions.append('Taiwan')
 
 assert(len([i for i in CI_min.index if (i not in global_north_countries_regions) and (i not in global_south_countries_regions)]) == 0)
 
@@ -3186,7 +3009,6 @@ print([i for i in CI_max.index if (i not in global_north_countries_regions) and 
 
 global_north_countries_regions.append('Hong Kong')
 global_north_countries_regions.append('Czech Republic')
-global_north_countries_regions.append('Taiwan')
 
 assert(len([i for i in CI_max.index if (i not in global_north_countries_regions) and (i not in global_south_countries_regions)]) == 0)
 
@@ -3257,7 +3079,6 @@ print([i for i in CI_change.index if (i not in global_north_countries_regions) a
 
 global_north_countries_regions.append('Hong Kong')
 global_north_countries_regions.append('Czech Republic')
-global_north_countries_regions.append('Taiwan')
 
 assert(len([i for i in CI_change.index if (i not in global_north_countries_regions) and (i not in global_south_countries_regions)]) == 0)
 
