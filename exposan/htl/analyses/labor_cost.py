@@ -8,7 +8,7 @@ Created on Sun Jan  5 11:45:35 2025
 
 #%% initialization
 
-import pandas as pd, geopandas as gpd, numpy as np, matplotlib.pyplot as plt, matplotlib.colors as colors
+import pandas as pd, geopandas as gpd
 from colorpalette import Color
 from qsdsan.utils import palettes
 
@@ -30,7 +30,7 @@ dy = Color('dark_yellow', (171, 137, 55)).HEX
 da = Color('dark_gray', (78, 78, 78)).HEX
 dp = Color('dark_purple', (76, 56, 90)).HEX
 
-US_county = gpd.read_file('/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_geospatial/cb_2018_us_county_500k/cb_2018_us_county_500k.shp')
+US_county = gpd.read_file('/Users/jiananfeng/Desktop/PhD_CEE/NSF/HTL_geospatial/cb_2018_us_county_500k/cb_2018_us_county_500k.shp')
 
 US_county = US_county[US_county['STATEFP'].isin(['01','04','05','06','08','09','10','11',
                                                  '12','13','16','17','18','19','20','21',
@@ -95,7 +95,7 @@ US_county['Area\nCode'] = US_county['STATEFP'] + US_county['COUNTYFP']
 
 US_county = US_county.to_crs(crs='EPSG:3857')
 
-labor_cost = pd.read_excel('/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_geospatial/county_labor_cost_2022.xlsx','US_St_Cn_MSA')
+labor_cost = pd.read_excel('/Users/jiananfeng/Desktop/PhD_CEE/NSF/HTL_geospatial/county_labor_cost_2022.xlsx','US_St_Cn_MSA')
 
 US_average_labor_cost = labor_cost[(labor_cost['St'] == 'US') & (labor_cost['Ownership'] == 'Local Government')]['Annual Average Pay']
 
@@ -122,4 +122,4 @@ US_county_labor_cost['quotient'] = US_county_labor_cost['Annual Average Pay']/fl
 
 US_county_labor_cost = US_county_labor_cost[['Area\nCode','NAME','STATE','quotient','geometry']]
 
-US_county_labor_cost.to_file('/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_geospatial/county_labor_cost_2022_processed.geojson')
+US_county_labor_cost.to_file('/Users/jiananfeng/Desktop/PhD_CEE/NSF/HTL_geospatial/county_labor_cost_2022_processed.geojson')

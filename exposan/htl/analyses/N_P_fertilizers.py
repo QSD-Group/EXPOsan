@@ -32,7 +32,7 @@ dy = Color('dark_yellow', (171, 137, 55)).HEX
 da = Color('dark_gray', (78, 78, 78)).HEX
 dp = Color('dark_purple', (76, 56, 90)).HEX
 
-US_county = gpd.read_file('/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_geospatial/cb_2018_us_county_500k/cb_2018_us_county_500k.shp')
+US_county = gpd.read_file('/Users/jiananfeng/Desktop/PhD_CEE/NSF/HTL_geospatial/cb_2018_us_county_500k/cb_2018_us_county_500k.shp')
 
 US_county = US_county[US_county['STATEFP'].isin(['01','04','05','06','08','09','10','11',
                                                  '12','13','16','17','18','19','20','21',
@@ -98,8 +98,8 @@ US_county['STCOFIPS'] = US_county['STCOFIPS'].astype('int64')
 
 US_county = US_county.to_crs(crs='EPSG:3857')
 
-farm_fertilizer = pd.read_excel('/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_geospatial/N-P_from_fertilizer_1950-2017-july23-2020.xlsx','farm')
-nonfarm_fertilizer = pd.read_excel('/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_geospatial/N-P_from_fertilizer_1950-2017-july23-2020.xlsx','nonfarm')
+farm_fertilizer = pd.read_excel('/Users/jiananfeng/Desktop/PhD_CEE/NSF/HTL_geospatial/N-P_from_fertilizer_1950-2017-july23-2020.xlsx','farm')
+nonfarm_fertilizer = pd.read_excel('/Users/jiananfeng/Desktop/PhD_CEE/NSF/HTL_geospatial/N-P_from_fertilizer_1950-2017-july23-2020.xlsx','nonfarm')
 
 N_farm = farm_fertilizer[['STCOFIPS','farmfertN-kg-2017']]
 N_nonfarm = nonfarm_fertilizer[['STCOFIPS','nonffertN-kg-2017']]

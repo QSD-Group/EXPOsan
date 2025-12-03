@@ -26,7 +26,7 @@ from qsdsan.utils import auom, clear_lca_registries, tea_indices
 from exposan.htl import _load_components, landscape_sanunits as lsu, create_tea
 from biosteam.units import IsenthalpicValve
 
-folder = '/Users/jiananfeng/Desktop/UIUC_PhD/PhD_CEE/NSF_PFAS/HTL_landscape/'
+folder = '/Users/jiananfeng/Desktop/UIUC_PhD/PhD_CEE/NSF/HTL_landscape/'
 
 # use methane density, probably consistent with BioSTEAM, kg/m3
 # https://en.wikipedia.org/wiki/Methane (accessed 2025-02-10)

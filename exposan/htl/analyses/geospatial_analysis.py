@@ -45,7 +45,7 @@ from numba import njit
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
-folder = '/Users/jiananfeng/Desktop/UIUC_PhD/PhD_CEE/NSF_PFAS/HTL_geospatial/'
+folder = '/Users/jiananfeng/Desktop/UIUC_PhD/PhD_CEE/NSF/HTL_geospatial/'
 
 # color palette
 b = Color('blue', (96, 193, 207)).HEX
@@ -237,7 +237,7 @@ US = US.to_crs(crs='EPSG:3857')
 US_county = US_county.to_crs(crs='EPSG:3857')
 NREL_area = NREL_area.to_crs(crs='EPSG:3857')
 
-US_county_labor_cost = gpd.read_file('/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_geospatial/county_labor_cost_2022_processed.geojson')
+US_county_labor_cost = gpd.read_file('/Users/jiananfeng/Desktop/PhD_CEE/NSF/HTL_geospatial/county_labor_cost_2022_processed.geojson')
 
 WRRF = WRRF.sjoin_nearest(US_county_labor_cost)
 WRRF = WRRF.drop(['index_right','STATE_right'], axis=1)

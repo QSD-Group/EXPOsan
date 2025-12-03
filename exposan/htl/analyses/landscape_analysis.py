@@ -14,7 +14,9 @@ for license details.
 
 #%% housekeeping
 
-# TODO: use Matplotlib.rcParams['pdf.fonttype'] = 42
+# Matplotlib.rcParams['pdf.fonttype'] = 42
+
+# 'country' refers to both countries and territories
 
 #%% initialization
 
@@ -25,7 +27,7 @@ from matplotlib.animation import FuncAnimation
 from matplotlib.mathtext import _mathtext as mathtext
 from matplotlib.gridspec import GridSpec
 from chaospy import distributions as shape
-from scipy.stats import qmc, linregress
+from scipy.stats import linregress
 from warnings import filterwarnings
 from datetime import date
 from qsdsan.utils import auom
@@ -44,7 +46,7 @@ from exposan.htl import (create_C1_system, create_C2_system, create_C3_system,
                          create_T12_system, create_T13_system, create_T14_system,
                          create_T15_system)
 
-folder = '/Users/jiananfeng/Desktop/UIUC_PhD/PhD_CEE/NSF_PFAS/HTL_landscape/'
+folder = '/Users/jiananfeng/Desktop/UIUC_PhD/PhD_CEE/NSF/HTL_landscape/'
 
 _ton_to_tonne = auom('ton').conversion_factor('tonne')
 _MMgal_to_m3 = auom('gal').conversion_factor('m3')*1000000
@@ -62,13 +64,13 @@ y = Color('yellow', (243, 195, 84)).HEX
 a = Color('gray', (144, 145, 142)).HEX
 p = Color('purple', (162, 128, 185)).HEX
 
-lb = to_hex((96/256, 193/256, 207/256, 0.5), keep_alpha=True)
-lg = to_hex((121/256, 191/256, 130/256, 0.5), keep_alpha=True)
-lr = to_hex((237/256, 88/256, 111/256, 0.5), keep_alpha=True)
-lo = to_hex((249/256, 143/256, 96/256, 0.5), keep_alpha=True)
-ly = to_hex((243/256, 195/256, 84/256, 0.5), keep_alpha=True)
-la = to_hex((144/256, 145/256, 142/256, 0.5), keep_alpha=True)
-lp = to_hex((162/256, 128/256, 185/256, 0.5), keep_alpha=True)
+lb = to_hex((96/256*0.5 + 1*0.5, 193/256*0.5 + 1*0.5, 207/256*0.5 + 1*0.5))
+lg = to_hex((121/256*0.5 + 1*0.5, 191/256*0.5 + 1*0.5, 130/256*0.5 + 1*0.5))
+lr = to_hex((237/256*0.5 + 1*0.5, 88/256*0.5 + 1*0.5, 111/256*0.5 + 1*0.5))
+lo = to_hex((249/256*0.5 + 1*0.5, 143/256*0.5 + 1*0.5, 96/256*0.5 + 1*0.5))
+ly = to_hex((243/256*0.5 + 1*0.5, 195/256*0.5 + 1*0.5, 84/256*0.5 + 1*0.5))
+la = to_hex((144/256*0.5 + 1*0.5, 145/256*0.5 + 1*0.5, 142/256*0.5 + 1*0.5))
+lp = to_hex((162/256*0.5 + 1*0.5, 128/256*0.5 + 1*0.5, 185/256*0.5 + 1*0.5))
 
 db = Color('dark_blue', (53, 118, 127)).HEX
 dg = Color('dark_green', (77, 126, 83)).HEX
@@ -146,7 +148,6 @@ WRRF['dry_solids_tonne_per_day'] = WRRF['WASTE_DIS']/_MMgal_to_m3*ww_2_dry_solid
 # only keep WRRFs with ≥ 5 dry tonne WWRS/day for more feasible thermochemical technology deployment (5 dry tonne/day is from the HTL geospatial paper)
 WRRF_filtered = WRRF[WRRF['dry_solids_tonne_per_day'] >= 5]
 WRRF_filtered.reset_index(inplace=True)
-# TODO: add this to the manuscript or SI
 print(f"{WRRF_filtered['dry_solids_tonne_per_day'].sum()/WRRF['dry_solids_tonne_per_day'].sum()*100:.1f}% global WWRS are included." )
 print(f"{len(WRRF_filtered)} WRRFs are included." )
 print(f"{len(set(WRRF_filtered['COUNTRY']))} countires or regions ('Taiwan' listed separately) are included." )
@@ -157,7 +158,6 @@ WRRF_filtered = gpd.GeoDataFrame(WRRF_filtered, crs='EPSG:4269',
 
 HDI = pd.read_excel(folder + 'analyses/HDR25_Statistical_Annex_HDI_Table.xlsx')
 
-# TODO: add this to the manuscript or SI
 # =============================================================================
 # electricity price
 # =============================================================================
@@ -172,28 +172,16 @@ electricity_price = electricity_price[electricity_price['US_cents_per_kWh'].notn
 electricity_price = electricity_price.loc[electricity_price.groupby('country')['year'].idxmax()].reset_index(drop=True)
 electricity_price = electricity_price[['country','country_code','year','US_cents_per_kWh']]
 
-# TODO: add this to the manuscript or SI
-# =============================================================================
-# code for processing ecoinvent data
-# data = pd.read_excel('/Users/jiananfeng/Desktop/electricity_CI_more_digits.xlsx')
-# data['country_code'] = data['country'].str.extract(r'\((.*?)\)')
-# data['country'] = data['country'].str.replace(r"\s*\(.*?\)", "", regex=True)
-# data.to_excel('/Users/jiananfeng/Desktop/electricity_CI_more_digits.xlsx')
-# =============================================================================
-
-# TODO: for countries w/o country data, use regional or global data
 # =============================================================================
 # electricity CI
 # =============================================================================
 electriicty_CI = pd.read_excel(folder + 'analyses/low_voltage_electricity_CI.xlsx')
 
-# TODO: add this to the manuscript or SI
 # =============================================================================
 # labor cost
 # =============================================================================
 labor_cost = pd.read_excel(folder + 'analyses/income.xlsx')
 
-# TODO: add this to the manuscript or SI
 # =============================================================================
 # price level index (PLI)
 # =============================================================================
@@ -212,129 +200,124 @@ PLI.rename(columns={'Country Name':'country',
 
 #%% data processing
 
-# TODO: add data processing steps and assumptions in the SI
+# # =============================================================================
+# # electricity price
+# # =============================================================================
+# for i in set(WRRF_filtered['CNTRY_ISO']):
+#     if i not in list(electricity_price['country_code']):
+#         print(set(WRRF_filtered[WRRF_filtered['CNTRY_ISO'] == i]['COUNTRY']))
+#         print(i)
 
-# TODO: for all datasets, if the data for different country come from different years, decide what to do (either directly use or if the difference is too big, try to adjust)
-# TODO: maybe in the cell 'initialization', do not remove rows that are not marked as the latest year, and also keep the year (or time or something similar) column
+# # https://www.voronoiapp.com/energy/Whats-the-Average-Cost-of-1-kWh-Electricity-around-the-World--3398
+# electricity_price.loc[len(electricity_price)] = ['Monaco', 'MCO', 9999, 18.0]
+# electricity_price.loc[len(electricity_price)] = ['British Virgin Islands', 'VGB', 9999, 22.5]
+# electricity_price.loc[len(electricity_price)] = ['Aruba', 'ABW', 9999, 17.8]
+# electricity_price.loc[len(electricity_price)] = ['Cuba', 'CUB', 9999, 38.6]
+# electricity_price.loc[len(electricity_price)] = ['French Polynesia', 'PYF', 9999, 25.9]
+# electricity_price.loc[len(electricity_price)] = ['Curaçao', 'CUW', 9999, 41.9]
+# # https://www.globalpetrolprices.com/Macao/electricity_prices/
+# electricity_price.loc[len(electricity_price)] = ['Macao', 'MAC', 2025, 15.9]
+# # https://www.nkeconwatch.com/category/communications/page/6/ (6.5 2012 euro cent, converted to 2012 US cent)
+# electricity_price.loc[len(electricity_price)] = ['North Korea', 'PRK', 2012, 8.4]
+# # https://www.ceicdata.com/en/turkmenistan/environmental-environmental-policy-taxes-and-transfers-non-oecd-member-annual/tm-industry-electricity-price-usd-per-kwh
+# electricity_price.loc[len(electricity_price)] = ['Turkmenistan', 'TKM', 2020, 1.5]
 
-# =============================================================================
-# electricity price
-# =============================================================================
-for i in set(WRRF_filtered['CNTRY_ISO']):
-    if i not in list(electricity_price['country_code']):
-        print(set(WRRF_filtered[WRRF_filtered['CNTRY_ISO'] == i]['COUNTRY']))
-        print(i)
+# electricity_price.drop_duplicates(inplace=True)
 
-# https://www.voronoiapp.com/energy/Whats-the-Average-Cost-of-1-kWh-Electricity-around-the-World--3398
-electricity_price.loc[len(electricity_price)] = ['Monaco', 'MCO', 9999, 18.0]
-electricity_price.loc[len(electricity_price)] = ['British Virgin Islands', 'VGB', 9999, 22.5]
-electricity_price.loc[len(electricity_price)] = ['Aruba', 'ABW', 9999, 17.8]
-electricity_price.loc[len(electricity_price)] = ['Cuba', 'CUB', 9999, 38.6]
-electricity_price.loc[len(electricity_price)] = ['French Polynesia', 'PYF', 9999, 25.9]
-electricity_price.loc[len(electricity_price)] = ['Curaçao', 'CUW', 9999, 41.9]
-# https://www.globalpetrolprices.com/Macao/electricity_prices/
-electricity_price.loc[len(electricity_price)] = ['Macao', 'MAC', 2025, 15.9]
-# https://www.nkeconwatch.com/category/communications/page/6/ (6.5 2012 euro cent, converted to 2012 US cent)
-electricity_price.loc[len(electricity_price)] = ['North Korea', 'PRK', 2012, 8.4]
-# https://www.ceicdata.com/en/turkmenistan/environmental-environmental-policy-taxes-and-transfers-non-oecd-member-annual/tm-industry-electricity-price-usd-per-kwh
-electricity_price.loc[len(electricity_price)] = ['Turkmenistan', 'TKM', 2020, 1.5]
+# assert len([i for i in set(WRRF_filtered['CNTRY_ISO']) if i not in list(electricity_price['country_code'])]) == 0
 
-electricity_price.drop_duplicates(inplace=True)
+# electricity_price.to_excel(folder + f'analyses/electricity_price_{date.today()}.xlsx')
 
-assert len([i for i in set(WRRF_filtered['CNTRY_ISO']) if i not in list(electricity_price['country_code'])]) == 0
+# # =============================================================================
+# # electricity CI
+# # =============================================================================
+# for i in set(WRRF_filtered['CNTRY_ISO']):
+#     if i not in list(electriicty_CI['country_ISO_A3']):
+#         print(set(WRRF_filtered[WRRF_filtered['CNTRY_ISO'] == i]['COUNTRY']))
+#         print(i)
 
-electricity_price.to_excel(folder + f'analyses/electricity_price_{date.today()}.xlsx')
+# # Europe without Switzerland
+# electriicty_CI.loc[len(electriicty_CI)] = ['Monaco', 'MC', 'MCO', 0.335772839657998]
+# # Africa
+# electriicty_CI.loc[len(electriicty_CI)] = ['Equatorial Guinea', 'GQ', 'GNQ', 0.84866548695154]
+# electriicty_CI.loc[len(electriicty_CI)] = ['Mali', 'ML', 'MLI', 0.84866548695154]
+# electriicty_CI.loc[len(electriicty_CI)] = ['Guinea', 'GN', 'GIN', 0.84866548695154]
+# electriicty_CI.loc[len(electriicty_CI)] = ['Seychelles', 'SC', 'SYC', 0.84866548695154]
+# # Latin America and the Caribbean
+# electriicty_CI.loc[len(electriicty_CI)] = ['British Virgin Islands', 'VG', 'VGB', 0.35047605957495]
+# electriicty_CI.loc[len(electriicty_CI)] = ['Aruba', 'AW', 'ABW', 0.35047605957495]
+# electriicty_CI.loc[len(electriicty_CI)] = ['Bahamas', 'BS', 'BHS', 0.35047605957495]
+# electriicty_CI.loc[len(electriicty_CI)] = ['Barbados', 'BB', 'BRB', 0.35047605957495]
+# electriicty_CI.loc[len(electriicty_CI)] = ['Antigua and Barbuda', 'AG', 'ATG', 0.35047605957495]
+# electriicty_CI.loc[len(electriicty_CI)] = ['Belize', 'BZ', 'BLZ', 0.35047605957495]
 
-# =============================================================================
-# electricity CI
-# =============================================================================
-for i in set(WRRF_filtered['CNTRY_ISO']):
-    if i not in list(electriicty_CI['country_ISO_A3']):
-        print(set(WRRF_filtered[WRRF_filtered['CNTRY_ISO'] == i]['COUNTRY']))
-        print(i)
+# # Middle East
+# electriicty_CI.loc[len(electriicty_CI)] = ['Palestina', 'PS', 'PSE', 0.907394533030651]
 
-# Europe without Switzerland
-electriicty_CI.loc[len(electriicty_CI)] = ['Monaco', 'MC', 'MCO', 0.335772839657998]
-# Africa
-electriicty_CI.loc[len(electriicty_CI)] = ['Equatorial Guinea', 'GQ', 'GNQ', 0.84866548695154]
-electriicty_CI.loc[len(electriicty_CI)] = ['Mali', 'ML', 'MLI', 0.84866548695154]
-electriicty_CI.loc[len(electriicty_CI)] = ['Guinea', 'GN', 'GIN', 0.84866548695154]
-electriicty_CI.loc[len(electriicty_CI)] = ['Seychelles', 'SC', 'SYC', 0.84866548695154]
-# Latin America and the Caribbean
-electriicty_CI.loc[len(electriicty_CI)] = ['British Virgin Islands', 'VG', 'VGB', 0.35047605957495]
-electriicty_CI.loc[len(electriicty_CI)] = ['Aruba', 'AW', 'ABW', 0.35047605957495]
-electriicty_CI.loc[len(electriicty_CI)] = ['Bahamas', 'BS', 'BHS', 0.35047605957495]
-electriicty_CI.loc[len(electriicty_CI)] = ['Barbados', 'BB', 'BRB', 0.35047605957495]
-electriicty_CI.loc[len(electriicty_CI)] = ['Antigua and Barbuda', 'AG', 'ATG', 0.35047605957495]
-electriicty_CI.loc[len(electriicty_CI)] = ['Belize', 'BZ', 'BLZ', 0.35047605957495]
+# # Asia
+# electriicty_CI.loc[len(electriicty_CI)] = ['Macao', 'MO', 'MAC', 0.876728132896613]
+# electriicty_CI.loc[len(electriicty_CI)] = ['Laos', 'LA', 'LAO', 0.876728132896613]
+# electriicty_CI.loc[len(electriicty_CI)] = ['Afghanistan', 'AF', 'AFG', 0.876728132896613]
 
-# Middle East
-electriicty_CI.loc[len(electriicty_CI)] = ['Palestina', 'PS', 'PSE', 0.907394533030651]
+# # Global
+# electriicty_CI.loc[len(electriicty_CI)] = ['Papua New Guinea', 'PG', 'PNG', 0.691007559959689]
+# electriicty_CI.loc[len(electriicty_CI)] = ['Fiji', 'FJ', 'FJI', 0.691007559959689]
+# electriicty_CI.loc[len(electriicty_CI)] = ['French Polynesia', 'PF', 'PYF', 0.691007559959689]
 
-# Asia
-electriicty_CI.loc[len(electriicty_CI)] = ['Macao', 'MO', 'MAC', 0.876728132896613]
-electriicty_CI.loc[len(electriicty_CI)] = ['Laos', 'LA', 'LAO', 0.876728132896613]
-electriicty_CI.loc[len(electriicty_CI)] = ['Afghanistan', 'AF', 'AFG', 0.876728132896613]
+# electriicty_CI.drop_duplicates(inplace=True)
 
-# Global
-electriicty_CI.loc[len(electriicty_CI)] = ['Papua New Guinea', 'PG', 'PNG', 0.691007559959689]
-electriicty_CI.loc[len(electriicty_CI)] = ['Fiji', 'FJ', 'FJI', 0.691007559959689]
-electriicty_CI.loc[len(electriicty_CI)] = ['French Polynesia', 'PF', 'PYF', 0.691007559959689]
+# assert len([i for i in set(WRRF_filtered['CNTRY_ISO']) if i not in list(electriicty_CI['country_ISO_A3'])]) == 0
 
-electriicty_CI.drop_duplicates(inplace=True)
+# electriicty_CI.to_excel(folder + f'analyses/electricity_CI_{date.today()}.xlsx')
 
-assert len([i for i in set(WRRF_filtered['CNTRY_ISO']) if i not in list(electriicty_CI['country_ISO_A3'])]) == 0
+# # =============================================================================
+# # labor cost
+# # =============================================================================
+# for i in set(WRRF_filtered['CNTRY_ISO']):
+#     if i not in list(labor_cost['country_code']):
+#         print(set(WRRF_filtered[WRRF_filtered['CNTRY_ISO'] == i]['COUNTRY']))
+#         print(i)
 
-electriicty_CI.to_excel(folder + f'analyses/electricity_CI_{date.today()}.xlsx')
+# # use the minimum value in the available dataset
+# labor_cost.loc[len(labor_cost)] = ['North Korea', 'PRK', 190]
 
-# =============================================================================
-# labor cost
-# =============================================================================
-for i in set(WRRF_filtered['CNTRY_ISO']):
-    if i not in list(labor_cost['country_code']):
-        print(set(WRRF_filtered[WRRF_filtered['CNTRY_ISO'] == i]['COUNTRY']))
-        print(i)
+# labor_cost.drop_duplicates(inplace=True)
 
-# use the minimum value in the available dataset
-labor_cost.loc[len(labor_cost)] = ['North Korea', 'PRK', 190]
+# assert len([i for i in set(WRRF_filtered['CNTRY_ISO']) if i not in list(labor_cost['country_code'])]) == 0
 
-labor_cost.drop_duplicates(inplace=True)
+# labor_cost.to_excel(folder + f'analyses/labor_cost_{date.today()}.xlsx')
 
-assert len([i for i in set(WRRF_filtered['CNTRY_ISO']) if i not in list(labor_cost['country_code'])]) == 0
+# # =============================================================================
+# # PLI
+# # =============================================================================
+# for i in set(WRRF_filtered['CNTRY_ISO']):
+#     if i not in list(PLI['country_code']):
+#         print(set(WRRF_filtered[WRRF_filtered['CNTRY_ISO'] == i]['COUNTRY']))
+#         print(i)
 
-labor_cost.to_excel(folder + f'analyses/labor_cost_{date.today()}.xlsx')
+# # use France data
+# PLI.loc[len(PLI)] = ['Monaco', 'MCO', 0.753]
+# # use the average of China, Hong Kong SAR, China, Macao SAR, China, South Korea, and Japan
+# PLI.loc[len(PLI)] = ['Taiwan', 'TWN', 0.604]
+# # use the average of Caribbean countries (Dominica, Haiti, and Trinidad and Tobago)
+# PLI.loc[len(PLI)] = ['British Virgin Islands', 'VGB', 0.566]
+# # use the average of Latin American countries (Belize, Costa Rica, El Salvador, Guatemala, Honduras,
+# #                                              Mexico, Nicaragua, Panama, Argentina, Bolivia, Brazil,
+# #                                              Chile, Colombia, Ecuador, Guyana, Paraguay, Peru, Suriname,
+# #                                              Uruguay, Dominica, Dominican Republic, Haiti, Trinidad and Tobago)
+# PLI.loc[len(PLI)] = ['Cuba', 'CUB', 0.464]
+# # use the average of Pacific Islands countries (Fiji, Kiribati, Marshall Islands, Nauru, Palau,
+# #                                               Papua New Guinea, Samoa, Solomon Islands, Tonga,
+# #                                               Tuvalu, Vanuatu)
+# PLI.loc[len(PLI)] = ['French Polynesia', 'PYF', 0.764]
+# # use the minimum value in the available dataset
+# PLI.loc[len(PLI)] = ['North Korea', 'PRK', 0.125]
 
-# =============================================================================
-# PLI
-# =============================================================================
-for i in set(WRRF_filtered['CNTRY_ISO']):
-    if i not in list(PLI['country_code']):
-        print(set(WRRF_filtered[WRRF_filtered['CNTRY_ISO'] == i]['COUNTRY']))
-        print(i)
+# PLI.drop_duplicates(inplace=True)
 
-# use France data
-PLI.loc[len(PLI)] = ['Monaco', 'MCO', 0.753]
-# use the average of China, Hong Kong SAR, China, Macao SAR, China, South Korea, and Japan
-PLI.loc[len(PLI)] = ['Taiwan', 'TWN', 0.604]
-# use the average of Caribbean countries (Dominica, Haiti, and Trinidad and Tobago)
-PLI.loc[len(PLI)] = ['British Virgin Islands', 'VGB', 0.566]
-# use the average of Latin American countries (Belize, Costa Rica, El Salvador, Guatemala, Honduras,
-#                                              Mexico, Nicaragua, Panama, Argentina, Bolivia, Brazil,
-#                                              Chile, Colombia, Ecuador, Guyana, Paraguay, Peru, Suriname,
-#                                              Uruguay, Dominica, Dominican Republic, Haiti, Trinidad and Tobago)
-PLI.loc[len(PLI)] = ['Cuba', 'CUB', 0.464]
-# use the average of Pacific Islands countries (Fiji, Kiribati, Marshall Islands, Nauru, Palau,
-#                                               Papua New Guinea, Samoa, Solomon Islands, Tonga,
-#                                               Tuvalu, Vanuatu)
-PLI.loc[len(PLI)] = ['French Polynesia', 'PYF', 0.764]
-# use the minimum value in the available dataset
-PLI.loc[len(PLI)] = ['North Korea', 'PRK', 0.125]
+# assert len([i for i in set(WRRF_filtered['CNTRY_ISO']) if i not in list(PLI['country_code'])]) == 0
 
-PLI.drop_duplicates(inplace=True)
-
-assert len([i for i in set(WRRF_filtered['CNTRY_ISO']) if i not in list(PLI['country_code'])]) == 0
-
-PLI.to_excel(folder + f'analyses/PLI_{date.today()}.xlsx')
+# PLI.to_excel(folder + f'analyses/PLI_{date.today()}.xlsx')
 
 #%% MPs concentration
 
@@ -363,7 +346,7 @@ ax.tick_params(direction='inout', length=20, width=3, bottom=False, top=False, l
 
 plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10**1, 10**3, 10**5], fontname='Arial')
 
-ax.set_ylabel('$\mathbf{C}$ [particle·${g^{-1}}$]',
+ax.set_ylabel('$\mathbf{C}$ [particles·${g^{-1}}$]',
               fontname='Arial',
               fontsize=45,
               labelpad=13)
@@ -394,9 +377,69 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='k', linewidth=3)
 
-# plt.savefig('/Users/jiananfeng/Desktop/MPs.pdf', transparent=True, bbox_inches='tight')
+plt.savefig('/Users/jiananfeng/Desktop/MPs_concentration.pdf', transparent=True, bbox_inches='tight')
 
-#%% MPs distribution
+#%% MPs concentration (unique values)
+
+MPs = pd.read_excel(folder + 'analyses/EC_data.xlsx','MPs_summary')
+
+print('\n' + str([len(MPs[i].dropna().drop_duplicates()) for i in MPs.columns]) + '\n')
+
+fig, ax = plt.subplots(figsize=(15, 5))
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 36
+plt.rcParams['ytick.labelsize'] = 36
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+
+ax = plt.gca()
+ax.set_yscale('log')
+ax.set_ylim([10**-7, 10**5])
+ax.tick_params(direction='inout', length=20, width=3, bottom=False, top=False, left=True, right=False)
+
+plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10**1, 10**3, 10**5], fontname='Arial')
+
+ax.set_ylabel('$\mathbf{MPs}$\n[particles·${g^{-1}}$]',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=13)
+
+ax_right = ax.twinx()
+ax_right.set_yscale('log')
+ax_right.set_ylim(ax.get_ylim())
+ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
+
+ax_right.set_xticklabels(['WWRS','soil','sediment','air','water'])
+plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10**1, 10**3, 10**5], fontname='Arial')
+
+bp = ax.boxplot([MPs[i].dropna().drop_duplicates() for i in MPs.columns],
+                whis=[5, 95], showfliers=False, widths=0.7, patch_artist=True)
+    
+bp['boxes'][0].set(color='k', facecolor=dr, linewidth=3)
+bp['boxes'][1].set(color='k', facecolor=lr, linewidth=3)
+bp['boxes'][2].set(color='k', facecolor=lr, linewidth=3)
+bp['boxes'][3].set(color='k', facecolor=lr, linewidth=3)
+bp['boxes'][4].set(color='k', facecolor=lr, linewidth=3)
+
+for whisker in bp['whiskers']:
+    whisker.set(color='k', linewidth=3)
+
+for median in bp['medians']:
+    median.set(color='k', linewidth=3)
+
+for cap in bp['caps']:
+    cap.set(color='k', linewidth=3)
+
+plt.savefig('/Users/jiananfeng/Desktop/MPs_concentration_unique.pdf', transparent=True, bbox_inches='tight')
+
+#%% MPs capture
 
 textile_mass_flow = shape.Uniform(398000, 597000)
 vehicle_tires_mass_flow = shape.Uniform(1130000, 1690000)
@@ -481,7 +524,9 @@ ax.bar(0.5,
        edgecolor='k',
        linewidth=3)
 
-#%% MPs destruction
+plt.savefig('/Users/jiananfeng/Desktop/MPs_capture.pdf', transparent=True, bbox_inches='tight')
+
+#%% MPs removal
 
 MPs_destruction = pd.read_excel(folder + 'analyses/EC_destruction_data.xlsx','MPs_summary')
 
@@ -489,8 +534,8 @@ conventional_MPs_destruction = MPs_destruction[MPs_destruction['process'] == 'C'
 wet_thermochemical_MPs_destruction = MPs_destruction[MPs_destruction['process'] == 'wet_T']
 dry_thermochemical_MPs_destruction = MPs_destruction[MPs_destruction['process'] == 'dry_T']
 
-fig = plt.figure(figsize=(10.86, 8))
-gs = GridSpec(1, 2, width_ratios=[3, 1], wspace=0.05)
+fig = plt.figure(figsize=(20.16, 5))
+gs = GridSpec(1, 2, width_ratios=[4, 1.25], wspace=0.05)
 
 ax = fig.add_subplot(gs[0, 0])
 
@@ -516,12 +561,12 @@ ax.yaxis.set_major_formatter(mtick.PercentFormatter())
 plt.xticks(np.arange(0, 700, 100), fontname='Arial')
 plt.yticks(np.arange(0, 120, 20), fontname='Arial')
 
-ax.set_xlabel('$\mathbf{Temperature}$ [°C]',
-              fontname='Arial',
-              fontsize=45,
-              labelpad=13)
+# ax.set_xlabel('$\mathbf{Temperature}$ [°C]',
+#               fontname='Arial',
+#               fontsize=45,
+#               labelpad=13)
 
-ax.set_ylabel('$\mathbf{MPs\ removal}$',
+ax.set_ylabel('$\mathbf{Removal}$',
               fontname='Arial',
               fontsize=45,
               labelpad=13)
@@ -538,18 +583,18 @@ ax_right.tick_params(direction='inout', length=20, width=3, bottom=False, top=Fa
 
 plt.yticks(np.arange(0, 120, 20), fontname='Arial')
 
-ax.scatter(conventional_MPs_destruction['temperature'], conventional_MPs_destruction['reduction']*100, color=a, s=600, edgecolor='k', linewidth=3)
-ax.scatter(wet_thermochemical_MPs_destruction['temperature'], wet_thermochemical_MPs_destruction['reduction']*100, color=b, s=600, edgecolor='k', linewidth=3)
-ax.scatter(dry_thermochemical_MPs_destruction['temperature'], dry_thermochemical_MPs_destruction['reduction']*100, color=r, s=600, edgecolor='k', linewidth=3)
+ax.scatter(conventional_MPs_destruction['temperature'], conventional_MPs_destruction['reduction']*100, marker='o', color=lr, s=1000, edgecolor='k', linewidth=3)
+ax.scatter(wet_thermochemical_MPs_destruction['temperature'], wet_thermochemical_MPs_destruction['reduction']*100, marker='^', color=r, s=1000, edgecolor='k', linewidth=3)
+ax.scatter(dry_thermochemical_MPs_destruction['temperature'], dry_thermochemical_MPs_destruction['reduction']*100, marker='s', color=dr, s=1000, edgecolor='k', linewidth=3)
 
 ax_box = fig.add_subplot(gs[0, 1], sharey=ax)
 
 data = [conventional_MPs_destruction['reduction']*100, wet_thermochemical_MPs_destruction['reduction']*100, dry_thermochemical_MPs_destruction['reduction']*100]
 bp = ax_box.boxplot(data, vert=True, whis=[5, 95], showfliers=False, widths=0.8, patch_artist=True)
     
-bp['boxes'][0].set(color='k', facecolor=a, linewidth=3)
-bp['boxes'][1].set(color='k', facecolor=b, linewidth=3)
-bp['boxes'][2].set(color='k', facecolor=r, linewidth=3)
+bp['boxes'][0].set(color='k', facecolor=lr, linewidth=3)
+bp['boxes'][1].set(color='k', facecolor=r, linewidth=3)
+bp['boxes'][2].set(color='k', facecolor=dr, linewidth=3)
 
 for whisker in bp['whiskers']:
     whisker.set(color='k', linewidth=3)
@@ -561,6 +606,8 @@ for cap in bp['caps']:
     cap.set(color='k', linewidth=3)
 
 ax_box.axis('off')
+
+plt.savefig('/Users/jiananfeng/Desktop/MPs_removal.pdf', transparent=True, bbox_inches='tight')
 
 #%% PhACs concentration
 
@@ -702,9 +749,69 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='k', linewidth=3)
 
-# plt.savefig('/Users/jiananfeng/Desktop/PhACs.pdf', transparent=True, bbox_inches='tight')
+plt.savefig('/Users/jiananfeng/Desktop/PhACs_concentration.pdf', transparent=True, bbox_inches='tight')
 
-#%% PhACs distribution
+#%% PhACs concentration visualization (unique values)
+
+print('\n' + str([len(i['MEC standardized'].drop_duplicates()) for i in [WWRS_PhACs, soil_PhACs, sediment_PhACs]]))
+print(str(len(air_PhACs['air'].drop_duplicates())))
+print(str(len(water_PhACs['MEC standardized'].drop_duplicates())) + '\n')
+
+fig, ax = plt.subplots(figsize=(15, 5))
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 36
+plt.rcParams['ytick.labelsize'] = 36
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+
+ax = plt.gca()
+ax.set_yscale('log')
+ax.set_ylim([10**-7, 10**3])
+ax.tick_params(direction='inout', length=20, width=3, bottom=False, top=False, left=True, right=False)
+
+plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10**1, 10**3, 10**5], fontname='Arial')
+
+ax.set_ylabel('$\mathbf{PhACs}$\n[ng·${g^{-1}}$]',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=13)
+
+ax_right = ax.twinx()
+ax_right.set_yscale('log')
+ax_right.set_ylim(ax.get_ylim())
+ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
+
+ax_right.set_xticklabels(['WWRS','soil*','sediment*','air','water*'])
+plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10**1, 10**3, 10**5], fontname='Arial')
+
+bp = ax.boxplot([WWRS_PhACs['MEC standardized'].drop_duplicates(), soil_PhACs['MEC standardized'].drop_duplicates(), sediment_PhACs['MEC standardized'].drop_duplicates(), air_PhACs['air'].drop_duplicates(), water_PhACs['MEC standardized'].drop_duplicates()],
+                whis=[5, 95], showfliers=False, widths=0.7, patch_artist=True)
+    
+bp['boxes'][0].set(color='k', facecolor=do, linewidth=3)
+bp['boxes'][1].set(color='k', facecolor=lo, linewidth=3)
+bp['boxes'][2].set(color='k', facecolor=lo, linewidth=3)
+bp['boxes'][3].set(color='k', facecolor=lo, linewidth=3)
+bp['boxes'][4].set(color='k', facecolor=lo, linewidth=3)
+
+for whisker in bp['whiskers']:
+    whisker.set(color='k', linewidth=3)
+
+for median in bp['medians']:
+    median.set(color='k', linewidth=3)
+
+for cap in bp['caps']:
+    cap.set(color='k', linewidth=3)
+
+plt.savefig('/Users/jiananfeng/Desktop/PhACs_concentration_unique.pdf', transparent=True, bbox_inches='tight')
+
+#%% PhACs capture
 
 unused_PhACs = shape.Uniform(0.15, 0.98)
 take_back = shape.Triangle(0.136, 0.169, 0.203)
@@ -782,7 +889,9 @@ ax.bar(0.5,
        edgecolor='k',
        linewidth=3)
 
-#%% PhACs destruction
+plt.savefig('/Users/jiananfeng/Desktop/PhACs_capture.pdf', transparent=True, bbox_inches='tight')
+
+#%% PhACs removal
 
 PhACs_destruction = pd.read_excel(folder + 'analyses/EC_destruction_data.xlsx','PhACs_summary')
 
@@ -790,8 +899,8 @@ conventional_PhACs_destruction = PhACs_destruction[PhACs_destruction['process'] 
 wet_thermochemical_PhACs_destruction = PhACs_destruction[PhACs_destruction['process'] == 'wet_T']
 dry_thermochemical_PhACs_destruction = PhACs_destruction[PhACs_destruction['process'] == 'dry_T']
 
-fig = plt.figure(figsize=(10.86, 8))
-gs = GridSpec(1, 2, width_ratios=[3, 1], wspace=0.05)
+fig = plt.figure(figsize=(20.16, 5))
+gs = GridSpec(1, 2, width_ratios=[4, 1.25], wspace=0.05)
 
 ax = fig.add_subplot(gs[0, 0])
 
@@ -817,12 +926,12 @@ ax.yaxis.set_major_formatter(mtick.PercentFormatter())
 plt.xticks(np.arange(0, 700, 100), fontname='Arial')
 plt.yticks(np.arange(-200, 150, 50), fontname='Arial')
 
-ax.set_xlabel('$\mathbf{Temperature}$ [°C]',
-              fontname='Arial',
-              fontsize=45,
-              labelpad=13)
+# ax.set_xlabel('$\mathbf{Temperature}$ [°C]',
+#               fontname='Arial',
+#               fontsize=45,
+#               labelpad=13)
 
-ax.set_ylabel('$\mathbf{PhACs\ removal}$',
+ax.set_ylabel('$\mathbf{Removal}$',
               fontname='Arial',
               fontsize=45,
               labelpad=13)
@@ -839,18 +948,18 @@ ax_right.tick_params(direction='inout', length=20, width=3, bottom=False, top=Fa
 
 plt.yticks(np.arange(-200, 150, 50), fontname='Arial')
 
-ax.scatter(conventional_PhACs_destruction['temperature'], conventional_PhACs_destruction['reduction']*100, color=a, s=600, edgecolor='k', linewidth=3)
-ax.scatter(wet_thermochemical_PhACs_destruction['temperature'], wet_thermochemical_PhACs_destruction['reduction']*100, color=b, s=600, edgecolor='k', linewidth=3)
-ax.scatter(dry_thermochemical_PhACs_destruction['temperature'], dry_thermochemical_PhACs_destruction['reduction']*100, color=r, s=600, edgecolor='k', linewidth=3)
+ax.scatter(conventional_PhACs_destruction['temperature'], conventional_PhACs_destruction['reduction']*100, marker='o', color=lo, s=1000, edgecolor='k', linewidth=3)
+ax.scatter(wet_thermochemical_PhACs_destruction['temperature'], wet_thermochemical_PhACs_destruction['reduction']*100, marker='^', color=o, s=1000, edgecolor='k', linewidth=3)
+ax.scatter(dry_thermochemical_PhACs_destruction['temperature'], dry_thermochemical_PhACs_destruction['reduction']*100, marker='s', color=do, s=1000, edgecolor='k', linewidth=3)
 
 ax_box = fig.add_subplot(gs[0, 1], sharey=ax)
 
 data = [conventional_PhACs_destruction['reduction']*100, wet_thermochemical_PhACs_destruction['reduction']*100, dry_thermochemical_PhACs_destruction['reduction']*100]
 bp = ax_box.boxplot(data, vert=True, whis=[5, 95], showfliers=False, widths=0.8, patch_artist=True)
     
-bp['boxes'][0].set(color='k', facecolor=a, linewidth=3)
-bp['boxes'][1].set(color='k', facecolor=b, linewidth=3)
-bp['boxes'][2].set(color='k', facecolor=r, linewidth=3)
+bp['boxes'][0].set(color='k', facecolor=lo, linewidth=3)
+bp['boxes'][1].set(color='k', facecolor=o, linewidth=3)
+bp['boxes'][2].set(color='k', facecolor=do, linewidth=3)
 
 for whisker in bp['whiskers']:
     whisker.set(color='k', linewidth=3)
@@ -862,6 +971,8 @@ for cap in bp['caps']:
     cap.set(color='k', linewidth=3)
 
 ax_box.axis('off')
+
+plt.savefig('/Users/jiananfeng/Desktop/PhACs_removal.pdf', transparent=True, bbox_inches='tight')
 
 #%% ARGs concentration
 
@@ -976,11 +1087,11 @@ plt.yticks([10**-3, 10**1, 10**5, 10**9, 10**13, 10**17], fontname='Arial')
 bp = ax.boxplot([WWRS_ARGs, soil_ARGs, sediment_ARGs, air_ARGs, water_ARGs],
                 whis=[5, 95], showfliers=False, widths=0.7, patch_artist=True)
     
-bp['boxes'][0].set(color='k', facecolor=dg, linewidth=3)
-bp['boxes'][1].set(color='k', facecolor=lg, linewidth=3)
-bp['boxes'][2].set(color='k', facecolor=lg, linewidth=3)
-bp['boxes'][3].set(color='k', facecolor=lg, linewidth=3)
-bp['boxes'][4].set(color='k', facecolor=lg, linewidth=3)
+bp['boxes'][0].set(color='k', facecolor=dp, linewidth=3)
+bp['boxes'][1].set(color='k', facecolor=lp, linewidth=3)
+bp['boxes'][2].set(color='k', facecolor=lp, linewidth=3)
+bp['boxes'][3].set(color='k', facecolor=lp, linewidth=3)
+bp['boxes'][4].set(color='k', facecolor=lp, linewidth=3)
 
 for whisker in bp['whiskers']:
     whisker.set(color='k', linewidth=3)
@@ -991,9 +1102,67 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='k', linewidth=3)
 
-# plt.savefig('/Users/jiananfeng/Desktop/PhACs.pdf', transparent=True, bbox_inches='tight')
+plt.savefig('/Users/jiananfeng/Desktop/ARGs_concentration.pdf', transparent=True, bbox_inches='tight')
 
-#%% ARGs distribution
+#%% ARGs concentration visualization (unique values)
+
+print('\n' + str([len(set(i)) for i in [WWRS_ARGs, soil_ARGs, sediment_ARGs, air_ARGs, water_ARGs]]) + '\n')
+
+fig, ax = plt.subplots(figsize=(15, 5))
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 36
+plt.rcParams['ytick.labelsize'] = 36
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+
+ax = plt.gca()
+ax.set_yscale('log')
+ax.set_ylim([10**-3, 10**17])
+ax.tick_params(direction='inout', length=20, width=3, bottom=False, top=False, left=True, right=False)
+
+plt.yticks([10**-3, 10**1, 10**5, 10**9, 10**13, 10**17], fontname='Arial')
+
+ax.set_ylabel('$\mathbf{ARGs}$\n[copies·${g^{-1}}$]',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=13)
+
+ax_right = ax.twinx()
+ax_right.set_yscale('log')
+ax_right.set_ylim(ax.get_ylim())
+ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
+
+ax_right.set_xticklabels(['WWRS','soil','sediment','air','water'])
+plt.yticks([10**-3, 10**1, 10**5, 10**9, 10**13, 10**17], fontname='Arial')
+
+bp = ax.boxplot([list(set(WWRS_ARGs)), list(set(soil_ARGs)), list(set(sediment_ARGs)), list(set(air_ARGs)), list(set(water_ARGs))],
+                whis=[5, 95], showfliers=False, widths=0.7, patch_artist=True)
+    
+bp['boxes'][0].set(color='k', facecolor=dp, linewidth=3)
+bp['boxes'][1].set(color='k', facecolor=lp, linewidth=3)
+bp['boxes'][2].set(color='k', facecolor=lp, linewidth=3)
+bp['boxes'][3].set(color='k', facecolor=lp, linewidth=3)
+bp['boxes'][4].set(color='k', facecolor=lp, linewidth=3)
+
+for whisker in bp['whiskers']:
+    whisker.set(color='k', linewidth=3)
+
+for median in bp['medians']:
+    median.set(color='k', linewidth=3)
+
+for cap in bp['caps']:
+    cap.set(color='k', linewidth=3)
+
+plt.savefig('/Users/jiananfeng/Desktop/ARGs_concentration_unique.pdf', transparent=True, bbox_inches='tight')
+
+#%% ARGs capture
 
 human_use = shape.Uniform(0.224, 0.336)
 human_excretion = shape.Triangle(0.02, 0.39, 0.862)
@@ -1053,11 +1222,13 @@ ax.bar(0.5,
        yerr=np.array([[(np.quantile(ARGs_WWRS_MC, 0.5) - np.quantile(ARGs_WWRS_MC, 0.05))*100], [(np.quantile(ARGs_WWRS_MC, 0.95) - np.quantile(ARGs_WWRS_MC, 0.5))*100]]),
        error_kw=dict(capsize=15, lw=3, capthick=3),
        width=0.7,
-       color=dg,
+       color=dp,
        edgecolor='k',
        linewidth=3)
 
-#%% ARGs destruction
+plt.savefig('/Users/jiananfeng/Desktop/ARGs_capture.pdf', transparent=True, bbox_inches='tight')
+
+#%% ARGs removal
 
 ARGs_destruction = pd.read_excel(folder + 'analyses/EC_destruction_data.xlsx','ARGs_summary')
 
@@ -1065,8 +1236,8 @@ conventional_ARGs_destruction = ARGs_destruction[ARGs_destruction['process'] == 
 wet_thermochemical_ARGs_destruction = ARGs_destruction[ARGs_destruction['process'] == 'wet_T']
 dry_thermochemical_ARGs_destruction = ARGs_destruction[ARGs_destruction['process'] == 'dry_T']
 
-fig = plt.figure(figsize=(10.86, 8))
-gs = GridSpec(1, 2, width_ratios=[3, 1], wspace=0.05)
+fig = plt.figure(figsize=(20.16, 5))
+gs = GridSpec(1, 2, width_ratios=[4, 1.25], wspace=0.05)
 
 ax = fig.add_subplot(gs[0, 0])
 
@@ -1095,7 +1266,7 @@ ax.set_xlabel('$\mathbf{Temperature}$ [°C]',
               fontsize=45,
               labelpad=13)
 
-ax.set_ylabel('$\mathbf{ARGs\ log\ removal}$',
+ax.set_ylabel('$\mathbf{Log\ removal}$',
               fontname='Arial',
               fontsize=45,
               labelpad=13)
@@ -1112,18 +1283,18 @@ ax_right.tick_params(direction='inout', length=20, width=3, bottom=False, top=Fa
 
 plt.yticks(np.arange(-2, 6, 1), fontname='Arial')
 
-ax.scatter(conventional_ARGs_destruction['temperature'], conventional_ARGs_destruction['reduction'], color=a, s=600, edgecolor='k', linewidth=3)
-ax.scatter(wet_thermochemical_ARGs_destruction['temperature'], wet_thermochemical_ARGs_destruction['reduction'], color=b, s=600, edgecolor='k', linewidth=3)
-ax.scatter(dry_thermochemical_ARGs_destruction['temperature'], dry_thermochemical_ARGs_destruction['reduction'], color=r, s=600, edgecolor='k', linewidth=3)
+ax.scatter(conventional_ARGs_destruction['temperature'], conventional_ARGs_destruction['reduction'], marker='o', color=lp, s=1000, edgecolor='k', linewidth=3)
+ax.scatter(wet_thermochemical_ARGs_destruction['temperature'], wet_thermochemical_ARGs_destruction['reduction'], marker='^', color=p, s=1000, edgecolor='k', linewidth=3)
+ax.scatter(dry_thermochemical_ARGs_destruction['temperature'], dry_thermochemical_ARGs_destruction['reduction'], marker='s', color=dp, s=1000, edgecolor='k', linewidth=3)
 
 ax_box = fig.add_subplot(gs[0, 1], sharey=ax)
 
 data = [conventional_ARGs_destruction['reduction'], wet_thermochemical_ARGs_destruction['reduction'], dry_thermochemical_ARGs_destruction['reduction']]
 bp = ax_box.boxplot(data, vert=True, whis=[5, 95], showfliers=False, widths=0.8, patch_artist=True)
     
-bp['boxes'][0].set(color='k', facecolor=a, linewidth=3)
-bp['boxes'][1].set(color='k', facecolor=b, linewidth=3)
-bp['boxes'][2].set(color='k', facecolor=r, linewidth=3)
+bp['boxes'][0].set(color='k', facecolor=lp, linewidth=3)
+bp['boxes'][1].set(color='k', facecolor=p, linewidth=3)
+bp['boxes'][2].set(color='k', facecolor=dp, linewidth=3)
 
 for whisker in bp['whiskers']:
     whisker.set(color='k', linewidth=3)
@@ -1135,6 +1306,8 @@ for cap in bp['caps']:
     cap.set(color='k', linewidth=3)
 
 ax_box.axis('off')
+
+plt.savefig('/Users/jiananfeng/Desktop/ARGs_removal.pdf', transparent=True, bbox_inches='tight')
 
 #%% PFAS concentration data processing 1 - EU - data cleaning to reduce the file size
 
@@ -1486,7 +1659,67 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='k', linewidth=3)
 
-# plt.savefig('/Users/jiananfeng/Desktop/PFOA.pdf', transparent=True, bbox_inches='tight')
+plt.savefig('/Users/jiananfeng/Desktop/PFOA.pdf', transparent=True, bbox_inches='tight')
+
+#%% PFOA concentrations visualization (unique values)
+
+print('\n' + str([len(set(i)) for i in [WWRS_PFOA, soil_PFOA, sediment_PFOA, air_PFOA, water_PFOA]]) + '\n')
+
+fig, ax = plt.subplots(figsize=(15, 5))
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 36
+plt.rcParams['ytick.labelsize'] = 36
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+
+ax = plt.gca()
+ax.set_yscale('log')
+ax.set_xlim([0.5, 5.5])
+ax.set_ylim([10**-7, 10**5])
+ax.tick_params(direction='inout', length=20, width=3, bottom=False, top=False, left=True, right=False)
+
+plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10**1, 10**3, 10**5], fontname='Arial')
+
+ax.set_ylabel('$\mathbf{PFOA}$\n[ng·${g^{-1}}$]',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=13)
+
+ax_right = ax.twinx()
+ax_right.set_xlim(ax.get_xlim())
+ax_right.set_yscale('log')
+ax_right.set_ylim(ax.get_ylim())
+ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
+
+ax_right.set_xticklabels(['WWRS','soil','sediment','air','water'])
+plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10**1, 10**3, 10**5], fontname='Arial')
+
+bp = ax.boxplot([list(set(WWRS_PFOA)), list(set(soil_PFOA)), list(set(sediment_PFOA)), list(set(air_PFOA)), list(set(water_PFOA))],
+                whis=[5, 95], showfliers=False, widths=0.7, patch_artist=True)
+    
+bp['boxes'][0].set(color='k', facecolor=da, linewidth=3)
+bp['boxes'][1].set(color='k', facecolor=la, linewidth=3)
+bp['boxes'][2].set(color='k', facecolor=la, linewidth=3)
+bp['boxes'][3].set(color='k', facecolor=la, linewidth=3)
+bp['boxes'][4].set(color='k', facecolor=la, linewidth=3)
+
+for whisker in bp['whiskers']:
+    whisker.set(color='k', linewidth=3)
+
+for median in bp['medians']:
+    median.set(color='k', linewidth=3)
+
+for cap in bp['caps']:
+    cap.set(color='k', linewidth=3)
+
+plt.savefig('/Users/jiananfeng/Desktop/PFOA_unique.pdf', transparent=True, bbox_inches='tight')
 
 #%% PFOS concentration
 
@@ -1787,7 +2020,67 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='k', linewidth=3)
 
-# plt.savefig('/Users/jiananfeng/Desktop/PFOS.pdf', transparent=True, bbox_inches='tight')
+plt.savefig('/Users/jiananfeng/Desktop/PFOS.pdf', transparent=True, bbox_inches='tight')
+
+#%% PFOS concentrations visualization (unique values)
+
+print('\n' + str([len(set(i)) for i in [WWRS_PFOS, soil_PFOS, sediment_PFOS, air_PFOS, water_PFOS]]) + '\n')
+
+fig, ax = plt.subplots(figsize=(15, 5))
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 36
+plt.rcParams['ytick.labelsize'] = 36
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+
+ax = plt.gca()
+ax.set_yscale('log')
+ax.set_xlim([0.5, 5.5])
+ax.set_ylim([10**-7, 10**5])
+ax.tick_params(direction='inout', length=20, width=3, bottom=False, top=False, left=True, right=False)
+
+plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10**1, 10**3, 10**5], fontname='Arial')
+
+ax.set_ylabel('$\mathbf{PFOS}$\n[ng·${g^{-1}}$]',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=13)
+
+ax_right = ax.twinx()
+ax_right.set_xlim(ax.get_xlim())
+ax_right.set_yscale('log')
+ax_right.set_ylim(ax.get_ylim())
+ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
+
+ax_right.set_xticklabels(['WWRS','soil','sediment','air','water'])
+plt.yticks([10**-7, 10**-5, 10**-3, 10**-1, 10**1, 10**3, 10**5], fontname='Arial')
+
+bp = ax.boxplot([list(set(WWRS_PFOS)), list(set(soil_PFOS)), list(set(sediment_PFOS)), list(set(air_PFOS)), list(set(water_PFOS))],
+                whis=[5, 95], showfliers=False, widths=0.7, patch_artist=True)
+    
+bp['boxes'][0].set(color='k', facecolor=da, linewidth=3)
+bp['boxes'][1].set(color='k', facecolor=la, linewidth=3)
+bp['boxes'][2].set(color='k', facecolor=la, linewidth=3)
+bp['boxes'][3].set(color='k', facecolor=la, linewidth=3)
+bp['boxes'][4].set(color='k', facecolor=la, linewidth=3)
+
+for whisker in bp['whiskers']:
+    whisker.set(color='k', linewidth=3)
+
+for median in bp['medians']:
+    median.set(color='k', linewidth=3)
+
+for cap in bp['caps']:
+    cap.set(color='k', linewidth=3)
+
+plt.savefig('/Users/jiananfeng/Desktop/PFOS_unique.pdf', transparent=True, bbox_inches='tight')
 
 #%% PBDEs concentration data
 
@@ -1926,7 +2219,67 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='k', linewidth=3)
 
-# plt.savefig('/Users/jiananfeng/Desktop/PBDEs.pdf', transparent=True, bbox_inches='tight')
+plt.savefig('/Users/jiananfeng/Desktop/PBDEs.pdf', transparent=True, bbox_inches='tight')
+
+#%% PBDEs concentrations visualization (unique values)
+
+print('\n' + str([len(set(i)) for i in [WWRS_PBDEs, soil_PBDEs, sediment_PBDEs, air_PBDEs, water_PBDEs]]) + '\n')
+
+fig, ax = plt.subplots(figsize=(15, 5))
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 36
+plt.rcParams['ytick.labelsize'] = 36
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+
+ax = plt.gca()
+ax.set_yscale('log')
+ax.set_xlim([0.5, 5.5])
+ax.set_ylim([10**-8, 10**6])
+ax.tick_params(direction='inout', length=20, width=3, bottom=False, top=False, left=True, right=False)
+
+plt.yticks([10**-8, 10**-6, 10**-4, 10**-2, 10**0, 10**2, 10**4, 10**6], fontname='Arial')
+
+ax.set_ylabel('$\mathbf{PBDEs}$\n[ng·${g^{-1}}$]',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=13)
+
+ax_right = ax.twinx()
+ax_right.set_xlim(ax.get_xlim())
+ax_right.set_yscale('log')
+ax_right.set_ylim(ax.get_ylim())
+ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
+
+ax_right.set_xticklabels(['WWRS','soil','sediment','air','water'])
+plt.yticks([10**-8, 10**-6, 10**-4, 10**-2, 10**0, 10**2, 10**4, 10**6], fontname='Arial')
+
+bp = ax.boxplot([list(set(WWRS_PBDEs)), list(set(soil_PBDEs)), list(set(sediment_PBDEs)), list(set(air_PBDEs)), list(set(water_PBDEs))],
+                whis=[5, 95], showfliers=False, widths=0.7, patch_artist=True)
+    
+bp['boxes'][0].set(color='k', facecolor=da, linewidth=3)
+bp['boxes'][1].set(color='k', facecolor=la, linewidth=3)
+bp['boxes'][2].set(color='k', facecolor=la, linewidth=3)
+bp['boxes'][3].set(color='k', facecolor=la, linewidth=3)
+bp['boxes'][4].set(color='k', facecolor=la, linewidth=3)
+
+for whisker in bp['whiskers']:
+    whisker.set(color='k', linewidth=3)
+
+for median in bp['medians']:
+    median.set(color='k', linewidth=3)
+
+for cap in bp['caps']:
+    cap.set(color='k', linewidth=3)
+
+plt.savefig('/Users/jiananfeng/Desktop/PBDEs_unique.pdf', transparent=True, bbox_inches='tight')
 
 #%% PCBs concentration data
 
@@ -2065,7 +2418,67 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='k', linewidth=3)
 
-# plt.savefig('/Users/jiananfeng/Desktop/PCBs.pdf', transparent=True, bbox_inches='tight')
+plt.savefig('/Users/jiananfeng/Desktop/PCBs.pdf', transparent=True, bbox_inches='tight')
+
+#%% PCBs concentrations visualization (unique values)
+
+print('\n' + str([len(set(i)) for i in [WWRS_PCBs, soil_PCBs, sediment_PCBs, air_PCBs, water_PCBs]]) + '\n')
+
+fig, ax = plt.subplots(figsize=(15, 5))
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 36
+plt.rcParams['ytick.labelsize'] = 36
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+
+ax = plt.gca()
+ax.set_yscale('log')
+ax.set_xlim([0.5, 5.5])
+ax.set_ylim([10**-9, 10**5])
+ax.tick_params(direction='inout', length=20, width=3, bottom=False, top=False, left=True, right=False)
+
+plt.yticks([10**-9, 10**-7, 10**-5, 10**-3, 10**-1, 10**1, 10**3, 10**5], fontname='Arial')
+
+ax.set_ylabel('$\mathbf{PCBs}$\n[ng·${g^{-1}}$]',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=13)
+
+ax_right = ax.twinx()
+ax_right.set_xlim(ax.get_xlim())
+ax_right.set_yscale('log')
+ax_right.set_ylim(ax.get_ylim())
+ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
+
+ax_right.set_xticklabels(['WWRS','soil','sediment','air','water'])
+plt.yticks([10**-9, 10**-7, 10**-5, 10**-3, 10**-1, 10**1, 10**3, 10**5], fontname='Arial')
+
+bp = ax.boxplot([list(set(WWRS_PCBs)), list(set(soil_PCBs)), list(set(sediment_PCBs)), list(set(air_PCBs)), list(set(water_PCBs))],
+                whis=[5, 95], showfliers=False, widths=0.7, patch_artist=True)
+    
+bp['boxes'][0].set(color='k', facecolor=da, linewidth=3)
+bp['boxes'][1].set(color='k', facecolor=la, linewidth=3)
+bp['boxes'][2].set(color='k', facecolor=la, linewidth=3)
+bp['boxes'][3].set(color='k', facecolor=la, linewidth=3)
+bp['boxes'][4].set(color='k', facecolor=la, linewidth=3)
+
+for whisker in bp['whiskers']:
+    whisker.set(color='k', linewidth=3)
+
+for median in bp['medians']:
+    median.set(color='k', linewidth=3)
+
+for cap in bp['caps']:
+    cap.set(color='k', linewidth=3)
+
+plt.savefig('/Users/jiananfeng/Desktop/PCBs_unique.pdf', transparent=True, bbox_inches='tight')
 
 #%% PCDD&Fs concentration data
 
@@ -2207,7 +2620,67 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='k', linewidth=3)
 
-# plt.savefig('/Users/jiananfeng/Desktop/PCDD&Fs.pdf', transparent=True, bbox_inches='tight')
+plt.savefig('/Users/jiananfeng/Desktop/PCDD&Fs.pdf', transparent=True, bbox_inches='tight')
+
+#%% PCDD&Fs concentrations visualization (unique values)
+
+print('\n' + str([len(set(i)) for i in [WWRS_PCDDFs, soil_PCDDFs, sediment_PCDDFs, air_PCDDFs, water_PCDDFs]]) + '\n')
+
+fig, ax = plt.subplots(figsize=(15, 5))
+
+plt.rcParams['axes.linewidth'] = 3
+plt.rcParams['hatch.linewidth'] = 3
+plt.rcParams['xtick.labelsize'] = 36
+plt.rcParams['ytick.labelsize'] = 36
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+
+ax = plt.gca()
+ax.set_yscale('log')
+ax.set_xlim([0.5, 5.5])
+ax.set_ylim([10**-10, 10**2])
+ax.tick_params(direction='inout', length=20, width=3, bottom=False, top=False, left=True, right=False)
+
+plt.yticks([10**-10, 10**-8, 10**-6, 10**-4, 10**-2, 10**0, 10**2, 10**4], fontname='Arial')
+
+ax.set_ylabel('$\mathbf{PCDD&Fs}$\n[ng·${g^{-1}}$]',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=13)
+
+ax_right = ax.twinx()
+ax_right.set_xlim(ax.get_xlim())
+ax_right.set_yscale('log')
+ax_right.set_ylim(ax.get_ylim())
+ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False, left=False, right=True, labelcolor='none')
+
+ax_right.set_xticklabels(['WWRS','soil','sediment','air','water'])
+plt.yticks([10**-10, 10**-8, 10**-6, 10**-4, 10**-2, 10**0, 10**2, 10**4], fontname='Arial')
+
+bp = ax.boxplot([list(set(WWRS_PCDDFs)), list(set(soil_PCDDFs)), list(set(sediment_PCDDFs)), list(set(air_PCDDFs)), list(set(water_PCDDFs))],
+                whis=[5, 95], showfliers=False, widths=0.7, patch_artist=True)
+    
+bp['boxes'][0].set(color='k', facecolor=da, linewidth=3)
+bp['boxes'][1].set(color='k', facecolor=la, linewidth=3)
+bp['boxes'][2].set(color='k', facecolor=la, linewidth=3)
+bp['boxes'][3].set(color='k', facecolor=la, linewidth=3)
+bp['boxes'][4].set(color='k', facecolor=la, linewidth=3)
+
+for whisker in bp['whiskers']:
+    whisker.set(color='k', linewidth=3)
+
+for median in bp['medians']:
+    median.set(color='k', linewidth=3)
+
+for cap in bp['caps']:
+    cap.set(color='k', linewidth=3)
+
+plt.savefig('/Users/jiananfeng/Desktop/PCDD&Fs_unique.pdf', transparent=True, bbox_inches='tight')
 
 #%% country average
 
@@ -2823,7 +3296,8 @@ ax.set_axis_off()
 
 country_order = WRRF_filtered['COUNTRY'].value_counts()
 
-# 'Taiwan' and 'China' data are merged
+# 'China' and 'Taiwan' data are merged
+country_order['China'] += country_order['Taiwan']
 country_order = country_order[country_order.index != 'Taiwan']
 
 country_order = country_order[country_order > 10].index.tolist()[::-1]
