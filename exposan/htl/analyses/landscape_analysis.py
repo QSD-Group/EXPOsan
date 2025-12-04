@@ -12,22 +12,17 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-#%% housekeeping
-
-# Matplotlib.rcParams['pdf.fonttype'] = 42
-
 # 'country' refers to both countries and territories
 
 #%% initialization
 
 import numpy as np, pandas as pd, geopandas as gpd, matplotlib.pyplot as plt, matplotlib.colors as colors, matplotlib.ticker as mtick, chaospy as cp, json
 from colorpalette import Color
+from scipy.stats import spearmanr, linregress
 from matplotlib.colors import to_hex
-from matplotlib.animation import FuncAnimation
 from matplotlib.mathtext import _mathtext as mathtext
 from matplotlib.gridspec import GridSpec
 from chaospy import distributions as shape
-from scipy.stats import linregress
 from warnings import filterwarnings
 from datetime import date
 from qsdsan.utils import auom
@@ -319,6 +314,17 @@ PLI.rename(columns={'Country Name':'country',
 
 # PLI.to_excel(folder + f'analyses/PLI_{date.today()}.xlsx')
 
+#%% labor costs comparison
+
+labor_cost_comparison = pd.read_excel(folder + 'analyses/labor_cost_comparison.xlsx')
+labor_cost_comparison = labor_cost_comparison[~labor_cost_comparison['ILO'].isna()]
+
+pearson_r = np.corrcoef(labor_cost_comparison['Worlddata'], labor_cost_comparison['ILO'])[0, 1]
+print("Pearson's r:", pearson_r.round(2))
+
+spearman_rho, spearman_p = spearmanr(labor_cost_comparison['Worlddata'], labor_cost_comparison['ILO'])
+print("Spearman's rho:", spearman_rho.round(2))
+
 #%% MPs concentration
 
 MPs = pd.read_excel(folder + 'analyses/EC_data.xlsx','MPs_summary')
@@ -528,11 +534,11 @@ plt.savefig('/Users/jiananfeng/Desktop/MPs_capture.pdf', transparent=True, bbox_
 
 #%% MPs removal
 
-MPs_destruction = pd.read_excel(folder + 'analyses/EC_destruction_data.xlsx','MPs_summary')
+MPs_removal = pd.read_excel(folder + 'analyses/EC_removal_data.xlsx','MPs_summary')
 
-conventional_MPs_destruction = MPs_destruction[MPs_destruction['process'] == 'C']
-wet_thermochemical_MPs_destruction = MPs_destruction[MPs_destruction['process'] == 'wet_T']
-dry_thermochemical_MPs_destruction = MPs_destruction[MPs_destruction['process'] == 'dry_T']
+conventional_MPs_removal = MPs_removal[MPs_removal['process'] == 'C']
+wet_thermochemical_MPs_removal = MPs_removal[MPs_removal['process'] == 'wet_T']
+dry_thermochemical_MPs_removal = MPs_removal[MPs_removal['process'] == 'dry_T']
 
 fig = plt.figure(figsize=(20.16, 5))
 gs = GridSpec(1, 2, width_ratios=[4, 1.25], wspace=0.05)
@@ -552,13 +558,13 @@ plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 ax = plt.gca()
-ax.set_xlim([0, 600])
+ax.set_xlim([0, 700])
 ax.set_ylim([0, 100])
 ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False)
 
 ax.yaxis.set_major_formatter(mtick.PercentFormatter())
 
-plt.xticks(np.arange(0, 700, 100), fontname='Arial')
+plt.xticks(np.arange(0, 800, 100), fontname='Arial')
 plt.yticks(np.arange(0, 120, 20), fontname='Arial')
 
 # ax.set_xlabel('$\mathbf{Temperature}$ [°C]',
@@ -575,7 +581,7 @@ ax_top = ax.twiny()
 ax_top.set_xlim(ax.get_xlim())
 ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
-plt.xticks(np.arange(0, 700, 100), fontname='Arial')
+plt.xticks(np.arange(0, 800, 100), fontname='Arial')
 
 ax_right = ax.twinx()
 ax_right.set_ylim(ax.get_ylim())
@@ -583,13 +589,13 @@ ax_right.tick_params(direction='inout', length=20, width=3, bottom=False, top=Fa
 
 plt.yticks(np.arange(0, 120, 20), fontname='Arial')
 
-ax.scatter(conventional_MPs_destruction['temperature'], conventional_MPs_destruction['reduction']*100, marker='o', color=lr, s=1000, edgecolor='k', linewidth=3)
-ax.scatter(wet_thermochemical_MPs_destruction['temperature'], wet_thermochemical_MPs_destruction['reduction']*100, marker='^', color=r, s=1000, edgecolor='k', linewidth=3)
-ax.scatter(dry_thermochemical_MPs_destruction['temperature'], dry_thermochemical_MPs_destruction['reduction']*100, marker='s', color=dr, s=1000, edgecolor='k', linewidth=3)
+ax.scatter(conventional_MPs_removal['temperature'], conventional_MPs_removal['reduction']*100, marker='o', color=lr, s=1000, edgecolor='k', linewidth=3)
+ax.scatter(wet_thermochemical_MPs_removal['temperature'], wet_thermochemical_MPs_removal['reduction']*100, marker='^', color=r, s=1000, edgecolor='k', linewidth=3)
+ax.scatter(dry_thermochemical_MPs_removal['temperature'], dry_thermochemical_MPs_removal['reduction']*100, marker='s', color=dr, s=1000, edgecolor='k', linewidth=3)
 
 ax_box = fig.add_subplot(gs[0, 1], sharey=ax)
 
-data = [conventional_MPs_destruction['reduction']*100, wet_thermochemical_MPs_destruction['reduction']*100, dry_thermochemical_MPs_destruction['reduction']*100]
+data = [conventional_MPs_removal['reduction']*100, wet_thermochemical_MPs_removal['reduction']*100, dry_thermochemical_MPs_removal['reduction']*100]
 bp = ax_box.boxplot(data, vert=True, whis=[5, 95], showfliers=False, widths=0.8, patch_artist=True)
     
 bp['boxes'][0].set(color='k', facecolor=lr, linewidth=3)
@@ -893,11 +899,11 @@ plt.savefig('/Users/jiananfeng/Desktop/PhACs_capture.pdf', transparent=True, bbo
 
 #%% PhACs removal
 
-PhACs_destruction = pd.read_excel(folder + 'analyses/EC_destruction_data.xlsx','PhACs_summary')
+PhACs_removal = pd.read_excel(folder + 'analyses/EC_removal_data.xlsx','PhACs_summary')
 
-conventional_PhACs_destruction = PhACs_destruction[PhACs_destruction['process'] == 'C']
-wet_thermochemical_PhACs_destruction = PhACs_destruction[PhACs_destruction['process'] == 'wet_T']
-dry_thermochemical_PhACs_destruction = PhACs_destruction[PhACs_destruction['process'] == 'dry_T']
+conventional_PhACs_removal = PhACs_removal[PhACs_removal['process'] == 'C']
+wet_thermochemical_PhACs_removal = PhACs_removal[PhACs_removal['process'] == 'wet_T']
+dry_thermochemical_PhACs_removal = PhACs_removal[PhACs_removal['process'] == 'dry_T']
 
 fig = plt.figure(figsize=(20.16, 5))
 gs = GridSpec(1, 2, width_ratios=[4, 1.25], wspace=0.05)
@@ -917,13 +923,13 @@ plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 ax = plt.gca()
-ax.set_xlim([0, 600])
+ax.set_xlim([0, 700])
 ax.set_ylim([-200, 100])
 ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False)
 
 ax.yaxis.set_major_formatter(mtick.PercentFormatter())
 
-plt.xticks(np.arange(0, 700, 100), fontname='Arial')
+plt.xticks(np.arange(0, 800, 100), fontname='Arial')
 plt.yticks(np.arange(-200, 150, 50), fontname='Arial')
 
 # ax.set_xlabel('$\mathbf{Temperature}$ [°C]',
@@ -940,7 +946,7 @@ ax_top = ax.twiny()
 ax_top.set_xlim(ax.get_xlim())
 ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
-plt.xticks(np.arange(0, 700, 100), fontname='Arial')
+plt.xticks(np.arange(0, 800, 100), fontname='Arial')
 
 ax_right = ax.twinx()
 ax_right.set_ylim(ax.get_ylim())
@@ -948,13 +954,13 @@ ax_right.tick_params(direction='inout', length=20, width=3, bottom=False, top=Fa
 
 plt.yticks(np.arange(-200, 150, 50), fontname='Arial')
 
-ax.scatter(conventional_PhACs_destruction['temperature'], conventional_PhACs_destruction['reduction']*100, marker='o', color=lo, s=1000, edgecolor='k', linewidth=3)
-ax.scatter(wet_thermochemical_PhACs_destruction['temperature'], wet_thermochemical_PhACs_destruction['reduction']*100, marker='^', color=o, s=1000, edgecolor='k', linewidth=3)
-ax.scatter(dry_thermochemical_PhACs_destruction['temperature'], dry_thermochemical_PhACs_destruction['reduction']*100, marker='s', color=do, s=1000, edgecolor='k', linewidth=3)
+ax.scatter(conventional_PhACs_removal['temperature'], conventional_PhACs_removal['reduction']*100, marker='o', color=lo, s=1000, edgecolor='k', linewidth=3)
+ax.scatter(wet_thermochemical_PhACs_removal['temperature'], wet_thermochemical_PhACs_removal['reduction']*100, marker='^', color=o, s=1000, edgecolor='k', linewidth=3)
+ax.scatter(dry_thermochemical_PhACs_removal['temperature'], dry_thermochemical_PhACs_removal['reduction']*100, marker='s', color=do, s=1000, edgecolor='k', linewidth=3)
 
 ax_box = fig.add_subplot(gs[0, 1], sharey=ax)
 
-data = [conventional_PhACs_destruction['reduction']*100, wet_thermochemical_PhACs_destruction['reduction']*100, dry_thermochemical_PhACs_destruction['reduction']*100]
+data = [conventional_PhACs_removal['reduction']*100, wet_thermochemical_PhACs_removal['reduction']*100, dry_thermochemical_PhACs_removal['reduction']*100]
 bp = ax_box.boxplot(data, vert=True, whis=[5, 95], showfliers=False, widths=0.8, patch_artist=True)
     
 bp['boxes'][0].set(color='k', facecolor=lo, linewidth=3)
@@ -1230,11 +1236,11 @@ plt.savefig('/Users/jiananfeng/Desktop/ARGs_capture.pdf', transparent=True, bbox
 
 #%% ARGs removal
 
-ARGs_destruction = pd.read_excel(folder + 'analyses/EC_destruction_data.xlsx','ARGs_summary')
+ARGs_removal = pd.read_excel(folder + 'analyses/EC_removal_data.xlsx','ARGs_summary')
 
-conventional_ARGs_destruction = ARGs_destruction[ARGs_destruction['process'] == 'C']
-wet_thermochemical_ARGs_destruction = ARGs_destruction[ARGs_destruction['process'] == 'wet_T']
-dry_thermochemical_ARGs_destruction = ARGs_destruction[ARGs_destruction['process'] == 'dry_T']
+conventional_ARGs_removal = ARGs_removal[ARGs_removal['process'] == 'C']
+wet_thermochemical_ARGs_removal = ARGs_removal[ARGs_removal['process'] == 'wet_T']
+dry_thermochemical_ARGs_removal = ARGs_removal[ARGs_removal['process'] == 'dry_T']
 
 fig = plt.figure(figsize=(20.16, 5))
 gs = GridSpec(1, 2, width_ratios=[4, 1.25], wspace=0.05)
@@ -1254,11 +1260,11 @@ plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 ax = plt.gca()
-ax.set_xlim([0, 600])
+ax.set_xlim([0, 700])
 ax.set_ylim([-2, 5])
 ax.tick_params(direction='inout', length=20, width=3, bottom=True, top=False, left=True, right=False)
 
-plt.xticks(np.arange(0, 700, 100), fontname='Arial')
+plt.xticks(np.arange(0, 800, 100), fontname='Arial')
 plt.yticks(np.arange(-2, 6, 1), fontname='Arial')
 
 ax.set_xlabel('$\mathbf{Temperature}$ [°C]',
@@ -1275,7 +1281,7 @@ ax_top = ax.twiny()
 ax_top.set_xlim(ax.get_xlim())
 ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, left=False, right=False, labelcolor='none')
 
-plt.xticks(np.arange(0, 700, 100), fontname='Arial')
+plt.xticks(np.arange(0, 800, 100), fontname='Arial')
 
 ax_right = ax.twinx()
 ax_right.set_ylim(ax.get_ylim())
@@ -1283,13 +1289,13 @@ ax_right.tick_params(direction='inout', length=20, width=3, bottom=False, top=Fa
 
 plt.yticks(np.arange(-2, 6, 1), fontname='Arial')
 
-ax.scatter(conventional_ARGs_destruction['temperature'], conventional_ARGs_destruction['reduction'], marker='o', color=lp, s=1000, edgecolor='k', linewidth=3)
-ax.scatter(wet_thermochemical_ARGs_destruction['temperature'], wet_thermochemical_ARGs_destruction['reduction'], marker='^', color=p, s=1000, edgecolor='k', linewidth=3)
-ax.scatter(dry_thermochemical_ARGs_destruction['temperature'], dry_thermochemical_ARGs_destruction['reduction'], marker='s', color=dp, s=1000, edgecolor='k', linewidth=3)
+ax.scatter(conventional_ARGs_removal['temperature'], conventional_ARGs_removal['reduction'], marker='o', color=lp, s=1000, edgecolor='k', linewidth=3)
+ax.scatter(wet_thermochemical_ARGs_removal['temperature'], wet_thermochemical_ARGs_removal['reduction'], marker='^', color=p, s=1000, edgecolor='k', linewidth=3)
+ax.scatter(dry_thermochemical_ARGs_removal['temperature'], dry_thermochemical_ARGs_removal['reduction'], marker='s', color=dp, s=1000, edgecolor='k', linewidth=3)
 
 ax_box = fig.add_subplot(gs[0, 1], sharey=ax)
 
-data = [conventional_ARGs_destruction['reduction'], wet_thermochemical_ARGs_destruction['reduction'], dry_thermochemical_ARGs_destruction['reduction']]
+data = [conventional_ARGs_removal['reduction'], wet_thermochemical_ARGs_removal['reduction'], dry_thermochemical_ARGs_removal['reduction']]
 bp = ax_box.boxplot(data, vert=True, whis=[5, 95], showfliers=False, widths=0.8, patch_artist=True)
     
 bp['boxes'][0].set(color='k', facecolor=lp, linewidth=3)
@@ -3029,45 +3035,12 @@ assert len(WRRF_max) == len(world_max[world_max['CNTRY_ISO'].notna()]['ISO_A3'].
 
 # world_max.to_excel(folder + f'results/country_max_{date.today()}_summary.xlsx')
 
-#%% world map visualization - cost legend
+#%% world map visualization - C cost mean
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
 plt.rcParams['xtick.labelsize'] = 54.5
 plt.rcParams['ytick.labelsize'] = 54.5
-plt.rcParams['font.sans-serif'] = 'Arial'
-plt.rcParams['pdf.fonttype'] = 42
-plt.rcParams['ps.fonttype'] = 42
-
-plt.rcParams.update({'mathtext.fontset':'custom'})
-plt.rcParams.update({'mathtext.default':'regular'})
-plt.rcParams.update({'mathtext.bf':'Arial: bold'})
-
-fig, ax = plt.subplots(figsize=(30, 30))
-
-color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['w', b, db])
-
-world_mean.plot(column='C_cost_weighted_average', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, vmin=-200, vmax=1000)
-
-fig.axes[1].set_ylabel('$\mathbf{Cost}$ [\$·${tonne^{−1}}$]', fontname='Arial', fontsize=54.5)
-fig.axes[1].tick_params(length=15, width=3)
-fig.axes[1].set_yticks([-200, 0, 200, 400, 600, 800, 1000])
-fig.axes[1].set_yticklabels(['-200','0','200','400','600','800','1000'], fontname='Arial', fontsize=54.5)
-
-pos1 = fig.axes[1].get_position()
-pos2 = [pos1.x0-0.035, pos1.y0, pos1.width, pos1.height] 
-fig.axes[1].set_position(pos2)
-
-ax.set_aspect(1)
-
-ax.set_axis_off()
-
-#%% world map visualization - C cost mean
-
-plt.rcParams['axes.linewidth'] = 3
-plt.rcParams['hatch.linewidth'] = 3
-plt.rcParams['xtick.labelsize'] = 36
-plt.rcParams['ytick.labelsize'] = 36
 plt.rcParams['font.sans-serif'] = 'Arial'
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['ps.fonttype'] = 42
@@ -3086,28 +3059,31 @@ world_mean.plot(column='C_cost_weighted_average', ax=ax, legend=True, legend_kwd
 
 world.plot(ax=ax, color='none', edgecolor='k', linewidth=1)
 
-fig.axes[1].set_ylabel('$\mathbf{Cost}$ [\$·${tonne^{−1}}$]', fontname='Arial', fontsize=36)
-fig.axes[1].tick_params(length=10, width=3)
+fig.axes[1].set_ylabel('$\mathbf{Cost}$ [\$·${tonne^{−1}}$]', fontname='Arial', fontsize=54.5)
+fig.axes[1].tick_params(length=15, width=3)
 fig.axes[1].set_yticks([-200, 0, 200, 400, 600, 800, 1000])
-fig.axes[1].set_yticklabels(['-200','0','200','400','600','800','1000'], fontname='Arial', fontsize=36)
+fig.axes[1].set_yticklabels(['-200','0','200','400','600','800','1000'], fontname='Arial', fontsize=54.5)
 
 pos1 = fig.axes[1].get_position()
-pos2 = [pos1.x0-0.035, pos1.y0, pos1.width, pos1.height] 
+pos2 = [pos1.x0-0.0575, pos1.y0, pos1.width, pos1.height] 
 fig.axes[1].set_position(pos2)
 
 # comment out the following line if the colorbar is needed
-# fig.delaxes(fig.axes[1])
+fig.delaxes(fig.axes[1])
 
 ax.set_aspect(1)
 
 ax.set_axis_off()
 
+# plt.savefig('/Users/jiananfeng/Desktop/C_cost.png', transparent=True, bbox_inches='tight')
+plt.savefig('/Users/jiananfeng/Desktop/C_cost.pdf', transparent=True, bbox_inches='tight')
+
 #%% world map visualization - T NOAK cost mean
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
-plt.rcParams['xtick.labelsize'] = 36
-plt.rcParams['ytick.labelsize'] = 36
+plt.rcParams['xtick.labelsize'] = 54.5
+plt.rcParams['ytick.labelsize'] = 54.5
 plt.rcParams['font.sans-serif'] = 'Arial'
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['ps.fonttype'] = 42
@@ -3126,13 +3102,13 @@ world_mean.plot(column='T_cost_NOAK_weighted_average', ax=ax, legend=True, legen
 
 world.plot(ax=ax, color='none', edgecolor='k', linewidth=1)
 
-fig.axes[1].set_ylabel('$\mathbf{Cost}$ [\$·${tonne^{−1}}$]', fontname='Arial', fontsize=36)
-fig.axes[1].tick_params(length=10, width=3)
+fig.axes[1].set_ylabel('$\mathbf{Cost}$ [\$·${tonne^{−1}}$]', fontname='Arial', fontsize=54.5)
+fig.axes[1].tick_params(length=15, width=3)
 fig.axes[1].set_yticks([-200, 0, 200, 400, 600, 800, 1000])
-fig.axes[1].set_yticklabels(['-200','0','200','400','600','800','1000'], fontname='Arial', fontsize=36)
+fig.axes[1].set_yticklabels(['-200','0','200','400','600','800','1000'], fontname='Arial', fontsize=54.5)
 
 pos1 = fig.axes[1].get_position()
-pos2 = [pos1.x0-0.035, pos1.y0, pos1.width, pos1.height] 
+pos2 = [pos1.x0-0.0575, pos1.y0, pos1.width, pos1.height] 
 fig.axes[1].set_position(pos2)
 
 # comment out the following line if the colorbar is needed
@@ -3142,45 +3118,15 @@ ax.set_aspect(1)
 
 ax.set_axis_off()
 
-#%% world map visualization - CI legend
-
-plt.rcParams['axes.linewidth'] = 3
-plt.rcParams['hatch.linewidth'] = 3
-plt.rcParams['xtick.labelsize'] = 54.5
-plt.rcParams['ytick.labelsize'] = 54.5
-plt.rcParams['font.sans-serif'] = 'Arial'
-plt.rcParams['pdf.fonttype'] = 42
-plt.rcParams['ps.fonttype'] = 42
-
-plt.rcParams.update({'mathtext.fontset':'custom'})
-plt.rcParams.update({'mathtext.default':'regular'})
-plt.rcParams.update({'mathtext.bf':'Arial: bold'})
-
-fig, ax = plt.subplots(figsize=(30, 30))
-
-color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', ['w', g, dg])
-
-world_mean.plot(column='C_CI_weighted_average', ax=ax, legend=True, legend_kwds={'shrink': 0.35}, cmap=color_map_Guest, vmin=-300, vmax=900)
-
-fig.axes[1].set_ylabel('$\mathbf{CI}$ [kg CO${_{2}}$e·${tonne^{−1}}$]', fontname='Arial', fontsize=54.5)
-fig.axes[1].tick_params(length=15, width=3)
-fig.axes[1].set_yticks([-300, -150, 0, 150, 300, 450, 600, 750, 900])
-fig.axes[1].set_yticklabels(['-300','-150','0','150','300','450','600','750','900'], fontname='Arial', fontsize=54.5)
-
-pos1 = fig.axes[1].get_position()
-pos2 = [pos1.x0-0.035, pos1.y0, pos1.width, pos1.height] 
-fig.axes[1].set_position(pos2)
-
-ax.set_aspect(1)
-
-ax.set_axis_off()
+# plt.savefig('/Users/jiananfeng/Desktop/T_NOAK_cost.png', transparent=True, bbox_inches='tight')
+plt.savefig('/Users/jiananfeng/Desktop/T_NOAK_cost.pdf', transparent=True, bbox_inches='tight')
 
 #%% world map visualization - C CI mean
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
-plt.rcParams['xtick.labelsize'] = 36
-plt.rcParams['ytick.labelsize'] = 36
+plt.rcParams['xtick.labelsize'] = 54.5
+plt.rcParams['ytick.labelsize'] = 54.5
 plt.rcParams['font.sans-serif'] = 'Arial'
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['ps.fonttype'] = 42
@@ -3199,28 +3145,31 @@ world_mean.plot(column='C_CI_weighted_average', ax=ax, legend=True, legend_kwds=
 
 world.plot(ax=ax, color='none', edgecolor='k', linewidth=1)
 
-fig.axes[1].set_ylabel('$\mathbf{CI}$ [kg CO${_{2}}$e·${tonne^{−1}}$]', fontname='Arial', fontsize=36)
-fig.axes[1].tick_params(length=10, width=3)
+fig.axes[1].set_ylabel('$\mathbf{CI}$ [kg CO${_{2}}$e·${tonne^{−1}}$]', fontname='Arial', fontsize=54.5, labelpad=16)
+fig.axes[1].tick_params(length=15, width=3)
 fig.axes[1].set_yticks([-300, -150, 0, 150, 300, 450, 600, 750, 900])
-fig.axes[1].set_yticklabels(['-300','-150','0','150','300','450','600','750','900'], fontname='Arial', fontsize=36)
+fig.axes[1].set_yticklabels(['-300','-150','0','150','300','450','600','750','900'], fontname='Arial', fontsize=54.5)
 
 pos1 = fig.axes[1].get_position()
-pos2 = [pos1.x0-0.035, pos1.y0, pos1.width, pos1.height] 
+pos2 = [pos1.x0-0.0575, pos1.y0, pos1.width, pos1.height] 
 fig.axes[1].set_position(pos2)
 
 # comment out the following line if the colorbar is needed
-# fig.delaxes(fig.axes[1])
+fig.delaxes(fig.axes[1])
 
 ax.set_aspect(1)
 
 ax.set_axis_off()
 
+# plt.savefig('/Users/jiananfeng/Desktop/C_CI.png', transparent=True, bbox_inches='tight')
+plt.savefig('/Users/jiananfeng/Desktop/C_CI.pdf', transparent=True, bbox_inches='tight')
+
 #%% world map visualization - T NOAK CI mean
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
-plt.rcParams['xtick.labelsize'] = 36
-plt.rcParams['ytick.labelsize'] = 36
+plt.rcParams['xtick.labelsize'] = 54.5
+plt.rcParams['ytick.labelsize'] = 54.5
 plt.rcParams['font.sans-serif'] = 'Arial'
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['ps.fonttype'] = 42
@@ -3239,13 +3188,13 @@ world_mean.plot(column='T_CI_NOAK_weighted_average', ax=ax, legend=True, legend_
 
 world.plot(ax=ax, color='none', edgecolor='k', linewidth=1)
 
-fig.axes[1].set_ylabel('$\mathbf{CI}$ [kg CO${_{2}}$e·${tonne^{−1}}$]', fontname='Arial', fontsize=36)
-fig.axes[1].tick_params(length=10, width=3)
+fig.axes[1].set_ylabel('$\mathbf{CI}$ [kg CO${_{2}}$e·${tonne^{−1}}$]', fontname='Arial', fontsize=54.5, labelpad=16)
+fig.axes[1].tick_params(length=15, width=3)
 fig.axes[1].set_yticks([-300, -150, 0, 150, 300, 450, 600, 750, 900])
-fig.axes[1].set_yticklabels(['-300','-150','0','150','300','450','600','750','900'], fontname='Arial', fontsize=36)
+fig.axes[1].set_yticklabels(['-300','-150','0','150','300','450','600','750','900'], fontname='Arial', fontsize=54.5)
 
 pos1 = fig.axes[1].get_position()
-pos2 = [pos1.x0-0.035, pos1.y0, pos1.width, pos1.height] 
+pos2 = [pos1.x0-0.0575, pos1.y0, pos1.width, pos1.height] 
 fig.axes[1].set_position(pos2)
 
 # comment out the following line if the colorbar is needed
@@ -3255,12 +3204,15 @@ ax.set_aspect(1)
 
 ax.set_axis_off()
 
+# plt.savefig('/Users/jiananfeng/Desktop/T_NOAK_CI.png', transparent=True, bbox_inches='tight')
+plt.savefig('/Users/jiananfeng/Desktop/T_NOAK_CI.pdf', transparent=True, bbox_inches='tight')
+
 #%% world map visualization - carbon credit needed
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
-plt.rcParams['xtick.labelsize'] = 36
-plt.rcParams['ytick.labelsize'] = 36
+plt.rcParams['xtick.labelsize'] = 54.5
+plt.rcParams['ytick.labelsize'] = 54.5
 plt.rcParams['font.sans-serif'] = 'Arial'
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['ps.fonttype'] = 42
@@ -3279,18 +3231,21 @@ world_mean.plot(column='carbon_credit_needed', ax=ax, legend=True, legend_kwds={
 
 world.plot(ax=ax, color='none', edgecolor='k', linewidth=1)
 
-fig.axes[1].set_ylabel('$\mathbf{Carbon\ credit}$ [\$·${tonne\ CO_{2}e^{−1}}$]', fontname='Arial', fontsize=36)
-fig.axes[1].tick_params(length=10, width=3)
+fig.axes[1].set_ylabel('$\mathbf{Carbon\ credit}$' + '\n[\$·${tonne\ CO_{2}e^{−1}}$]', fontname='Arial', fontsize=54.5)
+fig.axes[1].tick_params(length=15, width=3)
+fig.axes[1].set_yticks([0, 100, 200, 300, 400, 500, 600])
+fig.axes[1].set_yticklabels(['<0','100','200','300','400','500','600'], fontname='Arial', fontsize=54.5)
 
 pos1 = fig.axes[1].get_position()
-pos2 = [pos1.x0-0.035, pos1.y0, pos1.width, pos1.height] 
+pos2 = [pos1.x0-0.0575, pos1.y0, pos1.width, pos1.height] 
 fig.axes[1].set_position(pos2)
-
-fig.axes[1].set_yticklabels(['<0','100','200','300','400','500','600'], fontname='Arial', fontsize=36)
 
 ax.set_aspect(1)
 
 ax.set_axis_off()
+
+# plt.savefig('/Users/jiananfeng/Desktop/NOAK_carbon_credit.png', transparent=True, bbox_inches='tight')
+plt.savefig('/Users/jiananfeng/Desktop/NOAK_carbon_credit.pdf', transparent=True, bbox_inches='tight')
 
 #%% country order
 
@@ -3386,7 +3341,9 @@ ax_top.tick_params(axis='x', direction='inout', length=30, width=3, pad=-5)
 plt.xticks(np.arange(-300, 1500, 300), fontname='Arial')
 plt.yticks(index, cost_max['CNTRY_ISO'], fontname='Arial')
 
-#%% cost change bars - data preparation
+plt.savefig('/Users/jiananfeng/Desktop/cost_ranges.pdf', transparent=True, bbox_inches='tight')
+
+#%% cost changes - data preparation
 
 cost_change = WRRF_mean.copy()
 cost_change['cost_difference'] = cost_change['T_cost_NOAK_weighted_average'] - cost_change['C_cost_weighted_average']
@@ -3404,7 +3361,7 @@ assert(len([i for i in cost_change.index if (i not in global_north_countries_reg
 cost_change.loc[cost_change.index.isin(global_north_countries_regions), 'color'] = la
 cost_change.loc[cost_change.index.isin(global_south_countries_regions), 'color'] = y
 
-#%% cost change bars - visualization
+#%% cost changes - visualization
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
@@ -3456,6 +3413,8 @@ ax_top.tick_params(axis='x', direction='inout', length=30, width=3, pad=-5)
 
 plt.xticks(np.arange(-100, 400, 100), fontname='Arial')
 plt.yticks(index, cost_change['CNTRY_ISO'], fontname='Arial')
+
+plt.savefig('/Users/jiananfeng/Desktop/cost_changess.pdf', transparent=True, bbox_inches='tight')
 
 #%% CI ranges for C and T systems
 
@@ -3541,7 +3500,9 @@ ax_top.tick_params(axis='x', direction='inout', length=30, width=3, pad=-5)
 plt.xticks(np.arange(-3, 4, 1), fontname='Arial')
 plt.yticks(index, CI_max['CNTRY_ISO'], fontname='Arial')
 
-#%% CI change bars - data preparation
+plt.savefig('/Users/jiananfeng/Desktop/CI_ranges.pdf', transparent=True, bbox_inches='tight')
+
+#%% CI changes - data preparation
 
 CI_change = WRRF_mean.copy()
 CI_change['CI_difference'] = CI_change['T_CI_NOAK_weighted_average'] - CI_change['C_CI_weighted_average']
@@ -3559,7 +3520,7 @@ assert(len([i for i in CI_change.index if (i not in global_north_countries_regio
 CI_change.loc[CI_change.index.isin(global_north_countries_regions), 'color'] = la
 CI_change.loc[CI_change.index.isin(global_south_countries_regions), 'color'] = y
 
-#%% CI change bars - visualization
+#%% CI changes - visualization
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
@@ -3611,6 +3572,8 @@ ax_top.tick_params(axis='x', direction='inout', length=30, width=3, pad=-5)
 
 plt.xticks(np.arange(-1200, 300, 300), fontname='Arial')
 plt.yticks(index, CI_change['CNTRY_ISO'], fontname='Arial')
+
+plt.savefig('/Users/jiananfeng/Desktop/CI_changes.pdf', transparent=True, bbox_inches='tight')
 
 #%% unit capital cost equation
 
@@ -3751,258 +3714,3 @@ WRRF_mean['carbon_credit_needed'].min()
 WRRF_mean['carbon_credit_needed'].max()
 
 WRRF_mean[WRRF_mean['carbon_credit_needed']<0]
-
-#%% preliminary utility check
-
-results = []
-for function in (create_C1_system, create_C2_system, create_C3_system,
-                 create_C4_system, create_C5_system, create_C6_system,
-                 create_C7_system, create_C8_system, create_C9_system,
-                 create_C10_system, create_C11_system, create_C12_system,
-                 create_C13_system, create_C14_system, create_C15_system,
-                 create_C16_system, create_C17_system, create_C18_system,
-                 create_C19_system, create_C20_system, create_C21_system,
-                 create_C22_system, create_C23_system, create_C24_system,
-                 create_C25_system, create_T1_system, create_T2_system,
-                 create_T3_system, create_T4_system, create_T5_system,
-                 create_T6_system, create_T7_system, create_T8_system,
-                 create_T9_system, create_T10_system, create_T11_system,
-                 create_T12_system, create_T13_system, create_T14_system,
-                 create_T15_system):
-    sys = function(country_code='CHN', size=10)
-    print('\n' + sys.ID)
-    print(round(sys.get_cooling_duty()))
-    print(round(sys.get_heating_duty()))
-    print(sys.heat_utilities)
-
-#%% preliminary TEA check
-
-TEA_results = []
-for function in (create_C1_system, create_C2_system, create_C3_system,
-                 create_C4_system, create_C5_system, create_C6_system,
-                 create_C7_system, create_C8_system, create_C9_system,
-                 create_C10_system, create_C11_system, create_C12_system,
-                 create_C13_system, create_C14_system, create_C15_system,
-                 create_C16_system, create_C17_system, create_C18_system,
-                 create_C19_system, create_C20_system, create_C21_system,
-                 create_C22_system, create_C23_system, create_C24_system,
-                 create_C25_system, create_T1_system, create_T2_system,
-                 create_T3_system, create_T4_system, create_T5_system,
-                 create_T6_system, create_T7_system, create_T8_system,
-                 create_T9_system, create_T10_system, create_T11_system,
-                 create_T12_system, create_T13_system, create_T14_system,
-                 create_T15_system):
-    sys = function(country_code='CHN', size=0.907185)
-    
-    print('\n' + sys.ID)
-    
-    print(-sys.TEA.solve_price(sys.flowsheet.raw_wastewater)*3785411.78)
-    
-    TEA_results.append(-sys.TEA.solve_price(sys.flowsheet.raw_wastewater)*3785411.78)
-
-for function in (create_T1_system, create_T2_system, create_T3_system,
-                 create_T4_system, create_T5_system, create_T6_system,
-                 create_T7_system, create_T8_system, create_T9_system,
-                 create_T10_system, create_T11_system, create_T12_system,
-                 create_T13_system, create_T14_system, create_T15_system):
-    sys = function(country_code='CHN', size=0.907185, FOAK=False)
-    
-    print('\n' + sys.ID + ' nth plant')
-    
-    print(-sys.TEA.solve_price(sys.flowsheet.raw_wastewater)*3785411.78)
-    
-    TEA_results.append(-sys.TEA.solve_price(sys.flowsheet.raw_wastewater)*3785411.78)
-
-print(np.quantile(TEA_results[0:25], 0.05))
-print(np.quantile(TEA_results[0:25], 0.5))
-print(np.quantile(TEA_results[0:25], 0.95))
-
-print(np.quantile(TEA_results[25:40], 0.05))
-print(np.quantile(TEA_results[25:40], 0.5))
-print(np.quantile(TEA_results[25:40], 0.95))
-
-print(np.quantile(TEA_results[40:55], 0.05))
-print(np.quantile(TEA_results[40:55], 0.5))
-print(np.quantile(TEA_results[40:55], 0.95))
-
-plt.boxplot((TEA_results[0:25], TEA_results[25:40], TEA_results[40:55]), whis=[5, 95], showfliers=False)
-
-#%% preliminary LCA check
-
-LCA_results = []
-for function in (create_C1_system, create_C2_system, create_C3_system,
-                 create_C4_system, create_C5_system, create_C6_system,
-                 create_C7_system, create_C8_system, create_C9_system,
-                 create_C10_system, create_C11_system, create_C12_system,
-                 create_C13_system, create_C14_system, create_C15_system,
-                 create_C16_system, create_C17_system, create_C18_system,
-                 create_C19_system, create_C20_system, create_C21_system,
-                 create_C22_system, create_C23_system, create_C24_system,
-                 create_C25_system, create_T1_system, create_T2_system,
-                 create_T3_system, create_T4_system, create_T5_system,
-                 create_T6_system, create_T7_system, create_T8_system,
-                 create_T9_system, create_T10_system, create_T11_system,
-                 create_T12_system, create_T13_system, create_T14_system,
-                 create_T15_system):
-    sys = function(country_code='CHN', size=10)
-    
-    print('\n' + sys.ID)
-    
-    print(sys.LCA.get_total_impacts(operation_only=True,
-                                                 exclude=(sys.flowsheet.raw_wastewater,),
-                                                 annual=True)['GlobalWarming']/sys.flowsheet.raw_wastewater.F_vol/2.3141471786573806)
-    
-    LCA_results.append(sys.LCA.get_total_impacts(operation_only=True,
-                                                 exclude=(sys.flowsheet.raw_wastewater,),
-                                                 annual=True)['GlobalWarming']/sys.flowsheet.raw_wastewater.F_vol/2.3141471786573806)
-
-for function in (create_T1_system, create_T2_system, create_T3_system,
-                 create_T4_system, create_T5_system, create_T6_system,
-                 create_T7_system, create_T8_system, create_T9_system,
-                 create_T10_system, create_T11_system, create_T12_system,
-                 create_T13_system, create_T14_system, create_T15_system):
-    sys = function(country_code='CHN', size=10, FOAK=False)
-    
-    print('\n' + sys.ID + ' nth plant')
-    
-    print(sys.LCA.get_total_impacts(operation_only=True,
-                                                 exclude=(sys.flowsheet.raw_wastewater,),
-                                                 annual=True)['GlobalWarming']/sys.flowsheet.raw_wastewater.F_vol/2.3141471786573806)
-    
-    LCA_results.append(sys.LCA.get_total_impacts(operation_only=True,
-                                                 exclude=(sys.flowsheet.raw_wastewater,),
-                                                 annual=True)['GlobalWarming']/sys.flowsheet.raw_wastewater.F_vol/2.3141471786573806)
-
-print(np.quantile(LCA_results[0:25], 0.05))
-print(np.quantile(LCA_results[0:25], 0.5))
-print(np.quantile(LCA_results[0:25], 0.95))
-
-print(np.quantile(LCA_results[25:40], 0.05))
-print(np.quantile(LCA_results[25:40], 0.5))
-print(np.quantile(LCA_results[25:40], 0.95))
-
-print(np.quantile(LCA_results[40:55], 0.05))
-print(np.quantile(LCA_results[40:55], 0.5))
-print(np.quantile(LCA_results[40:55], 0.95))
-
-# LCA_results[25:40] and LCA_results[40:55] may have differences after the parameter plant_performance_factor is implemented
-plt.boxplot((LCA_results[0:25], LCA_results[25:40], LCA_results[40:55]), whis=[5, 95], showfliers=False)
-
-#%% preliminary TEA and LCA animation
-
-filterwarnings('ignore')
-
-system_ID_list = []
-system_type_list = []
-size_list = []
-TEA_result_list = []
-LCA_result_list = []
-
-for function in (create_C1_system, create_C2_system, create_C3_system,
-                 create_C4_system, create_C5_system, create_C6_system,
-                 create_C7_system, create_C8_system, create_C9_system,
-                 create_C10_system, create_C11_system, create_C12_system,
-                 create_C13_system, create_C14_system, create_C15_system,
-                 create_C16_system, create_C17_system, create_C18_system,
-                 create_C19_system, create_C20_system, create_C21_system,
-                 create_C22_system, create_C23_system, create_C24_system,
-                 create_C25_system, create_T1_system, create_T2_system,
-                 create_T3_system, create_T4_system, create_T5_system,
-                 create_T6_system, create_T7_system, create_T8_system,
-                 create_T9_system, create_T10_system, create_T11_system,
-                 create_T12_system, create_T13_system, create_T14_system,
-                 create_T15_system):
-    for size in np.linspace(1, 50, 50):
-        sys = function(size=size)
-        
-        if size == 1:
-            print(sys.ID)
-        
-        system_ID_list.append(sys.ID)
-        system_type_list.append(sys.ID[7])
-        size_list.append(size)
-        TEA_result_list.append(-sys.TEA.solve_price(sys.flowsheet.raw_wastewater)*3785411.78)
-        LCA_result_list.append(sys.LCA.get_total_impacts(operation_only=True,
-                                                     exclude=(sys.flowsheet.raw_wastewater,),
-                                                     annual=True)['GlobalWarming']/sys.flowsheet.raw_wastewater.F_vol/2.3141471786573806)
-
-animation_data = pd.DataFrame({'system_ID': system_ID_list,
-                               'system_type': system_type_list,
-                               'size': size_list,
-                               'cost': TEA_result_list,
-                               'CI': LCA_result_list})
-
-plt.rcParams['axes.linewidth'] = 3
-plt.rcParams['hatch.linewidth'] = 3
-plt.rcParams['xtick.labelsize'] = 36
-plt.rcParams['ytick.labelsize'] = 36
-plt.rcParams['font.sans-serif'] = 'Arial'
-plt.rcParams['pdf.fonttype'] = 42
-plt.rcParams['ps.fonttype'] = 42
-
-plt.rcParams.update({'mathtext.fontset':'custom'})
-plt.rcParams.update({'mathtext.default':'regular'})
-plt.rcParams.update({'mathtext.bf':'Arial: bold'})
-
-fig, ax = plt.subplots(figsize=(14, 12))
-
-ax = plt.gca()
-ax.set_xlim(0, 4000)
-ax.set_ylim(-1000, 2500)
-
-ax.tick_params(direction='inout', length=20, width=3,
-                bottom=True, top=False, left=True, right=False)
-
-plt.xticks(np.arange(0, 4500, 500), fontname='Arial')
-plt.yticks(np.arange(-1000, 3000, 500), fontname='Arial')
-
-ax_top = ax.twiny()
-ax_top.set_xlim(ax.get_xlim())
-plt.xticks(np.arange(0, 4500, 500), fontname='Arial')
-
-ax_top.tick_params(direction='in', length=10, width=3,
-                   bottom=False, top=True, left=False, right=False,
-                   labelcolor='none')
-
-ax_bottom = ax.twinx()
-ax_bottom.set_ylim(ax.get_ylim())
-plt.xticks(np.arange(0, 4500, 500), fontname='Arial')
-
-ax_bottom.tick_params(direction='in', length=10, width=3,
-                      bottom=False, top=False, left=False, right=True,
-                      labelcolor='none')
-
-ax.set_xlabel(r'$\mathbf{Cost}$ ' + '[\$·day${^{-1}}$]',
-              fontname='Arial',
-              fontsize=45,
-              labelpad=5)
-
-ax.set_ylabel(r'$\mathbf{CI}$ ' + '[tonne CO${_2}$ eq·day${^{-1}}$]',
-              fontname='Arial',
-              fontsize=45,
-              labelpad=5)
-
-scatter_C = ax.scatter(x=[], y=[], s=500, color=a, linewidths=2, edgecolors='k')
-scatter_T = ax.scatter(x=[], y=[], s=500, color=r, linewidths=2, edgecolors='k')
-
-flow_scenarios = animation_data['size'].unique()
-
-def update(frame):
-    fr = flow_scenarios[frame]
-    animation_data_fr = animation_data[animation_data['size'] == fr]
-    danimation_data_C = animation_data_fr[animation_data_fr['system_ID'].str.contains('C')]
-    animation_data_T = animation_data_fr[animation_data_fr['system_ID'].str.contains('T')]
-
-    scatter_C.set_offsets(list(zip(danimation_data_C['cost'], danimation_data_C['CI'])))
-    scatter_T.set_offsets(list(zip(animation_data_T['cost'], animation_data_T['CI'])))
-    
-    ax.set_title(f'{int(fr)} ' + 'dry tonne·day${^{-1}}$', fontname='Arial', fontsize=45)
-    return scatter_C, scatter_T
-
-ani = FuncAnimation(fig, update, frames=len(flow_scenarios), interval=800, blit=True)
-
-fig.tight_layout()
-
-ani.save('preliminary_TEA_LCA_results.mp4', writer="ffmpeg", fps=2, savefig_kwargs={'bbox_inches':'tight'})
-
-plt.show()

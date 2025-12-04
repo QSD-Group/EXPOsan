@@ -12,11 +12,6 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-#%% housekeeping
-
-# TODO: https://www.globalpetrolprices.com/electricity_prices/ also has prices for electricty, diesel, natural gas, etc.
-# TODO: make sure to use the price for the industrial sector
-
 #%% initialization
 
 import numpy as np, pandas as pd, qsdsan as qs, biosteam as bst
@@ -87,8 +82,6 @@ Northern_American_countires = ['CAN','USA','GRL','MEX','NIC','HND','CUB','GTM',
                                'ATG','BRB','VCT','VIR','GRD','BES','CYM','KNA',
                                'SPM','ABW','VGB','MSR','AIA','BMU','MAF','SXM',
                                'BLM','CPT']
-
-# TODO: try addressing all warnings (especially in T pathways)
 
 __all__ = (
     'create_C1_system',
@@ -761,7 +754,7 @@ def create_C4_system(country_code='USA', size=10, operation_hours=7884, LA_dista
     Composting = lsu.Composting(ID='Composting', ins=(Dewatering-0, 'bulking_agent', 'diesel_composting'),
                                 outs=('compost_cost','methane_composting','nitrous_oxide_composting','sequestered_carbon_dioxide_composting'),
                                 feedstock_digested=False, solids_distance=LA_distance, PLI=country_PLI)
-    # TODO: uncertainty range (uniform) 18-36 2005$/tonne
+    # !!!: uncertainty range (uniform) 18-36 2005$/tonne
     Composting.ins[1].price = 27/1000/GDPCTPI[2005]*GDPCTPI[2023]*country_PLI
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     Composting.ins[2].price = 4.224/_gal_to_liter*1000/diesel_density*country_PLI
@@ -1978,7 +1971,7 @@ def create_C10_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     Composting = lsu.Composting(ID='Composting', ins=(Dewatering-0, 'bulking_agent', 'diesel_composting'),
                                 outs=('compost_cost','methane_composting','nitrous_oxide_composting','sequestered_carbon_dioxide_composting'),
                                 feedstock_digested=True, solids_distance=LA_distance, PLI=country_PLI)
-    # TODO: uncertainty range (uniform) 18-36 2005$/tonne
+    # !!!: uncertainty range (uniform) 18-36 2005$/tonne
     Composting.ins[1].price = 27/1000/GDPCTPI[2005]*GDPCTPI[2023]*country_PLI
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     Composting.ins[2].price = 4.224/_gal_to_liter*1000/diesel_density*country_PLI
@@ -3292,7 +3285,7 @@ def create_C16_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     Composting = lsu.Composting(ID='Composting', ins=(Dewatering-0, 'bulking_agent', 'diesel_composting'),
                                 outs=('compost_cost','methane_composting','nitrous_oxide_composting','sequestered_carbon_dioxide_composting'),
                                 feedstock_digested=True, solids_distance=LA_distance, PLI=country_PLI)
-    # TODO: uncertainty range (uniform) 18-36 2005$/tonne
+    # !!!: uncertainty range (uniform) 18-36 2005$/tonne
     Composting.ins[1].price = 27/1000/GDPCTPI[2005]*GDPCTPI[2023]*country_PLI
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     Composting.ins[2].price = 4.224/_gal_to_liter*1000/diesel_density*country_PLI
@@ -4676,7 +4669,7 @@ def create_C22_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     Composting = lsu.Composting(ID='Composting', ins=(Dewatering-0, 'bulking_agent', 'diesel_composting'),
                                 outs=('compost_cost','methane_composting','nitrous_oxide_composting','sequestered_carbon_dioxide_composting'),
                                 feedstock_digested=True, solids_distance=LA_distance, PLI=country_PLI)
-    # TODO: uncertainty range (uniform) 18-36 2005$/tonne
+    # !!!: uncertainty range (uniform) 18-36 2005$/tonne
     Composting.ins[1].price = 27/1000/GDPCTPI[2005]*GDPCTPI[2023]*country_PLI
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     Composting.ins[2].price = 4.224/_gal_to_liter*1000/diesel_density*country_PLI
@@ -5930,7 +5923,7 @@ def create_T2_system(country_code='USA', size=10, operation_hours=7884, refinery
                                              biocrude_distance=refinery_distance, hydrochar_distance=LA_distance, FOAK=FOAK)
     # 0.2384 2016$/lb, https://doi.org/10.2172/1483234
     HALT.ins[1].price = 0.2384/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
-    # 0.49 2020$/lb, from A.J.K. HALT model
+    # 0.49 2020$/lb, https://www.osti.gov/servlets/purl/2318964
     HALT.ins[2].price = 0.49/_lb_to_kg/GDPCTPI[2020]*GDPCTPI[2023]*country_PLI
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     HALT.ins[3].price = 4.224/_gal_to_liter*1000/diesel_density*country_PLI
@@ -7364,7 +7357,7 @@ def create_T7_system(country_code='USA', size=10, operation_hours=7884, refinery
                                              biocrude_distance=refinery_distance, hydrochar_distance=LA_distance, FOAK=FOAK)
     # 0.2384 2016$/lb, https://doi.org/10.2172/1483234
     HALT.ins[1].price = 0.2384/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
-    # 0.49 2020$/lb, from A.J.K. HALT model
+    # 0.49 2020$/lb, https://www.osti.gov/servlets/purl/2318964
     HALT.ins[2].price = 0.49/_lb_to_kg/GDPCTPI[2020]*GDPCTPI[2023]*country_PLI
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     HALT.ins[3].price = 4.224/_gal_to_liter*1000/diesel_density*country_PLI
@@ -8810,7 +8803,7 @@ def create_T12_system(country_code='USA', size=10, operation_hours=7884, refiner
                                              biocrude_distance=refinery_distance, hydrochar_distance=LA_distance, FOAK=FOAK)
     # 0.2384 2016$/lb, https://doi.org/10.2172/1483234
     HALT.ins[1].price = 0.2384/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2023]*country_PLI
-    # 0.49 2020$/lb, from A.J.K. HALT model
+    # 0.49 2020$/lb, https://www.osti.gov/servlets/purl/2318964
     HALT.ins[2].price = 0.49/_lb_to_kg/GDPCTPI[2020]*GDPCTPI[2023]*country_PLI
     # 2023 weekly average from U.S. EIA: 4.224 $/gallon
     HALT.ins[3].price = 4.224/_gal_to_liter*1000/diesel_density*country_PLI

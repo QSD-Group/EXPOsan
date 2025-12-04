@@ -759,7 +759,7 @@ class AnaerobicDigestion(SanUnit):
                  excavation_unit_cost=0.3,
                  # refer to qsdsan/equipments/_vertical_mixer.py
                  vertical_mixer_unit_power=3.7, vertical_mixer_unit_price=10200,
-                 # !!! 0.2 is an assumption, subject to wide uncertainties
+                 # !!! 0.2 is an assumption, subject to uncertainties
                  gas_collection_cost_factor=0.2, PLI=1, F_BM=default_F_BM):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
         self.VS_reduction = VS_reduction
