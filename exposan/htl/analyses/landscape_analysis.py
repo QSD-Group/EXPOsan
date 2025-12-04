@@ -3610,83 +3610,83 @@ print(f'BM: {BM:.3g}')
 
 #%% global equity
 
-country_average_solids = WRRF.groupby('COUNTRY').mean('dry_solids_tonne_per_day')
+# country_average_solids = WRRF.groupby('COUNTRY').mean('dry_solids_tonne_per_day')
 
-country_average_solids_HDI = country_average_solids.merge(HDI, how='inner', left_on='COUNTRY', right_on='Country')
+# country_average_solids_HDI = country_average_solids.merge(HDI, how='inner', left_on='COUNTRY', right_on='Country')
 
-plt.rcParams['axes.linewidth'] = 3
-plt.rcParams['hatch.linewidth'] = 3
-plt.rcParams['xtick.labelsize'] = 36
-plt.rcParams['ytick.labelsize'] = 36
-plt.rcParams['font.sans-serif'] = 'Arial'
-plt.rcParams['pdf.fonttype'] = 42
-plt.rcParams['ps.fonttype'] = 42
+# plt.rcParams['axes.linewidth'] = 3
+# plt.rcParams['hatch.linewidth'] = 3
+# plt.rcParams['xtick.labelsize'] = 36
+# plt.rcParams['ytick.labelsize'] = 36
+# plt.rcParams['font.sans-serif'] = 'Arial'
+# plt.rcParams['pdf.fonttype'] = 42
+# plt.rcParams['ps.fonttype'] = 42
 
-plt.rcParams.update({'mathtext.fontset':'custom'})
-plt.rcParams.update({'mathtext.default':'regular'})
-plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+# plt.rcParams.update({'mathtext.fontset':'custom'})
+# plt.rcParams.update({'mathtext.default':'regular'})
+# plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
-fig, ax = plt.subplots(figsize=(12, 10))
+# fig, ax = plt.subplots(figsize=(12, 10))
 
-ax = plt.gca()
+# ax = plt.gca()
 
-ax.set_xlim([0.35, 1])
-ax.set_ylim([0, 90])
+# ax.set_xlim([0.35, 1])
+# ax.set_ylim([0, 90])
 
-ax.tick_params(direction='inout', length=20, width=3,
-               bottom=True, top=False, left=True, right=False, pad=0)
+# ax.tick_params(direction='inout', length=20, width=3,
+#                bottom=True, top=False, left=True, right=False, pad=0)
 
-plt.xticks(np.arange(0.4, 1.1, 0.1), fontname='Arial')
-plt.yticks(np.arange(0, 100, 20), fontname='Arial')
+# plt.xticks(np.arange(0.4, 1.1, 0.1), fontname='Arial')
+# plt.yticks(np.arange(0, 100, 20), fontname='Arial')
 
-ax_right = ax.twinx()
-ax_right.set_ylim(ax.get_ylim())
-plt.xticks(np.arange(0.4, 1.1, 0.1), fontname='Arial')
-plt.yticks(np.arange(0, 100, 20), fontname='Arial')
+# ax_right = ax.twinx()
+# ax_right.set_ylim(ax.get_ylim())
+# plt.xticks(np.arange(0.4, 1.1, 0.1), fontname='Arial')
+# plt.yticks(np.arange(0, 100, 20), fontname='Arial')
 
-ax_right.tick_params(direction='in', length=10, width=3,
-                     bottom=False, top=False, left=False, right=True,
-                     labelcolor='none')
+# ax_right.tick_params(direction='in', length=10, width=3,
+#                      bottom=False, top=False, left=False, right=True,
+#                      labelcolor='none')
 
-ax_top = ax.twiny()
-ax_top.set_xlim(ax.get_xlim())
-plt.xticks(np.arange(0.4, 1.1, 0.1), fontname='Arial')
-plt.yticks(np.arange(0, 100, 20), fontname='Arial')
+# ax_top = ax.twiny()
+# ax_top.set_xlim(ax.get_xlim())
+# plt.xticks(np.arange(0.4, 1.1, 0.1), fontname='Arial')
+# plt.yticks(np.arange(0, 100, 20), fontname='Arial')
 
-ax_top.tick_params(direction='in', length=10, width=3,
-                   bottom=False, top=True, left=False, right=False,
-                   labelcolor='none')
+# ax_top.tick_params(direction='in', length=10, width=3,
+#                    bottom=False, top=True, left=False, right=False,
+#                    labelcolor='none')
 
-ax.set_xlabel('$\mathbf{HDI}$',
-              fontname='Arial',
-              fontsize=45)
+# ax.set_xlabel('$\mathbf{HDI}$',
+#               fontname='Arial',
+#               fontsize=45)
 
-ax.set_ylabel('$\mathbf{Average\ mass\ flow\ rate}$\n[dry tonne·${day^{-1}}$]',
-              fontname='Arial',
-              fontsize=45)
+# ax.set_ylabel('$\mathbf{Average\ mass\ flow\ rate}$\n[dry tonne·${day^{-1}}$]',
+#               fontname='Arial',
+#               fontsize=45)
 
-# very high (≥0.8), high (0.7-0.8), medium (0.55-0.7), low (<0.55)
-country_average_solids_HDI['HDI_color'] = country_average_solids_HDI['HDI'].apply(lambda x: y if x < 0.55 else (o if x < 0.7 else (r if x < 0.8 else dr)))
+# # very high (≥0.8), high (0.7-0.8), medium (0.55-0.7), low (<0.55)
+# country_average_solids_HDI['HDI_color'] = country_average_solids_HDI['HDI'].apply(lambda x: y if x < 0.55 else (o if x < 0.7 else (r if x < 0.8 else dr)))
 
-plt.scatter(country_average_solids_HDI['HDI'], country_average_solids_HDI['dry_solids_tonne_per_day'], color=country_average_solids_HDI['HDI_color'], edgecolor='k', linewidths=3, s=200)
+# plt.scatter(country_average_solids_HDI['HDI'], country_average_solids_HDI['dry_solids_tonne_per_day'], color=country_average_solids_HDI['HDI_color'], edgecolor='k', linewidths=3, s=200)
 
-ax.plot([0.55, 0.55],
-        [0, 100],
-        c='k',
-        linestyle='--',
-        linewidth=3)
+# ax.plot([0.55, 0.55],
+#         [0, 100],
+#         c='k',
+#         linestyle='--',
+#         linewidth=3)
 
-ax.plot([0.7, 0.7],
-        [0, 100],
-        c='k',
-        linestyle='--',
-        linewidth=3)
+# ax.plot([0.7, 0.7],
+#         [0, 100],
+#         c='k',
+#         linestyle='--',
+#         linewidth=3)
 
-ax.plot([0.8, 0.8],
-        [0, 100],
-        c='k',
-        linestyle='--',
-        linewidth=3)
+# ax.plot([0.8, 0.8],
+#         [0, 100],
+#         c='k',
+#         linestyle='--',
+#         linewidth=3)
 
 #%% writing
 
