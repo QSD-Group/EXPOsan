@@ -1141,15 +1141,15 @@ def create_model(system=None,
         diesel.price=i
         
     # dist = shape.Uniform(-0.0605,-0.0495)
-    # @param(name='residual disposal',
+    # @param(name='residue disposal',
     #        element='TEA',
     #        kind='isolated',
     #        units='$/kg',
     #        baseline=-0.055,
     #        distribution=dist)
-    # def set_residual_disposal(i):
+    # def set_residue_disposal(i):
     #     AcidEx.outs[0].price=i
-    # not include residual for TEA and LCA for now
+    # not include residue for TEA and LCA for now
     
     dist = shape.Triangle(0.0667,0.06879,0.07180)
     @param(name='electricity price',
@@ -1308,12 +1308,12 @@ def create_model(system=None,
             def get_extracted_P():
                 return AcidEx.outs[1].imass['P']
             
-            @metric(name='residual_P',units='kg/hr',element='Sankey')
-            def get_residual_P():
+            @metric(name='residue_P',units='kg/hr',element='Sankey')
+            def get_residue_P():
                 return HTL.hydrochar_P-AcidEx.outs[1].imass['P']
         
-        @metric(name='residual_C',units='kg/hr',element='Sankey')
-        def get_residual_C():
+        @metric(name='residue_C',units='kg/hr',element='Sankey')
+        def get_residue_C():
             return HTL.hydrochar_C
         
         @metric(name='struvite_N',units='kg/hr',element='Sankey')

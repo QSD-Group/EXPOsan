@@ -180,10 +180,10 @@ def create_system(configuration='baseline', capacity=100,
         M1_outs1 = ''
     else:
         AcidEx = su.AcidExtraction('A200', ins=(HTL-0, SP1-0),
-                                   outs=('residual','extracted'))
+                                   outs=('residue','extracted'))
         AcidEx.register_alias('AcidEx')
         # AcidEx.outs[0].price = -0.055 # SS 2021 SOT PNNL report page 24 Table 9
-        # not include residual for TEA and LCA for now
+        # not include residue for TEA and LCA for now
         
         M1_outs1 = AcidEx.outs[1]
     M1 = su.HTLmixer('A210', ins=(HTL-1, M1_outs1), outs=('mixture',))

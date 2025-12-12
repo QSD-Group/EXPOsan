@@ -125,10 +125,10 @@ def create_components(set_thermo=True):
     # http://webmineral.com/data/Struvite.shtml#.YzYvqOzMIiM
     # (accessed 2022-9-30)
     
-    Residual = Component('Residual', phase='s', particle_size='Particulate',
+    Residue = Component('Residue', phase='s', particle_size='Particulate',
                         degradability='Undegradable', organic=False)
-    add_V_from_rho(Residual, 1500)  # assume 1500kg/m3
-    Residual.copy_models_from(Chemical('CaCO3'),('Cn',)) #CaCO3?
+    add_V_from_rho(Residue, 1500)  # assume 1500kg/m3
+    Residue.copy_models_from(Chemical('CaCO3'),('Cn',)) #CaCO3?
     
     H2O = Component('H2O', particle_size='Soluble',
                     degradability='Undegradable', organic=False)
@@ -474,7 +474,7 @@ def create_components(set_thermo=True):
     Biochar.copy_models_from(Chemical('CaCO3'),('Cn',))
     
     cmps = Components([Sludge_lipid, Sludge_protein, Sludge_carbo, Sludge_ash,
-                       Struvite, Hydrochar, Residual, Biocrude, HTLaqueous, H2O,
+                       Struvite, Hydrochar, Residue, Biocrude, HTLaqueous, H2O,
                        C, N, P, O2, N2, N2O, CH4, C2H6, C3H8, CO2, CO, H2, NH3,
                        H2SO4, H3PO4, CaO, CaOH2, CaCO3, MgCl2, MgO, NaOH,
                        NH42SO4, NH4Cl, C4H10, TWOMBUTAN, NPENTAN, TWOMPENTA,

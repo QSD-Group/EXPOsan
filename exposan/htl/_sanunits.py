@@ -64,7 +64,7 @@ class AcidExtraction(Reactor):
     ins : iterable
         hydrochar, acid.
     outs : iterable
-        residual, extracted.
+        residue, extracted.
     acid_vol : float
         0.5 M H2SO4 to hydrochar ratio, [mL/g].
     P_acid_recovery_ratio : float
@@ -115,7 +115,7 @@ class AcidExtraction(Reactor):
         
     def _run(self):
         hydrochar, acid = self.ins
-        residual, extracted = self.outs
+        residue, extracted = self.outs
         
         self.HTL = self.ins[0]._source
         
@@ -123,7 +123,7 @@ class AcidExtraction(Reactor):
             pass
         else:
             if self.HTL.hydrochar_P <= 0:
-                residual.copy_like(hydrochar)
+                residue.copy_like(hydrochar)
             else: 
                 acid.imass['H2SO4'] = hydrochar.F_mass*self.acid_vol*0.5*98.079/1000
                 # 0.5 M H2SO4 acid_vol (10 mL/1 g) hydrochar
@@ -132,25 +132,25 @@ class AcidExtraction(Reactor):
                 acid.imass['H2O'] = hydrochar.F_mass*self.acid_vol*1.03 -\
                                     acid.imass['H2SO4']
                 
-                residual.imass['Residual'] = hydrochar.F_mass - self.ins[0]._source.\
-                                             hydrochar_P*self.P_acid_recovery_ratio
+                residue.imass['Residue'] = hydrochar.F_mass - self.ins[0]._source.\
+                                           hydrochar_P*self.P_acid_recovery_ratio
                 
                 extracted.copy_like(acid)
-                extracted.imass['P'] = hydrochar.F_mass - residual.F_mass
+                extracted.imass['P'] = hydrochar.F_mass - residue.F_mass
                 # assume just P can be extracted
                 
-                residual.phase = 's'
+                residue.phase = 's'
                 
-                residual.T = extracted.T = hydrochar.T
-                residual.P = hydrochar.P
+                residue.T = extracted.T = hydrochar.T
+                residue.P = hydrochar.P
                 # H2SO4 reacts with hydrochar to release heat and temperature will increase
             
     @property
-    def residual_C(self):
+    def residue_C(self):
         return self.ins[0]._source.hydrochar_C
     
     @property
-    def residual_P(self):
+    def residue_P(self):
         return self.ins[0]._source.hydrochar_P - self.outs[1].imass['P']
         
     def _design(self):
