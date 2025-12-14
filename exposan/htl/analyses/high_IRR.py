@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Fri Oct 27 08:45:48 2023
+EXPOsan: Exposition of sanitation and resource recovery systems
 
-@author: jiananfeng
+This module is developed by:
+
+    Jianan Feng <jiananf2@illinois.edu>
+    
+This module is under the University of Illinois/NCSA Open Source License.
+Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
+for license details.
 """
 
 from exposan.htl import create_system, create_model, simulate_and_save
