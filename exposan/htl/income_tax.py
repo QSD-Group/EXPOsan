@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Tue Dec 26 08:51:34 2023
+EXPOsan: Exposition of sanitation and resource recovery systems
 
-2023 U.S. corporate income tax rate by state
-
-@author: jiananfeng
+This module is developed by:
+    
+    Jianan Feng <jiananf2@illinois.edu>
+    
+This module is under the University of Illinois/NCSA Open Source License.
+Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
+for license details.
 """
 
 __all__ = ('state_income_tax_rate_2022',
