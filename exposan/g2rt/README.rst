@@ -1,50 +1,63 @@
-============
-Household Reinvented Toilets (HRT) using generation II reinvented toilet as examples
-============
+========================================================================================
+The potential of thermomechanical and thermochemical processes to enable sustainable household sanitation
+========================================================================================
 
 Summary
 -------
-Systems included in this module are based on the work described in Wang et al., [1]_, which follows the HRT design described in [2]&[3]_. 
+Systems included in this module are based on the work described in Wang et al. [1]_, which follows the HRT design described in [2]_ and [3]_.
 
-Two system configurations are included in this module.
+Two system configurations are included in this module:
 
-
-    *Scenario A (sysA): dry-based mechanical compression (MC) HRT*
-
-    *Scenario B (sysB): wet-based supercritical water oxidation (SCWO) HRT*
-    
+- **Scenario A (sysA):** dry-based mechanical compression (MC) HRT
+- **Scenario B (sysB):** wet-based supercritical water oxidation (SCWO) HRT
 
 Loading systems
 ---------------
 .. code-block:: python
 
-    >>> # Import and load the system
-    >>> from exposan import g2rt 
+    >>> # Import and load the module
+    >>> from exposan import g2rt
     >>> g2rt.load()
-    >>> # Quick look at the systems
-    >>> g2rt.sysA.show()
+
+    >>> # System flow diagram (in a notebook, this displays the diagram)
+    >>> g2rt.sysA.diagram()
+
+.. figure:: ./readme_figures/PMD.png
+   :alt: Process model diagram for sysA
+
+.. code-block:: python
+
+    >>> g2rt.sysB.diagram()
+
+.. figure:: ./readme_figures/SCWO.png
+   :alt: Process model diagram for sysB
+
+.. code-block:: python
+
+    >>> # Quick look at the MC HRT system (sysA)
+    >>> g2rt.sysA.show()  # doctest: +ELLIPSIS
     System: sysA
     Highest convergence error among components in recycle
     stream A10-0 after 1 loops:
     - flow rate   5.67e-04 kmol/hr (19%)
     - temperature 0.00e+00 K (0%)
     ins...
-    [0] Wood_pellets  
+    [0] Wood_pellets
         phase: 'l', T: 298.15 K, P: 101325 Pa
         flow (kmol/hr): H2O         0.000127
                         WoodPellet  0.0387
-    [1] Air  
+    [1] Air
         phase: 'l', T: 298.15 K, P: 101325 Pa
         flow (kmol/hr): O2  0.000639
                         N2  0.0024
-    [2] toilet_paper  
+    [2] toilet_paper
         phase: 'l', T: 298.15 K, P: 101325 Pa
         flow (kmol/hr): Tissue  1.56e-06
-    [3] tap_water  
+    [3] tap_water
         phase: 'l', T: 298.15 K, P: 101325 Pa
         flow (kmol/hr): H2O  0.0194
     outs...
-    [0] hot_gas  
+    [0] hot_gas
         phase: 'g', T: 375 K, P: 101325 Pa
         flow (kmol/hr): P        1.02e-06
                         K        1.65e-06
@@ -52,31 +65,31 @@ Loading systems
                         OtherSS  0.00111
                         N2       0.00242
                         CO2      0.000638
-    [1] NO  
+    [1] NO
         phase: 'g', T: 298.15 K, P: 101325 Pa
         flow (kmol/hr): NO  7.39e-06
-    [2] SO2  
+    [2] SO2
         phase: 'g', T: 298.15 K, P: 101325 Pa
         flow (kmol/hr): SO2  1.69e-07
-    [3] CH4  
+    [3] CH4
         phase: 'g', T: 298.15 K, P: 101325 Pa
         flow (kmol/hr): CH4  1.52e-06
-    [4] N2O  
+    [4] N2O
         phase: 'g', T: 298.15 K, P: 101325 Pa
         flow (kmol/hr): N2O  8.86e-07
-    [5] NH3  
+    [5] NH3
         phase: 'g', T: 298.15 K, P: 101325 Pa
         flow (kmol/hr): NH3  5.67e-05
-    [6] sol_N  
+    [6] sol_N
         phase: 'l', T: 298.15 K, P: 101325 Pa
         flow (kmol/hr): NonNH3  1.39e-06
-    [7] sol_P  
+    [7] sol_P
         phase: 'l', T: 298.15 K, P: 101325 Pa
         flow (kmol/hr): P  6.85e-06
-    [8] sol_K  
+    [8] sol_K
         phase: 'l', T: 298.15 K, P: 101325 Pa
         flow (kmol/hr): K  1.21e-05
-    [9] A_sol_non_fertilizers  
+    [9] A_sol_non_fertilizers
         phase: 'l', T: 298.15 K, P: 101325 Pa
         flow (kmol/hr): NH3      9.27e-07
                         Mg       4.6e-06
@@ -84,22 +97,23 @@ Loading systems
                         H2O      7.61e-06
                         OtherSS  0.000196
                         WoodAsh  3.26e-06
-    [10] hot_gas  
+    [10] hot_gas
          phase: 'g', T: 298.15 K, P: 101325 Pa
          flow (kmol/hr): H2O  0.0074
-    [11] A5_reject_discharge  
+    [11] A5_reject_discharge
          phase: 'l', T: 298.15 K, P: 101325 Pa
          flow: 0
-    [12] A6_effluent  
+    [12] A6_effluent
          phase: 'l', T: 298.15 K, P: 101325 Pa
          flow: 0
-    [13] H2O_vapor1  
+    [13] H2O_vapor1
          phase: 'g', T: 298.15 K, P: 101325 Pa
          flow (kmol/hr): P    3.43e-07
                          K    5.97e-07
                          H2O  0.0324
-    >>> #individual units
-    >>> g2rt.A7.show() # doctest: +ELLIPSIS
+
+    >>> # Individual units
+    >>> g2rt.A10.show()  # doctest: +ELLIPSIS
     VolumeReductionFilterPress: A10
     ins...
     [0] A9_pasteurized  from  VRpasteurization-A9
@@ -163,36 +177,42 @@ Loading systems
 
 Techno-economic analysis and life cycle assessment (TEA/LCA)
 ------------------------------------------------------------
-TEA and LCA are performed through :class:`TEA` and :class:`LCA` objects and named as "teaA", "lcaA" for MC HRT, and "teaB", "lcaB" for SCWO HRT.
+TEA and LCA are performed through :class:`TEA` and :class:`LCA` objects and named ``teaA`` and ``lcaA`` for MC HRT, and ``teaB`` and ``lcaB`` for SCWO HRT.
 
 .. code-block:: python
 
-    >>> # Check the TEA results for `sysA`
-    >>> g2rt.teaB.show() 
+    >>> # Check TEA results
+    >>> g2rt.teaA.show()
+    TEA: sysA
+    ...
+
+    >>> g2rt.teaB.show()
     TEA: sysB
     NPV  : -43,832 USD at 5.0% discount rate
-    >>> # There are also handy functions to allow you quickly see important results
-    >>> g2rt.print_summaries(g2rt.sysA) # doctest: +SKIP
+
+    >>> # Handy functions to quickly see important results
+    >>> g2rt.print_summaries(g2rt.sysA)  # doctest: +SKIP
 
     ---------- Summary for sysA ----------
 
     Total N recovery: 0.9 %.
-    
+
     Total P recovery: 79.2 %.
-    
+
     Total K recovery: 80.1 %.
-    
+
     Total H2O recovery: 60.0 %.
-    
+
     Total cost: 534.56 USD/cap/yr.
-    
+
     Net emission: 396.74 kg CO2-eq/cap/yr.
-    
+
     Net ecosystems damage: 4.56 points/cap/yr.
-    
+
     Net health damage: 32.73 points/cap/yr.
-    
+
     Net resources damage: 19.98 points/cap/yr.
+
     >>> # You can also save system reports
     >>> # g2rt.sysA.save_report('full_file_path.xlsx')
 
@@ -202,13 +222,13 @@ Uncertainty and sensitivity analyses are performed through :class:`Model` object
 
 .. code-block:: python
 
-    >>> # Run the default model for `sysA`
+    >>> # Run the default model for sysA
     >>> modelA = g2rt.models.create_model('A')
     >>> # The result will be automatically saved under the results folder
-    >>> g2rt.models.run_uncertainty(modelA, N=100) # doctest: +ELLIPSIS
+    >>> g2rt.models.run_uncertainty(modelA, N=100)  # doctest: +ELLIPSIS
     function `run_uncertainty`
     Total ...
-    
+
 Contextual analysis
 -------------------
 The ``location_specific.py`` module contains scripts to evaluate the system with contextual parameters that are specific to the deployed country.
@@ -216,10 +236,12 @@ The ``location_specific.py`` module contains scripts to evaluate the system with
 .. code-block:: python
 
     >>> # Run MC HRT across 77 countries
-    >>> g2rt.run_multiple_cities(system_IDs='A',N=10,note='test') # This will take about 10-60 minutes to run. The result will be automatically saved under the results folder. 
+    >>> g2rt.run_multiple_cities(system_IDs='A', N=10, note='test')
 
 References
 ----------
-.. [1] Wang et al., Advancing Economic and Environmental Sustainability of Household Sanitation: Mechanical Compression and Supercritical Water Oxidation Toilets as Examples. In Prep.
-.. [2] Yee et al., Volume reduction non-sewered single unit toilet system. https://patents.google.com/patent/WO2023288326A1/en?oq=WO2023288326A1
-.. [3] Yee et al., Water oxidation non-sewered single unit toilet system. https://patents.google.com/patent/WO2023288331A1/en?oq=WO2023288331A1
+.. [1] Wang et al., *The potential of thermomechanical and thermochemical processes to enable sustainable household sanitation*. In prep.
+.. [2] Yee et al., *Volume reduction non-sewered single unit toilet system*.
+       `WO2023288326A1 <https://patents.google.com/patent/WO2023288326A1/en?oq=WO2023288326A1>`_
+.. [3] Yee et al., *Water oxidation non-sewered single unit toilet system*.
+       `WO2023288331A1 <https://patents.google.com/patent/WO2023288331A1/en?oq=WO2023288331A1>`_
