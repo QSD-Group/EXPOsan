@@ -8,7 +8,7 @@ Systems included in this module are based on the work described in Wang et al. [
 
 Two system configurations are included in this module:
 
-- **Scenario A (sysA):** dry-based mechanical compression (MC) HRT
+- **Scenario A (sysA):** dry-based pasteurization mechanical dewatering (PMD) HRT
 - **Scenario B (sysB):** wet-based supercritical water oxidation (SCWO) HRT
 
 Loading systems
@@ -19,7 +19,7 @@ Loading systems
     >>> from exposan import g2rt
     >>> g2rt.load()
 
-    >>> # System flow diagram (in a notebook, this displays the diagram)
+    >>> # System flow diagram
     >>> g2rt.sysA.diagram()
 
 .. figure:: ./readme_figures/PMD.png
@@ -34,7 +34,7 @@ Loading systems
 
 .. code-block:: python
 
-    >>> # Quick look at the MC HRT system (sysA)
+    >>> # Quick look at the PMD HRT system (sysA)
     >>> g2rt.sysA.show()  # doctest: +ELLIPSIS
     System: sysA
     Highest convergence error among components in recycle
@@ -177,7 +177,7 @@ Loading systems
 
 Techno-economic analysis and life cycle assessment (TEA/LCA)
 ------------------------------------------------------------
-TEA and LCA are performed through :class:`TEA` and :class:`LCA` objects and named ``teaA`` and ``lcaA`` for MC HRT, and ``teaB`` and ``lcaB`` for SCWO HRT.
+TEA and LCA are performed through :class:`TEA` and :class:`LCA` objects and named ``teaA`` and ``lcaA`` for PMD HRT, and ``teaB`` and ``lcaB`` for SCWO HRT.
 
 .. code-block:: python
 
@@ -235,7 +235,7 @@ The ``location_specific.py`` module contains scripts to evaluate the system with
 
 .. code-block:: python
 
-    >>> # Run MC HRT across 77 countries
+    >>> # Run PMD HRT across 77 countries
     >>> g2rt.run_multiple_cities(system_IDs='A', N=10, note='test')
 
 References
