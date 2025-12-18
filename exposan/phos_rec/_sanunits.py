@@ -12,8 +12,8 @@ This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 """
+
 from qsdsan import SanUnit
-import qsdsan as qs
 
 class AcidogenicFermenter(SanUnit):
     _N_ins = 2
@@ -22,11 +22,13 @@ class AcidogenicFermenter(SanUnit):
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
                  sludge_food_ratio=1,
                  food_waste_moisture=0.2,
-                 org_to_gas=0.1,
-                 org_to_vfa=0.7,               
-                 gas_split = {'CO2': 0.85,
-                              'H2': 0.1,
-                              'CH4': 0.05},
+                 org_to_gas=0.05,
+                 org_to_vfa=0.65, 
+                 org_to_ethanol=0.02,
+                 org_to_residue=0.25,
+                 VFA_ratio={'Ac': 0.5, 'Pr': 0.24, 'Bu': 0.23, 'Va': 0.02, 'Lac': 0.01},
+                 metal_release=0.8,
+                 P_release=0.82,
                  HRT=3,
                  fe_reduction = 0.98): 
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
@@ -34,108 +36,103 @@ class AcidogenicFermenter(SanUnit):
         self.food_waste_moisture = food_waste_moisture
         self.org_to_gas = org_to_gas
         self.org_to_vfa = org_to_vfa
-        self.gas_split = gas_split
+        self.org_to_ethanol = org_to_ethanol
+        self.org_to_residue = org_to_residue
+        self.VFA_ratio = VFA_ratio
+        self.metal_release = metal_release
+        self.P_release = P_release
         self.HRT = HRT
         self.fe_reduction = fe_reduction
-        
-        
         
     def _run(self):
         
         fe_sludge, food_waste = self.ins
         gas, fermentate = self.outs
-        cmps = qs.get_components()
         
-        # TODO: sludge:food waste ratio
+        food_waste.imass['Org'] = fe_sludge.imass['Org']/self.sludge_food_ratio
+        food_waste.imass['H2O'] = food_waste.imass['Org']/(1-self.food_waste_moisture) * self.food_waste_moisture
         
-        food_waste.imass['Org']=fe_sludge.imass['Org']/self.sludge_food_ratio
-        food_waste.imass['H2O']=food_waste.imass['Org']/(1-self.food_waste_moisture) * self.food_waste_moisture
+        fermentate.mix_from((fe_sludge, food_waste))
         
-        org_total = fe_sludge.imass['Org']+food_waste.imass['Org']
+        org_total = fermentate.imass['Org']
         
-# =============================================================================
-#         Gas production
-# =============================================================================
+        # gas production
+        gas.imass['CO2'] = org_total*self.org_to_gas
         
-        # TODO: may need further check
-        C_mol = org_total * cmps['Org'].i_C / 12
-        gas_C_total = C_mol * self.org_to_gas
-        
-        gas.imol['CO2']=gas_C_total*self.gas_split['CO2']/(self.gas_split['CO2'] + self.gas_split['CH4'])
-        gas.imol['CH4']=gas_C_total*self.gas_split['CH4']/(self.gas_split['CO2'] + self.gas_split['CH4'])
-        gas.imol['H2']=gas.imol['CO2']/self.gas_split['CO2']*self.gas_split['H2']
-        
-# =============================================================================
-#         VFAs and inorganics in fermentate
-# =============================================================================
-        # TODO: use split to define the ratio of VFAS
-
+        # VFAs and inorganics in fermentate
         vfa_mass = org_total * self.org_to_vfa
-        fermentate.imass['Acetic_acid'] = vfa_mass * 0.6
-        fermentate.imass['Propionic_acid'] = vfa_mass * 0.26
-        fermentate.imass['Butyric_acid'] = vfa_mass * 0.1
-        fermentate.imass['Valeric_acid'] = vfa_mass * 0.02
-        fermentate.imass['Lactic_acid'] = vfa_mass * 0.1
-        fermentate.imass['Ethanol'] = vfa_mass * 0.1
-        fermentate.imass['Org'] = org_total * (1 - self.org_to_vfa - self.org_to_gas) - fermentate.imass['Ethanol']
         
-        for cmp in ('H2O', 'PO4', 'Fe3', 'Ca2', 'Mg2'):
-            fermentate.imass[cmp] = (fe_sludge.imass[cmp] + food_waste.imass[cmp])
+        fermentate.imass['Acetic_acid'] = vfa_mass * self.VFA_ratio['Ac']
+        fermentate.imass['Propionic_acid'] = vfa_mass * self.VFA_ratio['Pr']
+        fermentate.imass['Butyric_acid'] = vfa_mass * self.VFA_ratio['Bu']
+        fermentate.imass['Valeric_acid'] = vfa_mass * self.VFA_ratio['Va']
+        fermentate.imass['Lactic_acid'] = vfa_mass * self.VFA_ratio['Lac']
+        
+        fermentate.imass['Ethanol'] = org_total*self.org_to_ethanol
+        
+        fermentate.imass['Residue'] = org_total*self.org_to_residue
+        
+        if self.org_to_gas + self.org_to_vfa + self.org_to_ethanol + self.org_to_residue > 1:
+            raise Warning('org cannot be balanced')
+        
+        fermentate.imass['Org'] *= (1 - self.org_to_gas - self.org_to_vfa - self.org_to_ethanol - self.org_to_residue)
 
         fermentate.imass['Fe2'] = fermentate.imass['Fe3'] * self.fe_reduction
         fermentate.imass['Fe3'] -= fermentate.imass['Fe2']
         
+        metal_P_to_residual = 0
         
-        fermentate.imass['Org'] *= 0.65
-        fermentate.imass['PO4'] *= 0.85
-        fermentate.imass['Fe3'] *= 0.8
-        fermentate.imass['Fe2'] *= 0.95
-        fermentate.imass['Ca2'] *= 0.75
-        fermentate.imass['Mg2'] *= 0.75
-
-                
-        fermentate.imass['Residue'] = fe_sludge.F_mass + food_waste.F_mass - gas.F_mass - fermentate.F_mass
-    def _design(self):
-        fe_sludge, food_waste = self.ins
-        Q = fe_sludge.F_vol + food_waste.F_vol
+        # TODO: express 0.8 and 0.82 as duncstions of self.sludge_food_ratio
+        for metal in ['Fe2','Fe3','Ca2','Mg2']:
+            metal_P_to_residual += fermentate.imass[metal]*(1 - 0.8)
+            fermentate.imass[metal] *= 0.8
         
-        self.design_resluts['Flow rate (m3/d)'] = Q
-        self.design_results['HRT(d)']=self.HRT
-        self.design_resluts['Reactor volume(m3)'] = Q * self.HRT
+        metal_P_to_residual += fermentate.imass['PO4']*(1 - 0.82)
+        fermentate.imass['PO4'] *= 0.82
         
-        pass
+        fermentate.imass['Residue'] += metal_P_to_residual
+        
+#     def _design(self):
+#         fe_sludge, food_waste = self.ins
+#         Q = fe_sludge.F_vol + food_waste.F_vol
+        
+#         self.design_resluts['Flow rate (m3/d)'] = Q
+#         self.design_results['HRT(d)']=self.HRT
+#         self.design_resluts['Reactor volume(m3)'] = Q * self.HRT
+        
+#         pass
     
-    def _cost(self):
-        V = self.design_result['Reactor volume (m3)']
-        self.baseline_purchase_costs['Acidogenic fermenter'] = 3000 * V **0.6
+#     def _cost(self):
+#         V = self.design_result['Reactor volume (m3)']
+#         self.baseline_purchase_costs['Acidogenic fermenter'] = 3000 * V **0.6
         
-        pass
+#         pass
 
 
 
         
-class SelectivePrecipitation(SanUnit):
-    _N_ins = 3
-    _N_outs = 1
+# class SelectivePrecipitation(SanUnit):
+#     _N_ins = 3
+#     _N_outs = 1
     
     
-    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-                target_pH=2.0,
-                acid_dose=0.02,
-                fe2_oxidation=1,
-                P_recovery=0.85,
-                T=40):
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
-        self.target_pH = target_pH
-        self.acid_dose = acid_dose
-        self.fe2_oxidation = fe2_oxidation
-        self.P_recovery = P_recovery
-        self.T = T
+#     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
+#                 target_pH=2.0,
+#                 acid_dose=0.02,
+#                 fe2_oxidation=1,
+#                 P_recovery=0.85,
+#                 T=40):
+#         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+#         self.target_pH = target_pH
+#         self.acid_dose = acid_dose
+#         self.fe2_oxidation = fe2_oxidation
+#         self.P_recovery = P_recovery
+#         self.T = T
         
         
-    def _run(self):
-        supernatant, H2SO4, H2O2 = self.ins
-        Slurry = self.outs
+#     def _run(self):
+#         supernatant, H2SO4, H2O2 = self.ins
+#         Slurry = self.outs
         
         
     

@@ -222,7 +222,8 @@ def create_components(set_thermo=True):
     
     add_V_from_rho(Inert, 1500)  # assume 1500kg/m3
     Inert.copy_models_from(Chemical('CaCO3'),('Cn',)) #CaCO3?
-    
+    # TODO: check the mu value later (6000 is from the HTL system)
+    Inert.mu.add_model(6000)
     
     Residue = Component(
         ID='Residue',
@@ -236,6 +237,7 @@ def create_components(set_thermo=True):
     Residue.copy_models_from(Chemical('CaCO3'),('Cn',)) #CaCO3?
     # TODO: check the mu value later (6000 is from the HTL system)
     Residue.mu.add_model(6000)
+
 # =============================================================================
 # Gases emission dring the calcination, including input (air-O2+N2) and output, CO2 was defined before
 # =============================================================================
