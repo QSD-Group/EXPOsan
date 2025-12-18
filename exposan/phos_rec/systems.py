@@ -18,8 +18,8 @@ from exposan.phos_rec._components import create_components
 from exposan.phos_rec._sanunits import AcidogenicFermenter
 
 create_components()
-fe_sludge = qs.WasteStream('sludge', Fe3=250, Org=5000, PO4=100, Water=1000000,
-                           Ca2=150, Mg2=100, units='kg/d')
+fe_sludge = qs.WasteStream('sludge', Fe3=250, Org=5000, PO4=300, Water=1000000,
+                           Ca2=150, Mg2=100, Inert=1000, units='kg/d')
 # food_waste = qs.WasteStream('food_waste', Org=5000, Water=100, units='MGD')
 AF = AcidogenicFermenter(ID='AF', ins=(fe_sludge,'food_waste'), outs=('gas', 'fermentate'),
                          sludge_food_ratio=1)

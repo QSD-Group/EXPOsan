@@ -56,7 +56,7 @@ def create_components(set_thermo=True):
     H2 = Component(
         ID='H2',
         phase='g',
-        particle_size='Dissloved gas',
+        particle_size='Dissolved gas',
         degradability='Undegradable',
         organic=False
     )
@@ -64,7 +64,7 @@ def create_components(set_thermo=True):
     H2S = Component(
         ID='H2S',
         phase='g',
-        particle_size='Dissloved gas',
+        particle_size='Dissolved gas',
         degradability= 'Undegradable',
         organic=False
     )
@@ -72,7 +72,7 @@ def create_components(set_thermo=True):
     CH4 = Component(
         ID='CH4',
         phase='g',
-        particle_size='Dissloved gas',
+        particle_size='Dissolved gas',
         degradability='Undegradable',
         organic=False
     )
@@ -83,14 +83,13 @@ def create_components(set_thermo=True):
         
     H2O = Component(
         ID='Water',
-        phase='l',
         particle_size='Soluble',
         degradability='Undegradable',
         organic=False
     )
     
 # =============================================================================
-# Inorganic ions dissloved during the fermentation
+# Inorganic ions dissolved during the fermentation
 # =============================================================================
         
     Fe2 = Component(
@@ -213,6 +212,18 @@ def create_components(set_thermo=True):
 # sludge residue to landfill after fermentation
 # =============================================================================
         
+    Inert = Component(
+        ID='Inert',
+        phase='s',
+        particle_size='Particulate',
+        degradability='Undegradable',
+        organic=False
+    )
+    
+    add_V_from_rho(Inert, 1500)  # assume 1500kg/m3
+    Inert.copy_models_from(Chemical('CaCO3'),('Cn',)) #CaCO3?
+    
+    
     Residue = Component(
         ID='Residue',
         phase='s',
@@ -223,7 +234,8 @@ def create_components(set_thermo=True):
     
     add_V_from_rho(Residue, 1500)  # assume 1500kg/m3
     Residue.copy_models_from(Chemical('CaCO3'),('Cn',)) #CaCO3?
-    
+    # TODO: check the mu value later (6000 is from the HTL system)
+    Residue.mu.add_model(6000)
 # =============================================================================
 # Gases emission dring the calcination, including input (air-O2+N2) and output, CO2 was defined before
 # =============================================================================
@@ -231,7 +243,7 @@ def create_components(set_thermo=True):
     O2 = Component(
         ID='O2',
         phase='g',
-        particle_size='Dissloved gas',
+        particle_size='Dissolved gas',
         degradability='Undegradable',
         organic=False
     )
@@ -239,17 +251,9 @@ def create_components(set_thermo=True):
     SO2 = Component(
         ID='SO2',
         phase='g',
-        particle_size='Dissloved gas',
+        particle_size='Dissolved gas',
         degradability='Undegradable',
         organic=False        
-    )
-    
-    Gas_H2O = Component(
-        ID='Water',
-        phase='g',
-        particle_size='Dissloved gas',
-        degradability='Undegradable',
-        organic=False
     )
     
 # =============================================================================
@@ -332,8 +336,8 @@ def create_components(set_thermo=True):
                        CO2, H2, H2S, CH4,
                        H2O, 
                        Fe2, Fe3, PO4, Ca2, Mg2,
-                       Org, Ac, Pr, Bu, Va, Lac, Etoh, Residue,
-                       O2, SO2, Gas_H2O, 
+                       Org, Ac, Pr, Bu, Va, Lac, Etoh, Inert, Residue,
+                       O2, SO2, 
                        H2SO4, H2O2, H3PO4, NH4H2PO4, FeCl3, FeSO4_7H2O,
                        FePO4])
     cmps.compile()

@@ -23,7 +23,7 @@ class AcidogenicFermenter(SanUnit):
                  sludge_food_ratio=1,
                  food_waste_moisture=0.2,
                  org_to_gas=0.1,
-                 org_to_vfa=0.6,               
+                 org_to_vfa=0.7,               
                  gas_split = {'CO2': 0.85,
                               'H2': 0.1,
                               'CH4': 0.05},
@@ -46,7 +46,7 @@ class AcidogenicFermenter(SanUnit):
         gas, fermentate = self.outs
         cmps = qs.get_components()
         
-        # TODO: sludge:food waste ratio, plus cmps = qs.get_componments()?
+        # TODO: sludge:food waste ratio
         
         food_waste.imass['Org']=fe_sludge.imass['Org']/self.sludge_food_ratio
         food_waste.imass['H2O']=food_waste.imass['Org']/(1-self.food_waste_moisture) * self.food_waste_moisture
@@ -56,13 +56,14 @@ class AcidogenicFermenter(SanUnit):
 # =============================================================================
 #         Gas production
 # =============================================================================
-
-        C_mol = org_total * cmps['Org'].i_C / 12
-        gas_total = C_mol * self.org_to_gas
         
-        gas.imass['CO2']=gas_total*self.gas_split['CO2'] * 44 #the same to the upon code
-        gas.imass['H2']=gas_total*self.gas_split['H2']*2
-        gas.imass['CH4']=gas_total*self.gas_split['CH4']*16
+        # TODO: may need further check
+        C_mol = org_total * cmps['Org'].i_C / 12
+        gas_C_total = C_mol * self.org_to_gas
+        
+        gas.imol['CO2']=gas_C_total*self.gas_split['CO2']/(self.gas_split['CO2'] + self.gas_split['CH4'])
+        gas.imol['CH4']=gas_C_total*self.gas_split['CH4']/(self.gas_split['CO2'] + self.gas_split['CH4'])
+        gas.imol['H2']=gas.imol['CO2']/self.gas_split['CO2']*self.gas_split['H2']
         
 # =============================================================================
 #         VFAs and inorganics in fermentate
@@ -71,12 +72,12 @@ class AcidogenicFermenter(SanUnit):
 
         vfa_mass = org_total * self.org_to_vfa
         fermentate.imass['Acetic_acid'] = vfa_mass * 0.6
-        fermentate.imass['Propionic_acid'] = vfa_mass * 0.15
-        fermentate.imass['Butyric_acid'] = vfa_mass * 0.15
-        fermentate.imass['Valeric_acid'] = vfa_mass * 0.05
+        fermentate.imass['Propionic_acid'] = vfa_mass * 0.26
+        fermentate.imass['Butyric_acid'] = vfa_mass * 0.1
+        fermentate.imass['Valeric_acid'] = vfa_mass * 0.02
         fermentate.imass['Lactic_acid'] = vfa_mass * 0.1
         fermentate.imass['Ethanol'] = vfa_mass * 0.1
-        fermentate.imass['Org'] = org_total * (1 - self.org_to_vfa - self.org_to_gas)*0.65             # *0.65
+        fermentate.imass['Org'] = org_total * (1 - self.org_to_vfa - self.org_to_gas) - fermentate.imass['Ethanol']
         
         for cmp in ('H2O', 'PO4', 'Fe3', 'Ca2', 'Mg2'):
             fermentate.imass[cmp] = (fe_sludge.imass[cmp] + food_waste.imass[cmp])
@@ -85,7 +86,7 @@ class AcidogenicFermenter(SanUnit):
         fermentate.imass['Fe3'] -= fermentate.imass['Fe2']
         
         
-        
+        fermentate.imass['Org'] *= 0.65
         fermentate.imass['PO4'] *= 0.85
         fermentate.imass['Fe3'] *= 0.8
         fermentate.imass['Fe2'] *= 0.95
@@ -94,43 +95,53 @@ class AcidogenicFermenter(SanUnit):
 
                 
         fermentate.imass['Residue'] = fe_sludge.F_mass + food_waste.F_mass - gas.F_mass - fermentate.F_mass
+    def _design(self):
+        fe_sludge, food_waste = self.ins
+        Q = fe_sludge.F_vol + food_waste.F_vol
         
-# class SelectivePrecipitation(SanUnit):
-#     _N_ins = 3
-#     _N_outs = 2
+        self.design_resluts['Flow rate (m3/d)'] = Q
+        self.design_results['HRT(d)']=self.HRT
+        self.design_resluts['Reactor volume(m3)'] = Q * self.HRT
+        
+        pass
+    
+    def _cost(self):
+        V = self.design_result['Reactor volume (m3)']
+        self.baseline_purchase_costs['Acidogenic fermenter'] = 3000 * V **0.6
+        
+        pass
+
+
+
+        
+class SelectivePrecipitation(SanUnit):
+    _N_ins = 3
+    _N_outs = 1
     
     
-#     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-#                 target_pH=2.0,
-#                 acid_dose=0.02,
-#                 fe2_oxidation=1,
-#                 P_recovery=0.85,
-#                 T=40):
-#         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
-#         self.target_pH = target_pH
-#         self.acid_dose = acid_dose
-#         self.fe2_oxidation = fe2_oxidation
-#         self.P_recovery = P_recovery
-#         self.T = T
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
+                target_pH=2.0,
+                acid_dose=0.02,
+                fe2_oxidation=1,
+                P_recovery=0.85,
+                T=40):
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        self.target_pH = target_pH
+        self.acid_dose = acid_dose
+        self.fe2_oxidation = fe2_oxidation
+        self.P_recovery = P_recovery
+        self.T = T
+        
+        
+    def _run(self):
+        supernatant, H2SO4, H2O2 = self.ins
+        Slurry = self.outs
+        
         
     
     
     
-    # def _design(self):
-    #     fe_sludge, food_waste = self.ins
-    #     Q = fe_sludge.F_vol + food_waste.F_vol
-        
-    #     self.design_resluts['Flow rate (m3/d)'] = Q
-    #     self.design_results['HRT(d)']=self.HRT
-    #     self.design_resluts['Reactor volume(m3)'] = Q * self.HRT
-        
-    #     pass
-    
-    # def _cost(self):
-    #     V = self.design_result['Reactor volume (m3)']
-    #     self.baseline_purchase_costs['Acidogenic fermenter'] = 3000 * V **0.6
-        
-    #     pass
+   
     
     
         
