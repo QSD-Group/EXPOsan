@@ -97,7 +97,7 @@ def create_components(set_thermo=True):
         ID='Fe2',
         search_ID='Water',
         phase='l',
-        particle_size='Solbule',
+        particle_size='Soluble',
         degradability='Undegradable',
         organic=False
     )
@@ -106,7 +106,7 @@ def create_components(set_thermo=True):
         ID='Fe3',
         search_ID='Water',
         phase='l',
-        particle_size='Solbule',
+        particle_size='Soluble',
         degradability='Undegradable',
         organic=False
     )
@@ -129,8 +129,8 @@ def create_components(set_thermo=True):
         organic=False
     )
     
-    Mg1 = Component(
-        ID='Mg1',
+    Mg2 = Component(
+        ID='Mg2',
         search_ID='Water',
         phase='l',
         particle_size='Soluble',
@@ -331,7 +331,7 @@ def create_components(set_thermo=True):
     cmps = Components([Fe_coagulant, Food_waste, 
                        CO2, H2, H2S, CH4,
                        H2O, 
-                       Fe2, Fe3, PO4, Ca2, Mg1,
+                       Fe2, Fe3, PO4, Ca2, Mg2,
                        Org, Ac, Pr, Bu, Va, Lac, Etoh, Residue,
                        O2, SO2, Gas_H2O, 
                        H2SO4, H2O2, H3PO4, NH4H2PO4, FeCl3, FeSO4_7H2O,
