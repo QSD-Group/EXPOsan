@@ -20,7 +20,7 @@ class AcidogenicFermenter(SanUnit):
     _N_outs = 2
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-                 sludge_food_ratio=1,
+                 food_sludge_ratio=1,
                  food_waste_moisture=0.2,
                  org_to_gas=0.05,
                  org_to_vfa=0.65, 
@@ -32,7 +32,7 @@ class AcidogenicFermenter(SanUnit):
                  HRT=3,
                  fe_reduction = 0.98): 
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
-        self.sludge_food_ratio = sludge_food_ratio
+        self.food_sludge_ratio = food_sludge_ratio
         self.food_waste_moisture = food_waste_moisture
         self.org_to_gas = org_to_gas
         self.org_to_vfa = org_to_vfa
@@ -49,7 +49,10 @@ class AcidogenicFermenter(SanUnit):
         fe_sludge, food_waste = self.ins
         gas, fermentate = self.outs
         
-        food_waste.imass['Org'] = fe_sludge.imass['Org']/self.sludge_food_ratio
+        if self.food_sludge_ratio not in [0, 1/3, 2/3, 1, 4/3]:
+            raise ValueError('food_sludge_ratio must be one of the follow: 0, 1/3, 2/3, 1, 4/3.')
+        
+        food_waste.imass['Org'] = fe_sludge.imass['Org']*self.food_sludge_ratio
         food_waste.imass['H2O'] = food_waste.imass['Org']/(1-self.food_waste_moisture) * self.food_waste_moisture
         
         fermentate.mix_from((fe_sludge, food_waste))
@@ -80,15 +83,22 @@ class AcidogenicFermenter(SanUnit):
         fermentate.imass['Fe2'] = fermentate.imass['Fe3'] * self.fe_reduction
         fermentate.imass['Fe3'] -= fermentate.imass['Fe2']
         
+        metal_P_release = {
+            0: {'metal': 2.124263, 'P': 11.0693},
+            1/3: {'metal': 21.13664, 'P': 44.31886},
+            2/3: {'metal': 60.67351, 'P': 71.22673},
+            1: {'metal': 83.07559, 'P': 82.30645},
+            4/3: {'metal': 85, 'P': 83}
+        }
+        
         metal_P_to_residual = 0
         
-        # TODO: express 0.8 and 0.82 as duncstions of self.sludge_food_ratio
         for metal in ['Fe2','Fe3','Ca2','Mg2']:
-            metal_P_to_residual += fermentate.imass[metal]*(1 - 0.8)
-            fermentate.imass[metal] *= 0.8
+            metal_P_to_residual += fermentate.imass[metal]*(1 - metal_P_release[self.food_sludge_ratio]['metal']/100)
+            fermentate.imass[metal] *= metal_P_release[self.food_sludge_ratio]['metal']/100
         
-        metal_P_to_residual += fermentate.imass['PO4']*(1 - 0.82)
-        fermentate.imass['PO4'] *= 0.82
+        metal_P_to_residual += fermentate.imass['PO4']*(1 - metal_P_release[self.food_sludge_ratio]['P']/100)
+        fermentate.imass['PO4'] *= metal_P_release[self.food_sludge_ratio]['P']/100
         
         fermentate.imass['Residue'] += metal_P_to_residual
         
