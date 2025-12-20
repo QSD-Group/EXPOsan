@@ -324,7 +324,7 @@ def create_components(set_thermo=True):
 # =============================================================================
 # output before/after the purification
 # =============================================================================
-        
+    
     FePO4 = Component(
         ID='FePO4',
         search_ID='10045-86-0',    
@@ -334,6 +334,20 @@ def create_components(set_thermo=True):
         organic=False
     )
     
+    FePO4_2H2O = Component(
+        ID='FePO4_2H2O',
+        formula='FePO4H4O2',    
+        phase='s',
+        particle_size='Particulate',
+        degradability='Undegradable',
+        organic=False
+    )
+    
+    add_V_from_rho(FePO4_2H2O, 2300)  # assume 2340/m3
+    FePO4_2H2O.copy_models_from(Chemical('FePO4'),('Cn',))
+    # TODO: check the mu value later (6000 is from the HTL system)
+    FePO4_2H2O.mu.add_method(1800)
+    
     cmps = Components([Fe_coagulant, Food_waste, 
                        CO2, H2, H2S, CH4,
                        H2O, 
@@ -341,7 +355,7 @@ def create_components(set_thermo=True):
                        Org, Ac, Pr, Bu, Va, Lac, Etoh, Inert, Residue,
                        O2, SO2, 
                        H2SO4, H2O2, H3PO4, NH4H2PO4, FeCl3, FeSO4_7H2O,
-                       FePO4])
+                       FePO4, FePO4_2H2O])
     cmps.compile()
     cmps.set_alias('Water','H2O')
     if set_thermo: qs_set_thermo(cmps)

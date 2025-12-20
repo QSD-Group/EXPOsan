@@ -15,7 +15,7 @@ for license details.
 import qsdsan as qs
 import qsdsan.sanunits as su
 from exposan.phos_rec._components import create_components
-from exposan.phos_rec._sanunits import AcidogenicFermenter
+from exposan.phos_rec._sanunits import AcidogenicFermenter, SelectivePrecipitation
 
 create_components()
 
@@ -25,10 +25,16 @@ fe_sludge = qs.WasteStream('sludge', Fe3=180, Org=5000, PO4=300, Water=1000000,
 AF = AcidogenicFermenter(ID='AF', ins=(fe_sludge,'food_waste'), outs=('gas', 'fermentate'),
                          food_sludge_ratio=1)
 
-FC = su.SludgeCentrifuge(ID='FC', ins=AF-1, outs=('supernatant', 'residue'), 
+FC = su.SludgeCentrifuge(ID='FC', ins=AF-1, outs=('fermentation_supernatant', 'residue'), 
                          sludge_moisture=0.85, solids=('Inert','Residue'))
 
-sys = qs.System.from_units('phs_recovery',units=[AF, FC])
+SP = SelectivePrecipitation(ID='SP', ins=(FC-0, 'acid', 'oxidant'), outs='slurry',
+                            P_recovery=0.82)
+
+PC = su.SludgeCentrifuge(ID='PC', ins=SP-0, outs=('precipitation_supernatant', 'precipitate'), 
+                         sludge_moisture=0.9, solids=('FePO4_2H2O',))
+
+sys = qs.System.from_units('phos_rec',units=[AF, FC, SP, PC])
 sys.simulate()
 sys.diagram()
 
