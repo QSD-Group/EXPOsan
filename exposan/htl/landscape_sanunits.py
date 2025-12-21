@@ -146,7 +146,7 @@ class WRRF(SanUnit):
     wage_adjustment : float
         A coefficient to adjust labor cost.
     PLI : float
-        price level index as an approximation to adjust CAPEX, [-].
+        Price level index as an approximation to adjust CAPEX, [-].
     
     References
     ----------
@@ -254,16 +254,16 @@ class Thickening(SanUnit):
     outs : iterable
         thickened_sludge, reject.
     target_moisture : float
-        targeted moisture content, [-].
+        Targeted moisture content, [-].
     polymer_addition : float
-        polymer used for conditioning sludge, [kg polymer/dry tonne sludge].
+        Polymer used for conditioning sludge, [kg polymer/dry tonne sludge].
     unit_electricity : float
-        electricity for thickening (probably not including pumps), [kWh/dry tonne].
-        typically, 33 for centrifugal thickening, 4.9 for others.
+        Electricity for thickening (probably not including pumps), [kWh/dry tonne].
+        Typically, 33 for centrifugal thickening, 4.9 for others.
     max_capacity : float
-        maximum hydraulic loading per belt thickener, [m3/h].
+        Maximum hydraulic loading per belt thickener, [m3/h].
     PLI : float
-        price level index as an approximation to adjust CAPEX, [-].
+        Price level index as an approximation to adjust CAPEX, [-].
     '''
     _N_ins = 2
     _N_outs = 2
@@ -354,24 +354,24 @@ class AerobicDigestion(SanUnit):
         O2 requirement for aerobic digestion, [kg O2/kg VS destroyed].
         2.3 kg O2/kg VS destroyed, [1].
     VS_reduction : float
-        volatile solids reduction after aerobic digestion, [-].
+        Volatile solids reduction after aerobic digestion, [-].
     HRT : float
-        hydraulic retention time of aerbic digestion, [day].
+        Hydraulic retention time of aerbic digestion, [day].
         14 days, [2].
     SRT : float
-        solids retention time of aerobic digestion, [day].
+        Solids retention time of aerobic digestion, [day].
     unit_electricity : float
-        electricity for aerobic digestion, [kW/m3 reactor volume].
+        Electricity for aerobic digestion, [kW/m3 reactor volume].
     depth : float
-        side depth of the digester, [m].
+        Side depth of the digester, [m].
     wall_concrete_unit_cost : float
-        unit cost of the wall concrete, [$/ft3].
+        Unit cost of the wall concrete, [$/ft3].
     slab_concrete_unit_cost : float
-        unit cost of the slab concrete, [$/ft3].
+        Unit cost of the slab concrete, [$/ft3].
     excavation_unit_cost : float
-        unit cost of the excavation activity, [$/ft3].
+        Unit cost of the excavation activity, [$/ft3].
     PLI : float
-        price level index as an approximation to adjust CAPEX, [-].
+        Price level index as an approximation to adjust CAPEX, [-].
     
     References
     ----------
@@ -652,53 +652,53 @@ class AnaerobicDigestion(SanUnit):
     outs : iterable
         digested_sludge, natural_gas, fugitive_methane.
     VS_reduction : float
-        volatile solids reduction after aerobic digestion, [-].
+        Volatile solids reduction after aerobic digestion, [-].
     biogas_yield : float
-        biogas yield from destroyed VS, [m3 biogas/kg destroyed VS].
+        Biogas yield from destroyed VS, [m3 biogas/kg destroyed VS].
     methane_biogas : float
-        methane content in biogas, [-].
+        Methane content in biogas, [-].
     biogas_CHP_ratio : float
-        ratio of biogas sent to CHP, [-].
+        Ratio of biogas sent to CHP, [-].
     biogas_RNG_ratio : float
-        ratio of biogas sent to RNG pipelines, [-].
+        Ratio of biogas sent to RNG pipelines, [-].
     biogas_flare_ratio : float
-        ratio of biogas flared, [-].
+        Ratio of biogas flared, [-].
     flare_fugitive_ratio : float
-        ratio of fugitive biogas during flaring, [-].
-        typically, 0.01 for default, 0 for enclosed, 0.05 for candlestick.
+        Ratio of fugitive biogas during flaring, [-].
+        Typically, 0.01 for default, 0 for enclosed, 0.05 for candlestick.
     RNG_parasitic : float
-        parasitic load from natural gas conditioning and injection, [-].
+        Parasitic load from natural gas conditioning and injection, [-].
     net_capacity_factor : float
-        actual electricity generated to the theoretical maximum, [-].
+        Actual electricity generated to the theoretical maximum, [-].
     HRT : float
-        hydraulic retention time of aerbic digestion, [day].
+        Hydraulic retention time of aerbic digestion, [day].
     SRT : float
-        solids retention time of aerobic digestion, [day].
-        typically, SRT = HRT in anaerobic digestion.
+        Solids retention time of aerobic digestion, [day].
+        Typically, SRT = HRT in anaerobic digestion.
     unit_electricity : float
-        electricity for anaerobic digestion, [kW/m3 reactor volume].
+        Electricity for anaerobic digestion, [kW/m3 reactor volume].
     depth : float
-        side depth of the digester, [m].
+        Side depth of the digester, [m].
     T : float
-        temperature of anaerobic digestion, [°C].
+        Temperature of anaerobic digestion, [°C].
     heat_transfer_coefficient : dict
-        hat transfer coefficients for heat loss calculation, [W/m2/°C].
-        keys should contain 'wall', 'floor', and 'ceiling'.
+        Heat transfer coefficients for heat loss calculation, [W/m2/°C].
+        Keys should contain 'wall', 'floor', and 'ceiling'.
     wall_concrete_unit_cost : float
-        unit cost of the wall concrete, [$/ft3].
+        Unit cost of the wall concrete, [$/ft3].
     slab_concrete_unit_cost : float
-        unit cost of the slab concrete, [$/ft3].
+        Unit cost of the slab concrete, [$/ft3].
     excavation_unit_cost : float
-        unit cost of the excavation activity, [$/ft3].
+        Unit cost of the excavation activity, [$/ft3].
     vertical_mixer_unit_power : float
-        the power of one verticle mixer, [kW/unit].
+        Power of one verticle mixer, [kW/unit].
     vertical_mixer_unit_price : float
-        the price of one verticle mixer, [$/unit].
+        Price of one verticle mixer, [$/unit].
     gas_collection_cost_factor : float
-        capital cost ratio of the gas collection system and the tank
-        excluding execavation, [-].
+        Capital cost ratio of the gas collection system and the tank excluding
+        execavation, [-].
     PLI : float
-        price level index as an approximation to adjust CAPEX, [-].
+        Price level index as an approximation to adjust CAPEX, [-].
     '''
     _N_ins = 1
     _N_outs = 4
@@ -1009,18 +1009,18 @@ class Dewatering(SanUnit):
     outs : iterable
         dewatered_solids, reject, methane.
     target_moisture : float
-        targeted moisture content, [-].
+        Targeted moisture content, [-].
     polymer_addition : float
-        polymer used for conditioning sludge, [kg polymer/dry tonne sludge].
+        Polymer used for conditioning sludge, [kg polymer/dry tonne sludge].
     methane_concentration : float
-        methane remains in anaerobically digested biosolids, [mg CH4/L].
+        Methane remains in anaerobically digested biosolids, [mg CH4/L].
     mathane_loss : float
-        methane loss ratio during dewater, [-].
+        Methane loss ratio during dewater, [-].
     unit_electricity : float
-        electricity for dewatering, [kWh/m3].
-        from BioSTEAM, 1.40.
+        Electricity for dewatering, [kWh/m3].
+        From BioSTEAM: 1.40 kWh/m3.
     PLI : float
-        price level index as an approximation to adjust CAPEX, [-].
+        Price level index as an approximation to adjust CAPEX, [-].
     '''
     _N_ins = 2
     _N_outs = 3
@@ -1140,12 +1140,12 @@ class AlkalineStabilization(SanUnit):
     outs : iterable
         stabilized_solids.
     lime_dose : float
-        the dose of lime added to sludge, [tonne lime/dry tonne sludge].
-        typically, 0.3 for class A biosolids, 0.2 for class B biosolids.
+        Dose of lime added to sludge, [tonne lime/dry tonne sludge].
+        Typically, 0.3 for class A biosolids, 0.2 for class B biosolids.
     unit_electricity : float
-        electricity for lime stabilization, [kWh/wet tonne sludge].
-        typically, 3.7 for class A biosolids, 4.9 for class B biosolids.
-        B > A though, just use the larger value
+        Electricity for lime stabilization, [kWh/wet tonne sludge].
+        Typically, 3.7 for class A biosolids, 4.9 for class B biosolids.
+        B > A though, just use the larger value.
     
     References
     ----------
@@ -1221,55 +1221,55 @@ class Composting(SanUnit):
     outs : iterable
         compost_cost, fugitive_methane, fugitive_nitrous_oxide, sequestered_carbon_dioxide.
     lipid_2_C : float
-        lipid to C ratio, [-].
+        Lipid to C ratio, [-].
     protein_2_C : float
-        protein to C ratio, [-].
+        Protein to C ratio, [-].
     carbo_2_C : float
-        carbohydrate to C ratio, [-].
+        Carbohydrate to C ratio, [-].
     protein_2_N, float
         N to protein ratio, [-].
     N_2_P, float
         P to N ratio, [-].
     bulking_agent_solids : float
-        volumetric ratio of the bulking agent (sawdust) to solids, [-].
+        Volumetric ratio of the bulking agent (sawdust) to solids, [-].
     bulking_agent_density : float
-        density of the bulking agent (sawdust), [tonne/m3].
+        Density of the bulking agent (sawdust), [tonne/m3].
     bulking_agent_solids_ratio : float
-        dry matter ratio of the bulking agent (sawdust), [-].
+        Dry matter ratio of the bulking agent (sawdust), [-].
     bulking_agent_OC_ratio : float
-        organic carbon ratio of the bulking agent (sawdust) based on dry weight, [-].
+        Organic carbon ratio of the bulking agent (sawdust) based on dry weight, [-].
     bulking_agent_nitrogen_ratio : float
-        nitrogen ratio of the bulking agent (sawdust) based on dry weight, [-].
+        Nitrogen ratio of the bulking agent (sawdust) based on dry weight, [-].
     bulking_agent_grinding_onsite : bool
-        whether the bulking agent (sawdust) grinded onsite, [True, False].
+        Whether the bulking agent (sawdust) grinded onsite, [True, False].
     unit_diesel_grinding : float
-        diesel for grinding, [L diesel/wet tonne].
+        Diesel for grinding, [L diesel/wet tonne].
     unit_diesel_other_composting : float
-        diesel for setting up and breaking down piles, [L diesel/wet tonne].
-        typically, 5 for windrow, 2.5 for aerated static pile (ASP), 2.5 for in vessel.
+        Diesel for setting up and breaking down piles, [L diesel/wet tonne].
+        Typically, 5 for windrow, 2.5 for aerated static pile (ASP), 2.5 for in vessel.
     compost_moisture_content : float
-        the moisture content of produced composts, [-].
+        Moisture content of produced composts, [-].
     load_size : float
-        size of loads per truck, [m3/load].
+        Size of loads per truck, [m3/load].
     load_frequency : float
-        load frequency, [load/h].
+        Load frequency, [load/h].
     tractor_fuel : float
-        tractor fuel, [L diesel/h].
+        Tractor fuel, [L diesel/h].
     methane_fugitive_ratio : float
         CH4 to C ratio of wastewater residual solids, [-].
-        typically, 0.0001 for well aerated conditions, 0.017 for inadequately aerated conditions.
+        Typically, 0.0001 for well aerated conditions, 0.017 for inadequately aerated conditions.
     feedstock_digested : bool
-        whether the feedstock is digested, [True, False].
+        Whether the feedstock is digested, [True, False].
     unit_carbon_sequestration : ratio
-        carbon sequestration potential, [tonne CO2 eq/dry tonne solids].
-        typically, 0.15 for low-end, 0.4475 for mid-range, 0.745 for high-end.
+        Carbon sequestration potential, [tonne CO2 eq/dry tonne solids].
+        Typically, 0.15 for low-end, 0.4475 for mid-range, 0.745 for high-end.
     unit_electricity : float
-        electricity for composting, [kWh/dry tonne solids].
-        typically, 0 for windrow, 180 for ASP, 291 for in vessel.
+        Electricity for composting, [kWh/dry tonne solids].
+        Typically, 0 for windrow, 180 for ASP, 291 for in vessel.
     solids_distance : float
-        distance between WRRFs and land application sites, [km].
+        Distance between WRRFs and land application sites, [km].
     PLI : float
-        price level index as an approximation to adjust CAPEX, [-].
+        Price level index as an approximation to adjust CAPEX, [-].
     
     References
     ----------
@@ -1436,15 +1436,15 @@ class HeatDrying(SanUnit):
     outs : iterable
         dried_solids, vapor.
     target_moisture : float
-        targeted moisture content, [-].
+        Targeted moisture content, [-].
     T_out : float
-        outlet solids temperature, [K].
+        Outlet solids temperature, [K].
     unit_heat : float
-        energy for removing unit water from solids, [GJ/tonne water].
+        Energy for removing unit water from solids, [GJ/tonne water].
     unit_electricity : float
-        electricity for heat drying, [kWh/dry tonne solids].
+        Electricity for heat drying, [kWh/dry tonne solids].
     natural_gas_HHV : float
-        higher heating value of natural gas, [MJ/m3].
+        Higher heating value of natural gas, [MJ/m3].
     
     References
     ----------
@@ -1528,46 +1528,46 @@ class Landfilling(SanUnit):
     outs : iterable
         landfilled_solids, fugitive_methane, fugitive_nitrous_oxide, sequestered_carbon_dioxide.
     lipid_2_C : float
-        lipid to C ratio, [-].
+        Lipid to C ratio, [-].
     protein_2_C : float
-        protein to C ratio, [-].
+        Protein to C ratio, [-].
     carbo_2_C : float
-        carbohydrate to C ratio, [-].
+        Carbohydrate to C ratio, [-].
     protein_2_N, float
         N to protein ratio, [-].
     methane_landfilling_gas : float
-        methane content in landfilling gas, [-].
+        Methane content in landfilling gas, [-].
     MCF : float
-        methane correction factor, [-].
+        Methane correction factor, [-].
     OC_decomposition_ratio : float
-        organic carbon decomposition ratio, [-].
-        typically, 0.5 for completely digested biosolids,
+        Organic carbon decomposition ratio, [-].
+        Typically, 0.5 for completely digested biosolids,
                    0.65 for partially digested biosolids,
                    0.8 for undigested sludge.
     k_decay : float
         OC decay rate constant, [year-1].
-        typically, 0.06 for cool & dry environment,
+        Typically, 0.06 for cool & dry environment,
                    0.185 for cool & wet environment,
                    0.085 for warm & dry environment,
                    0.4 for warm & wet environment.
-        use the average (0.18) if no environment information is considered.
+        Use the average (0.18) if no environment information is considered.
     flare_fugitive_ratio : float
-        ratio of fugitive biogas during flaring, [-].
-        typically, 0.01 for default, 0 for enclosed, 0.05 for candlestick.
+        Ratio of fugitive biogas during flaring, [-].
+        Typically, 0.01 for default, 0 for enclosed, 0.05 for candlestick.
     model_correction_factor : float
-        model correction factor for methane emission, [-].
+        Model correction factor for methane emission, [-].
     C_N_cutoff : float
-        minimum C to N ratio to produce fugitive nitrous oxide, [-].
+        Minimum C to N ratio to produce fugitive nitrous oxide, [-].
     N2O_N_landfilling : float
         N2O as N to the total N ratio in solids during landfilling, [-].
     methane_electricity : float
-        ratio of captured methane used to generate electricity, [-].
+        Ratio of captured methane used to generate electricity, [-].
     BTU_to_kWh_with_efficiency : float
-        convert BTU to kWh but considering loss, [kWh/BTU].
+        Convert BTU to kWh but considering loss, [kWh/BTU].
     net_capacity_factor : float
-        actual electricity generated to the theoretical maximum, [-].
+        Actual electricity generated to the theoretical maximum, [-].
     solids_distance : float
-        distance between WRRFs and landfills, [km].
+        Distance between WRRFs and landfills, [km].
     '''
     _N_ins = 1
     _N_outs = 4
@@ -1727,55 +1727,55 @@ class LandApplication(SanUnit):
     outs : iterable
         biosolids_cost, fugitive_methane, fugitive_nitrous_oxide, carbon_dioxide.
     lipid_2_C : float
-        lipid to C ratio, [-].
+        Lipid to C ratio, [-].
     protein_2_C : float
-        protein to C ratio, [-].
+        Protein to C ratio, [-].
     carbo_2_C : float
-        carbohydrate to C ratio, [-].
+        Carbohydrate to C ratio, [-].
     protein_2_N, float
         N to protein ratio, [-].
     N_2_P, float
         P to N ratio, [-].
     load_size : float
-        size of loads per truck, [m3/load].
+        Size of loads per truck, [m3/load].
     load_frequency : float
-        load frequency, [load/h].
+        Load frequency, [load/h].
     tractor_fuel : float
-        tractor fuel, [L diesel/h].
+        Tractor fuel, [L diesel/h].
     min_solids_content_no_fugitive : float
-        the solids ratio above which no fugitive emission druing storage, [-].
+        Solids ratio above which no fugitive emission druing storage, [-].
     storage_time : float
-        biosolids storage time, [day].
+        Biosolids storage time, [day].
     unit_fugitive_methane_strogae : float
-        fugitive methane during storage before land application, [kg CH4/m3/day]
+        Fugitive methane during storage before land application, [kg CH4/m3/day]
     C_N_cutoff : float
-        minimum C to N ratio to produce fugitive nitrous oxide, [-].
+        Minimum C to N ratio to produce fugitive nitrous oxide, [-].
     fine_textured_ratio : float
-        ratio of soils with fine textures, [-].
+        Ratio of soils with fine textures, [-].
     nitrous_oxide_N_TN_ratio : float
-        ratio of N emitted as N2O-N, [-].
+        Ratio of N emitted as N2O-N, [-].
     min_solids_content_nitrous_oxide_reduction : float
-        minimum solids content for N2O reduction, [-].
+        Minimum solids content for N2O reduction, [-].
     nitrous_oxide_reduction_ratio : float
-        fugitive nitrous oxide reduction ratio during land application when
+        Fugitive nitrous oxide reduction ratio during land application when
         biosolids solids content higher than min_solids_content_nitrous_oxide_reduction.
     nitrous_oxide_reduction_slope : float
-        slope of the function calculating the nitrous oxide reduction when
+        Slope of the function calculating the nitrous oxide reduction when
         biosolids solids content is higher than min_solids_content_no_fugitive
         but less than min_solids_content_nitrous_oxide_reduction, [-].
     nitrous_oxide_reduction_intercept : float
-        intercept of the function calculating the nitrous oxide reduction when
+        Intercept of the function calculating the nitrous oxide reduction when
         biosolids solids content is higher than min_solids_content_no_fugitive
         but less than min_solids_content_nitrous_oxide_reduction, [-].
     unit_fugitive_nitrous_oxide_strogae : float
-        fugitive nitrous oxide during storage before land application, [kg N2O/m3/day]
+        Fugitive nitrous oxide during storage before land application, [kg N2O/m3/day]
     climate : str
-        climate of the land application site, ['humid','arid']
+        Climate of the land application site, ['humid','arid']
     unit_carbon_sequestration : float
-        carbon sequestration potential, [tonne CO2 eq/dry tonne solids].
-        typically, 0.15 for low-end, 0.4475 for mid-range, 0.745 for high-end.
+        Carbon sequestration potential, [tonne CO2 eq/dry tonne solids].
+        Typically, 0.15 for low-end, 0.4475 for mid-range, 0.745 for high-end.
     solids_distance : float
-        distance between WRRFs and land application sites, [km].
+        Distance between WRRFs and land application sites, [km].
     '''
     _N_ins = 2
     _N_outs = 4
@@ -1929,14 +1929,14 @@ class Incineration(SanUnit):
     outs : iterable
         ash, vapor, fugitive_methane, fugitive_nitrous_oxide.
     incineration_temperature : float
-        the temperature in the incinerator, [°C].
+        Temperature in the incinerator, [°C].
     ash_moisture_content : float
-        moisture content of ash, [-].
+        Moisture content of ash, [-].
     heat_water_removal : float
-        energy for removing unit water from solids, [GJ/tonne water].
+        Energy for removing unit water from solids, [GJ/tonne water].
     fugitive_methane_incineration : float
-        fugitive methane during incineration, [tonne CH4/dry tonne solids].
-        note this value assumes 20% solids (instead of 80% which is more common
+        Fugitive methane during incineration, [tonne CH4/dry tonne solids].
+        Note this value assumes 20% solids (instead of 80% which is more common
         after heat drying), but this is based on the drt weight and therefore,
         can be used as an approximation.
     protein_2_N, float
@@ -1944,35 +1944,35 @@ class Incineration(SanUnit):
     N_2_P, float
         P to N ratio, [-].
     suzuki_constant_1 : float
-        for nitrous oxide calculation, [-].
+        For nitrous oxide calculation, [-].
     suzuki_constant_2 : float
-        for nitrous oxide calculation, [-].
+        For nitrous oxide calculation, [-].
     suzuki_lowest_temperature : float
-        the lowest temperature to apply Suzuki equation, [°C].
+        Lowest temperature to apply Suzuki equation, [°C].
     SNCR : bool
-        whether the urea-based selective noncatalytic reduction emissions system is used, [True, False]
+        Whether the urea-based selective noncatalytic reduction emissions system is used, [True, False]
     N2O_adjustment_factor_urea : float
         N2O adjustment factor due to the use of the urea catalyst, [-].
     heat_solids_incineration : float
-        energy from solids incineration, [MJ/dry tonne solids].
-        typically, 12000 for digested soldis, 23000 for undigested solids.
+        Energy from solids incineration, [MJ/dry tonne solids].
+        Typically, 12000 for digested soldis, 23000 for undigested solids.
     additional_fuel_ratio: float
-        additional fuel ratio used in the incinerator, [-].
-        typically, 0 for FBI, 0.2 for MHI.
+        Additional fuel ratio used in the incinerator, [-].
+        Typically, 0 for FBI, 0.2 for MHI.
     heat_recovery_ratio : float
-        ratio of heat (potentially) recovered from solids incineration, [-].
+        Ratio of heat (potentially) recovered from solids incineration, [-].
     heat_recovery_efficiency : float
-        efficiency of recovering heat from solids incineration, [-].
+        Efficiency of recovering heat from solids incineration, [-].
     electricity_recovery_ratio : float
-        ratio of electricity (potentially) recovered from solids incineration, [-].
-        typically, 0.
+        Ratio of electricity (potentially) recovered from solids incineration, [-].
+        Typically, 0.
     BTU_to_kWh_with_efficiency : float
-        convert BTU to kWh but considering loss, [kWh/BTU].
+        Convert BTU to kWh but considering loss, [kWh/BTU].
     net_capacity_factor : float
-        actual electricity generated to the theoretical maximum, [-].
+        Actual electricity generated to the theoretical maximum, [-].
     unit_electricity : float
-        electricity for incineration, [kWh/dry tonne solids].
-        typically, 200 for FBI, 285 for MHI.
+        Electricity for incineration, [kWh/dry tonne solids].
+        Typically, 200 for FBI, 285 for MHI.
     
     References
     ----------
@@ -2160,17 +2160,17 @@ class HydrothermalLiquefaction(SanUnit):
     outs : iterable
         biocrude, HTLaqueous, hydrochar, offgas.
     lipid_2_C : float
-        lipid to C ratio, [-].
+        Lipid to C ratio, [-].
     protein_2_C : float
-        protein to C ratio, [-].
+        Protein to C ratio, [-].
     carbo_2_C : float
-        carbohydrate to C ratio, [-].
+        Carbohydrate to C ratio, [-].
     lipid_2_H : float
-        lipid to H ratio, [-].
+        Lipid to H ratio, [-].
     protein_2_H : float
-        protein to H ratio, [-].
+        Protein to H ratio, [-].
     carbo_2_H : float
-        carbohydrate to H ratio, [-].
+        Carbohydrate to H ratio, [-].
     protein_2_N : float
         N to protein ratio, [-].
     N_2_P : float
@@ -2178,31 +2178,31 @@ class HydrothermalLiquefaction(SanUnit):
     eff_P : float
         HTL effluent pressure, [Pa].
     crude_oil_density : float
-        density of crude oil, [kg/m3].
+        Density of crude oil, [kg/m3].
     crude_oil_HHV : float
         HHV of crude oil, [MJ/kg].
     biocrude_density : float
-        density of biocrude, [kg/m3].
+        Density of biocrude, [kg/m3].
     biocrude_distance : float
-        distance between WRRFs and oil refineries, [km].
+        Distance between WRRFs and oil refineries, [km].
     FOAK : bool
-        whether the facility is first-of-a-king, [True, False].
+        Whether the facility is first-of-a-king, [True, False].
     pctnew : float
-        percentage of capital cost of commercially undemonstrated equipment, [%].
+        Percentage of capital cost of commercially undemonstrated equipment, [%].
     impurities : int (float)
-        impurities buildup and corrosion issues, ranging from 0 to 5, [-].
+        Impurities buildup and corrosion issues, ranging from 0 to 5, [-].
     complexity : int (float)
-        number of continuously linked process steps, ranging from 1 to 11, [-].
+        Number of continuously linked process steps, ranging from 1 to 11, [-].
     inclusiveness : float
-        percentage of pre-startup personnel, inventory, and land purchase costs, [%].
+        Percentage of pre-startup personnel, inventory, and land purchase costs, [%].
     project_definition : int (float)
-        levels of site-specific information and engineering included in estimate, ranging from 2 to 8, [-].
+        Levels of site-specific information and engineering included in estimate, ranging from 2 to 8, [-].
     newsteps : int (float)
-        number of processes incorporating commercially unproven technologies, [-].
+        Number of processes incorporating commercially unproven technologies, [-].
     baleqs : float
-        percentage of heat and mass balance equations based on actual data from prior plants, [%].
+        Percentage of heat and mass balance equations based on actual data from prior plants, [%].
     waste : int (float)
-        difficulties with waste handling encountered during development, ranging from 0 to 5, [-].
+        Difficulties with waste handling encountered during development, ranging from 0 to 5, [-].
     solids_handling : bool
         True for solids handling, False for no solids handling, [True, False].
     
@@ -2564,45 +2564,45 @@ class HydrothermalAlkalineTreatment(SanUnit):
     outs : iterable
         biocrude, HALTaqueous, hydrochar, offgas.
     NaOH_conc : float
-        the concentration of NaOH, [M].
+        Concentration of NaOH, [M].
     HALT_biocrude_adjustment_factor : float
-        the biocrude yield in HALT compared to that in HTL, [-].
+        Biocrude yield in HALT compared to that in HTL, [-].
     HALT_hydrochar_adjustment_factor : float
-        the hydrochar yield in HALT compared to that in HTL, [-].
+        Hydrochar yield in HALT compared to that in HTL, [-].
     load_size : float
-        size of loads per truck, [m3/load].
+        Size of loads per truck, [m3/load].
     load_frequency : float
-        load frequency, [load/h].
+        Load frequency, [load/h].
     tractor_fuel : float
-        tractor fuel, [L diesel/h].
+        Tractor fuel, [L diesel/h].
     crude_oil_density : float
-        density of crude oil, [kg/m3].
+        Density of crude oil, [kg/m3].
     crude_oil_HHV : float
         HHV of crude oil, [MJ/kg].
     biocrude_density : float
-        density of biocrude, [kg/m3].
+        Density of biocrude, [kg/m3].
     biocrude_distance : float
-        distance between WRRFs and oil refineries, [km].
+        Distance between WRRFs and oil refineries, [km].
     hydrochar_distance : float
-        distance between WRRFs and land application sites, [km].
+        Distance between WRRFs and land application sites, [km].
     FOAK : bool
-        whether the facility is first-of-a-king, [True, False].
+        Whether the facility is first-of-a-king, [True, False].
     pctnew : float
-        percentage of capital cost of commercially undemonstrated equipment, [%].
+        Percentage of capital cost of commercially undemonstrated equipment, [%].
     impurities : int (float)
-        impurities buildup and corrosion issues, ranging from 0 to 5, [-].
+        Impurities buildup and corrosion issues, ranging from 0 to 5, [-].
     complexity : int (float)
-        number of continuously linked process steps, ranging from 1 to 11, [-].
+        Number of continuously linked process steps, ranging from 1 to 11, [-].
     inclusiveness : float
-        percentage of pre-startup personnel, inventory, and land purchase costs, [%].
+        Percentage of pre-startup personnel, inventory, and land purchase costs, [%].
     project_definition : int (float)
-        levels of site-specific information and engineering included in estimate, ranging from 2 to 8, [-].
+        Levels of site-specific information and engineering included in estimate, ranging from 2 to 8, [-].
     newsteps : int (float)
-        number of processes incorporating commercially unproven technologies, [-].
+        Number of processes incorporating commercially unproven technologies, [-].
     baleqs : float
-        percentage of heat and mass balance equations based on actual data from prior plants, [%].
+        Percentage of heat and mass balance equations based on actual data from prior plants, [%].
     waste : int (float)
-        difficulties with waste handling encountered during development, ranging from 0 to 5, [-].
+        Difficulties with waste handling encountered during development, ranging from 0 to 5, [-].
     solids_handling : bool
         True for solids handling, False for no solids handling, [True, False].
     
@@ -3032,23 +3032,23 @@ class CatalyticHydrothermalGasification(SanUnit):
     eff_P : float
         HTL effluent pressure, [Pa].
     FOAK : bool
-        whether the facility is first-of-a-king, [True, False].
+        Whether the facility is first-of-a-king, [True, False].
     pctnew : float
-        percentage of capital cost of commercially undemonstrated equipment, [%].
+        Percentage of capital cost of commercially undemonstrated equipment, [%].
     impurities : int (float)
-        impurities buildup and corrosion issues, ranging from 0 to 5, [-].
+        Impurities buildup and corrosion issues, ranging from 0 to 5, [-].
     complexity : int (float)
-        number of continuously linked process steps, ranging from 1 to 11, [-].
+        Number of continuously linked process steps, ranging from 1 to 11, [-].
     inclusiveness : float
-        percentage of pre-startup personnel, inventory, and land purchase costs, [%].
+        Percentage of pre-startup personnel, inventory, and land purchase costs, [%].
     project_definition : int (float)
-        levels of site-specific information and engineering included in estimate, ranging from 2 to 8, [-].
+        Levels of site-specific information and engineering included in estimate, ranging from 2 to 8, [-].
     newsteps : int (float)
-        number of processes incorporating commercially unproven technologies, [-].
+        Number of processes incorporating commercially unproven technologies, [-].
     baleqs : float
-        percentage of heat and mass balance equations based on actual data from prior plants, [%].
+        Percentage of heat and mass balance equations based on actual data from prior plants, [%].
     waste : int (float)
-        difficulties with waste handling encountered during development, ranging from 0 to 5, [-].
+        Difficulties with waste handling encountered during development, ranging from 0 to 5, [-].
     solids_handling : bool
         True for solids handling, False for no solids handling, [True, False].
     
@@ -3264,49 +3264,49 @@ class Pyrolysis(SanUnit):
     outs : iterable
         biooil, biochar, pyrogas.
     biooil_yield : float
-        biooil yield on a dry weight basis, [-].
+        Biooil yield on a dry weight basis, [-].
     pyrogas_yield : float
-        pyrogas yield on a dry weight basis, [-].
+        Pyrogas yield on a dry weight basis, [-].
     pyrogas_composition : dict
-        pyrogas composition, [-].
+        Pyrogas composition, [-].
     unit_electricity : float
-        electricity for pyrolysis, [kWh/dry tonne solids].
+        Electricity for pyrolysis, [kWh/dry tonne solids].
     load_size : float
-        size of loads per truck, [m3/load].
+        Size of loads per truck, [m3/load].
     load_frequency : float
-        load frequency, [load/h].
+        Load frequency, [load/h].
     tractor_fuel : float
-        tractor fuel, [L diesel/h].
+        Tractor fuel, [L diesel/h].
     crude_oil_density : float
-        density of crude oil, [kg/m3].
+        Density of crude oil, [kg/m3].
     crude_oil_HHV : float
         HHV of crude oil, [MJ/kg].
     biooil_density : float
-        density of biooil, [kg/m3].
+        Density of biooil, [kg/m3].
     biooil_HHV : float
         HHV of biooil, [MJ/kg].
     biooil_distance : float
-        distance between WRRFs and oil refineries, [km].
+        Distance between WRRFs and oil refineries, [km].
     biochar_distance : float
-        distance between WRRFs and land application sites, [km].
+        Distance between WRRFs and land application sites, [km].
     FOAK : bool
-        whether the facility is first-of-a-king, [True, False].
+        Whether the facility is first-of-a-king, [True, False].
     pctnew : float
-        percentage of capital cost of commercially undemonstrated equipment, [%].
+        Percentage of capital cost of commercially undemonstrated equipment, [%].
     impurities : int (float)
-        impurities buildup and corrosion issues, ranging from 0 to 5, [-].
+        Impurities buildup and corrosion issues, ranging from 0 to 5, [-].
     complexity : int (float)
-        number of continuously linked process steps, ranging from 1 to 11, [-].
+        Number of continuously linked process steps, ranging from 1 to 11, [-].
     inclusiveness : float
-        percentage of pre-startup personnel, inventory, and land purchase costs, [%].
+        Percentage of pre-startup personnel, inventory, and land purchase costs, [%].
     project_definition : int (float)
-        levels of site-specific information and engineering included in estimate, ranging from 2 to 8, [-].
+        Levels of site-specific information and engineering included in estimate, ranging from 2 to 8, [-].
     newsteps : int (float)
-        number of processes incorporating commercially unproven technologies, [-].
+        Number of processes incorporating commercially unproven technologies, [-].
     baleqs : float
-        percentage of heat and mass balance equations based on actual data from prior plants, [%].
+        Percentage of heat and mass balance equations based on actual data from prior plants, [%].
     waste : int (float)
-        difficulties with waste handling encountered during development, ranging from 0 to 5, [-].
+        Difficulties with waste handling encountered during development, ranging from 0 to 5, [-].
     solids_handling : bool
         True for solids handling, False for no solids handling, [True, False].
     
@@ -3517,50 +3517,50 @@ class Gasification(SanUnit):
     outs : iterable
         tar, ash, syngas.
     VS_to_tar : float
-        tar yield from volatile solids, [-].
+        Tar yield from volatile solids, [-].
         16 datapoints, min: 0.00396, average: 0.0190, max: 0.0319, [2]
     syngas_composition : dict
-        syngas composition, [-].
+        Syngas composition, [-].
     unit_electricity : float
-        electricity for gasification, [kWh/dry tonne solids].
-        based on [3], average of high-termperature (34.8 MW) and low-termperature
+        Electricity for gasification, [kWh/dry tonne solids].
+        Based on [3], average of high-termperature (34.8 MW) and low-termperature
         (24.4 MW) gasification, 2000 dry tonne/day, 7446 hours/year.
     load_size : float
-        size of loads per truck, [m3/load].
+        Size of loads per truck, [m3/load].
     load_frequency : float
-        load frequency, [load/h].
+        Load frequency, [load/h].
     tractor_fuel : float
-        tractor fuel, [L diesel/h].
+        Tractor fuel, [L diesel/h].
     crude_oil_density : float
-        density of crude oil, [kg/m3].
+        Density of crude oil, [kg/m3].
     crude_oil_HHV : float
         HHV of crude oil, [MJ/kg].
     tar_density : float
-        density of tar, [kg/m3].
+        Density of tar, [kg/m3].
     tar_HHV : float
         HHV of tar, [MJ/kg].
     tar_distance : float
-        distance between WRRFs and oil refineries, [km].
+        Distance between WRRFs and oil refineries, [km].
     biochar_distance : float
-        distance between WRRFs and land application sites, [km].
+        Distance between WRRFs and land application sites, [km].
     FOAK : bool
-        whether the facility is first-of-a-king, [True, False].
+        Whether the facility is first-of-a-king, [True, False].
     pctnew : float
-        percentage of capital cost of commercially undemonstrated equipment, [%].
+        Percentage of capital cost of commercially undemonstrated equipment, [%].
     impurities : int (float)
-        impurities buildup and corrosion issues, ranging from 0 to 5, [-].
+        Impurities buildup and corrosion issues, ranging from 0 to 5, [-].
     complexity : int (float)
-        number of continuously linked process steps, ranging from 1 to 11, [-].
+        Number of continuously linked process steps, ranging from 1 to 11, [-].
     inclusiveness : float
-        percentage of pre-startup personnel, inventory, and land purchase costs, [%].
+        Percentage of pre-startup personnel, inventory, and land purchase costs, [%].
     project_definition : int (float)
-        levels of site-specific information and engineering included in estimate, ranging from 2 to 8, [-].
+        Levels of site-specific information and engineering included in estimate, ranging from 2 to 8, [-].
     newsteps : int (float)
-        number of processes incorporating commercially unproven technologies, [-].
+        Number of processes incorporating commercially unproven technologies, [-].
     baleqs : float
-        percentage of heat and mass balance equations based on actual data from prior plants, [%].
+        Percentage of heat and mass balance equations based on actual data from prior plants, [%].
     waste : int (float)
-        difficulties with waste handling encountered during development, ranging from 0 to 5, [-].
+        Difficulties with waste handling encountered during development, ranging from 0 to 5, [-].
     solids_handling : bool
         True for solids handling, False for no solids handling, [True, False].
     
@@ -3747,11 +3747,11 @@ class SupercriticalWaterOxidation(SanUnit):
     outs : iterable
         ash, offgas.
     lipid_2_C : float
-        lipid to C ratio, [-].
+        Lipid to C ratio, [-].
     protein_2_C : float
-        protein to C ratio, [-].
+        Protein to C ratio, [-].
     carbo_2_C : float
-        carbohydrate to C ratio, [-].
+        Carbohydrate to C ratio, [-].
     T : float
         SCWO reactor termperature, [K].
     P : float
@@ -3761,23 +3761,23 @@ class SupercriticalWaterOxidation(SanUnit):
     eff_P : float
         SCWO effluent pressure, [Pa].
     FOAK : bool
-        whether the facility is first-of-a-king, [True, False].
+        Whether the facility is first-of-a-king, [True, False].
     pctnew : float
-        percentage of capital cost of commercially undemonstrated equipment, [%].
+        Percentage of capital cost of commercially undemonstrated equipment, [%].
     impurities : int (float)
-        impurities buildup and corrosion issues, ranging from 0 to 5, [-].
+        Impurities buildup and corrosion issues, ranging from 0 to 5, [-].
     complexity : int (float)
-        number of continuously linked process steps, ranging from 1 to 11, [-].
+        Number of continuously linked process steps, ranging from 1 to 11, [-].
     inclusiveness : float
-        percentage of pre-startup personnel, inventory, and land purchase costs, [%].
+        Percentage of pre-startup personnel, inventory, and land purchase costs, [%].
     project_definition : int (float)
-        levels of site-specific information and engineering included in estimate, ranging from 2 to 8, [-].
+        Levels of site-specific information and engineering included in estimate, ranging from 2 to 8, [-].
     newsteps : int (float)
-        number of processes incorporating commercially unproven technologies, [-].
+        Number of processes incorporating commercially unproven technologies, [-].
     baleqs : float
-        percentage of heat and mass balance equations based on actual data from prior plants, [%].
+        Percentage of heat and mass balance equations based on actual data from prior plants, [%].
     waste : int (float)
-        difficulties with waste handling encountered during development, ranging from 0 to 5, [-].
+        Difficulties with waste handling encountered during development, ranging from 0 to 5, [-].
     solids_handling : bool
         True for solids handling, False for no solids handling, [True, False].
     
