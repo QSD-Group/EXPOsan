@@ -12,6 +12,7 @@ This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 """
+
 from qsdsan import Chemical, Component, Components, set_thermo as qs_set_thermo
 from exposan.utils import add_V_from_rho
 
@@ -22,19 +23,13 @@ def create_components(set_thermo=True):
     Fe_coagulant = Component(
         ID='Fe_coagulant',
         search_ID='7705-08-0',
-        phase='s',
         particle_size='particulate',
         degradability='Undegradable',
         organic=False
     )
     
-        #TODO: define the Fe_sludge latter Fe_sludge = Component(ID='Fe_slduge',phase='s',particle_size='particulate',degradability='Bidegradable',organic=True)
-        #TODO: CEPS_supernatant need to be defined
-        #TODO: Residues after fermentaion need to be defined
-        
     Food_waste = Component(
         ID='Food_waste',
-        phase='s',
         search_ID='50-99-7',
         particle_size='Particulate',
         degradability='Biodegardable',
@@ -42,9 +37,9 @@ def create_components(set_thermo=True):
     )
     
 # =============================================================================
-# Gases emissions during the fermentation of sludge and food_waste
+# gases emissions during the fermentation of sludge and food waste
 # =============================================================================
-        
+    
     CO2 = Component(
         ID='CO2',
         phase='g',
@@ -78,9 +73,9 @@ def create_components(set_thermo=True):
     )
     
 # =============================================================================
-# Water
+# water
 # =============================================================================
-        
+    
     H2O = Component(
         ID='Water',
         particle_size='Soluble',
@@ -89,9 +84,9 @@ def create_components(set_thermo=True):
     )
     
 # =============================================================================
-# Inorganic ions dissolved during the fermentation
+# inorganic ions dissolved during the fermentation
 # =============================================================================
-        
+    
     Fe2 = Component(
         ID='Fe2',
         search_ID='Water',
@@ -138,26 +133,24 @@ def create_components(set_thermo=True):
     )
     
 # =============================================================================
-# Organics released during the fermentation
+# organics released during the fermentation
 # =============================================================================
-        
+    
     Org = Component(
         ID='Org',
         search_ID='50-99-7',
-        phase='l',
         particle_size='Soluble',
         degradability='Biodegradable',
         organic=True
     )
     
 # =============================================================================
-# VFAs, the key acidification products, add search ID='CAS number'
+# VFAs, the key acidification products
 # =============================================================================
-       
+    
     Ac = Component(
         ID='Acetic_acid',
         search_ID='64-19-7',
-        phase='l',
         particle_size='Soluble',
         degradability='Readily',
         organic=True
@@ -166,7 +159,6 @@ def create_components(set_thermo=True):
     Pr = Component(
         ID='Propionic_acid',
         search_ID='79-09-4',
-        phase='l',
         particle_size='Soluble',
         degradability='Readily',
         organic=True
@@ -175,7 +167,6 @@ def create_components(set_thermo=True):
     Bu = Component(
         ID='Butyric_acid',
         search_ID='107-92-6',
-        phase='l',
         particle_size='Soluble',
         degradability='Readily',
         organic=True
@@ -184,7 +175,6 @@ def create_components(set_thermo=True):
     Va = Component(
         ID='Valeric_acid',
         search_ID='109-52-4',
-        phase='l',
         particle_size='Soluble',
         degradability='Readily',
         organic=True
@@ -193,7 +183,6 @@ def create_components(set_thermo=True):
     Lac = Component(
         ID='Lactic_acid',
         search_ID='50-21-5',
-        phase='l',
         particle_size='Soluble',
         degradability='Readily',
         organic=True
@@ -202,7 +191,6 @@ def create_components(set_thermo=True):
     Etoh = Component(
         ID='Ethanol',
         search_ID='64-17-5',
-        phase='l',
         particle_size='Soluble',
         degradability='Readily',
         organic=True
@@ -211,7 +199,7 @@ def create_components(set_thermo=True):
 # =============================================================================
 # sludge residue to landfill after fermentation
 # =============================================================================
-        
+    
     Inert = Component(
         ID='Inert',
         phase='s',
@@ -220,10 +208,12 @@ def create_components(set_thermo=True):
         organic=False
     )
     
-    add_V_from_rho(Inert, 1500)  # assume 1500kg/m3
-    Inert.copy_models_from(Chemical('CaCO3'),('Cn',)) #CaCO3?
-    # TODO: check the mu value later (6000 is from the HTL system)
-    Inert.mu.add_model(6000)
+    # assume 1500kg/m3
+    add_V_from_rho(Inert, 1500)
+    Inert.copy_models_from(Chemical('CaCO3'),('Cn',))
+    # TODO: check the mu value later (Pa*s, affect mixing)
+    # the stream is quite diluted; assume similar to water
+    Inert.mu.add_model(1e-3)
     
     Residue = Component(
         ID='Residue',
@@ -233,15 +223,17 @@ def create_components(set_thermo=True):
         organic=False
     )
     
-    add_V_from_rho(Residue, 1500)  # assume 1500kg/m3
-    Residue.copy_models_from(Chemical('CaCO3'),('Cn',)) #CaCO3?
-    # TODO: check the mu value later (6000 is from the HTL system)
-    Residue.mu.add_model(6000)
+    # assume 1500kg/m3
+    add_V_from_rho(Residue, 1500)
+    Residue.copy_models_from(Chemical('CaCO3'),('Cn',))
+    # TODO: check the mu value later (Pa*s, affect mixing)
+    # the stream is quite diluted; assume similar to water
+    Residue.mu.add_model(1e-3)
 
 # =============================================================================
-# Gases emission dring the calcination, including input (air-O2+N2) and output, CO2 was defined before
+# gases emission dring the calcination, including input (air-O2+N2) and output, CO2 was defined before
 # =============================================================================
-        
+    
     O2 = Component(
         ID='O2',
         phase='g',
@@ -261,10 +253,9 @@ def create_components(set_thermo=True):
 # =============================================================================
 # chemicals used during the FePO4 precipitation
 # =============================================================================
-        
+    
     H2SO4 = Component(
         ID='H2SO4',
-        phase='l',
         particle_size='Soluble',
         degradability='Undegradable',
         organic=False
@@ -272,7 +263,6 @@ def create_components(set_thermo=True):
     
     H2O2 = Component(
         ID='H2O2',
-        phase='l',
         particle_size='Soluble',
         degradability='Undegradable',
         organic=False
@@ -284,7 +274,6 @@ def create_components(set_thermo=True):
     
     H3PO4 = Component(
         ID='H3PO4',
-        phase='l',
         particle_size='Soluble',
         degradability='Undegradable',
         organic=False
@@ -292,7 +281,6 @@ def create_components(set_thermo=True):
     
     NH4H2PO4 = Component(
         ID='NH4H2PO4',
-        phase='s',
         particle_size='Soluble',
         formula='NH4H2PO4',
         degradability='Undegradable',
@@ -305,7 +293,6 @@ def create_components(set_thermo=True):
     
     FeCl3 = Component(
         ID='FeCl3',
-        phase='s',
         particle_size='Soluble',
         formula='FeCl3',
         degradability='Undegradable',
@@ -315,7 +302,6 @@ def create_components(set_thermo=True):
     FeSO4_7H2O = Component(
         ID='FeSO4_7H2O',
         search_ID='7782-63-0',
-        phase='s',
         particle_size='Soluble',
         degradability='Undegradable',
         organic=False
@@ -327,8 +313,7 @@ def create_components(set_thermo=True):
     
     FePO4 = Component(
         ID='FePO4',
-        search_ID='10045-86-0',    
-        phase='s',
+        search_ID='10045-86-0',
         particle_size='Particulate',
         degradability='Undegradable',
         organic=False
@@ -343,10 +328,16 @@ def create_components(set_thermo=True):
         organic=False
     )
     
-    add_V_from_rho(FePO4_2H2O, 2300)  # assume 2340/m3
+    # assume 2300/m3
+    add_V_from_rho(FePO4_2H2O, 2300)
     FePO4_2H2O.copy_models_from(Chemical('FePO4'),('Cn',))
-    # TODO: check the mu value later (6000 is from the HTL system)
-    FePO4_2H2O.mu.add_method(1800)
+    # TODO: check the mu value later (Pa*s, affect mixing)
+    # the stream is quite diluted; assume similar to water
+    FePO4_2H2O.mu.add_model(1e-3)
+    
+# =============================================================================
+# compilation
+# =============================================================================
     
     cmps = Components([Fe_coagulant, Food_waste, 
                        CO2, H2, H2S, CH4,
@@ -356,6 +347,11 @@ def create_components(set_thermo=True):
                        O2, SO2, 
                        H2SO4, H2O2, H3PO4, NH4H2PO4, FeCl3, FeSO4_7H2O,
                        FePO4, FePO4_2H2O])
+    
+    for i in cmps:
+        for attr in ('HHV', 'LHV', 'Hf'):
+            if getattr(i, attr) is None: setattr(i, attr, 0)
+    
     cmps.compile()
     cmps.set_alias('Water','H2O')
     if set_thermo: qs_set_thermo(cmps)

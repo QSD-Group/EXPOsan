@@ -13,30 +13,65 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 """
 
+import qsdsan as qs
 from qsdsan import SanUnit
+from qsdsan.sanunits import HXutility
+from qsdsan.equipments import VerticalMixer
+from biosteam import Stream
+from biosteam.units.decorators import cost
 
+_C_to_K = 273.15
+
+__all__ = (
+    'AcidogenicFermenter',
+    'SelectivePrecipitation',
+    'HeatDrying'
+)
+
+# =============================================================================
+# AcidogenicFermenter
+# =============================================================================
+
+# TODO: may need to update F_BM for verticle_mixer
 class AcidogenicFermenter(SanUnit):
-    
     '''
+    Fermentation of sludge and food waste.
     
-    food_sludge_ratio : the mass ratio of organics bewteen food wastes and sludge, [-]
-    food_waste_moisture ： the mositure content of the input food wastes, [-]
-    org_to_gas ： the mass ratio of total organics converted to gas, [-]
-    org_to_vfa ：the mass ratio of total organics converted to VFAs, [-]
-    org_to_ethanol ：the mass ratio of total organics converted to ethanol, [-]
-    org_to_residue ：the mass ratio of total organics in the residue after acidogenic fermentation, [-]
-    VFA_ratio ：the mass fractions of individual VFAs (Acetic_acid,Propionic_acid, Butyric_acid, Valeric_acid, and Lactic_acid), [-]
-    metal_release ：the release ratio pf metal ions during acidogenic fermentation (mainly the Fe2, Fe3, Ca2, Mg2), [-]
-    P_release ：the phosphorus release ratio during acidogenic fermentation, [-]
-    fe_reduction ：the Fe reduction and release ratio during acidogenic fermentation, [-]
-    fermentate ：the slurry inclding both supernatant and solid residue after acidogenic fermentation, [-]
-    metal_P_release ：the release ratio of metals and phosphorus after acidogenic fermentation, [-]
-    metal_P_to_residue ：the ratio of metal elements retained in the sludge (residue), [-]
-    
+    Parameters
+    ----------
+    ins : iterable
+        fe_sludge, food_waste.
+    outs : iterable
+        gas, fermentate.
+    food_sludge_ratio : float
+        Mass ratio of organics bewteen food waste and sludge, [-].
+    food_waste_moisture : float
+        Mositure content of food waste, [-].
+    org_to_gas : float
+        Mass ratio of total organics converted to gas, [-].
+    org_to_vfa : float
+        Mass ratio of total organics converted to volatile fatty acids (VFAs), [-].
+    org_to_ethanol : float
+        Mass ratio of total organics converted to ethanol, [-].
+    org_to_residue : float
+        Mass ratio of total organics in the residue after acidogenic fermentation, [-].
+    VFA_ratio : float
+        Mass fractions of individual VFAs, [-].
+    fe_reduction : float
+        Fe3+ reduction ratio during acidogenic fermentation, [-].
+    # TODO: confirm the unit of HRT
+    HRT : float
+        Hydraulic retention time, [d].
     '''
-   
     _N_ins = 2
     _N_outs = 2
+    
+    _units = {
+        'Flow rate': 'm3/d',
+        'HRT': 'd',
+        'Reactor volume': 'm3',
+        'Required mixing power': 'kW'
+    }
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
                  food_sludge_ratio=1,
@@ -46,10 +81,8 @@ class AcidogenicFermenter(SanUnit):
                  org_to_ethanol=0.02,
                  org_to_residue=0.25,
                  VFA_ratio={'Ac': 0.5, 'Pr': 0.24, 'Bu': 0.23, 'Va': 0.02, 'Lac': 0.01},
-                 metal_release=0.8,
-                 P_release=0.82,
-                 HRT=3,
-                 fe_reduction = 0.98): 
+                 fe_reduction = 0.98,
+                 HRT=3): 
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.food_sludge_ratio = food_sludge_ratio
         self.food_waste_moisture = food_waste_moisture
@@ -58,15 +91,20 @@ class AcidogenicFermenter(SanUnit):
         self.org_to_ethanol = org_to_ethanol
         self.org_to_residue = org_to_residue
         self.VFA_ratio = VFA_ratio
-        self.metal_release = metal_release
-        self.P_release = P_release
-        self.HRT = HRT
         self.fe_reduction = fe_reduction
+        self.HRT = HRT
+        self.verticle_mixer = VerticalMixer(ID='verticle_mixer', linked_unit=self)
+        self.equipments = (self.verticle_mixer,)
         
     def _run(self):
         
         fe_sludge, food_waste = self.ins
         gas, fermentate = self.outs
+        
+        fe_sludge.phase ='l'
+        food_waste.phase = 'l'
+        gas.phase = 'g'
+        fermentate.phase = 'l'
         
         if self.food_sludge_ratio not in [0, 1/3, 2/3, 1, 4/3]:
             raise RuntimeError('food_sludge_ratio must be one of the follow: 0, 1/3, 2/3, 1, 4/3.')
@@ -121,63 +159,90 @@ class AcidogenicFermenter(SanUnit):
         
         fermentate.imass['Residue'] += metal_P_to_residue
         
-#     def _design(self):
-#         fe_sludge, food_waste = self.ins
-#         Q = fe_sludge.F_vol + food_waste.F_vol
+    def _design(self):
+        fe_sludge, food_waste = self.ins
         
-#         self.design_resluts['Flow rate (m3/d)'] = Q
-#         self.design_results['HRT(d)']=self.HRT
-#         self.design_resluts['Reactor volume(m3)'] = Q * self.HRT
+        Q = fe_sludge.F_vol + food_waste.F_vol
         
-#         pass
-    
+        D = self.design_results
+        
+        D['Flow rate'] = Q
+        D['HRT'] = self.HRT
+        # TODO: any headspace? (e.g., multiply it by 1.2)
+        D['Reactor volume'] = Q * self.HRT
+        
+        self.add_equipment_design()
+        
+        D.update(self.verticle_mixer.design_results)
+        
+        # kW
+        self.add_power_utility(D['Required mixing power'])
+
+# TODO: check    
 #     def _cost(self):
-#         V = self.design_result['Reactor volume (m3)']
-#         self.baseline_purchase_costs['Acidogenic fermenter'] = 3000 * V **0.6
-        
-#         pass
+#         V = self.design_result['Reactor volume']
+#         self.baseline_purchase_costs['Acidogenic fermenter'] = 3000 * V ** 0.6
 
+# =============================================================================
+# SelectivePrecipitation
+# =============================================================================
 
-
-        
+# TODO: may need to update F_BM for heat_exchanger
 class SelectivePrecipitation(SanUnit):
-    
-    
-    
     '''
+    Selective precipitation of FePO4 by adding acid and oxidant.
     
-    target_pH : the target pH (pH=2) for Fe3+ and PO43- precipitation, [-]
-    acid_dose : the mass ratio of acid (H2SO4) to the supernatant after acidogenic fermentation, [-]
-    P_recovery : the phosphorus recovery ratio via of Fe3+ and PO43- precipitation, [-]
-    T : the required temperature for the FePO4 precipitation process, [oC]
-    supernatant : the liquid phase obtained after acidogenic fermentation and centrifugation, [-]
-    acid : H2SO4 mixed with water at a 1:1 volume ratio, [-]
-    oxidant : H2O2 mixed with water at a 3:7 volume ratio, [-]
-    slurry : the mixture containing Fe-P precipitate, supernatant, acid, and oxidant after selective precipitation, [-]    
-    P_mol : the molar amount of PO43- in the supernatant after acidogenic fermentaion and oxidation by H2O2, [-]
-    P_precip_mol : the molar amount of PO43- precipitated during selective precipitation, [-]
-    Fe_reacted_mol : the molar amount of Fe3+ consumed during selective precipitation, [-]
-    FePO4_2H2O : the precipitated product formed from Fe3+ and PO43- at pH 2 and temperature of 40 degree Celsius, [-]
-        
-    '''  
-    
+    Parameters
+    ----------
+    ins : iterable
+        supernatant, acid, oxidant.
+    outs : iterable
+        slurry.
+    # TODO: this is not used
+    target_pH : float
+        Target pH for Fe3+ and PO43- precipitation, [-].
+    acid_dose : float
+        Mass ratio of acid (measured as pure H2SO4) to the supernatant after acidogenic fermentation, [-].
+    P_recovery : float
+        Phosphorus recovery ratio via of Fe3+ and PO43- precipitation, [-].
+    # TODO: need to add a heat exchanger for supernatant
+    # TODO: what is the temperature for slurry; is cooling necessary?
+    T : float
+        Required temperature for FePO4 precipitation, [K].
+    '''
     _N_ins = 3
     _N_outs = 1
+    
+    auxiliary_unit_names=('heat_exchanger',)
+    
+    _units = {
+        'Required mixing power': 'kW'
+    }
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
                 target_pH=2.0,
                 acid_dose=0.02, # H2SO4-supernatant mass ratio
                 P_recovery=0.80,
-                T=40):
+                T=40+_C_to_K):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.target_pH = target_pH
         self.acid_dose = acid_dose
         self.P_recovery = P_recovery
         self.T = T
+        hx_in = Stream(ID=f'{ID}_hx_in')
+        hx_out = Stream(ID=f'{ID}_hx_out')
+        self.heat_exchanger = HXutility(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out)
+        self.verticle_mixer = VerticalMixer(ID='verticle_mixer', linked_unit=self)
+        self.equipments = (self.verticle_mixer,)
         
     def _run(self):
         supernatant, acid, oxidant = self.ins
         slurry = self.outs[0]
+        
+        supernatant.phase ='l'
+        acid.phase = 'l'
+        oxidant.phase = 'l'
+        slurry.phase = 'l'
         
         # acid dosing while adjusting the pH
         acid.imass['H2SO4'] = supernatant.F_mass * self.acid_dose
@@ -210,35 +275,125 @@ class SelectivePrecipitation(SanUnit):
         slurry.imass['H2O'] = 0
         slurry.imass['H2O'] = supernatant.F_mass + acid.F_mass + oxidant.F_mass - slurry.F_mass
         
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-    
-    
-    
-   
-    
-    
-        
-    
-    
+        slurry.T = self.T
 
+    def _design(self):
+        hx = self.heat_exchanger
+        hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
+        hx_ins0.mix_from(self.ins)
+        hx_outs0.copy_flow(hx_ins0)
+        hx_ins0.T = self.ins[0].T
+        hx_outs0.T = self.T
+        hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
+        
+        # D = self.design_results
+        
+        # TODO: add reactor volume
+        # D['Reactor volume'] = 
+        
+        # self.add_equipment_design()
+        
+        # D.update(self.verticle_mixer.design_results)
+        
+        # kW
+        # self.add_power_utility(D['Required mixing power'])
+    
+    def _cost(self):
+        pass
+
+# =============================================================================
+# HeatDrying
+# =============================================================================
+
+# n: 0.7, assumed
+# BM: 3.17, from biosteam/units/heat_exchange.py
+@cost(ID='Dryer 1', basis='Half dry solids flow', units='tonne/day',
+      cost=220000*80/2/3.17, S=80, CE=qs.CEPCI_by_year[2018], n=0.7, BM=3.17)
+@cost(ID='Dryer 2', basis='Half dry solids flow', units='tonne/day',
+      cost=220000*80/2/3.17, S=80, CE=qs.CEPCI_by_year[2018], n=0.7, BM=3.17)
+class HeatDrying(SanUnit):
+    '''
+    Heat drying of sludge or biosolids.
+    
+    scope 1 emission: CO2 (natural gas combustion)
+    scope 2 emission: electricity, natural gas upstream
+    scope 3 emission: N/A
+    
+    from [1]: 220000 2018$ CAPEX/dry tonne solids/day for a 80 dry tonne/day.
+    # assume CAPEX / installed cost = 2 and installed cost / purchase cost (BM) = 3.17
+    
+    Parameters
+    ----------
+    ins : iterable
+        input_sludge.
+    outs : iterable
+        dried_solids, vapor.
+    target_moisture : float
+        Targeted moisture content, [-].
+    T_out : float
+        Outlet solids temperature, [K].
+    unit_heat : float
+        Energy for removing unit water from solids, [GJ/tonne water].
+    unit_electricity : float
+        Electricity for heat drying, [kWh/dry tonne solids].
+    natural_gas_HHV : float
+        Higher heating value of natural gas, [MJ/m3].
+    
+    See Also
+    --------
+    :class:`exposan.htl.landscape_sanunits.HeatDrying` under `pfas` branch
+    
+    References
+    ----------
+    [1] Hao, X.; Chen, Q.; van Loosdrecht, M. C. M.; Li, J.; Jiang, H.
+        Sustainable Disposal of Excess Sludge: Incineration without
+        Anaerobic Digestion. Water Research 2020, 170, 115298.
+        https://doi.org/10.1016/j.watres.2019.115298.
+    '''
+    _N_ins = 2
+    _N_outs = 2
+    
+    _units = {'Half dry solids flow': 'tonne/day'}
+    
+    # TODO: confirm parameter values
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                 init_with='WasteStream', lifetime=25, target_moisture=0.2,
+                 T_out=90 + _C_to_K, unit_heat=4.5, natural_gas_HHV=39,
+                 unit_electricity=214):
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
+        self.target_moisture = target_moisture
+        self.T_out = T_out
+        self.unit_heat = unit_heat
+        self.unit_electricity = unit_electricity
+        self.natural_gas_HHV = natural_gas_HHV
+    
+    def _run(self):
+        input_sludge, natural_gas = self.ins
+        dried_solids, vapor = self.outs
+        
+        natural_gas.phase = 'g'
+        dried_solids.phase = 'l'
+        vapor.phase = 'g'
+        
+        # dry tonne/h
+        self.dry_solids = (input_sludge.F_mass - input_sludge.imass['H2O'])/1000
+        
+        # tonne/h
+        dried_solids_mass_flow = self.dry_solids/(1 - self.target_moisture)
+        
+        dried_solids.copy_like(input_sludge)
+        
+        dried_solids.imass['H2O'] = dried_solids_mass_flow*1000*self.target_moisture
+        
+        vapor.imass['H2O'] = input_sludge.F_mass - dried_solids.F_mass
+        
+        # use natural gas for heat drying base on the BEAM*2024 model
+        natural_gas.ivol['CH4'] = vapor.imass['H2O']/1000*self.unit_heat*1000/self.natural_gas_HHV
+        
+        dried_solids.T = vapor.T = self.T_out
+    
+    def _design(self):
+        self.design_results['Half dry solids flow'] = self.dry_solids*24/2
+        
+        # kW
+        self.add_power_utility(self.dry_solids*self.unit_electricity)
