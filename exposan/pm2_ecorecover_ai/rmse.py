@@ -12,11 +12,11 @@ import numpy as np
 
 path = ospath.dirname(__file__)
 
-data_path_dynamic_scada = ospath.join(path, 'data/dynamic_scada_result_calibration.xlsx')
-data_path_dynamic_simul = ospath.join(path, 'data/dynamic_simul_result_calibration.xlsx')
+# data_path_dynamic_scada = ospath.join(path, 'data/dynamic_scada_result_calibration.xlsx')
+# data_path_dynamic_simul = ospath.join(path, 'data/dynamic_simul_result_calibration.xlsx')
 
-# data_path_dynamic_scada = ospath.join(path, 'data/dynamic_scada_result_validation.xlsx')
-# data_path_dynamic_simul = ospath.join(path, 'data/dynamic_simul_result_validation.xlsx')
+data_path_dynamic_scada = ospath.join(path, 'data/dynamic_scada_result_validation.xlsx')
+data_path_dynamic_simul = ospath.join(path, 'data/dynamic_simul_result_validation.xlsx')
 
 result_scada = load_data(data_path_dynamic_scada, sheet=0, index_col=None)
 result_simul = load_data(data_path_dynamic_simul, sheet=0, index_col=None)
