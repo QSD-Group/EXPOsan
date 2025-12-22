@@ -208,10 +208,9 @@ def create_components(set_thermo=True):
         organic=False
     )
     
-    # assume 1500kg/m3
+    # assume 1500 kg/m3
     add_V_from_rho(Inert, 1500)
     Inert.copy_models_from(Chemical('CaCO3'),('Cn',))
-    # TODO: check the mu value later (Pa*s, affect mixing)
     # the stream is quite diluted; assume similar to water
     Inert.mu.add_model(1e-3)
     
@@ -223,10 +222,9 @@ def create_components(set_thermo=True):
         organic=False
     )
     
-    # assume 1500kg/m3
+    # assume 1500 kg/m3
     add_V_from_rho(Residue, 1500)
     Residue.copy_models_from(Chemical('CaCO3'),('Cn',))
-    # TODO: check the mu value later (Pa*s, affect mixing)
     # the stream is quite diluted; assume similar to water
     Residue.mu.add_model(1e-3)
 
@@ -236,6 +234,14 @@ def create_components(set_thermo=True):
     
     O2 = Component(
         ID='O2',
+        phase='g',
+        particle_size='Dissolved gas',
+        degradability='Undegradable',
+        organic=False
+    )
+    
+    N2 = Component(
+        ID='N2',
         phase='g',
         particle_size='Dissolved gas',
         degradability='Undegradable',
@@ -328,25 +334,26 @@ def create_components(set_thermo=True):
         organic=False
     )
     
-    # assume 2300/m3
-    add_V_from_rho(FePO4_2H2O, 2300)
+    # 2770 kg/m3; https://materials.springer.com/isp/crystallographic/docs/sd_0381967 (accessed 2025-12-22)
+    add_V_from_rho(FePO4_2H2O, 2770)
     FePO4_2H2O.copy_models_from(Chemical('FePO4'),('Cn',))
-    # TODO: check the mu value later (Pa*s, affect mixing)
     # the stream is quite diluted; assume similar to water
     FePO4_2H2O.mu.add_model(1e-3)
-    
+
 # =============================================================================
 # compilation
 # =============================================================================
     
-    cmps = Components([Fe_coagulant, Food_waste, 
-                       CO2, H2, H2S, CH4,
-                       H2O, 
-                       Fe2, Fe3, PO4, Ca2, Mg2,
-                       Org, Ac, Pr, Bu, Va, Lac, Etoh, Inert, Residue,
-                       O2, SO2, 
-                       H2SO4, H2O2, H3PO4, NH4H2PO4, FeCl3, FeSO4_7H2O,
-                       FePO4, FePO4_2H2O])
+    cmps = Components([
+        Fe_coagulant, Food_waste, 
+        CO2, H2, H2S, CH4,
+        H2O, 
+        Fe2, Fe3, PO4, Ca2, Mg2,
+        Org, Ac, Pr, Bu, Va, Lac, Etoh, Inert, Residue,
+        O2, N2, SO2, 
+        H2SO4, H2O2, H3PO4, NH4H2PO4, FeCl3, FeSO4_7H2O,
+        FePO4, FePO4_2H2O
+    ])
     
     for i in cmps:
         for attr in ('HHV', 'LHV', 'Hf'):
