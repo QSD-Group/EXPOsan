@@ -13,6 +13,15 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 """
 
+# =============================================================================
+# TODO
+# TODO 1: add a storage tank for sludge (influent is continuous, so mixing is not needed)
+# TODO 2: 2 fermentation tanks with an HRT of 4 days, batch
+# TODO 3: 1 precipitation
+# TODO 4: add pumps (1) before storage tank, (2) after fermentation, (3) after precipitation, (4) adding H2SO4, and (5) adding H2O2
+# TODO 5: may need to replace current heat exchangers in fermentation and precipitation with heat exchangers in biosteam.units.NRELBatchBioreactor (also use its design for fermentation and precipitation)
+# =============================================================================
+
 import qsdsan as qs
 from qsdsan import SanUnit
 from qsdsan.sanunits import HXutility
@@ -89,7 +98,7 @@ class AcidogenicFermenter(SanUnit):
                  org_to_residue=0.25,
                  VFA_ratio={'Ac': 0.5, 'Pr': 0.24, 'Bu': 0.23, 'Va': 0.02, 'Lac': 0.01},
                  fe_reduction=0.98,
-                 HRT=3,
+                 HRT=4,
                  T=37+_C_to_K): 
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.food_sludge_ratio = food_sludge_ratio
@@ -425,8 +434,12 @@ class Sintering(SanUnit):
     _N_ins = 3
     _N_outs = 2
     
+    # TODO: electricity and NG data are from https://zhuanlan.zhihu.com/p/30646376322 (accessed 2025-12-23)
+    # TODO: add electricity (15-40 kWh/tonne feed)
+    # TODO: NG is 50-120 m3/tonne feed; the current calculation is around 56 m3/tonne
+    
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-                 T=700 + _C_to_K, combustion_eff=0.8, natural_gas_HHV=39): 
+                 T=700 + _C_to_K, combustion_eff=0.8, natural_gas_HHV=39):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.T = T
         self.combustion_eff = combustion_eff
