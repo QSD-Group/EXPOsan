@@ -44,7 +44,7 @@ class AcidogenicFermenter(SanUnit):
     ins : iterable
         fe_sludge, food_waste.
     outs : iterable
-        gas, fermentate.
+        fermentate, gas.
     food_sludge_ratio : float
         Mass ratio of organics bewteen food waste and sludge, [-].
     food_waste_moisture : float
@@ -64,7 +64,6 @@ class AcidogenicFermenter(SanUnit):
     # TODO: confirm the unit of HRT
     HRT : float
         Hydraulic retention time, [d].
-    # TODO: what is the temperature for slurry; is cooling necessary?
     T : float
         Required temperature for fermentation, [K].
     '''
@@ -112,12 +111,12 @@ class AcidogenicFermenter(SanUnit):
         
     def _run(self):
         fe_sludge, food_waste = self.ins
-        gas, fermentate = self.outs
+        fermentate, gas = self.outs
         
         fe_sludge.phase = 'l'
         food_waste.phase = 'l'
-        gas.phase = 'g'
         fermentate.phase = 'l'
+        gas.phase = 'g'
         
         if self.food_sludge_ratio not in [0, 1/3, 2/3, 1, 4/3]:
             raise RuntimeError('food_sludge_ratio must be one of the follow: 0, 1/3, 2/3, 1, 4/3.')
@@ -218,14 +217,11 @@ class SelectivePrecipitation(SanUnit):
         supernatant, acid, oxidant.
     outs : iterable
         slurry.
-    # TODO: this is not used
-    target_pH : float
-        Target pH for Fe3+ and PO43- precipitation, [-].
     acid_dose : float
-        Mass ratio of acid (measured as pure H2SO4) to the supernatant after acidogenic fermentation, [-].
+        Mass ratio of acid (measured as pure H2SO4) to the supernatant after
+        acidogenic fermentation to adjust pH to 2, [-].
     P_recovery : float
         Phosphorus recovery ratio via of Fe3+ and PO43- precipitation, [-].
-    # TODO: what is the temperature for slurry; is cooling necessary?
     T : float
         Required temperature for FePO4 precipitation, [K].
     '''
@@ -240,12 +236,10 @@ class SelectivePrecipitation(SanUnit):
     }
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-                target_pH=2.0,
                 acid_dose=0.003,
                 P_recovery=0.80,
                 T=40+_C_to_K):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
-        self.target_pH = target_pH
         self.acid_dose = acid_dose
         self.P_recovery = P_recovery
         self.T = T
@@ -326,8 +320,6 @@ class SelectivePrecipitation(SanUnit):
 # HeatDrying
 # =============================================================================
 
-# TODO: confirm: unit_heat is higher than needed heat of water evaporation, so this is kind of like an efficiency
-# TODO: in Sintering, also use the unit_heat value here and also assume a natural gas combustion efficiency of 80%?
 # n: 0.7, assumed
 # BM: 3.17, from biosteam/units/heat_exchange.py
 @cost(ID='Dryer 1', basis='Half dry solids flow', units='tonne/day',
@@ -344,11 +336,9 @@ class HeatDrying(SanUnit):
     Parameters
     ----------
     ins : iterable
-        input_sludge.
+        feed, natural_gas.
     outs : iterable
         dried_solids, vapor.
-    target_moisture : float
-        Targeted moisture content, [-].
     T : float
         Heat drying temperature, [K].
     unit_heat : float
@@ -374,50 +364,41 @@ class HeatDrying(SanUnit):
     
     _units = {'Half dry solids flow': 'tonne/day'}
     
-    # TODO: confirm parameter values
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
-                 init_with='WasteStream', lifetime=25, target_moisture=0,
-                 T=90 + _C_to_K, unit_heat=4.5, natural_gas_HHV=39,
-                 unit_electricity=214):
-        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, lifetime=lifetime)
-        self.target_moisture = target_moisture
+                 init_with='WasteStream', T=105 + _C_to_K, unit_heat=4.5,
+                 natural_gas_HHV=39, unit_electricity=214):
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.T = T
         self.unit_heat = unit_heat
         self.unit_electricity = unit_electricity
         self.natural_gas_HHV = natural_gas_HHV
     
     def _run(self):
-        input_sludge, natural_gas = self.ins
+        feed, natural_gas = self.ins
         dried_solids, vapor = self.outs
         
-        input_sludge.phase = 'l'
+        feed.phase = 'l'
         natural_gas.phase = 'g'
         dried_solids.phase = 's'
         vapor.phase = 'g'
         
-        # dry tonne/h
-        self.dry_solids = (input_sludge.F_mass - input_sludge.imass['H2O'])/1000
-        
-        # tonne/h
-        dried_solids_mass_flow = self.dry_solids/(1 - self.target_moisture)
-        
-        dried_solids.copy_like(input_sludge)
-        
-        dried_solids.imass['H2O'] = dried_solids_mass_flow*1000*self.target_moisture
-        
-        # TODO: heat drying may remove VFAs and ethanol
-        vapor.imass['H2O'] = input_sludge.F_mass - dried_solids.F_mass
+        dried_solids.copy_like(feed)    
+            
+        for cmp in ['H2O', 'Acetic_acid', 'Propionic_acid', 'Butyric_acid',
+                    'Valeric_acid', 'Lactic_acid', 'Ethanol']:
+            vapor.imass[cmp] = feed.imass[cmp]
+            dried_solids.imass[cmp] = 0
         
         # use natural gas for heat drying base on the BEAM*2024 model
-        natural_gas.ivol['CH4'] = vapor.imass['H2O']/1000*self.unit_heat*1000/self.natural_gas_HHV
+        natural_gas.ivol['CH4'] = vapor.F_mass/1000*self.unit_heat*1000/self.natural_gas_HHV
         
         dried_solids.T = vapor.T = self.T
     
     def _design(self):
-        self.design_results['Half dry solids flow'] = self.dry_solids*24/2
+        self.design_results['Half dry solids flow'] = self.outs[0].F_mass/1000*24/2
         
         # kW
-        self.add_power_utility(self.dry_solids*self.unit_electricity)
+        self.add_power_utility(self.outs[0].F_mass/1000*self.unit_electricity)
 
 # =============================================================================
 # Sintering
@@ -432,7 +413,7 @@ class Sintering(SanUnit):
     ins : iterable
         feed, natural_gas, air.
     outs : iterable
-        gas, product.
+        product, gas.
     T : float
         Sintering precipitation, [K].
     combustion_eff : float
@@ -440,11 +421,8 @@ class Sintering(SanUnit):
     natural_gas_HHV : float
         Higher heating value of natural gas, [MJ/m3].
     '''
-    _N_ins = 2
+    _N_ins = 3
     _N_outs = 2
-    
-    # TODO: add later
-    _units = {}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
                  T=700 + _C_to_K, combustion_eff=0.8, natural_gas_HHV=39): 
@@ -454,20 +432,28 @@ class Sintering(SanUnit):
         self.natural_gas_HHV = natural_gas_HHV
         
     def _run(self):
-        # TODO: air was ignored for now
-        feed, natural_gas = self.ins
-        gas, product = self.outs
+        feed, natural_gas, air = self.ins
+        product, vapor = self.outs
         
         feed.phase = 's'
         natural_gas.phase = 'g'
+        air.phase = 'g'
         product.phase = 's'
-        gas.phase = 'g'
+        vapor.phase = 'g'
         
-        product.T = gas.T = self.T
+        product.T = vapor.T = self.T
         
-        cmps = self.components
+        feed_copy = qs.WasteStream()
+        
+        feed_copy.copy_like(feed)
+        
+        feed_copy.imass['FePO4'] = feed_copy.imass['FePO4_2H2O']/187*151
+        low_T_water_vapor = qs.WasteStream('low_T_water_vapor', H2O=feed_copy.imass['FePO4_2H2O']/187*36, T=feed_copy.T, units='kg/hr', phase='g')
+        feed_copy.imass['FePO4_2H2O'] = 0
+        
         rxns = []
-        for cmp in [cmp for cmp in cmps if feed.imass[cmp.ID] > 0]:
+        
+        for cmp in [cmp for cmp in self.components if feed_copy.imass[cmp.ID] > 0]:
             if cmp.locked_state in ('l', 's') and (not cmp.organic or cmp.degradability=='Undegradable'):
                 continue
             
@@ -478,22 +464,26 @@ class Sintering(SanUnit):
         
         combustion_rxns = self.combustion_reactions = ParallelReaction(rxns)
         
-        gas.copy_flow(feed)
-        combustion_rxns.force_reaction(gas.mol)
+        vapor.copy_flow(feed_copy)
+        combustion_rxns.force_reaction(vapor.mol)
         
-        product.copy_flow(gas, IDs=('Fe3', 'PO4', 'Ca2', 'Mg2', 'FePO4_2H2O'), remove=True)
+        vapor.imass['H2O'] += feed.imass['FePO4_2H2O']/187*36 
         
-        # TODO: 4.5 GJ/tonne is from HeatDrying
+        product.copy_flow(vapor, IDs=('Fe3', 'PO4', 'Ca2', 'Mg2', 'FePO4'), remove=True)
+        
+        if vapor.imass['O2'] < 0:
+            air.imass['O2'] = -vapor.imass['O2']
+            air.imol['N2'] = vapor.imol['N2'] = air.imol['O2']/0.21*0.79
+            vapor.imass['O2'] = 0
+        
+        # TODO: check this value
+        # assume 90 kJ/mol H2O for dehydration
         # kJ/hr
-        NG_energy_flow = ((gas.H + gas.HHV + product.H + product.HHV + 4.5*1000*product.imass['FePO4_2H2O']/187*36) - (feed.H + feed.HHV))/self.combustion_eff
+        required_heat = product.H + product.HHV + vapor.H + 90/18*1000*feed.imass['FePO4_2H2O']/187*36
+        provided_heat = feed_copy.H + feed_copy.HHV + air.H + low_T_water_vapor.H
+        natural_gas_heat = (required_heat - provided_heat)/self.combustion_eff
         
-        natural_gas.ivol['CH4'] = NG_energy_flow/1000/self.natural_gas_HHV
-        
-        product.imass['FePO4'] = product.imass['FePO4_2H2O']/187*151
-        gas.imass['H2O'] += product.imass['FePO4_2H2O']/187*36
-        
-        product.imass['FePO4_2H2O'] = 0
-        gas.imass['O2'] = 0
+        natural_gas.ivol['CH4'] = natural_gas_heat/1000/self.natural_gas_HHV
     
     def _design(self):
         pass

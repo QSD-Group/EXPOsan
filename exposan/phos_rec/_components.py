@@ -320,6 +320,7 @@ def create_components(set_thermo=True):
     FePO4 = Component(
         ID='FePO4',
         search_ID='10045-86-0',
+        phase='s',
         particle_size='Particulate',
         degradability='Undegradable',
         organic=False
