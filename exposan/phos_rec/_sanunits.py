@@ -107,8 +107,7 @@ class AcidogenicFermenter(SanUnit):
         self.heat_exchanger = HXutility(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out)
         self.verticle_mixer = VerticalMixer(ID='verticle_mixer', linked_unit=self)
         self.equipments = (self.verticle_mixer,)
-        
-        
+    
     def _run(self):
         fe_sludge, food_waste = self.ins
         fermentate, gas = self.outs
@@ -117,6 +116,8 @@ class AcidogenicFermenter(SanUnit):
         food_waste.phase = 'l'
         fermentate.phase = 'l'
         gas.phase = 'g'
+        
+        fermentate.T = gas.T = self.T
         
         if self.food_sludge_ratio not in [0, 1/3, 2/3, 1, 4/3]:
             raise RuntimeError('food_sludge_ratio must be one of the follow: 0, 1/3, 2/3, 1, 4/3.')
@@ -170,7 +171,7 @@ class AcidogenicFermenter(SanUnit):
         fermentate.imass['PO4'] *= metal_P_release[self.food_sludge_ratio]['P']/100
         
         fermentate.imass['Residue'] += metal_P_to_residue
-        
+    
     def _design(self):
         fe_sludge, food_waste = self.ins
         
@@ -248,7 +249,7 @@ class SelectivePrecipitation(SanUnit):
         self.heat_exchanger = HXutility(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out)
         self.verticle_mixer = VerticalMixer(ID='verticle_mixer', linked_unit=self)
         self.equipments = (self.verticle_mixer,)
-        
+    
     def _run(self):
         supernatant, acid, oxidant = self.ins
         slurry = self.outs[0]
@@ -257,6 +258,8 @@ class SelectivePrecipitation(SanUnit):
         acid.phase = 'l'
         oxidant.phase = 'l'
         slurry.phase = 'l'
+        
+        slurry.T = self.T
         
         # acid dosing while adjusting the pH
         acid.imass['H2SO4'] = supernatant.F_mass * self.acid_dose
@@ -289,9 +292,7 @@ class SelectivePrecipitation(SanUnit):
         slurry.imass['H2O2'] = 0
         slurry.imass['H2O'] = 0
         slurry.imass['H2O'] = supernatant.F_mass + acid.F_mass + oxidant.F_mass - slurry.F_mass
-        
-        slurry.T = self.T
-
+    
     def _design(self):
         hx = self.heat_exchanger
         hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
@@ -382,6 +383,8 @@ class HeatDrying(SanUnit):
         dried_solids.phase = 's'
         vapor.phase = 'g'
         
+        dried_solids.T = vapor.T = self.T
+        
         dried_solids.copy_like(feed)    
             
         for cmp in ['H2O', 'Acetic_acid', 'Propionic_acid', 'Butyric_acid',
@@ -391,8 +394,6 @@ class HeatDrying(SanUnit):
         
         # use natural gas for heat drying base on the BEAM*2024 model
         natural_gas.ivol['CH4'] = vapor.F_mass/1000*self.unit_heat*1000/self.natural_gas_HHV
-        
-        dried_solids.T = vapor.T = self.T
     
     def _design(self):
         self.design_results['Half dry solids flow'] = self.outs[0].F_mass/1000*24/2
@@ -430,7 +431,7 @@ class Sintering(SanUnit):
         self.T = T
         self.combustion_eff = combustion_eff
         self.natural_gas_HHV = natural_gas_HHV
-        
+    
     def _run(self):
         feed, natural_gas, air = self.ins
         product, vapor = self.outs
