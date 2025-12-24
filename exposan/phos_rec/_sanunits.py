@@ -76,10 +76,6 @@ class AcidogenicFermenter(SanUnit):
         Mass fractions of individual VFAs, [-].
     fe_reduction : float
         Fe3+ reduction ratio during acidogenic fermentation, [-].
-    HRT : float
-        Hydraulic retention time, [hr].
-    V_wf : float
-        Fraction of filled tank to total tank volume, [-].
     T : float
         Required temperature for fermentation, [K].
     
@@ -104,8 +100,17 @@ class AcidogenicFermenter(SanUnit):
         'Recirculation flow rate': 'm3/hr'
     }
     
+    # hydraulic retention time, [hr]
+    HRT = 4*24
+    
     # cleaning and unloading, [hr]
     tau_cleaning = 3
+    
+    # number of fermenter, [-]
+    N = 2
+    
+    # fraction of filled tank to total tank volume, [-]
+    V_wf = 0.9
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
                  food_sludge_ratio=1,
@@ -116,10 +121,7 @@ class AcidogenicFermenter(SanUnit):
                  org_to_residue=0.25,
                  VFA_ratio={'Ac': 0.5, 'Pr': 0.24, 'Bu': 0.23, 'Va': 0.02, 'Lac': 0.01},
                  fe_reduction=0.98,
-                 T=37+_C_to_K,
-                 HRT=4*24,
-                 V_wf=0.9,
-                 N=2): 
+                 T=37+_C_to_K):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.food_sludge_ratio = food_sludge_ratio
         self.food_waste_moisture = food_waste_moisture
@@ -132,9 +134,6 @@ class AcidogenicFermenter(SanUnit):
         self.T = T
         fermentate = self.outs[0].proxy(f'{ID}_fermentate')
         self.fermentate_pump = SludgePump(f'.{ID}_fermentate_pump', ins=fermentate, init_with=init_with)
-        self.HRT = HRT
-        self.V_wf = V_wf
-        self.N = N
     
     def _run(self):
         sludge, food_waste = self.ins
@@ -223,6 +222,17 @@ class AcidogenicFermenter(SanUnit):
 # SelectivePrecipitation
 # =============================================================================
 
+@cost('Recirculation flow rate', 'Recirculation pumps', kW=30, S=77.22216,
+      cost=47200, n=0.8, BM=2.3, CE=522, N='Number of reactors')
+@cost('Reactor volume', 'Cleaning in place', CE=521.9,
+      cost=421e3, S=3785, n=0.6, BM=1.8)
+@cost('Reactor volume', 'Agitators', CE=521.9, cost=52500,
+      S=3785, n=0.5, kW=22.371, BM=1.5, N='Number of reactors')
+@cost('Reactor volume', 'Reactors', CE=521.9, cost=844000,
+      S=3785, n=0.5, BM=1.5, N='Number of reactors')
+@cost('Reactor duty', 'Heat exchangers', CE=522, cost=23900,
+      S=20920000.0, n=0.7, BM=2.2, N='Number of reactors',
+      magnitude=True)
 class SelectivePrecipitation(SanUnit):
     '''
     Selective precipitation of FePO4 by adding acid and oxidant.
@@ -249,6 +259,28 @@ class SelectivePrecipitation(SanUnit):
         'oxidant_pump',
         'slurry_pump'
     )
+    
+    _units = {
+        'Reactor volume': 'm3',
+        'Cycle time': 'hr',
+        'Batch time': 'hr',
+        'Loading time': 'hr',
+        'Total dead time': 'hr',
+        'Reactor duty': 'kJ/hr',
+        'Recirculation flow rate': 'm3/hr'
+    }
+    
+    # hydraulic retention time, [hr]
+    HRT = 12
+    
+    # cleaning and unloading, [hr]
+    tau_cleaning = 1
+    
+    # number of precipitation tank, [-]
+    N = 2
+    
+    # fraction of filled tank to total tank volume, [-]
+    V_wf = 0.9
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
                 acid_dose=0.003,
@@ -314,6 +346,21 @@ class SelectivePrecipitation(SanUnit):
         slurry.T = self.T
     
     def _design(self):
+        supernatant, acid, oxidant = self.ins
+        
+        F_vol = supernatant.F_vol + acid.F_vol + oxidant.F_vol
+        
+        D = self.design_results
+        
+        D.update(size_batch(F_vol, self.HRT, self.tau_cleaning, self.N, self.V_wf))
+        D['Number of reactors'] = self.N
+        D['Recirculation flow rate'] =  F_vol/self.N
+        
+        duty = self.Hnet
+        
+        D['Reactor duty'] = duty
+        
+        self.add_heat_utility(duty, self.T)
         
         self.acid_pump.simulate()
         self.oxidant_pump.simulate()

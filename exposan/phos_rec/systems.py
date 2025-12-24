@@ -45,7 +45,7 @@ PC = qsu.SludgeCentrifuge(ID='PC', ins=SP-0, outs=('precipitation_supernatant', 
                           sludge_moisture=0.92, solids=('FePO4_2H2O',))
 
 HD = su.HeatDrying(ID='HD', ins=(PC-1, 'heat_drying_natural_gas'), outs=('dried_precipitate', 'heat_drying_vapor'),
-                   T= 105 + _C_to_K)
+                   T=105+_C_to_K)
 
 SI = su.Sintering(ID='ST', ins=(HD-0, 'sintering_natural_gas', 'air'), outs=('product', 'sintering_vapor'))
 
