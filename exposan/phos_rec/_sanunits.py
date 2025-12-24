@@ -14,20 +14,16 @@ for license details.
 """
 
 # =============================================================================
-# TODO
-# TODO 1: add a storage tank for sludge (influent is continuous, so mixing is not needed)
-# TODO 2: 2 fermentation tanks with an HRT of 4 days, batch
-# TODO 3: 1 precipitation
-# TODO 4: add pumps (1) before storage tank, (2) after fermentation, (3) after precipitation, (4) adding H2SO4, and (5) adding H2O2
-# TODO 5: may need to replace current heat exchangers in fermentation and precipitation with heat exchangers in biosteam.units.NRELBatchBioreactor (also use its design for fermentation and precipitation)
+# TODO 3: 1 precipitation, what is the required HRT, also batch
 # =============================================================================
 
 import qsdsan as qs
 from qsdsan import SanUnit
-from qsdsan.sanunits import HXutility
+from qsdsan.sanunits import HXutility, SludgePump
 from qsdsan.equipments import VerticalMixer
 from biosteam import Stream
 from biosteam.units.decorators import cost
+from biosteam.units.design_tools import size_batch
 from thermosteam.reaction import ParallelReaction
 
 _C_to_K = 273.15
@@ -43,7 +39,17 @@ __all__ = (
 # AcidogenicFermenter
 # =============================================================================
 
-# TODO: may need to update F_BM for verticle_mixer
+@cost('Recirculation flow rate', 'Recirculation pumps', kW=30, S=77.22216,
+      cost=47200, n=0.8, BM=2.3, CE=522, N='Number of reactors')
+@cost('Reactor volume', 'Cleaning in place', CE=521.9,
+      cost=421e3, S=3785, n=0.6, BM=1.8)
+@cost('Reactor volume', 'Agitators', CE=521.9, cost=52500,
+      S=3785, n=0.5, kW=22.371, BM=1.5, N='Number of reactors')
+@cost('Reactor volume', 'Reactors', CE=521.9, cost=844000,
+      S=3785, n=0.5, BM=1.5, N='Number of reactors')
+@cost('Reactor duty', 'Heat exchangers', CE=522, cost=23900,
+      S=20920000.0, n=0.7, BM=2.2, N='Number of reactors',
+      magnitude=True)
 class AcidogenicFermenter(SanUnit):
     '''
     Fermentation of sludge and food waste.
@@ -51,7 +57,7 @@ class AcidogenicFermenter(SanUnit):
     Parameters
     ----------
     ins : iterable
-        fe_sludge, food_waste.
+        sludge, food_waste.
     outs : iterable
         fermentate, gas.
     food_sludge_ratio : float
@@ -70,24 +76,36 @@ class AcidogenicFermenter(SanUnit):
         Mass fractions of individual VFAs, [-].
     fe_reduction : float
         Fe3+ reduction ratio during acidogenic fermentation, [-].
-    # TODO: confirm the unit of HRT
     HRT : float
-        Hydraulic retention time, [d].
+        Hydraulic retention time, [hr].
+    V_wf : float
+        Fraction of filled tank to total tank volume, [-].
     T : float
         Required temperature for fermentation, [K].
+    
+    See Also
+    --------
+    :class:`biosteam.units.NRELBatchBioreactor
     '''
     _N_ins = 2
     _N_outs = 2
     
-    # TODO: may need to update F_BM for heat_exchanger
-    auxiliary_unit_names=('heat_exchanger',)
+    auxiliary_unit_names=(
+        'fermentate_pump',
+    )
     
     _units = {
-        'Flow rate': 'm3/d',
-        'HRT': 'd',
         'Reactor volume': 'm3',
-        'Required mixing power': 'kW'
+        'Cycle time': 'hr',
+        'Batch time': 'hr',
+        'Loading time': 'hr',
+        'Total dead time': 'hr',
+        'Reactor duty': 'kJ/hr',
+        'Recirculation flow rate': 'm3/hr'
     }
+    
+    # cleaning and unloading, [hr]
+    tau_cleaning = 3
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
                  food_sludge_ratio=1,
@@ -98,8 +116,10 @@ class AcidogenicFermenter(SanUnit):
                  org_to_residue=0.25,
                  VFA_ratio={'Ac': 0.5, 'Pr': 0.24, 'Bu': 0.23, 'Va': 0.02, 'Lac': 0.01},
                  fe_reduction=0.98,
-                 HRT=4,
-                 T=37+_C_to_K): 
+                 T=37+_C_to_K,
+                 HRT=4*24,
+                 V_wf=0.9,
+                 N=2): 
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.food_sludge_ratio = food_sludge_ratio
         self.food_waste_moisture = food_waste_moisture
@@ -109,29 +129,26 @@ class AcidogenicFermenter(SanUnit):
         self.org_to_residue = org_to_residue
         self.VFA_ratio = VFA_ratio
         self.fe_reduction = fe_reduction
-        self.HRT = HRT
         self.T = T
-        hx_in = Stream(ID=f'{ID}_hx_in')
-        hx_out = Stream(ID=f'{ID}_hx_out')
-        self.heat_exchanger = HXutility(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out)
-        self.verticle_mixer = VerticalMixer(ID='verticle_mixer', linked_unit=self)
-        self.equipments = (self.verticle_mixer,)
+        fermentate = self.outs[0].proxy(f'{ID}_fermentate')
+        self.fermentate_pump = SludgePump(f'.{ID}_fermentate_pump', ins=fermentate, init_with=init_with)
+        self.HRT = HRT
+        self.V_wf = V_wf
+        self.N = N
     
     def _run(self):
-        fe_sludge, food_waste = self.ins
+        sludge, food_waste = self.ins
         fermentate, gas = self.outs
         
-        fe_sludge.phase = 'l'
+        sludge.phase = 'l'
         food_waste.phase = 'l'
         fermentate.phase = 'l'
         gas.phase = 'g'
         
-        fermentate.T = gas.T = self.T
-        
         if self.food_sludge_ratio not in [0, 1/3, 2/3, 1, 4/3]:
             raise RuntimeError('food_sludge_ratio must be one of the follow: 0, 1/3, 2/3, 1, 4/3.')
         
-        food_waste.imass['Org'] = fe_sludge.imass['Org']*self.food_sludge_ratio
+        food_waste.imass['Org'] = sludge.imass['Org']*self.food_sludge_ratio
         food_waste.imass['H2O'] = food_waste.imass['Org']/(1-self.food_waste_moisture) * self.food_waste_moisture
         
         fermentate.mix_from(self.ins)
@@ -180,38 +197,27 @@ class AcidogenicFermenter(SanUnit):
         fermentate.imass['PO4'] *= metal_P_release[self.food_sludge_ratio]['P']/100
         
         fermentate.imass['Residue'] += metal_P_to_residue
+        
+        fermentate.T = gas.T = self.T
     
     def _design(self):
-        fe_sludge, food_waste = self.ins
+        sludge, food_waste = self.ins
         
-        Q = fe_sludge.F_vol + food_waste.F_vol
+        F_vol = sludge.F_vol + food_waste.F_vol
         
         D = self.design_results
         
-        D['Flow rate'] = Q
-        D['HRT'] = self.HRT
-        # TODO: any headspace? (e.g., multiply it by 1.2)
-        D['Reactor volume'] = Q * self.HRT
+        D.update(size_batch(F_vol, self.HRT, self.tau_cleaning, self.N, self.V_wf))
+        D['Number of reactors'] = self.N
+        D['Recirculation flow rate'] =  F_vol/self.N
         
-        self.add_equipment_design()
+        duty = self.Hnet
         
-        D.update(self.verticle_mixer.design_results)
+        D['Reactor duty'] = duty
         
-        # kW
-        self.add_power_utility(D['Required mixing power'])
+        self.add_heat_utility(duty, self.T)
         
-        hx = self.heat_exchanger
-        hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
-        hx_ins0.mix_from(self.ins)
-        hx_outs0.copy_flow(hx_ins0)
-        hx_ins0.T = self.ins[0].T
-        hx_outs0.T = self.T
-        hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
-
-# TODO: check    
-#     def _cost(self):
-#         V = self.design_result['Reactor volume']
-#         self.baseline_purchase_costs['Acidogenic fermenter'] = 3000 * V ** 0.6
+        self.fermentate_pump.simulate()
 
 # =============================================================================
 # SelectivePrecipitation
@@ -238,12 +244,11 @@ class SelectivePrecipitation(SanUnit):
     _N_ins = 3
     _N_outs = 1
     
-    # TODO: may need to update F_BM for heat_exchanger
-    auxiliary_unit_names=('heat_exchanger',)
-    
-    _units = {
-        'Required mixing power': 'kW'
-    }
+    auxiliary_unit_names=(
+        'acid_pump',
+        'oxidant_pump',
+        'slurry_pump'
+    )
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
                 acid_dose=0.003,
@@ -258,6 +263,12 @@ class SelectivePrecipitation(SanUnit):
         self.heat_exchanger = HXutility(ID=f'.{ID}_hx', ins=hx_in, outs=hx_out)
         self.verticle_mixer = VerticalMixer(ID='verticle_mixer', linked_unit=self)
         self.equipments = (self.verticle_mixer,)
+        acid = self.ins[1].proxy(f'{ID}_acid')
+        self.acid_pump = SludgePump(f'.{ID}_acid_pump', ins=acid, init_with=init_with)
+        oxidant = self.ins[2].proxy(f'{ID}_oxidant')
+        self.oxidant_pump = SludgePump(f'.{ID}_oxidant_pump', ins=oxidant, init_with=init_with)
+        slurry = self.outs[0].proxy(f'{ID}_slurry')
+        self.slurry_pump = SludgePump(f'.{ID}_slurry_pump', ins=slurry, init_with=init_with)
     
     def _run(self):
         supernatant, acid, oxidant = self.ins
@@ -267,8 +278,6 @@ class SelectivePrecipitation(SanUnit):
         acid.phase = 'l'
         oxidant.phase = 'l'
         slurry.phase = 'l'
-        
-        slurry.T = self.T
         
         # acid dosing while adjusting the pH
         acid.imass['H2SO4'] = supernatant.F_mass * self.acid_dose
@@ -301,30 +310,14 @@ class SelectivePrecipitation(SanUnit):
         slurry.imass['H2O2'] = 0
         slurry.imass['H2O'] = 0
         slurry.imass['H2O'] = supernatant.F_mass + acid.F_mass + oxidant.F_mass - slurry.F_mass
+        
+        slurry.T = self.T
     
     def _design(self):
-        hx = self.heat_exchanger
-        hx_ins0, hx_outs0 = hx.ins[0], hx.outs[0]
-        hx_ins0.mix_from(self.ins)
-        hx_outs0.copy_flow(hx_ins0)
-        hx_ins0.T = self.ins[0].T
-        hx_outs0.T = self.T
-        hx.simulate_as_auxiliary_exchanger(ins=hx.ins, outs=hx.outs)
         
-        # D = self.design_results
-        
-        # TODO: add reactor volume
-        # D['Reactor volume'] = 
-        
-        # self.add_equipment_design()
-        
-        # D.update(self.verticle_mixer.design_results)
-        
-        # kW
-        # self.add_power_utility(D['Required mixing power'])
-    
-    def _cost(self):
-        pass
+        self.acid_pump.simulate()
+        self.oxidant_pump.simulate()
+        self.slurry_pump.simulate()
 
 # =============================================================================
 # HeatDrying
@@ -392,8 +385,6 @@ class HeatDrying(SanUnit):
         dried_solids.phase = 's'
         vapor.phase = 'g'
         
-        dried_solids.T = vapor.T = self.T
-        
         dried_solids.copy_like(feed)    
             
         for cmp in ['H2O', 'Acetic_acid', 'Propionic_acid', 'Butyric_acid',
@@ -403,6 +394,8 @@ class HeatDrying(SanUnit):
         
         # use natural gas for heat drying base on the BEAM*2024 model
         natural_gas.ivol['CH4'] = vapor.F_mass/1000*self.unit_heat*1000/self.natural_gas_HHV
+        
+        dried_solids.T = vapor.T = self.T
     
     def _design(self):
         self.design_results['Half dry solids flow'] = self.outs[0].F_mass/1000*24/2
@@ -414,6 +407,7 @@ class HeatDrying(SanUnit):
 # Sintering
 # =============================================================================
 
+# TODO: add heat recovery
 class Sintering(SanUnit):
     '''
     Fermentation of sludge and food waste.
