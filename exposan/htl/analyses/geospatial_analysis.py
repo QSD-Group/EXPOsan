@@ -23,7 +23,7 @@ For parameters/numbers not explained, see geospatial_systems.py or _sanunits.py 
 
 #%% initialization
 
-import geopy.distance, googlemaps
+import os, geopy.distance, googlemaps
 import pandas as pd, geopandas as gpd, numpy as np, matplotlib.pyplot as plt, matplotlib.colors as colors, scipy.stats as stats, qsdsan as qs, networkx as nx
 from math import floor
 from matplotlib.mathtext import _mathtext as mathtext
@@ -43,9 +43,9 @@ from scipy.linalg import cholesky
 from scipy.spatial import KDTree
 from numba import njit
 
-mathtext.FontConstantsBase.sup1 = 0.35
+folder = os.path.dirname(os.path.dirname(__file__))
 
-folder = '/Users/jiananfeng/Desktop/UIUC_PhD/PhD_CEE/NSF/HTL_geospatial/'
+mathtext.FontConstantsBase.sup1 = 0.35
 
 # color palette
 b = Color('blue', (96, 193, 207)).HEX
@@ -72,7 +72,7 @@ _MMgal_to_L = auom('gal').conversion_factor('L')*1000000
 _oil_barrel_to_L = auom('oil_barrel').conversion_factor('L')
 _ton_to_kg = auom('ton').conversion_factor('kg')
 
-WRRF = pd.read_excel(folder + 'HTL_geospatial_input_2025-07-14.xlsx')
+WRRF = pd.read_excel(folder + '/data/HTL_geospatial_input_2025-07-14.xlsx')
 
 assert WRRF.duplicated(subset='CWNS_NUM').sum() == 0
 
@@ -117,7 +117,7 @@ WRRF.fillna({'sludge_aerobic_digestion': 0,
              'sludge_anaerobic_digestion': 0},
             inplace=True)
 
-elec_CI = pd.read_csv(folder + 'StdScen21_MidCase_annual_balancingArea.csv')
+elec_CI = pd.read_csv(folder + '/data/StdScen21_MidCase_annual_balancingArea.csv')
 elec_CI = elec_CI[['r','kg_CO2e_kWh']]
 elec_CI['r'] = elec_CI['r'].apply(lambda x: x[1:])
 elec_CI['r'] = pd.to_numeric(elec_CI['r'])
@@ -132,7 +132,7 @@ WRRF = gpd.GeoDataFrame(WRRF, crs='EPSG:4269',
                         geometry=gpd.points_from_xy(x=WRRF.LONGITUDE,
                                                     y=WRRF.LATITUDE))
 
-refinery = pd.read_csv(folder + 'petroleum_refineries_EIA_2024-06-06.csv')
+refinery = pd.read_csv(folder + '/data/petroleum_refineries_EIA_2024-06-06.csv')
 refinery['capacity'] = refinery[['Atmos. Crude Dist','Vacuum Dist','Catalytic Cracking',
                                  'Hydro Cracking','Thermal Cracking, Visbreaking',
                                  'Catalytic Recorming','Alkylates, Isomerization',
@@ -145,7 +145,7 @@ refinery = gpd.GeoDataFrame(refinery, crs='EPSG:4269',
                                                         y=refinery.Latitude))
 
 # coal-based power plant
-coal_pp = pd.read_csv(folder + 'Power_Plants.csv')
+coal_pp = pd.read_csv(folder + '/data/Power_Plants.csv')
 coal_pp = coal_pp[coal_pp['PrimSource'] == 'coal']
 coal_pp = coal_pp[coal_pp['Coal_MW'] > 0]
 coal_pp = gpd.GeoDataFrame(coal_pp, crs='EPSG:4269',
@@ -154,7 +154,7 @@ coal_pp = gpd.GeoDataFrame(coal_pp, crs='EPSG:4269',
 
 # confirmed from the wesbite (next line): there is no change in US map since June 1, 1995. So, using 2018 US map data is OK.
 # https://en.wikipedia.org/wiki/Territorial_evolution_of_the_United_States#1946%E2%80%93present_(Decolonization)
-US = gpd.read_file(folder + 'US/cb_2018_us_state_500k.shp')
+US = gpd.read_file(folder + '/data/US/cb_2018_us_state_500k.shp')
 US = US[['NAME','geometry']]
 
 for excluded in ('Alaska',
@@ -167,7 +167,7 @@ for excluded in ('Alaska',
     US = US[US['NAME'] != excluded]
     coal_pp = coal_pp[coal_pp['State'] != excluded]
 
-US_county = gpd.read_file('/Users/jiananfeng/Desktop/PhD_CEE/proposal/ARPA-E/preliminary_analysis/cb_2018_us_county_500k/cb_2018_us_county_500k.shp')
+US_county = gpd.read_file(folder + '/data/cb_2018_us_county_500k/cb_2018_us_county_500k.shp')
 
 US_county = US_county[US_county['STATEFP'].isin(['01','04','05','06','08','09','10','11',
                                                  '12','13','16','17','18','19','20','21',
@@ -228,7 +228,7 @@ state_ID = {'01':'AL',
 
 US_county['STATE'] = US_county['STATEFP'].apply(lambda x: state_ID[x])
 
-NREL_area = gpd.read_file(folder + 'lpreg2/lpreg2.shp')
+NREL_area = gpd.read_file(folder + '/data/lpreg2/lpreg2.shp')
 
 WRRF = WRRF.to_crs(crs='EPSG:3857')
 refinery = refinery.to_crs(crs='EPSG:3857')
@@ -237,7 +237,7 @@ US = US.to_crs(crs='EPSG:3857')
 US_county = US_county.to_crs(crs='EPSG:3857')
 NREL_area = NREL_area.to_crs(crs='EPSG:3857')
 
-US_county_labor_cost = gpd.read_file('/Users/jiananfeng/Desktop/PhD_CEE/NSF/HTL_geospatial/county_labor_cost_2022_processed.geojson')
+US_county_labor_cost = gpd.read_file(folder + '/data/county_labor_cost_2022_processed.geojson')
 
 WRRF = WRRF.sjoin_nearest(US_county_labor_cost)
 WRRF = WRRF.drop(['index_right','STATE_right'], axis=1)
@@ -265,8 +265,8 @@ WRRF = WRRF.rename({'FACILITY':'facility',
 refinery = gpd.sjoin(refinery, US)
 refinery = refinery.drop(['index_right'], axis=1)
 
-farm_fertilizer = pd.read_excel('/Users/jiananfeng/Desktop/PhD_CEE/proposal/ARPA-E/preliminary_analysis/N-P_from_fertilizer_1950-2017-july23-2020.xlsx','farm')
-nonfarm_fertilizer = pd.read_excel('/Users/jiananfeng/Desktop/PhD_CEE/proposal/ARPA-E/preliminary_analysis/N-P_from_fertilizer_1950-2017-july23-2020.xlsx','nonfarm')
+farm_fertilizer = pd.read_excel(folder + '/data/N-P_from_fertilizer_1950-2017-july23-2020.xlsx','farm')
+nonfarm_fertilizer = pd.read_excel(folder + '/data/N-P_from_fertilizer_1950-2017-july23-2020.xlsx','nonfarm')
 
 N_farm = farm_fertilizer[['CountyName','State','farmfertN-kg-2017']]
 N_nonfarm = nonfarm_fertilizer[['CountyName','State','nonffertN-kg-2017']]
@@ -280,7 +280,7 @@ P_nonfarm = nonfarm_fertilizer[['CountyName','State','nonffertP-kg-2017']]
 P = P_farm.merge(P_nonfarm, on=['CountyName','State'], how='inner')
 P['total'] = P['farmfertP-kg-2017'] + P['nonffertP-kg-2017']
 
-elec_price = pd.read_excel(folder + 'state_elec_price_2022.xlsx', 'elec_price_2022')
+elec_price = pd.read_excel(folder + '/data/state_elec_price_2022.xlsx', 'elec_price_2022')
 elec_price = elec_price.merge(US, how='right', left_on='name', right_on='NAME')
 elec_price = gpd.GeoDataFrame(elec_price)
 
@@ -289,9 +289,9 @@ elec_GHG.drop_duplicates(inplace=True)
 elec_GHG = elec_GHG.merge(NREL_area, how='right', left_on='balancing_area', right_on='PCA_REG')
 elec_GHG = gpd.GeoDataFrame(elec_GHG)
 
-US_county_labor_cost = gpd.read_file(folder + 'county_labor_cost_2022_processed.geojson')
+US_county_labor_cost = gpd.read_file(folder + '/data/county_labor_cost_2022_processed.geojson')
 
-income_tax = pd.read_excel(folder + 'state_corporate_income_tax_2022.xlsx', 'tax_2022')
+income_tax = pd.read_excel(folder + '/data/state_corporate_income_tax_2022.xlsx', 'tax_2022')
 income_tax = income_tax.merge(US, how='right', left_on='name', right_on='NAME')
 income_tax = gpd.GeoDataFrame(income_tax)
 
@@ -409,7 +409,7 @@ PADD_color = {1: b,
 
 # the purchase of crude oil is assumed at WRRFs, therefore, use the first purchase price of the location of WRRFs
 # at the same time, assume WRRFs will be responsible for the transportation of the crude oil
-crude_oil_price_data = pd.read_excel(folder + 'crude_oil_price_2022.xlsx')
+crude_oil_price_data = pd.read_excel(folder + '/data/crude_oil_price_2022.xlsx')
 
 # state dominant nitrogen fertilizer form
 state_nitrogen_fertilizer = {'AL':'UAN',
@@ -969,10 +969,10 @@ WRRF_input['coal_pp_location'] = list(zip(WRRF_input.Latitude_right, WRRF_input.
 # distance_inventory = WRRF_input[['CWNS','Site ID','WRRF_refinery_linear_distance_km','WRRF_refinery_real_distance_km',
 #                                  'Plant_Code','WRRF_coal_pp_linear_distance_km','WRRF_coal_pp_real_distance_km']]
 # 
-# distance_inventory.to_excel(folder + f'distance_inventory_{date.today()}.xlsx')
+# distance_inventory.to_excel(folder + f'/data/distance_inventory_{date.today()}.xlsx')
 # =============================================================================
 
-distance_inventory = pd.read_excel(folder + 'distance_inventory_2025-07-14.xlsx')
+distance_inventory = pd.read_excel(folder + '/data/distance_inventory_2025-07-14.xlsx')
 
 # match using WRRF ID ('CWNS') and oil refinery ID ('Site ID')
 WRRF_input = WRRF_input.merge(distance_inventory, how='left', on=['CWNS','Site ID','Plant_Code'])
@@ -988,7 +988,7 @@ for i in WRRF_input.index:
         WRRF_coal_pp_missing_distance.append(i)
 
 if len(WRRF_refinery_missing_distance) == 0 & len(WRRF_coal_pp_missing_distance) == 0:
-    WRRF_input.to_excel(folder + f'HTL_geospatial_model_input_including_inaccessible_WRRFs_{date.today()}.xlsx')
+    WRRF_input.to_excel(folder + f'/data/HTL_geospatial_model_input_including_inaccessible_WRRFs_{date.today()}.xlsx')
 else:
     # !!! get a google API key
     # !!! do not upload to GitHub
@@ -1024,15 +1024,15 @@ else:
     distance_inventory = WRRF_input[['CWNS','Site ID','WRRF_refinery_linear_distance_km','WRRF_refinery_real_distance_km',
                                      'Plant_Code','WRRF_coal_pp_linear_distance_km','WRRF_coal_pp_real_distance_km']]
     
-    distance_inventory.to_excel(folder + f'distance_inventory_{date.today()}.xlsx')
+    distance_inventory.to_excel(folder + f'/data/distance_inventory_{date.today()}.xlsx')
     
     # input for following analyses
-    WRRF_input.to_excel(folder + f'HTL_geospatial_model_input_including_inaccessible_WRRFs_{date.today()}.xlsx')
+    WRRF_input.to_excel(folder + f'/data/HTL_geospatial_model_input_including_inaccessible_WRRFs_{date.today()}.xlsx')
 
 #%% input data refinement
 
 # !!! update the input file if necessary
-WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_including_inaccessible_WRRFs_2025-07-14.xlsx')
+WRRF_input = pd.read_excel(folder + '/data/HTL_geospatial_model_input_including_inaccessible_WRRFs_2025-07-14.xlsx')
 
 # WRRFs cannot reach an oil refinery or a coal-based power plant are the same
 assert (WRRF_input['WRRF_refinery_real_distance_km'].isna() != WRRF_input['WRRF_coal_pp_real_distance_km'].isna()).sum() == 0
@@ -1053,12 +1053,12 @@ print(f"{((WRRF_input.sludge_anaerobic_digestion == 0) & (WRRF_input.sludge_aero
 print(f"{((WRRF_input.sludge_anaerobic_digestion == 1) & (WRRF_input.sludge_aerobic_digestion == 1)).sum()} WRRFs have both AD and AeD")
 print(f"{((WRRF_input.sludge_anaerobic_digestion == 0) & (WRRF_input.sludge_aerobic_digestion == 0)).sum()} WRRFs have neither AD nor AeD")
 
-WRRF_input.to_excel(folder + f'HTL_geospatial_model_input_{date.today()}.xlsx')
+WRRF_input.to_excel(folder + f'/data/HTL_geospatial_model_input_{date.today()}.xlsx')
 
 #%% biocrude and hydrochar transporation distance box plot
 
 # !!! update the input file if necessary
-WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
+WRRF_input = pd.read_excel(folder + '/data/HTL_geospatial_model_input_2025-07-14.xlsx')
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
@@ -1135,7 +1135,7 @@ ax_right.scatter(x=2,
 #%% biocrude and hydrochar transporation distance box plot (per region)
 
 # !!! update the input file if necessary
-WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
+WRRF_input = pd.read_excel(folder + '/data/HTL_geospatial_model_input_2025-07-14.xlsx')
 
 # results grouped by different regions (not by PADD regions, just they are the same as PADD regions)
 WRRF_input.loc[WRRF_input['state'].isin(['CT','DC','DE','FL','GA','MA','MD','ME','NC','NH','NJ','NY','PA','RI','SC','VA','VT','WV']),'WRRF_PADD'] = 1
@@ -1237,7 +1237,7 @@ add_region(4, 'West Coast', y)
 #%% biocrude and hydrochar transporation distance box plot (national + per region)
 
 # !!! update the input file if necessary
-WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
+WRRF_input = pd.read_excel(folder + '/data/HTL_geospatial_model_input_2025-07-14.xlsx')
 
 # results grouped by different regions (not by PADD regions, just they are the same as PADD regions)
 WRRF_input.loc[WRRF_input['state'].isin(['CT','DC','DE','FL','GA','MA','MD','ME','NC','NH','NJ','NY','PA','RI','SC','VA','VT','WV']),'WRRF_PADD'] = 1
@@ -1369,7 +1369,7 @@ add_region(5, 'West Coast', y)
 #%% WRRFs GHG map
 
 # !!! update the input file if necessary
-WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
+WRRF_input = pd.read_excel(folder + '/data/HTL_geospatial_model_input_2025-07-14.xlsx')
 
 WRRF_input = WRRF_input.sort_values(by='total_emission', ascending=False)
 
@@ -1402,7 +1402,7 @@ ax.set_axis_off()
 #%% WRRFs sludge management GHG map
 
 # !!! update the input file if necessary
-WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
+WRRF_input = pd.read_excel(folder + '/data/HTL_geospatial_model_input_2025-07-14.xlsx')
 
 WRRF_input = WRRF_input.sort_values(by='biosolids_emission', ascending=False)
 
@@ -1435,7 +1435,7 @@ ax.set_axis_off()
 #%% cumulative WRRFs capacity vs WRRF and oil refinery distances (data processing)
 
 # !!! update the input file if necessary
-WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
+WRRF_input = pd.read_excel(folder + '/data/HTL_geospatial_model_input_2025-07-14.xlsx')
 
 result = WRRF_input[['Site ID']].drop_duplicates()
 
@@ -1464,12 +1464,12 @@ for item in refineries_left_id:
 
 result = result.merge(refinery, how='left', on='Site ID')
 
-result.to_excel(folder + f'results/distance/MGD_vs_WRRF_refinery_real_distance_{max_distance}_km.xlsx')
+result.to_excel(folder + f'/results/geospatial/distance/MGD_vs_WRRF_refinery_real_distance_{max_distance}_km.xlsx')
 
 #%% make the plot of cumulative WRRFs capacity vs WRRF and oil refinery distances (data preparation)
 
 # !!! update the file if necessary
-CF_input = pd.read_excel(folder + 'results/distance/MGD_vs_WRRF_refinery_real_distance_1500_km.xlsx')
+CF_input = pd.read_excel(folder + '/results/geospatial/distance/MGD_vs_WRRF_refinery_real_distance_1500_km.xlsx')
 
 CF_input[0] = 0
 
@@ -1593,7 +1593,7 @@ ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, l
 #%% cumulative WRRFs capacity vs WRRF and coal-based power plant distances (data processing)
 
 # !!! update the input file if necessary
-WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
+WRRF_input = pd.read_excel(folder + '/data/HTL_geospatial_model_input_2025-07-14.xlsx')
 
 result = WRRF_input[['Plant_Code']].drop_duplicates()
 
@@ -1624,12 +1624,12 @@ result = result.merge(coal_pp, how='left', on='Plant_Code')
 
 result['PADD'] = result['State'].apply(lambda x: state_PADD[x])
 
-result.to_excel(folder + f'results/distance/MGD_vs_WRRF_coal_pp_real_distance_{max_distance}_km.xlsx')
+result.to_excel(folder + f'/results/geospatial/distance/MGD_vs_WRRF_coal_pp_real_distance_{max_distance}_km.xlsx')
 
 #%% make the plot of cumulative WRRFs capacity vs WRRF and coal-based power plant distances (data preparation)
 
 # !!! update the file if necessary
-CF_input = pd.read_excel(folder + 'results/distance/MGD_vs_WRRF_coal_pp_real_distance_900_km.xlsx')
+CF_input = pd.read_excel(folder + '/results/geospatial/distance/MGD_vs_WRRF_coal_pp_real_distance_900_km.xlsx')
 
 CF_input[0] = 0
 
@@ -1755,7 +1755,7 @@ ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, l
 filterwarnings('ignore')
 
 # !!! update the input file if necessary
-WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
+WRRF_input = pd.read_excel(folder + '/data/HTL_geospatial_model_input_2025-07-14.xlsx')
 
 # if just want to see the two plants in Urbana-Champaign:
 # WRRF_input = WRRF_input[WRRF_input['CWNS'].isin([17000112001, 17000112002])]
@@ -1883,19 +1883,19 @@ result = {'CWNS': CWNS,
 result = pd.DataFrame(result)
 
 if hydrochar_recovery_baseline:
-    result.to_excel(folder + f'results/baseline/baseline_hydrochar_{date.today()}_{i}.xlsx')
+    result.to_excel(folder + f'/results/geospatial/baseline/baseline_hydrochar_{date.today()}_{i}.xlsx')
 else:
-    result.to_excel(folder + f'results/baseline/baseline_no_hydrochar_{date.today()}_{i}.xlsx')
+    result.to_excel(folder + f'/results/geospatial/baseline/baseline_no_hydrochar_{date.today()}_{i}.xlsx')
 
 #%% merge the results and the input
 
 # !!! update the input file if necessary
-input_data = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
+input_data = pd.read_excel(folder + '/data/HTL_geospatial_model_input_2025-07-14.xlsx')
 
 # !!! update these files if necessary
-output_result_hydrochar_1 = pd.read_excel(folder + 'results/baseline/baseline_hydrochar_2025-07-22_4999.xlsx')
-output_result_hydrochar_2 = pd.read_excel(folder + 'results/baseline/baseline_hydrochar_2025-07-22_9999.xlsx')
-output_result_hydrochar_3 = pd.read_excel(folder + 'results/baseline/baseline_hydrochar_2025-07-22_15854.xlsx')
+output_result_hydrochar_1 = pd.read_excel(folder + '/results/geospatial/baseline/baseline_hydrochar_2025-07-22_4999.xlsx')
+output_result_hydrochar_2 = pd.read_excel(folder + '/results/geospatial/baseline/baseline_hydrochar_2025-07-22_9999.xlsx')
+output_result_hydrochar_3 = pd.read_excel(folder + '/results/geospatial/baseline/baseline_hydrochar_2025-07-22_15854.xlsx')
 
 output_hydrochar_result = pd.concat([output_result_hydrochar_1, output_result_hydrochar_2, output_result_hydrochar_3])
 
@@ -1903,12 +1903,12 @@ assert len(input_data) == len(output_hydrochar_result)
 
 integrated_hydrochar_result = input_data.merge(output_hydrochar_result, how='left', on='CWNS')
 
-integrated_hydrochar_result.to_excel(folder + f'results/baseline/integrated_baseline_hydrochar_{date.today()}.xlsx')
+integrated_hydrochar_result.to_excel(folder + f'/results/geospatial/baseline/integrated_baseline_hydrochar_{date.today()}.xlsx')
 
 # !!! update these files if necessary
-output_result_no_hydrochar_1 = pd.read_excel(folder + 'results/baseline/baseline_no_hydrochar_2025-07-22_4999.xlsx')
-output_result_no_hydrochar_2 = pd.read_excel(folder + 'results/baseline/baseline_no_hydrochar_2025-07-22_9999.xlsx')
-output_result_no_hydrochar_3 = pd.read_excel(folder + 'results/baseline/baseline_no_hydrochar_2025-07-22_15854.xlsx')
+output_result_no_hydrochar_1 = pd.read_excel(folder + '/results/geospatial/baseline/baseline_no_hydrochar_2025-07-22_4999.xlsx')
+output_result_no_hydrochar_2 = pd.read_excel(folder + '/results/geospatial/baseline/baseline_no_hydrochar_2025-07-22_9999.xlsx')
+output_result_no_hydrochar_3 = pd.read_excel(folder + '/results/geospatial/baseline/baseline_no_hydrochar_2025-07-22_15854.xlsx')
 
 output_no_hydrochar_result = pd.concat([output_result_no_hydrochar_1, output_result_no_hydrochar_2, output_result_no_hydrochar_3])
 
@@ -1916,12 +1916,12 @@ assert len(input_data) == len(output_no_hydrochar_result)
 
 integrated_no_hydrochar_result = input_data.merge(output_no_hydrochar_result, how='left', on='CWNS')
 
-integrated_no_hydrochar_result.to_excel(folder + f'results/baseline/integrated_baseline_no_hydrochar_{date.today()}.xlsx')
+integrated_no_hydrochar_result.to_excel(folder + f'/results/geospatial/baseline/integrated_baseline_no_hydrochar_{date.today()}.xlsx')
 
 #%% qualified percentage
 
 # !!! update the file here if necessary
-qualified_percentage = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+qualified_percentage = pd.read_excel(folder + '/results/geospatial/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
 # manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
 qualified_percentage = qualified_percentage[qualified_percentage['CWNS'] != 48008015003]
 qualified_percentage = qualified_percentage[qualified_percentage['USD_decarbonization'].notna()]
@@ -1944,7 +1944,7 @@ print(qualified_percentage['total_sludge_amount_kg_per_year'].min()/1000/365)
 #%% decarbonization map (preparation)
 
 # !!! update the file here if necessary
-decarbonization_map = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+decarbonization_map = pd.read_excel(folder + '/results/geospatial/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
 # manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
 decarbonization_map = decarbonization_map[decarbonization_map['CWNS'] != 48008015003]
 decarbonization_map = decarbonization_map[decarbonization_map['USD_decarbonization'].notna()]
@@ -2020,7 +2020,7 @@ plot_map(none_map, r)
 #%% cumulative GHG reduction
 
 # !!! update the file here if necessary
-decarbonization_map = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+decarbonization_map = pd.read_excel(folder + '/results/geospatial/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
 # manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
 decarbonization_map = decarbonization_map[decarbonization_map['CWNS'] != 48008015003]
 decarbonization_map = decarbonization_map[decarbonization_map['USD_decarbonization'].notna()]
@@ -2251,7 +2251,7 @@ ax_right.scatter(x=1,
 #%% cost vs sludge amount
 
 # !!! update the file here if necessary
-cost_vs_sludge = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+cost_vs_sludge = pd.read_excel(folder + '/results/geospatial/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
 # manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
 cost_vs_sludge = cost_vs_sludge[cost_vs_sludge['CWNS'] != 48008015003]
 cost_vs_sludge = cost_vs_sludge[cost_vs_sludge['USD_decarbonization'].notna()]
@@ -2307,7 +2307,7 @@ ax.scatter(x=cost_vs_sludge['total_sludge_amount_kg_per_year']/1000/365,
 #%% CI vs sludge amount
 
 # !!! update the file here if necessary
-CI_vs_sludge = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+CI_vs_sludge = pd.read_excel(folder + '/results/geospatial/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
 # manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
 CI_vs_sludge = CI_vs_sludge[CI_vs_sludge['CWNS'] != 48008015003]
 CI_vs_sludge = CI_vs_sludge[CI_vs_sludge['USD_decarbonization'].notna()]
@@ -2363,7 +2363,7 @@ ax.scatter(x=CI_vs_sludge['total_sludge_amount_kg_per_year']/1000/365,
 #%% cost vs WRRF-oil refinery distance
 
 # !!! update the file here if necessary
-cost_vs_biocrude_distance = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+cost_vs_biocrude_distance = pd.read_excel(folder + '/results/geospatial/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
 # manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
 cost_vs_biocrude_distance = cost_vs_biocrude_distance[cost_vs_biocrude_distance['CWNS'] != 48008015003]
 cost_vs_biocrude_distance = cost_vs_biocrude_distance[cost_vs_biocrude_distance['USD_decarbonization'].notna()]
@@ -2419,7 +2419,7 @@ ax.scatter(x=cost_vs_biocrude_distance['WRRF_refinery_real_distance_km'],
 #%% CI vs WRRF-oil refinery distance
 
 # !!! update the file here if necessary
-CI_vs_biocrude_distance = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+CI_vs_biocrude_distance = pd.read_excel(folder + '/results/geospatial/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
 # manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
 CI_vs_biocrude_distance = CI_vs_biocrude_distance[CI_vs_biocrude_distance['CWNS'] != 48008015003]
 CI_vs_biocrude_distance = CI_vs_biocrude_distance[CI_vs_biocrude_distance['USD_decarbonization'].notna()]
@@ -2475,7 +2475,7 @@ ax.scatter(x=CI_vs_biocrude_distance['WRRF_refinery_real_distance_km'],
 #%% cost vs WRRF-coal-baed power plant distance
 
 # !!! update the file here if necessary
-cost_vs_hydrochar_distance = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+cost_vs_hydrochar_distance = pd.read_excel(folder + '/results/geospatial/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
 # manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
 cost_vs_hydrochar_distance = cost_vs_hydrochar_distance[cost_vs_hydrochar_distance['CWNS'] != 48008015003]
 cost_vs_hydrochar_distance = cost_vs_hydrochar_distance[cost_vs_hydrochar_distance['USD_decarbonization'].notna()]
@@ -2531,7 +2531,7 @@ ax.scatter(x=cost_vs_hydrochar_distance['WRRF_coal_pp_real_distance_km'],
 #%% CI vs WRRF-coal-baed power plant distance
 
 # !!! update the file here if necessary
-CI_vs_hydrochar_distance = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+CI_vs_hydrochar_distance = pd.read_excel(folder + '/results/geospatial/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
 # manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
 CI_vs_hydrochar_distance = CI_vs_hydrochar_distance[CI_vs_hydrochar_distance['CWNS'] != 48008015003]
 CI_vs_hydrochar_distance = CI_vs_hydrochar_distance[CI_vs_hydrochar_distance['USD_decarbonization'].notna()]
@@ -2587,7 +2587,7 @@ ax.scatter(x=CI_vs_hydrochar_distance['WRRF_coal_pp_real_distance_km'],
 #%% cost vs degestion or not
 
 # !!! update the file here if necessary
-cost_vs_digestion = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+cost_vs_digestion = pd.read_excel(folder + '/results/geospatial/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
 # manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
 cost_vs_digestion = cost_vs_digestion[cost_vs_digestion['CWNS'] != 48008015003]
 cost_vs_digestion = cost_vs_digestion[cost_vs_digestion['USD_decarbonization'].notna()]
@@ -2665,7 +2665,7 @@ ax.scatter(scatter_x, scatter_y,
 #%% CI vs degestion or not
 
 # !!! update the file here if necessary
-CI_vs_digestion = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+CI_vs_digestion = pd.read_excel(folder + '/results/geospatial/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
 # manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
 CI_vs_digestion = CI_vs_digestion[CI_vs_digestion['CWNS'] != 48008015003]
 CI_vs_digestion = CI_vs_digestion[CI_vs_digestion['USD_decarbonization'].notna()]
@@ -2743,7 +2743,7 @@ ax.scatter(scatter_x, scatter_y,
 #%% cost vs nitrogen fertilizer type
 
 # !!! update the file here if necessary
-cost_vs_N_fertilizer = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+cost_vs_N_fertilizer = pd.read_excel(folder + '/results/geospatial/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
 # manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
 cost_vs_N_fertilizer = cost_vs_N_fertilizer[cost_vs_N_fertilizer['CWNS'] != 48008015003]
 cost_vs_N_fertilizer = cost_vs_N_fertilizer[cost_vs_N_fertilizer['USD_decarbonization'].notna()]
@@ -2833,7 +2833,7 @@ ax.scatter(scatter_x, scatter_y,
 #%% CI vs nitrogen fertilizer type
 
 # !!! update the file here if necessary
-CI_vs_N_fertilizer = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+CI_vs_N_fertilizer = pd.read_excel(folder + '/results/geospatial/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
 # manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
 CI_vs_N_fertilizer = CI_vs_N_fertilizer[CI_vs_N_fertilizer['CWNS'] != 48008015003]
 CI_vs_N_fertilizer = CI_vs_N_fertilizer[CI_vs_N_fertilizer['USD_decarbonization'].notna()]
@@ -2923,7 +2923,7 @@ ax.scatter(scatter_x, scatter_y,
 #%% relative importance of inter-WRRF contextual parameters to cost
 
 # !!! update the file here if necessary
-relative_importance = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+relative_importance = pd.read_excel(folder + '/results/geospatial/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
 # manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
 relative_importance = relative_importance[relative_importance['CWNS'] != 48008015003]
 relative_importance = relative_importance[relative_importance['USD_decarbonization'].notna()]
@@ -2967,7 +2967,7 @@ print(feature_importance)
 #%% relative importance of inter-WRRF contextual parameters to CI
 
 # !!! update the file here if necessary
-relative_importance = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+relative_importance = pd.read_excel(folder + '/results/geospatial/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
 # manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
 relative_importance = relative_importance[relative_importance['CWNS'] != 48008015003]
 relative_importance = relative_importance[relative_importance['USD_decarbonization'].notna()]
@@ -3033,7 +3033,7 @@ filterwarnings('ignore')
 
 # !!! update the file here if necessary
 # !!! do not remove 48008015003 here since this is where this WRRF is identified
-qualified_facility = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+qualified_facility = pd.read_excel(folder + '/results/geospatial/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
 qualified_facility = qualified_facility[qualified_facility['USD_decarbonization'].notna()]
 qualified_facility = qualified_facility[qualified_facility['USD_decarbonization'] <= 0]
 
@@ -3183,37 +3183,37 @@ for i in range(0, len(qualified_facility)):
     # check progress
     print(i)
 
-geo_uncertainty_cost.to_excel(folder + f'results/qualified_facility/before_integration/cost_dollar_per_tonne_{date.today()}_{i}.xlsx')
-geo_uncertainty_CI.to_excel(folder + f'results/qualified_facility/before_integration/CI_kg_CO2_eq_per_day_{date.today()}_{i}.xlsx')
-geo_uncertainty_saving.to_excel(folder + f'results/qualified_facility/before_integration/saving_dollar_per_day_{date.today()}_{i}.xlsx')
-geo_uncertainty_decarbonization.to_excel(folder + f'results/qualified_facility/before_integration/decarbonization_kg_CO2_eq_per_day_{date.today()}_{i}.xlsx')
-geo_uncertainty_sludge_N.to_excel(folder + f'results/qualified_facility/before_integration/sludge_N_tonne_per_year_{date.today()}_{i}.xlsx')
-geo_uncertainty_HNO3_N.to_excel(folder + f'results/qualified_facility/before_integration/HNO3_N_tonne_per_year_{date.today()}_{i}.xlsx')
-geo_uncertainty_sludge_P.to_excel(folder + f'results/qualified_facility/before_integration/sludge_P_tonne_per_year_{date.today()}_{i}.xlsx')
-geo_uncertainty_biocrude.to_excel(folder + f'results/qualified_facility/before_integration/biocrude_BPD_{date.today()}_{i}.xlsx')
-geo_uncertainty_DAP.to_excel(folder + f'results/qualified_facility/before_integration/DAP_tonne_per_year_{date.today()}_{i}.xlsx')
-geo_uncertainty_anhydrous_ammonia.to_excel(folder + f'results/qualified_facility/before_integration/anhydrous_ammonia_tonne_per_year_{date.today()}_{i}.xlsx')
-geo_uncertainty_urea.to_excel(folder + f'results/qualified_facility/before_integration/urea_tonne_per_year_{date.today()}_{i}.xlsx')
-geo_uncertainty_UAN.to_excel(folder + f'results/qualified_facility/before_integration/UAN_tonne_per_year_{date.today()}_{i}.xlsx')
+geo_uncertainty_cost.to_excel(folder + f'/results/geospatial/qualified_facility/before_integration/cost_dollar_per_tonne_{date.today()}_{i}.xlsx')
+geo_uncertainty_CI.to_excel(folder + f'/results/geospatial/qualified_facility/before_integration/CI_kg_CO2_eq_per_day_{date.today()}_{i}.xlsx')
+geo_uncertainty_saving.to_excel(folder + f'/results/geospatial/qualified_facility/before_integration/saving_dollar_per_day_{date.today()}_{i}.xlsx')
+geo_uncertainty_decarbonization.to_excel(folder + f'/results/geospatial/qualified_facility/before_integration/decarbonization_kg_CO2_eq_per_day_{date.today()}_{i}.xlsx')
+geo_uncertainty_sludge_N.to_excel(folder + f'/results/geospatial/qualified_facility/before_integration/sludge_N_tonne_per_year_{date.today()}_{i}.xlsx')
+geo_uncertainty_HNO3_N.to_excel(folder + f'/results/geospatial/qualified_facility/before_integration/HNO3_N_tonne_per_year_{date.today()}_{i}.xlsx')
+geo_uncertainty_sludge_P.to_excel(folder + f'/results/geospatial/qualified_facility/before_integration/sludge_P_tonne_per_year_{date.today()}_{i}.xlsx')
+geo_uncertainty_biocrude.to_excel(folder + f'/results/geospatial/qualified_facility/before_integration/biocrude_BPD_{date.today()}_{i}.xlsx')
+geo_uncertainty_DAP.to_excel(folder + f'/results/geospatial/qualified_facility/before_integration/DAP_tonne_per_year_{date.today()}_{i}.xlsx')
+geo_uncertainty_anhydrous_ammonia.to_excel(folder + f'/results/geospatial/qualified_facility/before_integration/anhydrous_ammonia_tonne_per_year_{date.today()}_{i}.xlsx')
+geo_uncertainty_urea.to_excel(folder + f'/results/geospatial/qualified_facility/before_integration/urea_tonne_per_year_{date.today()}_{i}.xlsx')
+geo_uncertainty_UAN.to_excel(folder + f'/results/geospatial/qualified_facility/before_integration/UAN_tonne_per_year_{date.today()}_{i}.xlsx')
 
 # !!!: note these contains WRRFs with nan uncertainty results that are removed in the following cell for the above datasets
 # !!!: but these will not be used)
-cost_spearman_r.to_excel(folder + f'results/qualified_facility/before_integration/cost_spearman_r_{date.today()}_{i}.xlsx')
-cost_spearman_p.to_excel(folder + f'results/qualified_facility/before_integration/cost_spearman_p_{date.today()}_{i}.xlsx')
-CI_spearman_r.to_excel(folder + f'results/qualified_facility/before_integration/CI_spearman_r_{date.today()}_{i}.xlsx')
-CI_spearman_p.to_excel(folder + f'results/qualified_facility/before_integration/CI_spearman_p_{date.today()}_{i}.xlsx')
+cost_spearman_r.to_excel(folder + f'/results/geospatial/qualified_facility/before_integration/cost_spearman_r_{date.today()}_{i}.xlsx')
+cost_spearman_p.to_excel(folder + f'/results/geospatial/qualified_facility/before_integration/cost_spearman_p_{date.today()}_{i}.xlsx')
+CI_spearman_r.to_excel(folder + f'/results/geospatial/qualified_facility/before_integration/CI_spearman_r_{date.today()}_{i}.xlsx')
+CI_spearman_p.to_excel(folder + f'/results/geospatial/qualified_facility/before_integration/CI_spearman_p_{date.today()}_{i}.xlsx')
 
 #%% qualified facility uncertainty - integration
 
 # !!! update these files if necessary
 def combine_file(name):
-    file_1 = pd.read_excel(folder + f'results/qualified_facility/before_integration/{name}_2025-07-23_79.xlsx')
-    file_2 = pd.read_excel(folder + f'results/qualified_facility/before_integration/{name}_2025-07-23_159.xlsx')
-    file_3 = pd.read_excel(folder + f'results/qualified_facility/before_integration/{name}_2025-07-23_239.xlsx')
-    file_4 = pd.read_excel(folder + f'results/qualified_facility/before_integration/{name}_2025-07-23_319.xlsx')
-    file_5 = pd.read_excel(folder + f'results/qualified_facility/before_integration/{name}_2025-07-23_399.xlsx')
-    file_6 = pd.read_excel(folder + f'results/qualified_facility/before_integration/{name}_2025-07-23_479.xlsx')
-    file_7 = pd.read_excel(folder + f'results/qualified_facility/before_integration/{name}_2025-07-23_576.xlsx')
+    file_1 = pd.read_excel(folder + f'/results/geospatial/qualified_facility/before_integration/{name}_2025-07-23_79.xlsx')
+    file_2 = pd.read_excel(folder + f'/results/geospatial/qualified_facility/before_integration/{name}_2025-07-23_159.xlsx')
+    file_3 = pd.read_excel(folder + f'/results/geospatial/qualified_facility/before_integration/{name}_2025-07-23_239.xlsx')
+    file_4 = pd.read_excel(folder + f'/results/geospatial/qualified_facility/before_integration/{name}_2025-07-23_319.xlsx')
+    file_5 = pd.read_excel(folder + f'/results/geospatial/qualified_facility/before_integration/{name}_2025-07-23_399.xlsx')
+    file_6 = pd.read_excel(folder + f'/results/geospatial/qualified_facility/before_integration/{name}_2025-07-23_479.xlsx')
+    file_7 = pd.read_excel(folder + f'/results/geospatial/qualified_facility/before_integration/{name}_2025-07-23_576.xlsx')
     
     for file in [file_1, file_2, file_3, file_4, file_5, file_6, file_7]:
         file.drop('Unnamed: 0', axis=1, inplace=True)
@@ -3226,7 +3226,7 @@ def combine_file(name):
     
     print(len(integrated_file.columns))
     
-    integrated_file.to_excel(folder + f'results/qualified_facility/integrated_{name}_{date.today()}.xlsx')
+    integrated_file.to_excel(folder + f'/results/geospatial/qualified_facility/integrated_{name}_{date.today()}.xlsx')
 
 for name in ['cost_dollar_per_tonne','CI_kg_CO2_eq_per_day','saving_dollar_per_day',
              'decarbonization_kg_CO2_eq_per_day','sludge_N_tonne_per_year',
@@ -3239,7 +3239,7 @@ for name in ['cost_dollar_per_tonne','CI_kg_CO2_eq_per_day','saving_dollar_per_d
 # import only if needed
 from d3blocks import D3Blocks
 
-biocrude_transportation = pd.read_excel(folder + 'results/qualified_facility/integrated_biocrude_BPD_2025-07-22.xlsx')
+biocrude_transportation = pd.read_excel(folder + '/results/geospatial/qualified_facility/integrated_biocrude_BPD_2025-07-22.xlsx')
 biocrude_transportation.drop('Unnamed: 0', axis=1, inplace=True)
 biocrude_transportation = biocrude_transportation.transpose()
 biocrude_transportation['5th'] = biocrude_transportation[0:999].quantile(q=0.05, axis=1)
@@ -3249,7 +3249,7 @@ biocrude_transportation.reset_index(names='CWNS', inplace=True)
 biocrude_transportation = biocrude_transportation[['CWNS','5th','50th','95th']]
 
 # do not need to remove 48008015003 since it is accessible but just cannot independently deploy HTL-based systems
-WRRF_all = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
+WRRF_all = pd.read_excel(folder + '/data/HTL_geospatial_model_input_2025-07-14.xlsx')
 
 biocrude_transportation = biocrude_transportation.merge(WRRF_all, how='left', on='CWNS')
 
@@ -3274,7 +3274,7 @@ d3.chord(biocrude_transportation,
          figsize=[1200,1200],
          fontsize=32,
          arrowhead=10,
-         filepath=folder+f'results/interstate_biocrude_transportation_{date.today()}.html',
+         filepath=folder+f'/results/geospatial/interstate_biocrude_transportation_{date.today()}.html',
          save_button=False)
 
 d3.node_properties['color'] = d3.node_properties['label'].apply(lambda x: PADD_color[state_PADD[ID_state[x]]])
@@ -3290,7 +3290,7 @@ biocrude_transportation.groupby('source').sum('weight').sort_values('weight', as
 
 def get_copula_sum(item):
     if type(item) == str:
-        production = pd.read_excel(folder + f'results/qualified_facility/{item}.xlsx')
+        production = pd.read_excel(folder + f'/results/geospatial/qualified_facility/{item}.xlsx')
         production.drop('Unnamed: 0', axis=1, inplace=True)
     else:
         production = item
@@ -3339,7 +3339,7 @@ print(np.quantile(N_offset, 0.95))
 
 # !!! update the file here if necessary
 # do not need to remove 48008015003 since it is accessible but just cannot independently deploy HTL-based systems
-all_facility = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+all_facility = pd.read_excel(folder + '/results/geospatial/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
 selected_facility = all_facility[all_facility['USD_decarbonization'].notna()]
 selected_facility = selected_facility[selected_facility['USD_decarbonization'] <= 0]
 
@@ -3470,7 +3470,7 @@ biocrude_production = get_copula_sum('integrated_biocrude_BPD_2025-07-22')
 
 # !!! update the file here if necessary
 # do not need to remove 48008015003 since it is accessible but just cannot independently deploy HTL-based systems
-all_facility = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+all_facility = pd.read_excel(folder + '/results/geospatial/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
 selected_facility = all_facility[all_facility['USD_decarbonization'].notna()]
 selected_facility = selected_facility[selected_facility['USD_decarbonization'] <= 0]
 
@@ -3490,7 +3490,7 @@ print(biocrude_production_hub)
 
 # !!! update the file here if necessary
 # do not need to remove 48008015003 since it is accessible but just cannot independently deploy HTL-based systems
-sampled_facility = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+sampled_facility = pd.read_excel(folder + '/results/geospatial/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
 
 print(len(sampled_facility))
 
@@ -3548,14 +3548,14 @@ sampled_facility.loc[sampled_facility['nitrogen_fertilizer']==1, 'nitrogen_ferti
 sampled_facility.loc[sampled_facility['nitrogen_fertilizer']==2, 'nitrogen_fertilizer'] = 'urea'
 sampled_facility.loc[sampled_facility['nitrogen_fertilizer']==3, 'nitrogen_fertilizer'] = 'UAN'
 
-sampled_facility.to_excel(folder + f'results/sampled_facility/sampled_facility_{date.today()}.xlsx')
+sampled_facility.to_excel(folder + f'/results/geospatial/sampled_facility/sampled_facility_{date.today()}.xlsx')
 
 #%% sampled facility level uncertainty and sensitivity analyses - part 1
 
 filterwarnings('ignore')
 
 # !!! update the file here if necessary
-sampled_facility = pd.read_excel(folder + 'results/sampled_facility/sampled_facility_2025-07-23.xlsx')
+sampled_facility = pd.read_excel(folder + '/results/geospatial/sampled_facility/sampled_facility_2025-07-23.xlsx')
 
 print(len(sampled_facility))
 
@@ -3687,45 +3687,45 @@ for i in range(0, len(sampled_facility)):
     # check progress
     print(i)
 
-geo_uncertainty_cost.to_excel(folder + f'results/sampled_facility/before_integration/cost_dollar_per_tonne_{date.today()}_{i}.xlsx')
-geo_uncertainty_CI.to_excel(folder + f'results/sampled_facility/before_integration/CI_kg_CO2_eq_per_day_{date.today()}_{i}.xlsx')
-geo_uncertainty_saving.to_excel(folder + f'results/sampled_facility/before_integration/saving_dollar_per_day_{date.today()}_{i}.xlsx')
-geo_uncertainty_decarbonization.to_excel(folder + f'results/sampled_facility/before_integration/decarbonization_kg_CO2_eq_per_day_{date.today()}_{i}.xlsx')
-geo_uncertainty_sludge_N.to_excel(folder + f'results/sampled_facility/before_integration/sludge_N_tonne_per_year_{date.today()}_{i}.xlsx')
-geo_uncertainty_HNO3_N.to_excel(folder + f'results/sampled_facility/before_integration/HNO3_N_tonne_per_year_{date.today()}_{i}.xlsx')
-geo_uncertainty_sludge_P.to_excel(folder + f'results/sampled_facility/before_integration/sludge_P_tonne_per_year_{date.today()}_{i}.xlsx')
-geo_uncertainty_biocrude.to_excel(folder + f'results/sampled_facility/before_integration/biocrude_BPD_{date.today()}_{i}.xlsx')
-geo_uncertainty_DAP.to_excel(folder + f'results/sampled_facility/before_integration/DAP_tonne_per_year_{date.today()}_{i}.xlsx')
-geo_uncertainty_anhydrous_ammonia.to_excel(folder + f'results/sampled_facility/before_integration/anhydrous_ammonia_tonne_per_year_{date.today()}_{i}.xlsx')
-geo_uncertainty_urea.to_excel(folder + f'results/sampled_facility/before_integration/urea_tonne_per_year_{date.today()}_{i}.xlsx')
-geo_uncertainty_UAN.to_excel(folder + f'results/sampled_facility/before_integration/UAN_tonne_per_year_{date.today()}_{i}.xlsx')
+geo_uncertainty_cost.to_excel(folder + f'/results/geospatial/sampled_facility/before_integration/cost_dollar_per_tonne_{date.today()}_{i}.xlsx')
+geo_uncertainty_CI.to_excel(folder + f'/results/geospatial/sampled_facility/before_integration/CI_kg_CO2_eq_per_day_{date.today()}_{i}.xlsx')
+geo_uncertainty_saving.to_excel(folder + f'/results/geospatial/sampled_facility/before_integration/saving_dollar_per_day_{date.today()}_{i}.xlsx')
+geo_uncertainty_decarbonization.to_excel(folder + f'/results/geospatial/sampled_facility/before_integration/decarbonization_kg_CO2_eq_per_day_{date.today()}_{i}.xlsx')
+geo_uncertainty_sludge_N.to_excel(folder + f'/results/geospatial/sampled_facility/before_integration/sludge_N_tonne_per_year_{date.today()}_{i}.xlsx')
+geo_uncertainty_HNO3_N.to_excel(folder + f'/results/geospatial/sampled_facility/before_integration/HNO3_N_tonne_per_year_{date.today()}_{i}.xlsx')
+geo_uncertainty_sludge_P.to_excel(folder + f'/results/geospatial/sampled_facility/before_integration/sludge_P_tonne_per_year_{date.today()}_{i}.xlsx')
+geo_uncertainty_biocrude.to_excel(folder + f'/results/geospatial/sampled_facility/before_integration/biocrude_BPD_{date.today()}_{i}.xlsx')
+geo_uncertainty_DAP.to_excel(folder + f'/results/geospatial/sampled_facility/before_integration/DAP_tonne_per_year_{date.today()}_{i}.xlsx')
+geo_uncertainty_anhydrous_ammonia.to_excel(folder + f'/results/geospatial/sampled_facility/before_integration/anhydrous_ammonia_tonne_per_year_{date.today()}_{i}.xlsx')
+geo_uncertainty_urea.to_excel(folder + f'/results/geospatial/sampled_facility/before_integration/urea_tonne_per_year_{date.today()}_{i}.xlsx')
+geo_uncertainty_UAN.to_excel(folder + f'/results/geospatial/sampled_facility/before_integration/UAN_tonne_per_year_{date.today()}_{i}.xlsx')
 
-cost_spearman_r.to_excel(folder + f'results/sampled_facility/before_integration/cost_spearman_r_{date.today()}_{i}.xlsx')
-cost_spearman_p.to_excel(folder + f'results/sampled_facility/before_integration/cost_spearman_p_{date.today()}_{i}.xlsx')
-CI_spearman_r.to_excel(folder + f'results/sampled_facility/before_integration/CI_spearman_r_{date.today()}_{i}.xlsx')
-CI_spearman_p.to_excel(folder + f'results/sampled_facility/before_integration/CI_spearman_p_{date.today()}_{i}.xlsx')
+cost_spearman_r.to_excel(folder + f'/results/geospatial/sampled_facility/before_integration/cost_spearman_r_{date.today()}_{i}.xlsx')
+cost_spearman_p.to_excel(folder + f'/results/geospatial/sampled_facility/before_integration/cost_spearman_p_{date.today()}_{i}.xlsx')
+CI_spearman_r.to_excel(folder + f'/results/geospatial/sampled_facility/before_integration/CI_spearman_r_{date.today()}_{i}.xlsx')
+CI_spearman_p.to_excel(folder + f'/results/geospatial/sampled_facility/before_integration/CI_spearman_p_{date.today()}_{i}.xlsx')
 
 #%% sampled facility level uncertainty and sensitivity analyses - part 2
 
 # !!! update these files if necessary
 def combine_file(name):
-    file_1 = pd.read_excel(folder + f'results/sampled_facility/before_integration/{name}_2025-07-23_99.xlsx')
-    file_2 = pd.read_excel(folder + f'results/sampled_facility/before_integration/{name}_2025-07-23_199.xlsx')
-    file_3 = pd.read_excel(folder + f'results/sampled_facility/before_integration/{name}_2025-07-23_299.xlsx')
-    file_4 = pd.read_excel(folder + f'results/sampled_facility/before_integration/{name}_2025-07-23_399.xlsx')
-    file_5 = pd.read_excel(folder + f'results/sampled_facility/before_integration/{name}_2025-07-23_499.xlsx')
-    file_6 = pd.read_excel(folder + f'results/sampled_facility/before_integration/{name}_2025-07-23_599.xlsx')
-    file_7 = pd.read_excel(folder + f'results/sampled_facility/before_integration/{name}_2025-07-23_699.xlsx')
-    file_8 = pd.read_excel(folder + f'results/sampled_facility/before_integration/{name}_2025-07-23_799.xlsx')
-    file_9 = pd.read_excel(folder + f'results/sampled_facility/before_integration/{name}_2025-07-23_899.xlsx')
-    file_10 = pd.read_excel(folder + f'results/sampled_facility/before_integration/{name}_2025-07-23_999.xlsx')
+    file_1 = pd.read_excel(folder + f'/results/geospatial/sampled_facility/before_integration/{name}_2025-07-23_99.xlsx')
+    file_2 = pd.read_excel(folder + f'/results/geospatial/sampled_facility/before_integration/{name}_2025-07-23_199.xlsx')
+    file_3 = pd.read_excel(folder + f'/results/geospatial/sampled_facility/before_integration/{name}_2025-07-23_299.xlsx')
+    file_4 = pd.read_excel(folder + f'/results/geospatial/sampled_facility/before_integration/{name}_2025-07-23_399.xlsx')
+    file_5 = pd.read_excel(folder + f'/results/geospatial/sampled_facility/before_integration/{name}_2025-07-23_499.xlsx')
+    file_6 = pd.read_excel(folder + f'/results/geospatial/sampled_facility/before_integration/{name}_2025-07-23_599.xlsx')
+    file_7 = pd.read_excel(folder + f'/results/geospatial/sampled_facility/before_integration/{name}_2025-07-23_699.xlsx')
+    file_8 = pd.read_excel(folder + f'/results/geospatial/sampled_facility/before_integration/{name}_2025-07-23_799.xlsx')
+    file_9 = pd.read_excel(folder + f'/results/geospatial/sampled_facility/before_integration/{name}_2025-07-23_899.xlsx')
+    file_10 = pd.read_excel(folder + f'/results/geospatial/sampled_facility/before_integration/{name}_2025-07-23_999.xlsx')
 
     for file in [file_1, file_2, file_3, file_4, file_5, file_6, file_7, file_8, file_9, file_10]:
         file.drop('Unnamed: 0', axis=1, inplace=True)
 
     integrated_file = pd.concat([file_1, file_2, file_3, file_4, file_5, file_6, file_7, file_8, file_9, file_10], axis=1)
     
-    integrated_file.to_excel(folder + f'results/sampled_facility/integrated_{name}_{date.today()}.xlsx')
+    integrated_file.to_excel(folder + f'/results/geospatial/sampled_facility/integrated_{name}_{date.today()}.xlsx')
 
 for name in ['cost_spearman_r','cost_spearman_p','CI_spearman_r','CI_spearman_p']:
     combine_file(name)
@@ -3733,7 +3733,7 @@ for name in ['cost_spearman_r','cost_spearman_p','CI_spearman_r','CI_spearman_p'
 #%% sampled facility level uncertainty and sensitivity analyses - part 3
 
 def plot_sensitivity(data_type, figure_label=False):
-    data = pd.read_excel(folder + f'results/sampled_facility/integrated_{data_type}_2025-07-23.xlsx')
+    data = pd.read_excel(folder + f'/results/geospatial/sampled_facility/integrated_{data_type}_2025-07-23.xlsx')
     data.drop('Unnamed: 0', axis=1, inplace=True)
     
     len_1, len_2, len_3 = sorted(set([len(data[i].dropna()) for i in range(0, data.shape[1])]))
@@ -3767,7 +3767,7 @@ def plot_sensitivity(data_type, figure_label=False):
     urea_data.reset_index(inplace=True, names='label')
     UAN_data.reset_index(inplace=True, names='label')
     
-    sampled_facility = pd.read_excel(folder + 'results/sampled_facility/sampled_facility_2025-07-23.xlsx')
+    sampled_facility = pd.read_excel(folder + '/results/geospatial/sampled_facility/sampled_facility_2025-07-23.xlsx')
     sampled_facility = sampled_facility[['label','total_sludge_amount_kg_per_year']]
     
     anhydrous_ammonia_data = anhydrous_ammonia_data.merge(sampled_facility, how='left', on='label')
@@ -4007,7 +4007,7 @@ filterwarnings('ignore')
 
 # !!! update the input file if necessary
 # do not need to remove 48008015003 since it is accessible but just cannot independently deploy HTL-based systems
-WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
+WRRF_input = pd.read_excel(folder + '/data/HTL_geospatial_model_input_2025-07-14.xlsx')
 
 print(len(WRRF_input))
 
@@ -4161,7 +4161,7 @@ for size in [WRRF_input['total_sludge_amount_kg_per_year'].min()/1000/365, 0.001
 
 # import PADD information
 # !!! update the file here if necessary
-WRRF_PADD = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+WRRF_PADD = pd.read_excel(folder + '/results/geospatial/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
 # manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
 WRRF_PADD = WRRF_PADD[WRRF_PADD['CWNS'] != 48008015003]
 WRRF_PADD = WRRF_PADD[WRRF_PADD['USD_decarbonization'].notna()]
@@ -4179,7 +4179,7 @@ WRRF_PADD = WRRF_PADD[['CWNS','WRRF_PADD']]
 
 # saving
 # !!! update the file here if necessary
-regional_saving_uncertainty = pd.read_excel(folder + 'results/qualified_facility/integrated_saving_dollar_per_day_2025-07-22.xlsx')
+regional_saving_uncertainty = pd.read_excel(folder + '/results/geospatial/qualified_facility/integrated_saving_dollar_per_day_2025-07-22.xlsx')
 
 regional_saving_uncertainty.drop('Unnamed: 0', axis=1, inplace=True)
 regional_saving_uncertainty = regional_saving_uncertainty.transpose()
@@ -4198,11 +4198,11 @@ regional_saving_result = pd.DataFrame({'PADD_1': get_copula_sum(regional_saving_
                                        'PADD_4': get_copula_sum(regional_saving_uncertainty_PADD_4.transpose()),
                                        'PADD_5': get_copula_sum(regional_saving_uncertainty_PADD_5.transpose())})
 
-regional_saving_result.to_excel(folder + f'results/regional/saving_{date.today()}.xlsx')
+regional_saving_result.to_excel(folder + f'/results/geospatial/regional/saving_{date.today()}.xlsx')
 
 # decarbonization
 # !!! update the file here if necessary
-regional_decarbonization_uncertainty = pd.read_excel(folder + 'results/qualified_facility/integrated_decarbonization_kg_CO2_eq_per_day_2025-07-22.xlsx')
+regional_decarbonization_uncertainty = pd.read_excel(folder + '/results/geospatial/qualified_facility/integrated_decarbonization_kg_CO2_eq_per_day_2025-07-22.xlsx')
 
 regional_decarbonization_uncertainty.drop('Unnamed: 0', axis=1, inplace=True)
 regional_decarbonization_uncertainty = regional_decarbonization_uncertainty.transpose()
@@ -4221,19 +4221,19 @@ regional_decarbonization_result = pd.DataFrame({'PADD_1': get_copula_sum(regiona
                                                 'PADD_4': get_copula_sum(regional_decarbonization_uncertainty_PADD_4.transpose()),
                                                 'PADD_5': get_copula_sum(regional_decarbonization_uncertainty_PADD_5.transpose())})
 
-regional_decarbonization_result.to_excel(folder + f'results/regional/decarbonization_{date.today()}.xlsx')
+regional_decarbonization_result.to_excel(folder + f'/results/geospatial/regional/decarbonization_{date.today()}.xlsx')
 
 #%% regional uncertainty (visualization)
 
 # saving
 # !!! update these files if necessary
-saving = pd.read_excel(folder + 'results/regional/saving_2025-07-24.xlsx')
+saving = pd.read_excel(folder + '/results/geospatial/regional/saving_2025-07-24.xlsx')
 # MM$/day
 saving = saving/1000000
 
 # decarbonization
 # !!! update these files if necessary
-decarbonization = pd.read_excel(folder + 'results/regional/decarbonization_2025-07-24.xlsx')
+decarbonization = pd.read_excel(folder + '/results/geospatial/regional/decarbonization_2025-07-24.xlsx')
 # tonne CO2 eq/day
 decarbonization = decarbonization/1000
 
@@ -4345,7 +4345,7 @@ filterwarnings('ignore')
 
 # !!! update the input file if necessary
 # do not need to remove 48008015003 since it is accessible but just cannot independently deploy HTL-based systems
-WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
+WRRF_input = pd.read_excel(folder + '/data/HTL_geospatial_model_input_2025-07-14.xlsx')
 
 print(len(WRRF_input))
 
@@ -4464,13 +4464,13 @@ for size in np.linspace(20, 200, 10):
                                                  get_quantiles(HM_decarbonization))
 
 # !!! replace the folder name
-HM_results.to_excel(folder + f'results/heat_map/anhydrous_ammonia/heat_map_{size}_tonne_per_day_{sludge_distance}_km_{date.today()}.xlsx')
+HM_results.to_excel(folder + f'/results/geospatial/heat_map/anhydrous_ammonia/heat_map_{size}_tonne_per_day_{sludge_distance}_km_{date.today()}.xlsx')
 
 #%% sludge transportation (heat map, HM) data preparation - part 2
 
 def plot_heat_map(nitrogen_fertilizer, solids_quantity, item):
     # !!! update the input file if necessary
-    HM = pd.read_excel(folder + f'results/heat_map/{nitrogen_fertilizer}/heat_map_{solids_quantity}_tonne_per_day_200.0_km_2025-07-23.xlsx')
+    HM = pd.read_excel(folder + f'/results/geospatial/heat_map/{nitrogen_fertilizer}/heat_map_{solids_quantity}_tonne_per_day_200.0_km_2025-07-23.xlsx')
     
     HM_saving = HM[['sludge_amount','sludge_transportation_distance',item]]
     
@@ -4582,7 +4582,7 @@ plot_heat_map('UAN', 20.0, 'decarbonization_50th')
 #%% hub coverage (data preparation for coverage visualization)
 
 # do not need to remove 48008015003 since it is accessible but just cannot independently deploy HTL-based systems
-WRRF_all = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
+WRRF_all = pd.read_excel(folder + '/data/HTL_geospatial_model_input_2025-07-14.xlsx')
 
 distance_x = []
 coverage_y = []
@@ -4754,7 +4754,7 @@ print(max(coverage_y))
 #%% hub coverage (data preparation for map visualization)
 
 # do not need to remove 48008015003 since it is accessible but just cannot independently deploy HTL-based systems
-WRRF_all = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
+WRRF_all = pd.read_excel(folder + '/data/HTL_geospatial_model_input_2025-07-14.xlsx')
 
 # !!! update distance_threshold_km if necessary
 # max distance to consider WRRFs as neighbors
@@ -4932,7 +4932,7 @@ print(len(new_hub_position))
 
 #%% hub coverage (newly added WRRF)
 
-individual_WRRF = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+individual_WRRF = pd.read_excel(folder + '/results/geospatial/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
 # manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
 select_WRRF = individual_WRRF[individual_WRRF['CWNS'] != 48008015003]
 select_WRRF = select_WRRF[select_WRRF['USD_decarbonization'].notna()]
@@ -4952,7 +4952,7 @@ print(extra_WRRF['total_sludge_amount_kg_per_year'].sum()/WRRF['total_sludge_amo
 
 #%% county-level phosphorus fertilizer offset - data preparation
 
-P_county_offset = pd.read_excel(folder + 'results/qualified_facility/integrated_DAP_tonne_per_year_2025-07-22.xlsx')
+P_county_offset = pd.read_excel(folder + '/results/geospatial/qualified_facility/integrated_DAP_tonne_per_year_2025-07-22.xlsx')
 P_county_offset.drop('Unnamed: 0', axis=1, inplace=True)
 P_county_offset = P_county_offset/132.06*30.973762*1000
 P_county_offset = P_county_offset.quantile(0.5, axis=0)
@@ -4961,7 +4961,7 @@ P_county_offset.rename(columns={'index':'CWNS',
                                 0.5:'median_P_kg_per_year'},
                        inplace=True)
 
-individual_WRRF = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+individual_WRRF = pd.read_excel(folder + '/results/geospatial/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
 # manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
 select_WRRF = individual_WRRF[individual_WRRF['CWNS'] != 48008015003]
 select_WRRF = select_WRRF[select_WRRF['USD_decarbonization'].notna()]
@@ -5026,7 +5026,7 @@ ax.set_axis_off()
 
 #%% county-level nitrogen fertilizer offset - data preparation
 
-N_county_offset_anhydrous_ammonia = pd.read_excel(folder + 'results/qualified_facility/integrated_anhydrous_ammonia_tonne_per_year_2025-07-22.xlsx')
+N_county_offset_anhydrous_ammonia = pd.read_excel(folder + '/results/geospatial/qualified_facility/integrated_anhydrous_ammonia_tonne_per_year_2025-07-22.xlsx')
 N_county_offset_anhydrous_ammonia.drop('Unnamed: 0', axis=1, inplace=True)
 N_county_offset_anhydrous_ammonia = N_county_offset_anhydrous_ammonia/17.031*14.0067*1000
 N_county_offset_anhydrous_ammonia = N_county_offset_anhydrous_ammonia.quantile(0.5, axis=0)
@@ -5035,7 +5035,7 @@ N_county_offset_anhydrous_ammonia.rename(columns={'index':'CWNS',
                                                   0.5:'median_N_kg_per_year_anhydrous_ammonia'},
                                          inplace=True)
 
-N_county_offset_urea = pd.read_excel(folder + 'results/qualified_facility/integrated_urea_tonne_per_year_2025-07-22.xlsx')
+N_county_offset_urea = pd.read_excel(folder + '/results/geospatial/qualified_facility/integrated_urea_tonne_per_year_2025-07-22.xlsx')
 N_county_offset_urea.drop('Unnamed: 0', axis=1, inplace=True)
 N_county_offset_urea = N_county_offset_urea/60.06*2*14.0067*1000
 N_county_offset_urea = N_county_offset_urea.quantile(0.5, axis=0)
@@ -5044,7 +5044,7 @@ N_county_offset_urea.rename(columns={'index':'CWNS',
                                      0.5:'median_N_kg_per_year_urea'},
                             inplace=True)
 
-N_county_offset_UAN = pd.read_excel(folder + 'results/qualified_facility/integrated_UAN_tonne_per_year_2025-07-22.xlsx')
+N_county_offset_UAN = pd.read_excel(folder + '/results/geospatial/qualified_facility/integrated_UAN_tonne_per_year_2025-07-22.xlsx')
 N_county_offset_UAN.drop('Unnamed: 0', axis=1, inplace=True)
 N_county_offset_UAN = N_county_offset_UAN*0.3*1000
 N_county_offset_UAN = N_county_offset_UAN.quantile(0.5, axis=0)
@@ -5067,7 +5067,7 @@ N_county_offset = N_county_offset.reset_index()
 N_county_offset.rename(columns={0:'median_N_kg_per_year'},
                        inplace=True)
 
-individual_WRRF = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+individual_WRRF = pd.read_excel(folder + '/results/geospatial/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
 # manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
 select_WRRF = individual_WRRF[individual_WRRF['CWNS'] != 48008015003]
 select_WRRF = select_WRRF[select_WRRF['USD_decarbonization'].notna()]
@@ -5136,7 +5136,7 @@ ax.set_axis_off()
 
 # !!! update the file here if necessary
 # do not need to remove 48008015003 since it is accessible but just cannot independently deploy HTL-based systems
-all_facility = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+all_facility = pd.read_excel(folder + '/results/geospatial/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
 
 all_facility['dollar_per_kWh'] = all_facility['state'].apply(lambda x: elec_price[elec_price['state'] == x]['price'].iloc[0]/100)
 all_facility['crude_oil_dollar_per_barrel'] = all_facility['state'].apply(lambda x: crude_oil_price_data[crude_oil_price_data['state'] == x]['2022_average'].iloc[0])
@@ -5205,7 +5205,7 @@ print(r2)
 
 #%% writing results - 1
 
-individual_WRRF = pd.read_excel(folder + 'results/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
+individual_WRRF = pd.read_excel(folder + '/results/geospatial/baseline/integrated_baseline_hydrochar_2025-07-22.xlsx')
 # manually remove CWNS = 48008015003 (the TX one with nan in the uncertainty analysis)
 select_WRRF = individual_WRRF[individual_WRRF['CWNS'] != 48008015003]
 select_WRRF = select_WRRF[select_WRRF['USD_decarbonization'].notna()]
@@ -5225,7 +5225,7 @@ print(len(individual_WRRF[(individual_WRRF['saving'] < 0) & (individual_WRRF['CO
 
 #%% writing results - 2
 
-qualified_facility_biocrude = pd.read_excel(folder + 'results/qualified_facility/integrated_biocrude_BPD_2025-07-22.xlsx')
+qualified_facility_biocrude = pd.read_excel(folder + '/results/geospatial/qualified_facility/integrated_biocrude_BPD_2025-07-22.xlsx')
 qualified_facility_biocrude.drop('Unnamed: 0', axis=1, inplace=True)
 qualified_facility_biocrude_max = pd.DataFrame(qualified_facility_biocrude.max())
 qualified_facility_biocrude_max.reset_index(names='CWNS', inplace=True)
@@ -5233,7 +5233,7 @@ qualified_facility_biocrude_max.rename(columns={0:'BPD'}, inplace=True)
 
 # !!! update the input file if necessary
 # do not need to remove 48008015003 since it is accessible but just cannot independently deploy HTL-based systems
-WRRF_input = pd.read_excel(folder + 'HTL_geospatial_model_input_2025-07-14.xlsx')
+WRRF_input = pd.read_excel(folder + '/data/HTL_geospatial_model_input_2025-07-14.xlsx')
 WRRF_input = WRRF_input[['CWNS','Site ID','capacity']]
 
 BPD_capacity = qualified_facility_biocrude_max.merge(WRRF_input, how='left', on='CWNS')

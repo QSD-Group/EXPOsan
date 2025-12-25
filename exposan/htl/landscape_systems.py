@@ -14,14 +14,14 @@ for license details.
 
 #%% initialization
 
-import numpy as np, pandas as pd, qsdsan as qs, biosteam as bst
+import os, numpy as np, pandas as pd, qsdsan as qs, biosteam as bst
 from qsdsan import sanunits as qsu
 from biosteam import settings
 from qsdsan.utils import auom, clear_lca_registries, tea_indices
 from exposan.htl import _load_components, landscape_sanunits as lsu, create_tea
 from biosteam.units import IsenthalpicValve
 
-folder = '/Users/jiananfeng/Desktop/UIUC_PhD/PhD_CEE/NSF/HTL_landscape/'
+folder = os.path.dirname(__file__)
 
 # use methane density, probably consistent with BioSTEAM, kg/m3
 # https://en.wikipedia.org/wiki/Methane (accessed 2025-02-10)
@@ -62,11 +62,11 @@ GDPCTPI = {2005: 81.537,
 labor_index = tea_indices['labor']
 
 # country-level data
-electricity_price = pd.read_excel(folder + 'analyses/electricity_price_2025-10-09.xlsx')
-electricity_CI = pd.read_excel(folder + 'analyses/electricity_CI_2025-10-09.xlsx')
-labor_cost = pd.read_excel(folder + 'analyses/labor_cost_2025-10-09.xlsx')
+electricity_price = pd.read_excel(folder + '/data/electricity_price_2025-10-09.xlsx')
+electricity_CI = pd.read_excel(folder + '/data/electricity_CI_2025-10-09.xlsx')
+labor_cost = pd.read_excel(folder + '/data/labor_cost_2025-10-09.xlsx')
 labor_cost['labor_index'] = labor_cost['average_annual_income_USD']/labor_cost[labor_cost['country_code'] == 'USA']['average_annual_income_USD'].iloc[0]
-PLI = pd.read_excel(folder + 'analyses/PLI_2025-10-09.xlsx')
+PLI = pd.read_excel(folder + '/data/PLI_2025-10-09.xlsx')
 
 assert PLI[PLI['country_code'] == 'USA']['PLI'].iloc[0] == 1
 

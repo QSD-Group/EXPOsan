@@ -1432,7 +1432,7 @@ class HeatDrying(SanUnit):
     Parameters
     ----------
     ins : iterable
-        input_sludge.
+        input_sludge, natural_gas.
     outs : iterable
         dried_solids, vapor.
     target_moisture : float

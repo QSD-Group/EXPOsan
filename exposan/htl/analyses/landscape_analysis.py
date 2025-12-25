@@ -16,7 +16,7 @@ for license details.
 
 #%% initialization
 
-import numpy as np, pandas as pd, geopandas as gpd, matplotlib.pyplot as plt, matplotlib.colors as colors, matplotlib.ticker as mtick, chaospy as cp, json
+import os, numpy as np, pandas as pd, geopandas as gpd, matplotlib.pyplot as plt, matplotlib.colors as colors, matplotlib.ticker as mtick, chaospy as cp, json
 from colorpalette import Color
 from scipy.stats import spearmanr, linregress
 from matplotlib.colors import to_hex
@@ -41,7 +41,7 @@ from exposan.htl import (create_C1_system, create_C2_system, create_C3_system,
                          create_T12_system, create_T13_system, create_T14_system,
                          create_T15_system)
 
-folder = '/Users/jiananfeng/Desktop/UIUC_PhD/PhD_CEE/NSF/HTL_landscape/'
+folder = os.path.dirname(os.path.dirname(__file__))
 
 _ton_to_tonne = auom('ton').conversion_factor('tonne')
 _MMgal_to_m3 = auom('gal').conversion_factor('m3')*1000000
@@ -78,7 +78,7 @@ dp = Color('dark_purple', (76, 56, 90)).HEX
 # =============================================================================
 # word
 # =============================================================================
-world = gpd.read_file(folder + 'analyses/World Bank Official Boundaries - Admin 0_all_layers/WB_GAD_ADM0_complete.shp')
+world = gpd.read_file(folder + '/data/World Bank Official Boundaries - Admin 0_all_layers/WB_GAD_ADM0_complete.shp')
 
 # =============================================================================
 # global north / south countries and regions
@@ -135,7 +135,7 @@ global_south_countries_regions = ['India','China','Mexico','Indonesia','Pakistan
 # =============================================================================
 # WRRF
 # =============================================================================
-WRRF = pd.read_csv(folder + 'analyses/HydroWASTE_v10/HydroWASTE_v10.csv', encoding='latin-1')
+WRRF = pd.read_csv(folder + '/data/HydroWASTE_v10/HydroWASTE_v10.csv', encoding='latin-1')
 # WASTE_DIS in m3/day
 WRRF = WRRF[WRRF['WASTE_DIS'] != 0]
 WRRF = WRRF[~WRRF['STATUS'].isin(['Closed','Decommissioned','Non-Operational'])]
@@ -151,12 +151,12 @@ WRRF_filtered = gpd.GeoDataFrame(WRRF_filtered, crs='EPSG:4269',
                                  geometry=gpd.points_from_xy(x=WRRF_filtered.LON_WWTP,
                                                              y=WRRF_filtered.LAT_WWTP))
 
-HDI = pd.read_excel(folder + 'analyses/HDR25_Statistical_Annex_HDI_Table.xlsx')
+HDI = pd.read_excel(folder + '/data/HDR25_Statistical_Annex_HDI_Table.xlsx')
 
 # =============================================================================
 # electricity price
 # =============================================================================
-electricity_price = pd.read_excel(folder + 'analyses/P_Electric Prices by Country.xlsx')
+electricity_price = pd.read_excel(folder + '/data/P_Electric Prices by Country.xlsx')
 electricity_price.rename(columns={'Country Name':'country',
                                   'Country Code':'country_code',
                                   'Time':'year',
@@ -170,17 +170,17 @@ electricity_price = electricity_price[['country','country_code','year','US_cents
 # =============================================================================
 # electricity CI
 # =============================================================================
-electriicty_CI = pd.read_excel(folder + 'analyses/low_voltage_electricity_CI.xlsx')
+electriicty_CI = pd.read_excel(folder + '/data/low_voltage_electricity_CI.xlsx')
 
 # =============================================================================
 # labor cost
 # =============================================================================
-labor_cost = pd.read_excel(folder + 'analyses/income.xlsx')
+labor_cost = pd.read_excel(folder + '/data/income.xlsx')
 
 # =============================================================================
 # price level index (PLI)
 # =============================================================================
-PLI = pd.read_excel(folder + 'analyses/P_Data_Extract_From_World_Development_Indicators.xlsx')
+PLI = pd.read_excel(folder + '/data/P_Data_Extract_From_World_Development_Indicators.xlsx')
 year_cols = ['1990 [YR1990]','2000 [YR2000]','2015 [YR2015]','2016 [YR2016]','2017 [YR2017]',
              '2018 [YR2018]','2019 [YR2019]','2020 [YR2020]','2021 [YR2021]','2022 [YR2022]',
              '2023 [YR2023]','2024 [YR2024]']
@@ -221,7 +221,7 @@ PLI.rename(columns={'Country Name':'country',
 
 # assert len([i for i in set(WRRF_filtered['CNTRY_ISO']) if i not in list(electricity_price['country_code'])]) == 0
 
-# electricity_price.to_excel(folder + f'analyses/electricity_price_{date.today()}.xlsx')
+# electricity_price.to_excel(folder + f'/data/electricity_price_{date.today()}.xlsx')
 
 # # =============================================================================
 # # electricity CI
@@ -263,7 +263,7 @@ PLI.rename(columns={'Country Name':'country',
 
 # assert len([i for i in set(WRRF_filtered['CNTRY_ISO']) if i not in list(electriicty_CI['country_ISO_A3'])]) == 0
 
-# electriicty_CI.to_excel(folder + f'analyses/electricity_CI_{date.today()}.xlsx')
+# electriicty_CI.to_excel(folder + f'/data/electricity_CI_{date.today()}.xlsx')
 
 # # =============================================================================
 # # labor cost
@@ -280,7 +280,7 @@ PLI.rename(columns={'Country Name':'country',
 
 # assert len([i for i in set(WRRF_filtered['CNTRY_ISO']) if i not in list(labor_cost['country_code'])]) == 0
 
-# labor_cost.to_excel(folder + f'analyses/labor_cost_{date.today()}.xlsx')
+# labor_cost.to_excel(folder + f'/data/labor_cost_{date.today()}.xlsx')
 
 # # =============================================================================
 # # PLI
@@ -312,11 +312,11 @@ PLI.rename(columns={'Country Name':'country',
 
 # assert len([i for i in set(WRRF_filtered['CNTRY_ISO']) if i not in list(PLI['country_code'])]) == 0
 
-# PLI.to_excel(folder + f'analyses/PLI_{date.today()}.xlsx')
+# PLI.to_excel(folder + f'/data/PLI_{date.today()}.xlsx')
 
 #%% labor costs comparison
 
-labor_cost_comparison = pd.read_excel(folder + 'analyses/labor_cost_comparison.xlsx')
+labor_cost_comparison = pd.read_excel(folder + '/data/labor_cost_comparison.xlsx')
 labor_cost_comparison = labor_cost_comparison[~labor_cost_comparison['ILO'].isna()]
 
 pearson_r = np.corrcoef(labor_cost_comparison['Worlddata'], labor_cost_comparison['ILO'])[0, 1]
@@ -327,7 +327,7 @@ print("Spearman's rho:", spearman_rho.round(2))
 
 #%% MPs concentration
 
-MPs = pd.read_excel(folder + 'analyses/EC_data.xlsx','MPs_summary')
+MPs = pd.read_excel(folder + '/data/EC_data.xlsx','MPs_summary')
 
 print('\n' + str([len(MPs[i].dropna()) for i in MPs.columns]) + '\n')
 
@@ -387,7 +387,7 @@ plt.savefig('/Users/jiananfeng/Desktop/MPs_concentration.pdf', transparent=True,
 
 #%% MPs concentration (unique values)
 
-MPs = pd.read_excel(folder + 'analyses/EC_data.xlsx','MPs_summary')
+MPs = pd.read_excel(folder + '/data/EC_data.xlsx','MPs_summary')
 
 print('\n' + str([len(MPs[i].dropna().drop_duplicates()) for i in MPs.columns]) + '\n')
 
@@ -534,7 +534,7 @@ plt.savefig('/Users/jiananfeng/Desktop/MPs_capture.pdf', transparent=True, bbox_
 
 #%% MPs removal
 
-MPs_removal = pd.read_excel(folder + 'analyses/EC_removal_data.xlsx','MPs_summary')
+MPs_removal = pd.read_excel(folder + '/data/EC_removal_data.xlsx','MPs_summary')
 
 conventional_MPs_removal = MPs_removal[MPs_removal['process'] == 'C']
 wet_thermochemical_MPs_removal = MPs_removal[MPs_removal['process'] == 'wet_T']
@@ -617,7 +617,7 @@ plt.savefig('/Users/jiananfeng/Desktop/MPs_removal.pdf', transparent=True, bbox_
 
 #%% PhACs concentration
 
-PhACs = pd.read_excel(folder + 'analyses/pharms-uba_v3_2021_0.xlsx')
+PhACs = pd.read_excel(folder + '/data/pharms-uba_v3_2021_0.xlsx')
 set(PhACs['Matrix'])
 assert (PhACs['MEC standardized'].isna()).sum() == 0
 set(PhACs['Statistics'])
@@ -672,7 +672,7 @@ sediment_PhACs = sediment_PhACs[sediment_PhACs['Unit standard'] == 'mg/kg dry-we
 sediment_PhACs['MEC standardized'] *= 1000
 
 # air
-air_PhACs = pd.read_excel(folder + 'analyses/EC_data.xlsx','PhACs_summary')
+air_PhACs = pd.read_excel(folder + '/data/EC_data.xlsx','PhACs_summary')
 
 # water
 water_PhACs = PhACs[PhACs['Matrix'].isin(['Drinking Water',
@@ -899,7 +899,7 @@ plt.savefig('/Users/jiananfeng/Desktop/PhACs_capture.pdf', transparent=True, bbo
 
 #%% PhACs removal
 
-PhACs_removal = pd.read_excel(folder + 'analyses/EC_removal_data.xlsx','PhACs_summary')
+PhACs_removal = pd.read_excel(folder + '/data/EC_removal_data.xlsx','PhACs_summary')
 
 conventional_PhACs_removal = PhACs_removal[PhACs_removal['process'] == 'C']
 wet_thermochemical_PhACs_removal = PhACs_removal[PhACs_removal['process'] == 'wet_T']
@@ -983,16 +983,16 @@ plt.savefig('/Users/jiananfeng/Desktop/PhACs_removal.pdf', transparent=True, bbo
 #%% ARGs concentration
 
 # manually collected data
-ARGs_0 = pd.read_excel(folder + 'analyses/EC_data.xlsx','ARGs_summary')
+ARGs_0 = pd.read_excel(folder + '/data/EC_data.xlsx','ARGs_summary')
 
-ARGs_1 = pd.read_excel(folder + 'analyses/ARGs_data/ARG Abundance.xlsx')
+ARGs_1 = pd.read_excel(folder + '/data/ARGs_data/ARG Abundance.xlsx')
 # confirmed all types are ARG types but not mobile gene element types
 set(ARGs_1['Type'])
 ARGs_1['Absolute Abundance (copies per g/L sample)'] = ARGs_1['Absolute Abundance (copies per g/L sample)'].apply(pd.to_numeric, errors='coerce')
 ARGs_1 = ARGs_1[~ARGs_1['Absolute Abundance (copies per g/L sample)'].isna()]
 set(ARGs_1['Habitat'])
 
-ARGs_2 = pd.read_excel(folder + 'analyses/ARGs_data/ARGs_NORMAN.xlsx')
+ARGs_2 = pd.read_excel(folder + '/data/ARGs_data/ARGs_NORMAN.xlsx')
 set(ARGs_2['Gene name'])
 # just remove all intI genes, assume all others are ARGs
 ARGs_2 = ARGs_2[~ARGs_2['Gene name'].isin(['intI1','intI1_1','intI1_2','intI1_3','intI1_4',
@@ -1004,7 +1004,7 @@ set(ARGs_2[ARGs_2['Sample matrix'] == 'Other']['Other'])
 
 # WWRS
 WWRS_ARGs_1 = ARGs_0['WWRS']
-WWRS_ARGs_2 = pd.read_excel(folder + 'analyses/ARGs_data/ARGs_WWRS_Harrison.xlsx')
+WWRS_ARGs_2 = pd.read_excel(folder + '/data/ARGs_data/ARGs_WWRS_Harrison.xlsx')
 set(WWRS_ARGs_2['Gene'])
 
 WWRS_ARGs_2 = WWRS_ARGs_2[~WWRS_ARGs_2['Gene'].isin(['16S rRNA','IncQ','intI1'])]
@@ -1236,7 +1236,7 @@ plt.savefig('/Users/jiananfeng/Desktop/ARGs_capture.pdf', transparent=True, bbox
 
 #%% ARGs removal
 
-ARGs_removal = pd.read_excel(folder + 'analyses/EC_removal_data.xlsx','ARGs_summary')
+ARGs_removal = pd.read_excel(folder + '/data/EC_removal_data.xlsx','ARGs_summary')
 
 conventional_ARGs_removal = ARGs_removal[ARGs_removal['process'] == 'C']
 wet_thermochemical_ARGs_removal = ARGs_removal[ARGs_removal['process'] == 'wet_T']
@@ -1317,7 +1317,8 @@ plt.savefig('/Users/jiananfeng/Desktop/ARGs_removal.pdf', transparent=True, bbox
 
 #%% PFAS concentration data processing 1 - EU - data cleaning to reduce the file size
 
-# EU_PFAS_raw = pd.read_csv(folder + 'analyses/PFAS_data/EU_PFAS_raw.csv')
+# # EU_PFAS_raw.csv (https://foreverpollution.eu/) > 100 MB; cannot push this to github; store the file in local instead
+# EU_PFAS_raw = pd.read_csv(folder + '/data/PFAS_data/EU_PFAS_raw.csv')
 # EU_PFAS = EU_PFAS_raw[['pfas_values','unit','matrix']]
 # EU_PFAS = EU_PFAS.dropna(subset='matrix')
 # EU_PFAS = EU_PFAS[EU_PFAS['matrix'].isin(['Drinking water','Groundwater','Rainwater','Sea water','Sediment','Soil','Surface water'])]
@@ -1354,8 +1355,8 @@ plt.savefig('/Users/jiananfeng/Desktop/ARGs_removal.pdf', transparent=True, bbox
 # EU_PFOS = EU_PFAS[['PFOS_conc','PFOS_unit','matrix']]
 # EU_PFOS = EU_PFOS.dropna(subset='PFOS_conc')
 
-# EU_PFOA.to_excel(folder + 'analyses/PFAS_data/EU_PFOA.xlsx')
-# EU_PFOS.to_excel(folder + 'analyses/PFAS_data/EU_PFOS.xlsx')
+# EU_PFOA.to_excel(folder + '/data/PFAS_data/EU_PFOA.xlsx')
+# EU_PFOS.to_excel(folder + '/data/PFAS_data/EU_PFOS.xlsx')
 
 #%% PFOA concentration
 
@@ -1370,7 +1371,7 @@ water_PFOA = []
 # CN_1_PFOA
 # =============================================================================
 
-CN_1_PFOA = pd.read_excel(folder + 'analyses/PFAS_data/CN_1_PFOA.xlsx')
+CN_1_PFOA = pd.read_excel(folder + '/data/PFAS_data/CN_1_PFOA.xlsx')
 set(CN_1_PFOA['Pathway'])
 CN_1_PFOA = CN_1_PFOA[CN_1_PFOA['Pathway'].isin(['air','others','sediment','soil','water'])]
 CN_1_PFOA = CN_1_PFOA[((CN_1_PFOA['Pathway'] == 'others') & (CN_1_PFOA['Detailed_pathway'].str.contains('sludge|Sludge'))) | (CN_1_PFOA['Pathway'] != 'others')]
@@ -1453,7 +1454,7 @@ water_PFOA += [x for sublist in CN_1_PFOA_water['valid_data'] for x in sublist]
 # CN_2_PFAS
 # =============================================================================
 
-CN_2_PFAS = pd.read_excel(folder + 'analyses/PFAS_data/CN_2_PFAS.xlsx')
+CN_2_PFAS = pd.read_excel(folder + '/data/PFAS_data/CN_2_PFAS.xlsx')
 CN_2_PFOA = CN_2_PFAS[CN_2_PFAS['ECs_type'] == 'PFOA']
 set(CN_2_PFOA['Ecs_Pathway'])
 CN_2_PFOA = CN_2_PFOA[CN_2_PFOA['Ecs_Pathway'].isin(['Sediment','Soil','air','sediment','sludge','soil','water'])]
@@ -1525,7 +1526,7 @@ water_PFOA += [x for sublist in CN_2_PFOA_water['valid_data'] for x in sublist]
 # US_PFAS
 # =============================================================================
 
-US_PFAS = pd.read_excel(folder + 'analyses/PFAS_data/US_PFAS.xlsx')
+US_PFAS = pd.read_excel(folder + '/data/PFAS_data/US_PFAS.xlsx')
 # PFOA CAS number: 335-67-1
 US_PFOA = US_PFAS[US_PFAS['CAS Number'] == '335-67-1']
 set(US_PFOA['Environmental Media Name'])
@@ -1570,7 +1571,7 @@ water_PFOA += list(US_PFOA_water['Result Measure Value'])
 # EU_PFOA
 # =============================================================================
 
-EU_PFOA = pd.read_excel(folder + 'analyses/PFAS_data/EU_PFOA.xlsx')
+EU_PFOA = pd.read_excel(folder + '/data/PFAS_data/EU_PFOA.xlsx')
 set(EU_PFOA['matrix'])
 EU_PFOA['PFOA_conc'] = EU_PFOA['PFOA_conc'].apply(pd.to_numeric, errors='coerce')
 
@@ -1603,7 +1604,7 @@ water_PFOA += list(EU_PFOA_water['PFOA_conc'])
 # additional WWRS PFOA
 # =============================================================================
 
-additional_WWRS_PFOA = pd.read_excel(folder + 'analyses/EC_data.xlsx','PFAS_summary')
+additional_WWRS_PFOA = pd.read_excel(folder + '/data/EC_data.xlsx','PFAS_summary')
 
 WWRS_PFOA += list(additional_WWRS_PFOA['PFOA'].dropna())
 
@@ -1740,7 +1741,7 @@ water_PFOS = []
 # CN_1_PFOS
 # =============================================================================
 
-CN_1_PFOS = pd.read_excel(folder + 'analyses/PFAS_data/CN_1_PFOS.xlsx')
+CN_1_PFOS = pd.read_excel(folder + '/data/PFAS_data/CN_1_PFOS.xlsx')
 set(CN_1_PFOS['Pathway'])
 CN_1_PFOS = CN_1_PFOS[CN_1_PFOS['Pathway'].isin(['air','others','sediment','soil','water'])]
 CN_1_PFOS = CN_1_PFOS[((CN_1_PFOS['Pathway'] == 'others') & (CN_1_PFOS['Detailed_pathway'].str.contains('sludge|Sludge'))) | (CN_1_PFOS['Pathway'] != 'others')]
@@ -1823,7 +1824,7 @@ water_PFOS += [x for sublist in CN_1_PFOS_water['valid_data'] for x in sublist]
 # CN_2_PFAS
 # =============================================================================
 
-CN_2_PFAS = pd.read_excel(folder + 'analyses/PFAS_data/CN_2_PFAS.xlsx')
+CN_2_PFAS = pd.read_excel(folder + '/data/PFAS_data/CN_2_PFAS.xlsx')
 CN_2_PFOS = CN_2_PFAS[CN_2_PFAS['ECs_type'] == 'PFOS']
 set(CN_2_PFOS['Ecs_Pathway'])
 CN_2_PFOS = CN_2_PFOS[CN_2_PFOS['Ecs_Pathway'].isin(['air','sediment','sediment ','sludge','soil','water'])]
@@ -1893,7 +1894,7 @@ water_PFOS += [x for sublist in CN_2_PFOS_water['valid_data'] for x in sublist]
 # US_PFAS
 # =============================================================================
 
-US_PFAS = pd.read_excel(folder + 'analyses/PFAS_data/US_PFAS.xlsx')
+US_PFAS = pd.read_excel(folder + '/data/PFAS_data/US_PFAS.xlsx')
 # PFOS CAS number: 1763-23-1
 US_PFOS = US_PFAS[US_PFAS['CAS Number'] == '1763-23-1']
 set(US_PFOS['Environmental Media Name'])
@@ -1931,7 +1932,7 @@ water_PFOS += list(US_PFOS_water['Result Measure Value'])
 # EU_PFOS
 # =============================================================================
 
-EU_PFOS = pd.read_excel(folder + 'analyses/PFAS_data/EU_PFOS.xlsx')
+EU_PFOS = pd.read_excel(folder + '/data/PFAS_data/EU_PFOS.xlsx')
 set(EU_PFOS['matrix'])
 EU_PFOS['PFOS_conc'] = EU_PFOS['PFOS_conc'].apply(pd.to_numeric, errors='coerce')
 
@@ -1964,7 +1965,7 @@ water_PFOS += list(EU_PFOS_water['PFOS_conc'])
 # additional WWRS PFOS
 # =============================================================================
 
-additional_WWRS_PFOS = pd.read_excel(folder + 'analyses/EC_data.xlsx','PFAS_summary')
+additional_WWRS_PFOS = pd.read_excel(folder + '/data/EC_data.xlsx','PFAS_summary')
 
 WWRS_PFOS += list(additional_WWRS_PFOS['PFOS'].dropna())
 
@@ -2090,7 +2091,7 @@ plt.savefig('/Users/jiananfeng/Desktop/PFOS_unique.pdf', transparent=True, bbox_
 
 #%% PBDEs concentration data
 
-CN_PBDEs = pd.read_excel(folder + 'analyses/POPs_data/exposure data/Standardized data used for analysis and human health risk assessment/PBDEs_analysis.xlsx')
+CN_PBDEs = pd.read_excel(folder + '/data/POPs_data/exposure data/Standardized data used for analysis and human health risk assessment/PBDEs_analysis.xlsx')
 set(CN_PBDEs['Pathway'])
 CN_PBDEs = CN_PBDEs[CN_PBDEs['Pathway'].isin(['Water','air','others','sediment','soil','water'])]
 CN_PBDEs = CN_PBDEs[((CN_PBDEs['Pathway'] == 'others') & (CN_PBDEs['Detailed_pathway'].str.contains('sludge|Sludge'))) | (CN_PBDEs['Pathway'] != 'others')]
@@ -2289,7 +2290,7 @@ plt.savefig('/Users/jiananfeng/Desktop/PBDEs_unique.pdf', transparent=True, bbox
 
 #%% PCBs concentration data
 
-CN_PCBs = pd.read_excel(folder + 'analyses/POPs_data/exposure data/Standardized data used for analysis and human health risk assessment/PCBs_analysis.xlsx')
+CN_PCBs = pd.read_excel(folder + '/data/POPs_data/exposure data/Standardized data used for analysis and human health risk assessment/PCBs_analysis.xlsx')
 set(CN_PCBs['Pathway'])
 CN_PCBs = CN_PCBs[CN_PCBs['Pathway'].isin(['Water','air','others','sediment','soil','water'])]
 CN_PCBs = CN_PCBs[((CN_PCBs['Pathway'] == 'others') & (CN_PCBs['Detailed_pathway'].str.contains('sludge|Sludge'))) | (CN_PCBs['Pathway'] != 'others')]
@@ -2488,7 +2489,7 @@ plt.savefig('/Users/jiananfeng/Desktop/PCBs_unique.pdf', transparent=True, bbox_
 
 #%% PCDD&Fs concentration data
 
-CN_PCDDFs = pd.read_excel(folder + 'analyses/POPs_data/exposure data/Standardized data used for analysis and human health risk assessment/PCDD&Fs_analysis.xlsx')
+CN_PCDDFs = pd.read_excel(folder + '/data/POPs_data/exposure data/Standardized data used for analysis and human health risk assessment/PCDD&Fs_analysis.xlsx')
 set(CN_PCDDFs['Pathway'])
 CN_PCDDFs = CN_PCDDFs[CN_PCDDFs['Pathway'].isin(['air','others','sediment','soil','water'])]
 CN_PCDDFs = CN_PCDDFs[((CN_PCDDFs['Pathway'] == 'others') & (CN_PCDDFs['Detailed_pathway'].str.contains('sludge|Sludge'))) | (CN_PCDDFs['Pathway'] != 'others')]
@@ -2827,21 +2828,21 @@ country_max = pd.DataFrame({'C_cost_max': C_cost_max,
                             'T_cost_NOAK_max': T_cost_NOAK_max,
                             'T_CI_NOAK_max': T_CI_NOAK_max})
 
-country_mean.to_excel(folder + f'results/country_mean_{date.today()}_{i}.xlsx')
+country_mean.to_excel(folder + f'/results/landscape/country_mean_{date.today()}_{i}.xlsx')
 
-country_median.to_excel(folder + f'results/country_median_{date.today()}_{i}.xlsx')
+country_median.to_excel(folder + f'/results/landscape/country_median_{date.today()}_{i}.xlsx')
 
-country_min.to_excel(folder + f'results/country_min_{date.today()}_{i}.xlsx')
+country_min.to_excel(folder + f'/results/landscape/country_min_{date.today()}_{i}.xlsx')
 
-country_max.to_excel(folder + f'results/country_max_{date.today()}_{i}.xlsx')
+country_max.to_excel(folder + f'/results/landscape/country_max_{date.today()}_{i}.xlsx')
 
 #%% merge country results - using 5 dry tonne/day as the cutoff size
 
 # =============================================================================
 # mean
 # =============================================================================
-country_mean_1 = pd.read_excel(folder + 'results/country_mean_2025-11-14_2499.xlsx')
-country_mean_2 = pd.read_excel(folder + 'results/country_mean_2025-11-14_4726.xlsx')
+country_mean_1 = pd.read_excel(folder + '/results/landscape/country_mean_2025-11-14_2499.xlsx')
+country_mean_2 = pd.read_excel(folder + '/results/landscape/country_mean_2025-11-14_4726.xlsx')
 
 integrated_country_mean = pd.concat([country_mean_1, country_mean_2])
 integrated_country_mean.reset_index(inplace=True)
@@ -2884,13 +2885,13 @@ world_mean = world.merge(WRRF_mean, how='left', left_on='ISO_A3', right_on='CNTR
 
 assert len(WRRF_mean) == len(world_mean[world_mean['CNTRY_ISO'].notna()]['ISO_A3'].drop_duplicates())
 
-# world_mean.to_excel(folder + f'results/country_mean_{date.today()}_summary.xlsx')
+# world_mean.to_excel(folder + f'/results/landscape/country_mean_{date.today()}_summary.xlsx')
 
 # =============================================================================
 # median
 # =============================================================================
-country_median_1 = pd.read_excel(folder + 'results/country_median_2025-11-14_2499.xlsx')
-country_median_2 = pd.read_excel(folder + 'results/country_median_2025-11-14_4726.xlsx')
+country_median_1 = pd.read_excel(folder + '/results/landscape/country_median_2025-11-14_2499.xlsx')
+country_median_2 = pd.read_excel(folder + '/results/landscape/country_median_2025-11-14_4726.xlsx')
 
 integrated_country_median = pd.concat([country_median_1, country_median_2])
 integrated_country_median.reset_index(inplace=True)
@@ -2933,14 +2934,14 @@ world_median = world.merge(WRRF_median, how='left', left_on='ISO_A3', right_on='
 
 assert len(WRRF_median) == len(world_median[world_median['CNTRY_ISO'].notna()]['ISO_A3'].drop_duplicates())
 
-# world_median.to_excel(folder + f'results/country_median_{date.today()}_summary.xlsx')
+# world_median.to_excel(folder + f'/results/landscape/country_median_{date.today()}_summary.xlsx')
 
 # =============================================================================
 # min
 # =============================================================================
 # note cost and CI minimums may not come from the same system (this is fine for identifying the possible range)
-country_min_1 = pd.read_excel(folder + 'results/country_min_2025-11-14_2499.xlsx')
-country_min_2 = pd.read_excel(folder + 'results/country_min_2025-11-14_4726.xlsx')
+country_min_1 = pd.read_excel(folder + '/results/landscape/country_min_2025-11-14_2499.xlsx')
+country_min_2 = pd.read_excel(folder + '/results/landscape/country_min_2025-11-14_4726.xlsx')
 
 integrated_country_min = pd.concat([country_min_1, country_min_2])
 integrated_country_min.reset_index(inplace=True)
@@ -2983,14 +2984,14 @@ world_min = world.merge(WRRF_min, how='left', left_on='ISO_A3', right_on='CNTRY_
 
 assert len(WRRF_min) == len(world_min[world_min['CNTRY_ISO'].notna()]['ISO_A3'].drop_duplicates())
 
-# world_min.to_excel(folder + f'results/country_min_{date.today()}_summary.xlsx')
+# world_min.to_excel(folder + f'/results/landscape/country_min_{date.today()}_summary.xlsx')
 
 # =============================================================================
 # max
 # =============================================================================
 # note cost and CI maximums may not come from the same system (this is fine for identifying the possible range)
-country_max_1 = pd.read_excel(folder + 'results/country_max_2025-11-14_2499.xlsx')
-country_max_2 = pd.read_excel(folder + 'results/country_max_2025-11-14_4726.xlsx')
+country_max_1 = pd.read_excel(folder + '/results/landscape/country_max_2025-11-14_2499.xlsx')
+country_max_2 = pd.read_excel(folder + '/results/landscape/country_max_2025-11-14_4726.xlsx')
 
 integrated_country_max = pd.concat([country_max_1, country_max_2])
 integrated_country_max.reset_index(inplace=True)
@@ -3033,7 +3034,7 @@ world_max = world.merge(WRRF_max, how='left', left_on='ISO_A3', right_on='CNTRY_
 
 assert len(WRRF_max) == len(world_max[world_max['CNTRY_ISO'].notna()]['ISO_A3'].drop_duplicates())
 
-# world_max.to_excel(folder + f'results/country_max_{date.today()}_summary.xlsx')
+# world_max.to_excel(folder + f'/results/landscape/country_max_{date.today()}_summary.xlsx')
 
 #%% world map visualization - C cost mean
 
