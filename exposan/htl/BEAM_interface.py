@@ -509,7 +509,7 @@ elec_unit = {'class_A': 3.7,
              'class_B': 4.9}
 
 # kWh/day
-elec = dewatered_solids_mass*elec['class_A']
+elec = dewatered_solids_mass*elec_unit['class_A']
 
 # tonne CO2 eq/day
 elec_emission = elec*elec_CI/1000000
