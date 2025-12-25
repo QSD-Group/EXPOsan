@@ -15,7 +15,6 @@ References:
 (1) Lang, C.; Lee, B. Heat Transfer Fluid Life Time Analysis of Diphenyl
     Oxide/Biphenyl Grades for Concentrated Solar Power Plants. Energy Procedia
     2015, 69, 672–680. https://doi.org/10.1016/j.egypro.2015.03.077.
-
     
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
@@ -35,7 +34,7 @@ def _load_process_settings():
     # critical temperature for HTF: 497 C
     # critical pressure for HTF: 313.4 kPa
     # https://www.dow.com/en-us/pdp.dowtherm-a-heat-transfer-fluid.238000z.\
-    # html#tech-content (accessed 11-16-2022)
+    # html#tech-content (accessed 2022-11-16)
     
     DPO_chem = qs.Chemical('DPO_chem', search_ID='101-84-8')
     BIP_chem = qs.Chemical('BIP_chem', search_ID='92-52-4')
@@ -56,7 +55,7 @@ def _load_process_settings():
                            # use default heat transfer efficiency (1)
     # Temperature and pressure: https://www.dow.com/content/dam/dcc/documents/\
     # en-us/app-tech-guide/176/176-01334-01-dowtherm-heat-transfer-fluids-\
-    # engineering-manual.pdf?iframe=true (accessed on 11-16-2022)
+    # engineering-manual.pdf?iframe=true (accessed 2022-11-16)
     bst.HeatUtility.heating_agents.append(HTF)
 
     bst.CE = qs.CEPCI_by_year[2020] # use 2020$ to match up with latest PNNL report
@@ -64,7 +63,7 @@ def _load_process_settings():
 # =============================================================================
 #     set utility prices
 # =============================================================================
-    bst.PowerUtility.price = 0.06879 # !!! the electricity price can be adjusted here
+    bst.PowerUtility.price = 0.06879
     
     # # These utilities are provided by CHP thus cost already considered
     # # setting the regeneration price to 0 or not will not affect the final results

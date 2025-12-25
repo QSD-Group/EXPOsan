@@ -16,15 +16,14 @@ for license details.
 
 import qsdsan as qs
 from chaospy import distributions as shape
-from qsdsan.utils import DictAttrSetter
-from exposan.htl import (
-    _m3perh_to_MGD,
-    _MJ_to_MMBTU,
-    _MMgal_to_L,
-    create_system,
-    )
+from qsdsan.utils import auom, DictAttrSetter
+from exposan.htl import create_system
 
 __all__ = ('create_model',)
+
+_m3perh_to_MGD = auom('m3/h').conversion_factor('MGD')
+_MMgal_to_L = auom('gal').conversion_factor('L')*1000000
+_MJ_to_MMBTU = auom('MJ').conversion_factor('MMBTU')
 
 def create_model(system=None,
                  feedstock='sludge',
@@ -1074,6 +1073,7 @@ def create_model(system=None,
     def set_ammonium_sulfate_price(i):
         ammonium_sulfate.price=i
     
+    Membrane_in = stream.Membrane_in
     dist = shape.Uniform(83.96,102.62)
     @param(name='membrane price',
            element='TEA',
@@ -1083,6 +1083,7 @@ def create_model(system=None,
            distribution=dist)
     def set_membrane_price(i):
         MemDis.membrane_price=i
+        Membrane_in.price=i
     
     CHG_catalyst_in = CHG.ins[1]
     dist = shape.Triangle(67.27,134.53,269.07)
@@ -1140,15 +1141,15 @@ def create_model(system=None,
         diesel.price=i
         
     # dist = shape.Uniform(-0.0605,-0.0495)
-    # @param(name='residual disposal',
+    # @param(name='residue disposal',
     #        element='TEA',
     #        kind='isolated',
     #        units='$/kg',
     #        baseline=-0.055,
     #        distribution=dist)
-    # def set_residual_disposal(i):
+    # def set_residue_disposal(i):
     #     AcidEx.outs[0].price=i
-    # not include residual for TEA and LCA for now
+    # not include residue for TEA and LCA for now
     
     dist = shape.Triangle(0.0667,0.06879,0.07180)
     @param(name='electricity price',
@@ -1307,12 +1308,12 @@ def create_model(system=None,
             def get_extracted_P():
                 return AcidEx.outs[1].imass['P']
             
-            @metric(name='residual_P',units='kg/hr',element='Sankey')
-            def get_residual_P():
+            @metric(name='residue_P',units='kg/hr',element='Sankey')
+            def get_residue_P():
                 return HTL.hydrochar_P-AcidEx.outs[1].imass['P']
         
-        @metric(name='residual_C',units='kg/hr',element='Sankey')
-        def get_residual_C():
+        @metric(name='residue_C',units='kg/hr',element='Sankey')
+        def get_residue_C():
             return HTL.hydrochar_C
         
         @metric(name='struvite_N',units='kg/hr',element='Sankey')
@@ -1539,7 +1540,6 @@ def create_model(system=None,
         def get_NaOH_VOC():
             return NaOH.cost*sys.operating_hours
         
-        Membrane_in = stream.Membrane_in
         @metric(name='membrane_VOC',units='$/yr',element='TEA')
         def get_membrane_VOC():
             return Membrane_in.cost*sys.operating_hours
@@ -1600,7 +1600,7 @@ def create_model(system=None,
             @metric(name='HTL_constrution_GWP',units='kg CO2 eq',element='LCA')
             def get_HTL_constrution_GWP():
                 table_construction = lca.get_impact_table('Construction')['GlobalWarming [kg CO2-eq]']
-                return +table_construction['Stainless_steel [kg]']['A100']+\
+                return table_construction['Stainless_steel [kg]']['A100']+\
                        table_construction['Stainless_steel [kg]']['A110']+table_construction['Stainless_steel [kg]']['A120']       
         
         if AcidEx:
@@ -1669,8 +1669,8 @@ def create_model(system=None,
                 for i in range (len(HTL.heat_utilities)):
                     if HTL.heat_utilities[i].duty < 0:
                         a += HTL.heat_utilities[i].duty
-                return table_other['Cooling [MJ]']/sys.get_cooling_duty()*(-a*sys.operating_hours)+\
-                       table_other['Electricity [kWh]']/(sys.get_electricity_consumption()-sys.get_electricity_production())*\
+                return table_other['Cooling']/sys.get_cooling_duty()*(-a*sys.operating_hours)+\
+                       table_other['Electricity']/(sys.get_electricity_consumption()-sys.get_electricity_production())*\
                        (SluC.power_utility.consumption+P1.power_utility.consumption)*sys.operating_hours
         
         except AttributeError:
@@ -1681,8 +1681,8 @@ def create_model(system=None,
                 for i in range (len(HTL.heat_utilities)):
                     if HTL.heat_utilities[i].duty < 0:
                         a += HTL.heat_utilities[i].duty
-                return table_other['Cooling [MJ]']/sys.get_cooling_duty()*(-a*sys.operating_hours)+\
-                       table_other['Electricity [kWh]']/(sys.get_electricity_consumption()-sys.get_electricity_production())*\
+                return table_other['Cooling']/sys.get_cooling_duty()*(-a*sys.operating_hours)+\
+                       table_other['Electricity']/(sys.get_electricity_consumption()-sys.get_electricity_production())*\
                        (P1.power_utility.consumption)*sys.operating_hours    
     
         @metric(name='CHG_utility_GWP',units='kg CO2 eq',element='LCA')
@@ -1693,8 +1693,8 @@ def create_model(system=None,
                 for i in range (len(unit.heat_utilities)):
                     if unit.heat_utilities[i].duty < 0:
                         a += unit.heat_utilities[i].duty
-            return table_other['Cooling [MJ]']/sys.get_cooling_duty()*(-a*sys.operating_hours)+\
-                   table_other['Electricity [kWh]']/(sys.get_electricity_consumption()-sys.get_electricity_production())*\
+            return table_other['Cooling']/sys.get_cooling_duty()*(-a*sys.operating_hours)+\
+                   table_other['Electricity']/(sys.get_electricity_consumption()-sys.get_electricity_production())*\
                    CHG.power_utility.consumption*sys.operating_hours
         
         P2, P3 = unit.P2, unit.P3
@@ -1707,8 +1707,8 @@ def create_model(system=None,
                 for i in range (len(unit.heat_utilities)):
                     if unit.heat_utilities[i].duty < 0:
                         a += unit.heat_utilities[i].duty
-            return table_other['Cooling [MJ]']/sys.get_cooling_duty()*(-a*sys.operating_hours)+\
-                   table_other['Electricity [kWh]']/(sys.get_electricity_consumption()-sys.get_electricity_production())*\
+            return table_other['Cooling']/sys.get_cooling_duty()*(-a*sys.operating_hours)+\
+                   table_other['Electricity']/(sys.get_electricity_consumption()-sys.get_electricity_production())*\
                    (P2.power_utility.consumption+P3.power_utility.consumption)*sys.operating_hours
         
         @metric(name='HXN_utility_GWP',units='kg CO2 eq',element='LCA')
@@ -1718,23 +1718,23 @@ def create_model(system=None,
             for i in range (len(HXN.heat_utilities)):
                 if HXN.heat_utilities[i].duty > 0:
                     a += HXN.heat_utilities[i].duty
-            return table_other['Cooling [MJ]']/sys.get_cooling_duty()*(-a*sys.operating_hours)
+            return table_other['Cooling']/sys.get_cooling_duty()*(-a*sys.operating_hours)
         
         @metric(name='CHP_utility_GWP',units='kg CO2 eq',element='LCA')
         def get_CHP_utility_GWP():
             table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
-            return table_other['Electricity [kWh]']/(sys.get_electricity_consumption()-sys.get_electricity_production())*\
+            return table_other['Electricity']/(sys.get_electricity_consumption()-sys.get_electricity_production())*\
                    (-CHP.power_utility.production)*sys.operating_hours
         
         @metric(name='electricity_GWP',units='kg CO2 eq',element='LCA')
         def get_electricity_GWP():
             table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
-            return table_other['Electricity [kWh]']
+            return table_other['Electricity']
         
         @metric(name='cooling_GWP',units='kg CO2 eq',element='LCA')
         def get_cooling_GWP():
             table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
-            return table_other['Cooling [MJ]']
+            return table_other['Cooling']
         
         @metric(name='HTL_cooling_percentage',units='-',element='utilities')
         def get_HTL_cooling_percentage():

@@ -63,7 +63,7 @@ class CAPEXTableBuilder:
                             columns=('Notes', *[i + ' [MM$]' for i in names])
         )
 
-
+# note add_OPEX and other similar funcions do not work since TEA is from BioSTEAM, but not QSDsan
 class HTL_TEA(TEA):
     
     __slots__ = ('OSBL_units', 'warehouse', 'site_development',
@@ -194,9 +194,9 @@ class HTL_TEA(TEA):
                 + self.ISBL_installed_equipment_cost * self.maintenance
                 + self.labor_cost * (1 + self.labor_burden))
 
-
-def create_tea(sys, OSBL_units=None, cls=None, **kwargs):
-    OSBL_units = bst.get_OSBL(sys.cost_units)
+# note add_OPEX and other similar funcions do not work since TEA is from BioSTEAM, but not QSDsan
+def create_tea(system, OSBL_units=None, cls=None, **kwargs):
+    OSBL_units = bst.get_OSBL(system.cost_units)
     try:
         BT = tmo.utils.get_instance(OSBL_units, (bst.BoilerTurbogenerator, bst.Boiler))
     except:
@@ -212,7 +212,7 @@ def create_tea(sys, OSBL_units=None, cls=None, **kwargs):
         'duration': (2022, 2052),
         'depreciation': 'MACRS7', # Jones et al. 2014
         'income_tax': 0.275, # Davis et al. 2018
-        'operating_days': 330, # Jones et al. 2014
+        'operating_days': system.operating_hours/24, # Jones et al. 2014
         'lang_factor': None, # related to expansion, not needed here
         'construction_schedule': (0.08, 0.60, 0.32), # Jones et al. 2014
         'startup_months': 6, # Jones et al. 2014
@@ -242,7 +242,7 @@ def create_tea(sys, OSBL_units=None, cls=None, **kwargs):
         }
     default_kwargs.update(kwargs)
     
-    tea = cls(system=sys, **default_kwargs)
+    tea = cls(system=system, **default_kwargs)
     return tea
 
 

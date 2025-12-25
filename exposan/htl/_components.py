@@ -52,7 +52,7 @@ def create_components(set_thermo=True):
                               particle_size='Particulate',
                               formula='C56H95O24N9P',
                               degradability='Undegradable',
-                              organic=False)
+                              organic=True)
     add_V_from_rho(Sludge_lipid, 1400)
     # https://www.climate-policy-watcher.org/wastewater-sludge/physical-
     # and-biological-properties.html (accessed 2022-10-23)
@@ -68,7 +68,7 @@ def create_components(set_thermo=True):
                                 particle_size='Particulate',
                                 formula='C56H95O24N9P',
                                 degradability='Undegradable',
-                                organic=False)
+                                organic=True)
     add_V_from_rho(Sludge_protein, 1400)
     Sludge_protein.HHV = 22.0*10**6*Sludge_protein.MW/1000
     Sludge_protein.Cn.add_model(1.25*10**3*Sludge_protein.MW/1000)
@@ -80,7 +80,7 @@ def create_components(set_thermo=True):
                               particle_size='Particulate',
                               formula='C56H95O24N9P',
                               degradability='Undegradable',
-                              organic=False)
+                              organic=True)
     add_V_from_rho(Sludge_carbo, 1400)
     Sludge_carbo.HHV = 22.0*10**6*Sludge_carbo.MW/1000
     Sludge_carbo.Cn.add_model(1.25*10**3*Sludge_carbo.MW/1000)
@@ -88,11 +88,12 @@ def create_components(set_thermo=True):
     # made up value, so that HTL.ins[0].nu = 0.03 m2/s ~30000 cSt
     # (NREL 2013 appendix B)
     
+    # ash in sludge (not separated), therefore set organic to True
     Sludge_ash = Component('Sludge_ash', phase='s',
                             particle_size='Particulate',
                             formula='C56H95O24N9P',
                             degradability='Undegradable',
-                            organic=False)
+                            organic=True)
     add_V_from_rho(Sludge_ash, 1400)
     Sludge_ash.HHV = 22.0*10**6*Sludge_ash.MW/1000
     Sludge_ash.Cn.add_model(1.25*10**3*Sludge_ash.MW/1000)
@@ -102,13 +103,15 @@ def create_components(set_thermo=True):
 
     Hydrochar = Component('Hydrochar', phase='s', particle_size='Particulate',
                         degradability='Undegradable', organic=False)
-    add_V_from_rho(Hydrochar, 1500)  # assume 1500kg/m3
+    # assume a bulk density of 700 kg/m3; the density does not affect transportation (if any) which is based on weight
+    add_V_from_rho(Hydrochar, 700)
     Hydrochar.copy_models_from(Chemical('CaCO3'),('Cn',))
     
+    # when calculating price using HHV, use a separate HHV value but not directly from this Componenet
+    # use palmitamide to represent biocrude
     Biocrude = Component('Biocrude', search_ID='629-54-9',
                          particle_size='Soluble', degradability='Slowly',
                          organic=True)
-    # use palmitamide to represent biocrude
     
     HTLaqueous = Component('HTLaqueous', search_ID='water', particle_size='Soluble',
                            degradability='Undegradable', organic=False)
@@ -122,10 +125,10 @@ def create_components(set_thermo=True):
     # http://webmineral.com/data/Struvite.shtml#.YzYvqOzMIiM
     # (accessed 2022-9-30)
     
-    Residual = Component('Residual', phase='s', particle_size='Particulate',
+    Residue = Component('Residue', phase='s', particle_size='Particulate',
                         degradability='Undegradable', organic=False)
-    add_V_from_rho(Residual, 1500)  # assume 1500kg/m3
-    Residual.copy_models_from(Chemical('CaCO3'),('Cn',)) #CaCO3?
+    add_V_from_rho(Residue, 1500)  # assume 1500kg/m3
+    Residue.copy_models_from(Chemical('CaCO3'),('Cn',)) #CaCO3?
     
     H2O = Component('H2O', particle_size='Soluble',
                     degradability='Undegradable', organic=False)
@@ -144,9 +147,12 @@ def create_components(set_thermo=True):
     P._CAS = 'P'
     
     O2 = Component('O2', phase='g', particle_size='Dissolved gas',
-                    degradability='Undegradable', organic=False)
+                   degradability='Undegradable', organic=False)
     
     N2 = Component('N2', phase='g', particle_size='Dissolved gas',
+                   degradability='Undegradable', organic=False)
+    
+    N2O = Component('N2O', phase='g', particle_size='Dissolved gas',
                     degradability='Undegradable', organic=False)
     
     CH4 = Component('CH4', phase='g', particle_size='Dissolved gas',
@@ -179,10 +185,20 @@ def create_components(set_thermo=True):
     H3PO4 = Component('H3PO4', phase='l', particle_size='Soluble',
                       degradability='Undegradable', organic=False)
     
+    CaO = Component('CaO', phase='s', particle_size='Particulate',
+                    degradability='Undegradable', organic=False)
+    
+    CaOH2 = Component('CaOH2', search_ID='1305-62-0',
+                      phase='s', particle_size='Particulate',
+                      degradability='Undegradable', organic=False)
+    
+    CaCO3 = Component('CaCO3', phase='s', particle_size='Particulate',
+                      degradability='Undegradable', organic=False)
+    
     MgCl2 = Component('MgCl2', phase='l', particle_size='Soluble',
                       degradability='Undegradable', organic=False)
     
-    MgO = Component('MgO', phase='l', particle_size='Soluble',
+    MgO = Component('MgO', phase='l', particle_size='Particulate',
                       degradability='Undegradable', organic=False)
     
     NaOH = Component('NaOH', phase='l', particle_size='Soluble',
@@ -387,27 +403,97 @@ def create_components(set_thermo=True):
     add_V_from_rho(Membrane, 1500)
     Membrane.copy_models_from(Chemical('CaCO3'),('Cn',))
     
+    DAP = Component('DAP', search_ID='7783-28-0', phase='s', particle_size='Soluble',
+                    degradability='Undegradable', organic=False)
+    
+    MEA = Component('MEA', search_ID='141-43-5', phase='l', particle_size='Soluble',
+                    degradability='Slowly', organic=True)
+    
+    Urea = Component('Urea', search_ID='57-13-6', phase='s', particle_size='Soluble',
+                     degradability='Slowly', organic=True)
+    
+    HNO3 = Component('HNO3', search_ID='7697-37-2', phase='l', particle_size='Soluble',
+                     degradability='Undegradable', organic=False)
+    
+    UAN = Component('UAN', formula='CH6N4O4', phase='s', particle_size='Soluble',
+                    degradability='Slowly', organic=True)
+    UAN.copy_models_from(Chemical('Urea'),('Cn',))
+    # https://www.cfindustries.com/globalassets/cf-industries/media/documents/\
+    # product-specification-sheets/uan---north-america/urea-ammonium-nitrate-solution-\
+    # 28-30-32.pdf (accessed 2025-02-09)
+    add_V_from_rho(UAN, 1300)
+    
+    # use the CAS number of acrylamide instead of polyacrylamide (not in database)
+    PAM = Component('PAM', search_ID='79-06-1', phase='s', particle_size='Soluble',
+                    degradability='Slowly', organic=True)
+    
+    # assume Sawdust have the same composition as Sludge_carbo (carbohydrate)
+    Sawdust = Component('Sawdust', phase='s',
+                        particle_size='Particulate',
+                        formula='C56H95O24N9P',
+                        degradability='Undegradable',
+                        organic=True)
+    add_V_from_rho(Sawdust, 1400)
+    Sawdust.HHV = 22.0*10**6*Sawdust.MW/1000
+    Sawdust.Cn.add_model(1.25*10**3*Sawdust.MW/1000)
+    Sawdust.mu.add_model(6000)
+    # made up value, so that HTL.ins[0].nu = 0.03 m2/s ~30000 cSt
+    # (NREL 2013 appendix B)
+    
+    # assume Compost have the same composition as Sludge_carbo (carbohydrate)
+    Compost = Component('Compost', phase='s',
+                        particle_size='Particulate',
+                        formula='C56H95O24N9P',
+                        degradability='Undegradable',
+                        organic=True)
+    add_V_from_rho(Compost, 1400)
+    Compost.HHV = 22.0*10**6*Compost.MW/1000
+    Compost.Cn.add_model(1.25*10**3*Compost.MW/1000)
+    Compost.mu.add_model(6000)
+    # made up value, so that HTL.ins[0].nu = 0.03 m2/s ~30000 cSt
+    # (NREL 2013 appendix B)
+    
+    HCl = Component('HCl', phase='l', particle_size='Soluble',
+                    degradability='Undegradable', organic=False)
+    
+    # when calculating price using HHV, use a separate HHV value but not directly from this Componenet
+    # assume Biooil is the same as Biocrude, use palmitamide to represent both
+    Biooil = Component('Biooil', search_ID='629-54-9',
+                       particle_size='Soluble', degradability='Slowly',
+                       organic=True)
+    
+    # use anthracene to represent it
+    Tar = Component('Tar', search_ID='120-12-7',
+                    particle_size='Soluble', degradability='Slowly',
+                    organic=True)
+    
+    Biochar = Component('Biochar', phase='s', particle_size='Particulate',
+                        degradability='Undegradable', organic=False)
+    # assume a bulk density of 400 kg/m3; the density does not affect transportation (if any) which is based on weight
+    add_V_from_rho(Biochar, 400)
+    Biochar.copy_models_from(Chemical('CaCO3'),('Cn',))
+    
     cmps = Components([Sludge_lipid, Sludge_protein, Sludge_carbo, Sludge_ash,
-                       Struvite, Hydrochar, Residual,
-                       Biocrude, HTLaqueous, H2O, C, N, P,
-                       O2, N2, CH4, C2H6, C3H8, CO2, CO, H2, NH3,
-                       H2SO4, H3PO4, MgCl2, MgO, NaOH, NH42SO4, NH4Cl,
-                       C4H10, TWOMBUTAN, NPENTAN, TWOMPENTA, CYCHEX, HEXANE,
-                       TWOMHEXAN, HEPTANE, CC6METH, PIPERDIN, TOLUENE,
-                       THREEMHEPTA, OCTANE, ETHCYC6, ETHYLBEN, OXYLENE, C9H20,
-                       PROCYC6, C3BENZ, FOURMONAN, C10H22, C4BENZ,
+                       Struvite, Hydrochar, Residue, Biocrude, HTLaqueous, H2O,
+                       C, N, P, O2, N2, N2O, CH4, C2H6, C3H8, CO2, CO, H2, NH3,
+                       H2SO4, H3PO4, CaO, CaOH2, CaCO3, MgCl2, MgO, NaOH,
+                       NH42SO4, NH4Cl, C4H10, TWOMBUTAN, NPENTAN, TWOMPENTA,
+                       CYCHEX, HEXANE, TWOMHEXAN, HEPTANE, CC6METH, PIPERDIN,
+                       TOLUENE, THREEMHEPTA, OCTANE, ETHCYC6, ETHYLBEN, OXYLENE,
+                       C9H20, PROCYC6, C3BENZ, FOURMONAN, C10H22, C4BENZ,
                        C11H24, C10H12, C12H26, C13H28, C14H30, OTTFNA, C6BENZ,
-                       OTTFSN, C7BENZ, C8BENZ, C10H16O4, C15H32, C16H34,
-                       C17H36, C18H38, C19H40, C20H42, C21H44,
-                       TRICOSANE, C24H38O4, C26H42O4, C30H62, Gasoline, Diesel,
-                       CHG_catalyst, HT_catalyst, HC_catalyst, Membrane])
+                       OTTFSN, C7BENZ, C8BENZ, C10H16O4, C15H32, C16H34, C17H36,
+                       C18H38, C19H40, C20H42, C21H44, TRICOSANE, C24H38O4,
+                       C26H42O4, C30H62, Gasoline, Diesel, CHG_catalyst,
+                       HT_catalyst, HC_catalyst, Membrane, DAP, MEA, Urea, HNO3,
+                       UAN, PAM, Sawdust, Compost, HCl, Biooil, Tar, Biochar])
     
     for i in cmps:
         for attr in ('HHV', 'LHV', 'Hf'):
             if getattr(i, attr) is None: setattr(i, attr, 0)
 
     cmps.compile()
-    cmps.set_alias('H2O', 'Water')
+    cmps.set_alias('H2O','Water')
     if set_thermo: qs_set_thermo(cmps)
 
     return cmps
