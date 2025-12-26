@@ -21,6 +21,7 @@ for license details.
 
 import qsdsan as qs
 from qsdsan import SanUnit
+from qsdsan.utils import auom
 from qsdsan.sanunits import HXutility, SludgePump
 from qsdsan.equipments import VerticalMixer
 from biosteam import Stream
@@ -30,6 +31,7 @@ from thermosteam.reaction import ParallelReaction
 
 _C_to_K = 273.15
 _316_over_304 = factors['Stainless steel 316'] / factors['Stainless steel 304']
+_ton_to_tonne = auom('ton').conversion_factor('tonne')
 
 __all__ = (
     'AcidogenicFermenter',
@@ -470,6 +472,10 @@ class HeatDrying(SanUnit):
 # =============================================================================
 
 # TODO: add heat recovery (e.g., HXprocess or HXN)
+# assume 2023 dollar
+# add references: https://www.cementequipments.com/info/vertical-kiln-vs-rotary-kiln-a-cost-analysis-103128381.html (accessed 2025-12-26)
+@cost('Product dry mass flow', 'Rotary kiln', S=400/_ton_to_tonne, cost=1250000, n=0.6,
+      BM=1, CE=798)
 class Sintering(SanUnit):
     '''
     Sintering of FePO4·2H2O-rich feed.
@@ -491,6 +497,8 @@ class Sintering(SanUnit):
     '''
     _N_ins = 3
     _N_outs = 2
+    
+    _units = {'Product dry mass flow': 'tonne/day'}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
                  T=700 + _C_to_K, combustion_eff=0.8, natural_gas_HHV=39,
@@ -559,8 +567,7 @@ class Sintering(SanUnit):
         natural_gas.ivol['CH4'] = natural_gas_heat/1000/self.natural_gas_HHV
     
     def _design(self):
+        self.design_results['Product dry mass flow'] = self.outs[0].F_mass/1000*24
+        
         # kW
         self.add_power_utility(self.ins[0].F_mass/1000*self.unit_electricity)
-    
-    def _cost(self):
-        pass
