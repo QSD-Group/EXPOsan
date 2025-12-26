@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 EXPOsan: Exposition of sanitation and resource recovery systems
@@ -14,7 +15,8 @@ for license details.
 """
 
 # =============================================================================
-# TODO 3: 1 precipitation, what is the required HRT, also batch
+# TODO
+# TODO 3: add costs for Sintering and check the orders of magnitude of the purchase costs of Sintering with other units
 # =============================================================================
 
 import qsdsan as qs
@@ -23,10 +25,11 @@ from qsdsan.sanunits import HXutility, SludgePump
 from qsdsan.equipments import VerticalMixer
 from biosteam import Stream
 from biosteam.units.decorators import cost
-from biosteam.units.design_tools import size_batch
+from biosteam.units.design_tools import size_batch, pressure_vessel_material_factors as factors
 from thermosteam.reaction import ParallelReaction
 
 _C_to_K = 273.15
+_316_over_304 = factors['Stainless steel 316'] / factors['Stainless steel 304']
 
 __all__ = (
     'AcidogenicFermenter',
@@ -42,17 +45,21 @@ __all__ = (
 @cost('Recirculation flow rate', 'Recirculation pumps', kW=30, S=77.22216,
       cost=47200, n=0.8, BM=2.3, CE=522, N='Number of reactors')
 @cost('Reactor volume', 'Cleaning in place', CE=521.9,
-      cost=421e3, S=3785, n=0.6, BM=1.8)
-@cost('Reactor volume', 'Agitators', CE=521.9, cost=52500,
+      cost=421e3*_316_over_304, S=3785, n=0.6, BM=1.8)
+@cost('Reactor volume', 'Agitators', CE=521.9, cost=52500*_316_over_304,
       S=3785, n=0.5, kW=22.371, BM=1.5, N='Number of reactors')
-@cost('Reactor volume', 'Reactors', CE=521.9, cost=844000,
+@cost('Reactor volume', 'Reactors', CE=521.9, cost=844000*_316_over_304,
       S=3785, n=0.5, BM=1.5, N='Number of reactors')
-@cost('Reactor duty', 'Heat exchangers', CE=522, cost=23900,
+@cost('Reactor duty', 'Heat exchangers', CE=522, cost=23900*_316_over_304,
       S=20920000.0, n=0.7, BM=2.2, N='Number of reactors',
       magnitude=True)
 class AcidogenicFermenter(SanUnit):
     '''
     Fermentation of sludge and food waste.
+    Assume only pumps already use 316 SS; others need to be converted
+    from 304 SS to 316 SS due to acidic conditions.
+    See the reference (https://docs.nrel.gov/docs/fy11osti/47764.pdf) cited in
+    :class:`biosteam.units.NRELBatchBioreactor` for more information.
     
     Parameters
     ----------
@@ -81,7 +88,7 @@ class AcidogenicFermenter(SanUnit):
     
     See Also
     --------
-    :class:`biosteam.units.NRELBatchBioreactor
+    :class:`biosteam.units.NRELBatchBioreactor`
     '''
     _N_ins = 2
     _N_outs = 2
@@ -225,17 +232,21 @@ class AcidogenicFermenter(SanUnit):
 @cost('Recirculation flow rate', 'Recirculation pumps', kW=30, S=77.22216,
       cost=47200, n=0.8, BM=2.3, CE=522, N='Number of reactors')
 @cost('Reactor volume', 'Cleaning in place', CE=521.9,
-      cost=421e3, S=3785, n=0.6, BM=1.8)
-@cost('Reactor volume', 'Agitators', CE=521.9, cost=52500,
+      cost=421e3*_316_over_304, S=3785, n=0.6, BM=1.8)
+@cost('Reactor volume', 'Agitators', CE=521.9, cost=52500*_316_over_304,
       S=3785, n=0.5, kW=22.371, BM=1.5, N='Number of reactors')
-@cost('Reactor volume', 'Reactors', CE=521.9, cost=844000,
+@cost('Reactor volume', 'Reactors', CE=521.9, cost=844000*_316_over_304,
       S=3785, n=0.5, BM=1.5, N='Number of reactors')
-@cost('Reactor duty', 'Heat exchangers', CE=522, cost=23900,
+@cost('Reactor duty', 'Heat exchangers', CE=522, cost=23900*_316_over_304,
       S=20920000.0, n=0.7, BM=2.2, N='Number of reactors',
       magnitude=True)
 class SelectivePrecipitation(SanUnit):
     '''
     Selective precipitation of FePO4 by adding acid and oxidant.
+    Assume only pumps already use 316 SS; others need to be converted
+    from 304 SS to 316 SS due to acidic and oxidative conditions.
+    See the reference (https://docs.nrel.gov/docs/fy11osti/47764.pdf) cited in
+    :class:`biosteam.units.NRELBatchBioreactor` for more information.
     
     Parameters
     ----------
@@ -250,6 +261,10 @@ class SelectivePrecipitation(SanUnit):
         Phosphorus recovery ratio via of Fe3+ and PO43- precipitation, [-].
     T : float
         Required temperature for FePO4 precipitation, [K].
+    
+    See Also
+    --------
+    :class:`biosteam.units.NRELBatchBioreactor
     '''
     _N_ins = 3
     _N_outs = 1
@@ -393,10 +408,10 @@ class HeatDrying(SanUnit):
         Heat drying temperature, [K].
     unit_heat : float
         Energy for removing unit water from solids, [GJ/tonne water].
-    unit_electricity : float
-        Electricity for heat drying, [kWh/dry tonne solids].
     natural_gas_HHV : float
         Higher heating value of natural gas, [MJ/m3].
+    unit_electricity : float
+        Electricity for heat drying, [kWh/dry tonne solids].
     
     See Also
     --------
@@ -454,10 +469,10 @@ class HeatDrying(SanUnit):
 # Sintering
 # =============================================================================
 
-# TODO: add heat recovery
+# TODO: add heat recovery (e.g., HXprocess or HXN)
 class Sintering(SanUnit):
     '''
-    Fermentation of sludge and food waste.
+    Sintering of FePO4·2H2O-rich feed.
     
     Parameters
     ----------
@@ -471,20 +486,21 @@ class Sintering(SanUnit):
         Combustion efficiency to convert the energy embedded in feed to heat.
     natural_gas_HHV : float
         Higher heating value of natural gas, [MJ/m3].
+    unit_electricity : float
+        Electricity for sintering, [kWh/tonne feed].
     '''
     _N_ins = 3
     _N_outs = 2
     
-    # TODO: electricity and NG data are from https://zhuanlan.zhihu.com/p/30646376322 (accessed 2025-12-23)
-    # TODO: add electricity (15-40 kWh/tonne feed)
-    # TODO: NG is 50-120 m3/tonne feed; the current calculation is around 56 m3/tonne
-    
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-                 T=700 + _C_to_K, combustion_eff=0.8, natural_gas_HHV=39):
+                 T=700 + _C_to_K, combustion_eff=0.8, natural_gas_HHV=39,
+                 # 15-40 kWh/tonne feed, https://zhuanlan.zhihu.com/p/30646376322 (accessed 2025-12-23)
+                 unit_electricity=30):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.T = T
         self.combustion_eff = combustion_eff
         self.natural_gas_HHV = natural_gas_HHV
+        self.unit_electricity = unit_electricity
     
     def _run(self):
         feed, natural_gas, air = self.ins
@@ -538,10 +554,13 @@ class Sintering(SanUnit):
         provided_heat = feed_copy.H + feed_copy.HHV + air.H + low_T_water_vapor.H
         natural_gas_heat = (required_heat - provided_heat)/self.combustion_eff
         
+        # 50-120 m3/tonne feed, https://zhuanlan.zhihu.com/p/30646376322 (accessed 2025-12-23)
+        # the current calculation is around 56 m3/tonne
         natural_gas.ivol['CH4'] = natural_gas_heat/1000/self.natural_gas_HHV
     
     def _design(self):
-        pass
+        # kW
+        self.add_power_utility(self.ins[0].F_mass/1000*self.unit_electricity)
     
     def _cost(self):
         pass

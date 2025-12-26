@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 EXPOsan: Exposition of sanitation and resource recovery systems
