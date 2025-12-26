@@ -17,7 +17,7 @@ References:
 
 (1) Jones, S. B.; Zhu, Y.; Anderson, D. B.; Hallen, R. T.; Elliott, D. C.; 
     Schmidt, A. J.; Albrecht, K. O.; Hart, T. R.; Butcher, M. G.; Drennan, C.; 
-    Snowden-Swan, L. J.; Davis, R.; Kinchin, C. 
+    Snowden-Swan, L. J.; Davis, R.; Kinchin, C.
     Process Design and Economics for the Conversion of Algal Biomass to
     Hydrocarbons: Whole Algae Hydrothermal Liquefaction and Upgrading;
     PNNL--23227, 1126336; 2014; https://doi.org/10.2172/1126336.
@@ -41,6 +41,25 @@ from exposan.htl import _sanunits as su
 from biosteam import settings
 
 __all__ = ('create_system',)
+
+# GDPCTPI (Gross Domestic Product: Chain-type Price Index)
+# https://fred.stlouisfed.org/series/GDPCTPI (accessed 2024-05-20)
+GDPCTPI = {2008: 87.977,
+           2009: 88.557,
+           2010: 89.619,
+           2011: 91.466,
+           2012: 93.176,
+           2013: 94.786,
+           2014: 96.436,
+           2015: 97.277,
+           2016: 98.208,
+           2017: 100.000,
+           2018: 102.290,
+           2019: 104.008,
+           2020: 105.407,
+           2021: 110.220,
+           2022: 117.995,
+           2023: 122.284}
 
 def create_system(configuration='baseline', capacity=100,
                   sludge_moisture_content=0.8, sludge_dw_ash_content=0.257, 
@@ -74,9 +93,9 @@ def create_system(configuration='baseline', capacity=100,
     # Jones baseline: 1276.6 MGD, 1.066e-4 $/kg ww
     # set H2O equal to the total raw wastewater into the WWTP
     
-    # =============================================================================
+    # =========================================================================
     # pretreatment (Area 000)
-    # =============================================================================
+    # =========================================================================
                 
     WWTP = su.WWTP('S000', ins=raw_wastewater, outs=('sludge','treated_water'),
                    ww_2_dry_sludge=1,
@@ -104,14 +123,17 @@ def create_system(configuration='baseline', capacity=100,
         P1.include_construction = True
     
     elif WWTP.sludge_moisture > 0.8:
-
+        
+        # note disposal_cost (add_OPEX here, and other similar funcions) does not work since TEA is from BioSTEAM, but not QSDsan
         SluC = qsu.SludgeCentrifuge('A000', ins=WWTP-0,
-                                outs=('supernatant','compressed_sludge'),
-                                init_with='Stream',
-                                solids=('Sludge_lipid','Sludge_protein',
-                                        'Sludge_carbo','Sludge_ash'),
-                                sludge_moisture=0.8)
+                                    outs=('supernatant','compressed_sludge'),
+                                    init_with='Stream',
+                                    solids=('Sludge_lipid','Sludge_protein',
+                                            'Sludge_carbo','Sludge_ash'),
+                                    sludge_moisture=0.8,
+                                    disposal_cost=0)
         SluC.register_alias('SluC')
+        SluC.include_construction = True
         
         P1 = qsu.SludgePump('A100', ins=SluC-1, outs='press_sludge', P=3049.7*6894.76,
                   init_with='Stream')
@@ -119,12 +141,11 @@ def create_system(configuration='baseline', capacity=100,
         P1.include_construction = True
         # Jones 2014: 3049.7 psia
     
-    # =============================================================================
+    # =========================================================================
     # HTL (Area 100)
-    # =============================================================================
+    # =========================================================================
     
-    H1 = qsu.HXutility('A110', include_construction=True,
-                       ins=P1-0, outs='heated_sludge', T=351+273.15,
+    H1 = qsu.HXutility('A110', ins=P1-0, outs='heated_sludge', T=351+273.15,
                        U=0.0198739, init_with='Stream', rigorous=True)
     # feed T is low, thus high viscosity and low U (case B in Knorr 2013)
     # U: 3, 3.5, 4 BTU/hr/ft2/F as minimum, baseline, and maximum
@@ -132,17 +153,19 @@ def create_system(configuration='baseline', capacity=100,
     # but not in other heat exchangers (low viscosity, don't need U to enforce total heat transfer efficiency)
     # unit conversion: https://www.unitsconverters.com/en/Btu(It)/Hmft2mdegf-To-W/M2mk/Utu-4404-4398
     H1.register_alias('H1')
+    H1.include_construction = True
     
     HTL = qsu.HydrothermalLiquefaction('A120', ins=H1-0, outs=('hydrochar','HTL_aqueous','biocrude','offgas_HTL'),
                                        mositure_adjustment_exist_in_the_system=True)
     HTL.register_alias('HTL')
     
-    # =============================================================================
+    # =========================================================================
     # CHG (Area 200)
-    # =============================================================================
+    # =========================================================================
     
     H2SO4_Tank = qsu.StorageTank('T200', ins='H2SO4', outs=('H2SO4_out'),
                              init_with='WasteStream', tau=24, vessel_material='Stainless steel')
+    # 0.5 M H2SO4: ~5%
     H2SO4_Tank.ins[0].price = 0.00658 # based on 93% H2SO4 and fresh water (dilute to 5%) price found in Davis 2020$/kg
     H2SO4_Tank.register_alias('H2SO4_Tank')
     
@@ -157,10 +180,10 @@ def create_system(configuration='baseline', capacity=100,
         M1_outs1 = ''
     else:
         AcidEx = su.AcidExtraction('A200', ins=(HTL-0, SP1-0),
-                                   outs=('residual','extracted'))
+                                   outs=('residue','extracted'))
         AcidEx.register_alias('AcidEx')
         # AcidEx.outs[0].price = -0.055 # SS 2021 SOT PNNL report page 24 Table 9
-        # not include residual for TEA and LCA for now
+        # not include residue for TEA and LCA for now
         
         M1_outs1 = AcidEx.outs[1]
     M1 = su.HTLmixer('A210', ins=(HTL-1, M1_outs1), outs=('mixture',))
@@ -179,7 +202,7 @@ def create_system(configuration='baseline', capacity=100,
     CHG.ins[1].price = 134.53
     CHG.register_alias('CHG')
     
-    V1 = IsenthalpicValve('A240', ins=CHG-0, outs='depressed_cooled_CHG', P=50*6894.76, vle=True)
+    V1 = IsenthalpicValve('A240', ins=CHG-0, outs='depressurized_cooled_CHG', P=50*6894.76, vle=True)
     V1.register_alias('V1')
     
     F1 = qsu.Flash('A250', ins=V1-0, outs=('CHG_fuel_gas','N_riched_aqueous'),
@@ -190,12 +213,18 @@ def create_system(configuration='baseline', capacity=100,
     MemDis = qsu.MembraneDistillation('A260', ins=(F1-1, SP1-1, 'NaOH', 'Membrane_in'),
                                   outs=('ammonium_sulfate','MemDis_ww','Membrane_out','solution'), init_with='WasteStream')
     MemDis.ins[2].price = 0.5256
+    # from Al-Obaidani et al. Potential of Membrane Distillation in Seawater Desalination:
+    # Thermal Efficiency, Sensitivity Study and Cost Estimation.
+    # Journal of Membrane Science 2008, 323 (1), 85–98.
+    # https://doi.org/10.1016/j.memsci.2008.06.006: $90/m2 (likely 2008$)
+    MemDis.ins[3].price = 90/GDPCTPI[2008]*GDPCTPI[2020]
     MemDis.outs[0].price = 0.3236
     MemDis.register_alias('MemDis')
+    MemDis.include_construction = True
     
-    # =============================================================================
+    # =========================================================================
     # HT (Area 300)
-    # =============================================================================
+    # =========================================================================
     
     P2 = qsu.SludgePump('A300', ins=HTL-2, outs='press_biocrude', P=1530.0*6894.76,
               init_with='Stream')
@@ -221,20 +250,20 @@ def create_system(configuration='baseline', capacity=100,
     HT.ins[2].price = 38.79
     HT.register_alias('HT')
     
-    V2 = IsenthalpicValve('A320', ins=HT-0, outs='depressed_HT', P=717.4*6894.76, vle=True)
+    V2 = IsenthalpicValve('A320', ins=HT-0, outs='depressurized_HT', P=717.4*6894.76, vle=True)
     V2.register_alias('V2')
     
-    H2 = qsu.HXutility('A330', include_construction=True,
-                       ins=V2-0, outs='cooled_HT', T=60+273.15,
+    H2 = qsu.HXutility('A330', ins=V2-0, outs='cooled_HT', T=60+273.15,
                        init_with='Stream', rigorous=True)
     H2.register_alias('H2')
+    H2.include_construction = True,
 
     F2 = qsu.Flash('A340', ins=H2-0, outs=('HT_fuel_gas','HT_aqueous'), T=43+273.15,
                P=717.4*6894.76, thermo=settings.thermo.ideal()) # outflow P
     F2.register_alias('F2')
     F2.include_construction = True
     
-    V3 = IsenthalpicValve('A350', ins=F2-1, outs='depressed_flash_effluent', P=55*6894.76, vle=True)
+    V3 = IsenthalpicValve('A350', ins=F2-1, outs='depressurized_flash_effluent', P=55*6894.76, vle=True)
     V3.register_alias('V3')
     
     SP2 = qsu.Splitter('S310', ins=V3-0, outs=('HT_ww','HT_oil'),
@@ -242,10 +271,11 @@ def create_system(configuration='baseline', capacity=100,
     # separate water and oil based on gravity
     SP2.register_alias('SP2')
     
-    H3 = qsu.HXutility('A360', include_construction=True,
-                       ins=SP2-1, outs='heated_oil', T=104+273.15, rigorous=True)
+    H3 = qsu.HXutility('A360', ins=SP2-1, outs='heated_oil', T=104+273.15,
+                       init_with='Stream', rigorous=True)
     # temperature: Jones stream #334 (we remove the first distillation column)
     H3.register_alias('H3')
+    H3.include_construction = True
     
     D1 = qsu.BinaryDistillation('A370', ins=H3-0,
                             outs=('HT_light','HT_heavy'),
@@ -268,9 +298,9 @@ def create_system(configuration='baseline', capacity=100,
     D3.register_alias('D3')
     D3.include_construction = True
     
-    # =============================================================================
+    # =========================================================================
     # HC (Area 400)
-    # =============================================================================
+    # =========================================================================
     
     P3 = qsu.SludgePump('A400', ins=D3-1, outs='press_heavy_oil', P=1034.7*6894.76,
                   init_with='Stream')
@@ -286,13 +316,14 @@ def create_system(configuration='baseline', capacity=100,
                        outs=('HC_out','CoMo_alumina_HC_out'))
     HC.ins[2].price = 38.79
     HC.register_alias('HC')
+    HC.include_construction = True
     
-    H4 = qsu.HXutility('A420', include_construction=True,
-                       ins=HC-0, outs='cooled_HC', T=60+273.15,
+    H4 = qsu.HXutility('A420', ins=HC-0, outs='cooled_HC', T=60+273.15,
                        init_with='Stream', rigorous=True)
     H4.register_alias('H4')
+    H4.include_construction = True
     
-    V4 = IsenthalpicValve('A430', ins=H4-0, outs='cooled_depressed_HC', P=30*6894.76, vle=True)
+    V4 = IsenthalpicValve('A430', ins=H4-0, outs='cooled_depressurized_HC', P=30*6894.76, vle=True)
     V4.register_alias('V4')
     
     F3 = qsu.Flash('A440', ins=V4-0, outs=('HC_fuel_gas','HC_aqueous'), T=60.2+273,
@@ -306,9 +337,9 @@ def create_system(configuration='baseline', capacity=100,
     D4.register_alias('D4')
     D4.include_construction = True
     
-    # =============================================================================
+    # =========================================================================
     # Storage, and disposal (Area 500)
-    # =============================================================================
+    # =========================================================================
     
     GasolineMixer = qsu.Mixer('S500', ins=(D2-0, D4-0), outs='mixed_gasoline',
                               init_with='Stream', rigorous=True)
@@ -318,15 +349,15 @@ def create_system(configuration='baseline', capacity=100,
                             init_with='Stream', rigorous=True)
     DieselMixer.register_alias('DieselMixer')
     
-    H5 = qsu.HXutility('A500', include_construction=True,
-                       ins=GasolineMixer-0, outs='cooled_gasoline',
+    H5 = qsu.HXutility('A500', ins=GasolineMixer-0, outs='cooled_gasoline',
                        T=60+273.15, init_with='Stream', rigorous=True)
     H5.register_alias('H5')
+    H5.include_construction = True
     
-    H6 = qsu.HXutility('A510', include_construction=True,
-                       ins=DieselMixer-0, outs='cooled_diesel',
+    H6 = qsu.HXutility('A510', ins=DieselMixer-0, outs='cooled_diesel',
                        T=60+273.15, init_with='Stream', rigorous=True)
     H6.register_alias('H6')
+    H6.include_construction = True
     
     PC1 = qsu.PhaseChanger('S520', ins=H5-0, outs='cooled_gasoline_liquid')
     PC1.register_alias('PC1')
@@ -347,18 +378,16 @@ def create_system(configuration='baseline', capacity=100,
                                     tau=3*24, init_with='WasteStream', vessel_material='Carbon steel')
     # store for 3 days based on Jones 2014
     GasolineTank.register_alias('GasolineTank')
-    
     GasolineTank.outs[0].price = 0.9388
     
     DieselTank = qsu.StorageTank('T510', ins=PC2-0, outs=('diesel'),
                                   tau=3*24, init_with='WasteStream', vessel_material='Carbon steel')
     # store for 3 days based on Jones 2014
     DieselTank.register_alias('DieselTank')
-    
     DieselTank.outs[0].price = 0.9722
     
     GasMixer = qsu.Mixer('S580', ins=(HTL-3, F1-0, F2-0, D1-0, F3-0),
-                          outs=('fuel_gas'), init_with='Stream')
+                         outs=('fuel_gas'), init_with='Stream')
     GasMixer.register_alias('GasMixer')
     
     try:
@@ -370,9 +399,9 @@ def create_system(configuration='baseline', capacity=100,
     # effluent of WWmixer goes back to WWTP
     WWmixer.register_alias('WWmixer')
     
-    # =============================================================================
+    # =========================================================================
     # facilities
-    # =============================================================================
+    # =========================================================================
     
     qsu.HeatExchangerNetwork('HXN', T_min_app=86, force_ideal_thermo=True)
     # 86 K: Jones et al. PNNL, 2014
@@ -405,18 +434,21 @@ def create_system(configuration='baseline', capacity=100,
                         NonCarcinogenics=0,
                         RespiratoryEffects=0)
     
-    # add impact for makeup water
-    qs.StreamImpactItem(ID='makeup_water_item',
-                        linked_stream=stream.makeup_water,
-                        Acidification=0.00011676,
-                        Ecotoxicity=0.0050151,
-                        Eutrophication=0.000000073096,
-                        GlobalWarming=0.00030228,
-                        OzoneDepletion=0.00000000016107,
-                        PhotochemicalOxidation=0.00000074642,
-                        Carcinogenics=0.0000061925,
-                        NonCarcinogenics=0.009977,
-                        RespiratoryEffects=0.00000068933)
+    try:
+        # add impact for makeup water
+        qs.StreamImpactItem(ID='makeup_water_item',
+                            linked_stream=stream.makeup_water,
+                            Acidification=0.00011676,
+                            Ecotoxicity=0.0050151,
+                            Eutrophication=0.000000073096,
+                            GlobalWarming=0.00030228,
+                            OzoneDepletion=0.00000000016107,
+                            PhotochemicalOxidation=0.00000074642,
+                            Carcinogenics=0.0000061925,
+                            NonCarcinogenics=0.009977,
+                            RespiratoryEffects=0.00000068933)
+    except AttributeError:
+        pass
     
     # biocrude upgrading
     qs.StreamImpactItem(ID='H2_item',
@@ -611,10 +643,12 @@ def create_system(configuration='baseline', capacity=100,
     # in the future, use 0.21 (new federal income tax rate) as the income tax rate
     # if it is necessary to add a state income tax, see exposan.htl.income_tax
     if high_IRR:
+        # note add_OPEX and other similar funcions do not work since TEA is from BioSTEAM, but not QSDsan
         create_tea(sys, IRR_value=0.1, income_tax_value=0.21, finance_interest_value=0.08, labor_cost_value=(0.41+1.40*capacity*WWTP.ww_2_dry_sludge/100)*10**6)
     else:
+        # note add_OPEX and other similar funcions do not work since TEA is from BioSTEAM, but not QSDsan
         create_tea(sys, IRR_value=0.03, income_tax_value=0.21, finance_interest_value=0.03, labor_cost_value=(0.41+1.40*capacity*WWTP.ww_2_dry_sludge/100)*10**6)
-
+    
     # for labor cost (2020 salary level)
    
     # 1 plant manager
@@ -624,7 +658,7 @@ def create_system(configuration='baseline', capacity=100,
     # variable cost (proportional to the sludge amount, the following is for a plant of 100 dry metric tonne per day)
     # added people to some positions compared to Snowden-Swan et al. 2017 as we also have HT, HC, CHG, N/P recovery, and CHP
     # 5 shift supervisors
-    # 3 lab technican
+    # 3 lab technician
     # 3 maintenance technician
     # 12 shift operators
     # 2 yard employee
@@ -637,7 +671,7 @@ def create_system(configuration='baseline', capacity=100,
     # (having separate tables for the HTL plant and the hydroprocessing plant serving 10 HTL plants) and
     # Jones et al. 2014. Process Design and Economics for the Conversion of Algal Biomass to Hydrocarbons: Whole Algae Hydrothermal Liquefaction and Upgrading
     # (including hydroprocessing and CHG)
-        
+    
     qs.LCA(system=sys, lifetime=30, lifetime_unit='yr',
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30,
            Cooling=lambda:sys.get_cooling_duty()/1000*30)
