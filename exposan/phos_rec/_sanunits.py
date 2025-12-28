@@ -14,11 +14,6 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 """
 
-# =============================================================================
-# TODO
-# TODO 3: add costs for Sintering and check the orders of magnitude of the purchase costs of Sintering with other units
-# =============================================================================
-
 import qsdsan as qs
 from qsdsan import SanUnit
 from qsdsan.utils import auom
@@ -37,7 +32,8 @@ __all__ = (
     'AcidogenicFermenter',
     'SelectivePrecipitation',
     'HeatDrying',
-    'Sintering'
+    'Sintering',
+    'FePO4_ASM2d_interface'
 )
 
 # =============================================================================
@@ -471,14 +467,14 @@ class HeatDrying(SanUnit):
 # Sintering
 # =============================================================================
 
-# TODO: add heat recovery (e.g., HXprocess or HXN)
 # assume 2023 dollar
-# add references: https://www.cementequipments.com/info/vertical-kiln-vs-rotary-kiln-a-cost-analysis-103128381.html (accessed 2025-12-26)
 @cost('Product dry mass flow', 'Rotary kiln', S=400/_ton_to_tonne, cost=1250000, n=0.6,
       BM=1, CE=798)
 class Sintering(SanUnit):
     '''
-    Sintering of FePO4·2H2O-rich feed.
+    Sintering of FePO4·2H2O-rich feed. Capital costs are based on 
+    https://www.cementequipments.com/info/vertical-kiln-vs-rotary-kiln-a-cost-analysis-103128381.html (accessed 2025-12-26).
+    Sintering contributes minimally to the capital cost of the entire system.
     
     Parameters
     ----------
@@ -555,8 +551,12 @@ class Sintering(SanUnit):
             air.imol['N2'] = vapor.imol['N2'] = air.imol['O2']/0.21*0.79
             vapor.imass['O2'] = 0
         
-        # TODO: check this value
-        # assume 90 kJ/mol H2O for dehydration
+        # from https://www.sciencedirect.com/science/article/pii/S0040603115001641?via%3Dihub:
+        # the apparent activation energies were around 93 kJ/mol (likely the removal of the first H2O) and
+        # 73 kJ/mol (likely the removal of the second H2O)
+        # for endothermic reactions of removing H2O, the activation energy is higher than the total heat required (enthalpy change)
+        # so the required heat to remove H2O will be less than (93 + 73)/2 = 83 kJ/mol
+        # to be conservative, use 90 kJ/mol H2O
         # kJ/hr
         required_heat = product.H + product.HHV + vapor.H + 90/18*1000*feed.imass['FePO4_2H2O']/187*36
         provided_heat = feed_copy.H + feed_copy.HHV + air.H + low_T_water_vapor.H
@@ -571,3 +571,76 @@ class Sintering(SanUnit):
         
         # kW
         self.add_power_utility(self.ins[0].F_mass/1000*self.unit_electricity)
+
+# =============================================================================
+# FePO4_ASM2d_interface
+# =============================================================================
+
+class FePO4_ASM2d_interface(SanUnit):
+    pass
+
+# TODO: convert components to modified ASM2d components:
+# S_O2, S_N2, S_NH4, S_NO3, S_PO4, S_F, S_A, S_I, S_IC, S_K, S_Mg, S_Na, S_Cl, H2O
+# X_I, X_S, X_H, X_PAO, X_PP, X_PHA, X_AUT, S_Ca, X_CaCO3, X_struv, X_newb, X_ACP, X_MgCO3, X_AlOH, X_AlPO4, X_FeOH, X_FePO4
+
+# components in the system:
+# CO2
+# CH4
+# H2O
+# Fe2
+# Fe3
+# PO4
+# Ca2
+# Mg2
+# Org
+# Ac
+# Pr
+# Bu
+# Va
+# Lac
+# Etoh,
+# Inert
+# Residue
+# O2
+# N2
+# SO2
+# H2SO4
+# H2O2
+# H3PO4
+# NH4H2PO4
+# FePO4
+# FePO4_2H2O
+
+# ins of the system
+# fe_sludge
+# heat_drying_natural_gas
+# food_waste
+# sintering_natural_gas
+# air
+# acid
+# oxidant
+
+
+# outs of the system
+# residue
+# precipitation_supernatant
+# heat_drying_vapor
+# fermentation_gas
+# product
+# sintering_vapor
+
+# =============================================================================
+# working code
+# =============================================================================
+
+# from exposan.werf import create_system
+# g1 = create_system('G1')
+
+# g1.simulate(method='BDF', t_span=(0, 300))
+
+# primary_sludge = g1.flowsheet.unit.PC.outs[0]
+
+# for i in qs.get_components():
+#     print(i.ID)
+#     print(primary_sludge.imass[i.ID])
+#     print('\n')

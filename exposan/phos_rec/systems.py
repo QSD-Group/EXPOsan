@@ -68,13 +68,11 @@ def create_system():
     HD = su.HeatDrying(ID='HD', ins=(PC-1, 'heat_drying_natural_gas'), outs=('dried_precipitate', 'heat_drying_vapor'),
                        T=105+_C_to_K)
     
+    # feed and product are solids, therefore, no internal heat exchangers for SI
+    # vapor is 700 °C, but its heat is not recovered to supply AF or SP, which
+    # operate at much lower temperatures (37 °C and 40 °C, respectively)
+    # when ΔT is large, there can be problems such as scale mismatch and operational complexity
     SI = su.Sintering(ID='SI', ins=(HD-0, 'sintering_natural_gas', 'air'), outs=('product', 'sintering_vapor'))
-    
-    # TODO: consider adding a HXN for heat recovery; this needs the system to have heat exchangers first or set hxn_ok to True for add_heat_utility
-    # TODO: the problem now is we use natural gas in some units, but not specify it is a heat utility
-    # TODO: and setting hxn_ok = True induces bugs; if HXN is necessary, then, may consider replace them with auxiliary heat exchanger (does this just heat influent? but the reactor need to keep temperatures, right, so maybe adding duties is better)
-    # TODO: maybe like in the new HTL unit, add a HXprocess somewhere and do not use a system-wide HXN
-    # qsu.HeatExchangerNetwork(ID='HXN', force_ideal_thermo=True)
     
     sys = qs.System.from_units(ID='phos_rec', units=list(flowsheet.unit))
     

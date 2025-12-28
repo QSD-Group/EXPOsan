@@ -21,22 +21,6 @@ __all__ = ('create_components',)
 
 def create_components(set_thermo=True):
 
-    Fe_coagulant = Component(
-        ID='Fe_coagulant',
-        search_ID='7705-08-0',
-        particle_size='particulate',
-        degradability='Undegradable',
-        organic=False
-    )
-    
-    Food_waste = Component(
-        ID='Food_waste',
-        search_ID='50-99-7',
-        particle_size='Particulate',
-        degradability='Biodegardable',
-        organic=True
-    )
-    
 # =============================================================================
 # gases emissions during the fermentation of sludge and food waste
 # =============================================================================
@@ -49,22 +33,6 @@ def create_components(set_thermo=True):
         organic=False
     )
     
-    H2 = Component(
-        ID='H2',
-        phase='g',
-        particle_size='Dissolved gas',
-        degradability='Undegradable',
-        organic=False
-    )
-    
-    H2S = Component(
-        ID='H2S',
-        phase='g',
-        particle_size='Dissolved gas',
-        degradability= 'Undegradable',
-        organic=False
-    )
-    
     CH4 = Component(
         ID='CH4',
         phase='g',
@@ -72,7 +40,7 @@ def create_components(set_thermo=True):
         degradability='Undegradable',
         organic=False
     )
-    
+
 # =============================================================================
 # water
 # =============================================================================
@@ -83,7 +51,7 @@ def create_components(set_thermo=True):
         degradability='Undegradable',
         organic=False
     )
-    
+
 # =============================================================================
 # inorganic ions dissolved during the fermentation
 # =============================================================================
@@ -132,7 +100,7 @@ def create_components(set_thermo=True):
         degradability='Undegradable',
         organic=False
     )
-    
+
 # =============================================================================
 # organics released during the fermentation
 # =============================================================================
@@ -144,7 +112,7 @@ def create_components(set_thermo=True):
         degradability='Biodegradable',
         organic=True
     )
-    
+
 # =============================================================================
 # VFAs, the key acidification products
 # =============================================================================
@@ -196,7 +164,7 @@ def create_components(set_thermo=True):
         degradability='Readily',
         organic=True
     )
-    
+
 # =============================================================================
 # sludge residue to landfill after fermentation
 # =============================================================================
@@ -256,7 +224,7 @@ def create_components(set_thermo=True):
         degradability='Undegradable',
         organic=False        
     )
-    
+
 # =============================================================================
 # chemicals used during the FePO4 precipitation
 # =============================================================================
@@ -274,7 +242,7 @@ def create_components(set_thermo=True):
         degradability='Undegradable',
         organic=False
     )
-    
+
 # =============================================================================
 # two kinds of chemicals used as the P source
 # =============================================================================
@@ -293,27 +261,7 @@ def create_components(set_thermo=True):
         degradability='Undegradable',
         organic=False
     )
-    
-# =============================================================================
-# two kinds of chemicals used as the Fe source
-# =============================================================================
-    
-    FeCl3 = Component(
-        ID='FeCl3',
-        particle_size='Soluble',
-        formula='FeCl3',
-        degradability='Undegradable',
-        organic=False
-    )
-    
-    FeSO4_7H2O = Component(
-        ID='FeSO4_7H2O',
-        search_ID='7782-63-0',
-        particle_size='Soluble',
-        degradability='Undegradable',
-        organic=False
-    )
-    
+
 # =============================================================================
 # output before/after the purification
 # =============================================================================
@@ -347,14 +295,8 @@ def create_components(set_thermo=True):
 # =============================================================================
     
     cmps = Components([
-        Fe_coagulant, Food_waste, 
-        CO2, H2, H2S, CH4,
-        H2O, 
-        Fe2, Fe3, PO4, Ca2, Mg2,
-        Org, Ac, Pr, Bu, Va, Lac, Etoh, Inert, Residue,
-        O2, N2, SO2, 
-        H2SO4, H2O2, H3PO4, NH4H2PO4, FeCl3, FeSO4_7H2O,
-        FePO4, FePO4_2H2O
+        CO2, CH4, H2O, Fe2, Fe3, PO4, Ca2, Mg2, Org, Ac, Pr, Bu, Va, Lac, Etoh,
+        Inert, Residue, O2, N2, SO2, H2SO4, H2O2, H3PO4, NH4H2PO4, FePO4, FePO4_2H2O
     ])
     
     for i in cmps:
