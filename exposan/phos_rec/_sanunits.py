@@ -577,39 +577,47 @@ class Sintering(SanUnit):
 # =============================================================================
 
 class FePO4_ASM2d_interface(SanUnit):
-    pass
+    def __init__(self):
+        pass
+    def _run(self):
+        pass
+    def _design(self):
+        pass
+    def _init_state(self):
+        pass
+    def _update_state(self):
+        pass
+    def _update_dstate(self):
+        pass
 
 # TODO: convert components to modified ASM2d components:
-# S_O2, S_N2, S_NH4, S_NO3, S_PO4, S_F, S_A, S_I, S_IC, S_K, S_Mg, S_Na, S_Cl, H2O
-# X_I, X_S, X_H, X_PAO, X_PP, X_PHA, X_AUT, S_Ca, X_CaCO3, X_struv, X_newb, X_ACP, X_MgCO3, X_AlOH, X_AlPO4, X_FeOH, X_FePO4
+# S_O2, S_N2, S_NH4, S_NO3, S_PO4, S_F, S_A, S_I, S_IC, S_K, S_Mg, S_Ca, S_Na, S_Cl, H2O
+# X_I, X_S, X_H, X_PAO, X_PP, X_PHA, X_AUT, X_CaCO3, X_struv, X_newb, X_ACP, X_MgCO3, X_AlOH, X_AlPO4, X_FeOH, X_FePO4
 
 # components in the system:
-# CO2
-# CH4
-# H2O
-# Fe2
-# Fe3
-# PO4
-# Ca2
-# Mg2
-# Org
-# Ac
-# Pr
-# Bu
-# Va
-# Lac
-# Etoh,
-# Inert
-# Residue
-# O2
-# N2
-# SO2
-# H2SO4
-# H2O2
-# H3PO4
-# NH4H2PO4
-# FePO4
-# FePO4_2H2O
+# CO2: just TEA + LCA
+# CH4: just TEA + LCA
+# H2O: H2O
+# Fe2: TBD
+# Fe3: TBD
+# PO4: S_PO4
+# Ca2: S_Ca 
+# Mg2: S_Mg
+# Org: S_F
+# Ac: S_A
+# Pr: S_A
+# Bu: S_A
+# Va: S_A
+# Lac: S_F or S_A
+# Etoh: S_F or S_A
+# Inert: X_I?
+# Residue: X_I?
+# O2: not needed
+# N2: not needed
+# SO2: just TEA + LCA
+# H2SO4: OPEX + CI
+# H2O2: OPEX + CI
+# FePO4: X_FePO4
 
 # ins of the system
 # fe_sludge
@@ -619,7 +627,6 @@ class FePO4_ASM2d_interface(SanUnit):
 # air
 # acid
 # oxidant
-
 
 # outs of the system
 # residue

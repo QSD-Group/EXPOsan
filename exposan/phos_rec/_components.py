@@ -244,25 +244,6 @@ def create_components(set_thermo=True):
     )
 
 # =============================================================================
-# two kinds of chemicals used as the P source
-# =============================================================================
-    
-    H3PO4 = Component(
-        ID='H3PO4',
-        particle_size='Soluble',
-        degradability='Undegradable',
-        organic=False
-    )
-    
-    NH4H2PO4 = Component(
-        ID='NH4H2PO4',
-        particle_size='Soluble',
-        formula='NH4H2PO4',
-        degradability='Undegradable',
-        organic=False
-    )
-
-# =============================================================================
 # output before/after the purification
 # =============================================================================
     
@@ -296,7 +277,7 @@ def create_components(set_thermo=True):
     
     cmps = Components([
         CO2, CH4, H2O, Fe2, Fe3, PO4, Ca2, Mg2, Org, Ac, Pr, Bu, Va, Lac, Etoh,
-        Inert, Residue, O2, N2, SO2, H2SO4, H2O2, H3PO4, NH4H2PO4, FePO4, FePO4_2H2O
+        Inert, Residue, O2, N2, SO2, H2SO4, H2O2, FePO4, FePO4_2H2O
     ])
     
     for i in cmps:
