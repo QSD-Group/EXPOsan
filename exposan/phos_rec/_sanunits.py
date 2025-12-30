@@ -14,7 +14,7 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 """
 
-import qsdsan as qs
+import numpy as np, qsdsan as qs
 from qsdsan import SanUnit
 from qsdsan.utils import auom
 from qsdsan.sanunits import HXutility, SludgePump
@@ -33,7 +33,7 @@ __all__ = (
     'SelectivePrecipitation',
     'HeatDrying',
     'Sintering',
-    'FePO4_ASM2d_interface'
+    'FePO4_recovery'
 )
 
 # =============================================================================
@@ -573,22 +573,126 @@ class Sintering(SanUnit):
         self.add_power_utility(self.ins[0].F_mass/1000*self.unit_electricity)
 
 # =============================================================================
-# FePO4_ASM2d_interface
+# FePO4_recovery
 # =============================================================================
 
-class FePO4_ASM2d_interface(SanUnit):
-    def __init__(self):
-        pass
+class FePO4_recovery(SanUnit):
+    '''
+    A unit representing the FePO4 recovery system. This unit can be connected to
+    water resource recovery facility benchmarking models in 'exposan.werf'.
+    A `MetalDosage` unit is needed before the `PrimaryClarifier` unit.
+    The 'IdealClarifier' unit after the `PrimaryClarifier` unit needs to be replaced
+    with this unit. This unit only needs operational costs as the benchmarking
+    models do not have capital costs and LCA.
+    
+    Operational costs can be added using the `add_OPEX` function. Operational costs
+    include the following items. Relevant data and calculation methods may be found
+    in `exposan.werf.models`.
+        (1) food waste (may be 0),
+        (2) acid,
+        (3) oxidant,
+        (4) natural gas,
+        (5) electricity,
+        (6) heat, and
+        (7) solids disposal.
+    
+    Parameters
+    ----------
+    ins : iterable
+        sludge, food_waste.
+    outs : iterable
+        product, effluent.
+    food_sludge_ratio : float
+        Mass ratio of organics bewteen food waste and sludge, [-].
+    food_waste_moisture : float
+        Mositure content of food waste, [-].
+    '''
+    _N_ins = 2
+    _N_outs = 2
+
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
+                 isdynamic=False, food_sludge_ratio=1, food_waste_moisture=0.2):
+        SanUnit.__init__(self, ID, ins, outs, thermo, init_with, isdynamic=isdynamic)
+        self.food_sludge_ratio = food_sludge_ratio
+        self.food_waste_moisture = food_waste_moisture
+    
     def _run(self):
-        pass
-    def _design(self):
-        pass
+        sludge, food_waste = self.ins
+        product, effluent = self.outs
+        
+        sludge.phase = 'l'
+        food_waste.phase = 'l'
+        product.phase = 's'
+        effluent.phase = 'l'
+        
+        # TODO: or just fix food_sludge_ratio to 1?
+        if self.food_sludge_ratio not in [0, 1/3, 2/3, 1, 4/3]:
+            raise RuntimeError('food_sludge_ratio must be one of the follow: 0, 1/3, 2/3, 1, 4/3.')
+        
+        food_waste.imass['S_F'] = sludge.imass['S_F']*self.food_sludge_ratio
+        food_waste.imass['H2O'] = food_waste.imass['S_F']/(1-self.food_waste_moisture) * self.food_waste_moisture
+        
+        # TODO: replace 1
+        product.imass['X_FePO4'] = 1
+        # TODO: is X_I inert inorganic insoluble? if yes, add a parameter `product_purity`
+        # TODO: replace 1
+        product.imass['X_I'] = 1
+        
+        effluent.mix_from(self.ins)
+        
+        # TODO: uncomment
+        # effluent.imass['']
+    
+    # TODO: uncomment
+    # def _cost(self):
+    #     # TODO: operating expense per hour in addition to utility cost (if no utility is actually added to this unit, then also add the utility costs here)
+    #     self.add_OPEX = {
+    #     '': 
+    #     }
+    
+    # TODO: check all following functions
     def _init_state(self):
-        pass
+        cmps = self.thermo.chemicals
+        mixed = qs.WasteStream()
+        mixed.mix_from(self.ins)
+        self._state = np.empty(len(cmps)+1)
+        self._state[:-1] = mixed.conc  # first n element be the component concentrations of the mixed stream
+        self._state[-1] = mixed.F_vol * 24 # last element be the total volumetric flow
+        self._dstate = self._state * 0.
+    
     def _update_state(self):
-        pass
+        product, effluent = self.outs
+        if product.state is None: product.state = self._state.copy()
+        if effluent.state is None: effluent.state = self._state.copy()
+        # effluent.state[:-1] = effluent.conc
+        # effluent.state[-1] = effluent.F_vol * 24
+    
     def _update_dstate(self):
-        pass
+        product, effluent = self.outs
+        if product.dstate is None: product.dstate = self._dstate.copy()
+        if effluent.dstate is None: effluent.dstate = self._dstate.copy()
+        # effluent.dstate = self._dstate
+    
+    @property
+    def AE(self):
+        if self._AE is None:
+            self._compile_AE()
+        return self._AE
+    
+    def _compile_AE(self):
+        _state = self._state
+        _dstate = self._dstate
+        _update_state = self._update_state
+        _update_dstate = self._update_dstate
+        def y_t(t, y_ins, dy_ins):
+            Q_ins = y_ins[:,-1]
+            C_ins = y_ins[:,:-1]
+            _state[-1] = Q = sum(Q_ins)
+            _state[:-1] = Q_ins @ C_ins / Q
+            _dstate[:] = self._state * 0.
+            _update_state()
+            _update_dstate()
+        self._AE = y_t
 
 # TODO: convert components to modified ASM2d components:
 # S_O2, S_N2, S_NH4, S_NO3, S_PO4, S_F, S_A, S_I, S_IC, S_K, S_Mg, S_Ca, S_Na, S_Cl, H2O
@@ -651,3 +755,7 @@ class FePO4_ASM2d_interface(SanUnit):
 #     print(i.ID)
 #     print(primary_sludge.imass[i.ID])
 #     print('\n')
+
+# h1 = create_system('H1')
+
+# h1.simulate(method='BDF', t_span=(0, 300))

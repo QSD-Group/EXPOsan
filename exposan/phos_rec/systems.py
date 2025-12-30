@@ -14,9 +14,11 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 """
 
-import biosteam as bst, qsdsan as qs, qsdsan.sanunits as qsu, exposan.phos_rec._sanunits as su
+import biosteam as bst, qsdsan as qs
 from qsdsan.utils import clear_lca_registries
-from exposan.phos_rec._components import create_components
+from qsdsan import sanunits as qsu
+from exposan.phos_rec import _load_components
+from exposan.phos_rec import _sanunits as su
 
 _C_to_K = 273.15
 
@@ -39,7 +41,7 @@ def create_system():
     stream = flowsheet.stream
     qs.main_flowsheet.set_flowsheet(flowsheet)
     
-    create_components()
+    _load_components()
     
     # Inert represents other inorganics; now VSS/TSS = 0.74, which is reasonable
     fe_sludge = qs.WasteStream(ID='fe_sludge', Fe3=180, Org=5000, PO4=300, Water=1000000,
