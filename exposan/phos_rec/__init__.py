@@ -18,6 +18,10 @@ import qsdsan as qs
 
 from . import _components
 from ._components import *
+
+from . import _tea
+from ._tea import *
+
 _components_loaded = False
 def _load_components(reload=False):
     global components, _components_loaded
@@ -32,4 +36,5 @@ from .systems import *
 __all__ = (
     *_components.__all__,
     *systems.__all__,
+    *_tea.__all__,
 )
