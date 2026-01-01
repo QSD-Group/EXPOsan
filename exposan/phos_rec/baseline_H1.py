@@ -20,9 +20,8 @@ from qsdsan import (
     processes as pc,
     sanunits as su,
     )
-from qsdsan.utils import ospath, time_printer, load_data
+from qsdsan.utils import ospath, time_printer, load_data, get_SRT
 from exposan.werf import data_path, default_rww#, default_fctss_init
-from exposan.phos_rec import _sanunits as psu
 
 __all__ = ('create_h1_system',)
 
@@ -55,7 +54,6 @@ def create_h1_system(flowsheet=None, default_init_conds=True):
         )
     thermo_asm = qs.get_thermo()
     
-    # TODO: need to adjust metal_dosage
     MD = su.MetalDosage.from_mASM2d(
         'MD', ins=rww, model=asm,
         metal_ID='X_FeOH', metal_dosage=19
@@ -63,13 +61,15 @@ def create_h1_system(flowsheet=None, default_init_conds=True):
     PC = su.PrimaryClarifier(
         'PC', ins=[MD-0, 'reject'],     # metal coagulants only dosed to rww not reject water to prevent numerical oscillation 
         outs=('PE', 'PS'),
-        isdynamic=True,
+        isdyanmic=True,
         sludge_flow_rate=0.074*MGD2cmd,
         solids_removal_efficiency=0.6
         )
     
-    PR = psu.FePO4_recovery(
-        'PR', ins=[PC-1, 'food_waste'], outs=['FePO4', 'PR_effluent'], isdynamic=True
+    GT = su.IdealClarifier(
+        'GT', PC-1, outs=['', 'thickened_PS'],
+        sludge_flow_rate=0.026*MGD2cmd,
+        solids_removal_efficiency=0.9
         )
     
     n_zones = 6
@@ -117,12 +117,13 @@ def create_h1_system(flowsheet=None, default_init_conds=True):
         sludge_flow_rate=0.01747*MGD2cmd,
         solids_removal_efficiency=0.95
         )
+    M1 = su.Mixer('M1', ins=[GT-1, MT-1])
 
     pc.create_adm1p_cmps()
     thermo_adm = qs.get_thermo()
     adm = pc.ADM1p(kLa=10.0)
     
-    J1 = su.mASM2dtoADM1p('J1', upstream=MT-1, thermo=thermo_adm, isdynamic=True, 
+    J1 = su.mASM2dtoADM1p('J1', upstream=M1-0, thermo=thermo_adm, isdynamic=True, 
                           adm1_model=adm, asm2d_model=asm)
     AD = su.AnaerobicCSTR(
         'AD', ins=J1-0, outs=('biogas', 'digestate'), 
@@ -141,7 +142,7 @@ def create_h1_system(flowsheet=None, default_init_conds=True):
         sludge_flow_rate=0.00625*MGD2cmd,   # aim for 18% TS
         solids_removal_efficiency=0.9
         )
-    M2 = su.Mixer('M2', ins=[PR-1, MT-0, DW-0])
+    M2 = su.Mixer('M2', ins=[GT-0, MT-0, DW-0])
     
     HD = su.HydraulicDelay('HD', ins=M2-0, outs=1-PC)
     
@@ -157,7 +158,9 @@ def create_h1_system(flowsheet=None, default_init_conds=True):
 
     sys = qs.System(
         ID, 
-        path=(MD, PC, PR, ASR, FC, MT, J1, AD, J2, DW, M2, HD),
+        path=(MD, PC, GT, ASR, FC, MT, M1, J1, AD, J2, DW, M2, HD),
+        # path=(MD, PC, GT, A1, A2, O3, O4, A5, O6, FC, 
+        #       MT, M1, J1, AD, J2, DW, M2, HD),
         recycle=(FC-1, HD-0)
         )
 

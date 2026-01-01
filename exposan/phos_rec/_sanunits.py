@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
+'''
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
@@ -12,7 +12,7 @@ This module is developed by:
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
-"""
+'''
 
 import numpy as np, qsdsan as qs
 from qsdsan import SanUnit
@@ -606,15 +606,19 @@ class FePO4_recovery(SanUnit):
         Mass ratio of organics bewteen food waste and sludge, [-].
     food_waste_moisture : float
         Mositure content of food waste, [-].
+    product_purity : float
+        Mass purity of produced FePO4, [-].
     '''
     _N_ins = 2
     _N_outs = 2
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-                 isdynamic=False, food_sludge_ratio=1, food_waste_moisture=0.2):
+                 isdynamic=False, food_sludge_ratio=1, food_waste_moisture=0.2,
+                 product_purity=0.99):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with, isdynamic=isdynamic)
         self.food_sludge_ratio = food_sludge_ratio
         self.food_waste_moisture = food_waste_moisture
+        self.product_purity = product_purity
     
     def _run(self):
         sludge, food_waste = self.ins
@@ -625,23 +629,59 @@ class FePO4_recovery(SanUnit):
         product.phase = 's'
         effluent.phase = 'l'
         
-        # TODO: or just fix food_sludge_ratio to 1?
         if self.food_sludge_ratio not in [0, 1/3, 2/3, 1, 4/3]:
             raise RuntimeError('food_sludge_ratio must be one of the follow: 0, 1/3, 2/3, 1, 4/3.')
         
-        food_waste.imass['S_F'] = sludge.imass['S_F']*self.food_sludge_ratio
-        food_waste.imass['H2O'] = food_waste.imass['S_F']/(1-self.food_waste_moisture) * self.food_waste_moisture
+        food_waste.imass['X_S'] = sludge.imass['X_S']*self.food_sludge_ratio
+        food_waste.imass['H2O'] = food_waste.imass['X_S']/(1-self.food_waste_moisture) * self.food_waste_moisture
         
-        # TODO: replace 1
-        product.imass['X_FePO4'] = 1
-        # TODO: is X_I inert inorganic insoluble? if yes, add a parameter `product_purity`
-        # TODO: replace 1
-        product.imass['X_I'] = 1
+        metal_P_release = {
+            0: {'metal': 2.124263, 'P': 11.0693},
+            1/3: {'metal': 21.13664, 'P': 44.31886},
+            2/3: {'metal': 60.67351, 'P': 71.22673},
+            1: {'metal': 83.07559, 'P': 82.30645},
+            4/3: {'metal': 85, 'P': 83}
+        }
         
+        self.cmps = self.thermo.chemicals
+        
+        # TODO: adjust the Fe dosage in `MetalDosage`
+        # no other Fe-containing components other than S_PO4 and X_FePO4
+        Fe_released = (sludge.imol['X_FeOH'] + sludge.imol['X_FePO4']) * metal_P_release[self.food_sludge_ratio]['metal']/100
+        # no other P-containing components other than S_PO4 and X_FePO4
+        P_released = (sludge.imol['S_PO4'] + sludge.imol['X_FePO4']) * metal_P_release[self.food_sludge_ratio]['metal']/100
+        
+        product.imass['X_FePO4'] = min(Fe_released, P_released)
+        product.imass['X_I'] = product.imass['X_FePO4']/self.product_purity*(1 - self.product_purity)
+        
+        # T0ODO: update; can ignore mass balance
         effluent.mix_from(self.ins)
+        effluent.imol['S_PO4'] = effluent.imol['S_PO4'] + effluent.imol['X_FePO4'] - product.imol['X_FePO4']
+        effluent.imol['X_FeOH'] = effluent.imol['X_FeOH'] + effluent.imol['X_FePO4'] - product.imol['X_FePO4']
+        effluent.imol['X_FePO4'] = 0
+        effluent.imol['X_I'] = 0
+        # TODO: write 0.65 as a parameter
+        effluent.imass['S_A'] += effluent.imass['X_S'] * 0.65
+        # TODO: write 0.03 as a parameter
+        effluent.imass['S_F'] += effluent.imass['X_S'] * 0.03
         
-        # TODO: uncomment
-        # effluent.imass['']
+        # ('S_N2', 0.21009170299490135): minimal; assume no change
+        # ('S_NH4', 0.302415334699883): minimal; assume no change
+        # ('S_PO4', 0.03285492291999533): updated
+        # ('S_F', 2.4797507673691084): increase from X_S
+        # ('S_A', 0.10028377289623293): increase from fermentation
+        # ('S_I', 0.1536277619843353): minimal; assume no change
+        # ('S_IC', 0.9804279473095397): minimal; assume no change
+        # ('S_K', 0.32680931576984656): minimal; assume no change
+        # ('S_Mg', 0.5835880638747258): minimal; assume no change
+        # ('X_I', 72.5977222466668): assume removed
+        # ('X_S', 146.14937577251877): convert to S_F and S_A
+        # ('S_Ca', 1.6340465788492327): minimal; assume no change
+        # ('X_FeOH', 10.899540897515893): updated
+        # ('X_FePO4', 10.118187033007603): updated
+        # ('S_Na', 1.0154432311420232): minimal; assume no change
+        # ('S_Cl', 4.96049854293517): minimal; assume no change
+        # ('H2O', 11632.405004568363): assume no change
     
     # TODO: uncomment
     # def _cost(self):
@@ -652,10 +692,9 @@ class FePO4_recovery(SanUnit):
     
     # TODO: check all following functions
     def _init_state(self):
-        cmps = self.thermo.chemicals
         mixed = qs.WasteStream()
         mixed.mix_from(self.ins)
-        self._state = np.empty(len(cmps)+1)
+        self._state = np.empty(len(self.cmps)+1)
         self._state[:-1] = mixed.conc  # first n element be the component concentrations of the mixed stream
         self._state[-1] = mixed.F_vol * 24 # last element be the total volumetric flow
         self._dstate = self._state * 0.
@@ -663,15 +702,16 @@ class FePO4_recovery(SanUnit):
     def _update_state(self):
         product, effluent = self.outs
         if product.state is None: product.state = self._state.copy()
-        if effluent.state is None: effluent.state = self._state.copy()
-        # effluent.state[:-1] = effluent.conc
-        # effluent.state[-1] = effluent.F_vol * 24
+        if effluent.state is None:
+            effluent.state = self._state.copy()
+        else:
+            effluent.state[:-1] = effluent.conc
+            effluent.state[-1] = effluent.F_vol * 24
     
     def _update_dstate(self):
         product, effluent = self.outs
         if product.dstate is None: product.dstate = self._dstate.copy()
         if effluent.dstate is None: effluent.dstate = self._dstate.copy()
-        # effluent.dstate = self._dstate
     
     @property
     def AE(self):
@@ -739,23 +779,3 @@ class FePO4_recovery(SanUnit):
 # fermentation_gas
 # product
 # sintering_vapor
-
-# =============================================================================
-# working code
-# =============================================================================
-
-# from exposan.werf import create_system
-# g1 = create_system('G1')
-
-# g1.simulate(method='BDF', t_span=(0, 300))
-
-# primary_sludge = g1.flowsheet.unit.PC.outs[0]
-
-# for i in qs.get_components():
-#     print(i.ID)
-#     print(primary_sludge.imass[i.ID])
-#     print('\n')
-
-# h1 = create_system('H1')
-
-# h1.simulate(method='BDF', t_span=(0, 300))

@@ -20,13 +20,12 @@ from qsdsan import (
     processes as pc,
     sanunits as su,
     )
-from qsdsan.utils import ospath, time_printer, load_data
-from exposan.werf import data_path, default_rww#, default_fctss_init
-from exposan.phos_rec import _sanunits as psu
+from qsdsan.utils import time_printer, ospath, load_data, get_SRT
+from exposan.werf import data_path, default_rww
 
-__all__ = ('create_h1_system',)
+__all__ = ('create_g1_system',)
 
-ID = 'H1'
+ID = 'G1'
 #%%
 dfs = load_data(
     ospath.join(data_path, 'initial_conditions.xlsx'), 
@@ -34,99 +33,98 @@ dfs = load_data(
     )
 asinit = dfs[ID]
 fcinit = asinit.iloc[-1].to_dict()
-default_fctss_init = [8, 9, 9, 30, 350, 350, 350, 350, 350, 9000]
+default_fctss_init = [8, 8, 9, 270, 310, 310, 310, 310, 310, 9000]
 adinit = dfs['adm'].loc[ID].to_dict()
 
 MGD2cmd = 3785.412
 Temp = 273.15+20 # temperature [K]
 T_ad = 273.15+35
 
-def create_h1_system(flowsheet=None, default_init_conds=True):
+def create_g1_system(flowsheet=None, default_init_conds=True):
     flowsheet = flowsheet or qs.Flowsheet(ID)
     qs.main_flowsheet.set_flowsheet(flowsheet)
     
     pc.create_masm2d_cmps()
     asm = pc.mASM2d(electron_acceptor_dependent_decay=True)
-    rww = default_rww()
-    carb = WasteStream(
-        'carbon', T=Temp, units='kg/hr', 
-        S_A=43,
-        # S_A=24.5,      # insufficient for denitrification
-        )
     thermo_asm = qs.get_thermo()
     
-    # TODO: need to adjust metal_dosage
-    MD = su.MetalDosage.from_mASM2d(
-        'MD', ins=rww, model=asm,
-        metal_ID='X_FeOH', metal_dosage=19
-        )
+    rww = default_rww()
+    carb = WasteStream('carbon', T=Temp, units='kg/hr', S_A=85)
+
     PC = su.PrimaryClarifier(
-        'PC', ins=[MD-0, 'reject'],     # metal coagulants only dosed to rww not reject water to prevent numerical oscillation 
+        'PC', ins=[rww, 'reject'], 
         outs=('PE', 'PS'),
-        isdynamic=True,
+        isdynamic=True, 
         sludge_flow_rate=0.074*MGD2cmd,
         solids_removal_efficiency=0.6
         )
     
-    PR = psu.FePO4_recovery(
-        'PR', ins=[PC-1, 'food_waste'], outs=['FePO4', 'PR_effluent'], isdynamic=True
+    GT = su.IdealClarifier(
+        'GT', PC-1, outs=['', 'thickened_PS'],
+        sludge_flow_rate=0.026*MGD2cmd,
+        solids_removal_efficiency=0.9,
         )
     
     n_zones = 6
-    V_tot = 3.66 * MGD2cmd
-    fr_V = [0.115, 0.115, 0.314, 0.314, 0.115, 0.027]
+    V_tot = 4.7 * MGD2cmd
+    fr_V = [0.014, 0.13, 0.148, 0.148, 0.28, 0.28]
+    # fr_V = [0.044, 0.10, 0.148, 0.148, 0.28, 0.28]  # larger anoxic zone improves BNR
     
-    # ae_kwargs = dict(aeration=2.0, DO_ID='S_O2', suspended_growth_model=asm, gas_stripping=True)
-    # an_kwargs = dict(aeration=None, DO_ID='S_O2', suspended_growth_model=asm, gas_stripping=True)
-        
-    # A1 = su.CSTR('A1', [rww, 'RAS', carb, 'intr'], V_max=fr_V[0]*V_tot, **an_kwargs)
-    # A2 = su.CSTR('A2', A1-0, V_max=fr_V[1]*V_tot, **an_kwargs)
-    # O3 = su.CSTR('O3', A2-0, V_max=fr_V[2]*V_tot, **ae_kwargs)
-    # O4 = su.CSTR('O4', O3-0, ('', 3-A1), split=[30, 14], V_max=fr_V[3]*V_tot, **ae_kwargs)
-    # A5 = su.CSTR('A5', O4-0, V_max=fr_V[4]*V_tot, **an_kwargs)
-    # O6 = su.CSTR('A6', A5-0, 'treated', V_max=fr_V[5]*V_tot, **ae_kwargs)
+    gstrip = True
+    an_kwargs = dict(aeration=None, DO_ID='S_O2', suspended_growth_model=asm, gas_stripping=gstrip)
+    ae_kwargs = dict(aeration=2.0, DO_ID='S_O2', suspended_growth_model=asm, gas_stripping=gstrip)
+
+    S1 = su.Splitter('S1', PC-0, split=0.8)
     
-    ASR = su.PFR(
-        'ASR', ins=[PC-0, 'RAS', carb], outs='treated',
-        N_tanks_in_series=n_zones,
-        V_tanks=[f*V_tot for f in fr_V],
-        influent_fractions=[
-            [1,0,0,0,0,0],          # PE
-            [1,0,0,0,0,0],          # RAS
-            [1,0,0,0,0,0],          # carb
-            ],
-        internal_recycles=[(3,0,30*MGD2cmd)], DO_ID='S_O2',
-        kLa=[0, 0, 50, 50, 0, 50], 
-        DO_setpoints=[0, 0, 2.0, 2.0, 0, 2.0],
-        suspended_growth_model=asm,
-        gas_stripping=True
-        )
+    A1 = su.CSTR('A1', ins=[carb, 'RAS'], V_max=V_tot*fr_V[0], **an_kwargs)
+    A2 = su.CSTR('A2', [A1-0, S1-0], V_max=V_tot*fr_V[1], **an_kwargs)
+    A3 = su.CSTR('A3', [A2-0, 'intr', S1-1], V_max=V_tot*fr_V[2], **an_kwargs)
+    A4 = su.CSTR('A4', A3-0, V_max=V_tot*fr_V[3], **an_kwargs)
+    O5 = su.CSTR('O5', A4-0, V_max=V_tot*fr_V[4], **ae_kwargs)
+    O6 = su.CSTR('O6', O5-0, [1-A3, 'treated'], split=[40, 14],
+                  V_max=V_tot*fr_V[5], **ae_kwargs)
+
+    # ASR = su.PFR(
+    #     'ASR', ins=[PC-0, 'RAS', carb], outs='treated', 
+    #     N_tanks_in_series=n_zones,
+    #     V_tanks=[f*V_tot for f in fr_V],
+    #     influent_fractions=[
+    #         [0, 0.8, 0.2, 0,0,0],   # PC-0
+    #         [1,0,0,0,0,0],          # RAS
+    #         [1,0,0,0,0,0],          # carb
+    #         ], 
+    #     internal_recycles=[(5,2,40*MGD2cmd)], 
+    #     kLa=[0,0,0,0,180,70],
+    #     DO_setpoints=[0,0,0,0,2.0,2.0], DO_ID='S_O2',
+    #     suspended_growth_model=asm,
+    #     gas_stripping=True)
     
     FC = su.FlatBottomCircularClarifier(
-        'FC', ins=ASR-0, outs=['SE', 1-ASR, 'WAS'],
-        # 'FC', ins=O6-0, outs=['SE', 1-A1, 'WAS'],
-        underflow=0.4*10*MGD2cmd, wastage=0.1*MGD2cmd,
+        'FC', O6-1, ['SE', 1-A1, 'WAS'], 
+        # 'FC', ASR-0, ['SE', 1-ASR, 'WAS'],
+        underflow=0.4*10*MGD2cmd, wastage=0.135*MGD2cmd,
         surface_area=1579.352, height=3.6576, N_layer=10, feed_layer=5,
         X_threshold=3000, v_max=410, v_max_practical=274,
         rh=4e-4, rp=0.1, fns=0.01, 
         maximum_nonsettleable_solids=8.0
         )
-
+    
     MT = su.IdealClarifier(
         'MT', FC-2, outs=['', 'thickened_WAS'],
-        sludge_flow_rate=0.01747*MGD2cmd,
-        solids_removal_efficiency=0.95
+        sludge_flow_rate=0.0241*MGD2cmd,
+        solids_removal_efficiency=0.95,
         )
-
+    M1 = su.Mixer('M1', ins=(GT-1, MT-1))
+        
     pc.create_adm1p_cmps()
     thermo_adm = qs.get_thermo()
     adm = pc.ADM1p(kLa=10.0)
     
-    J1 = su.mASM2dtoADM1p('J1', upstream=MT-1, thermo=thermo_adm, isdynamic=True, 
+    J1 = su.mASM2dtoADM1p('J1', upstream=M1-0, thermo=thermo_adm, isdynamic=True, 
                           adm1_model=adm, asm2d_model=asm)
     AD = su.AnaerobicCSTR(
         'AD', ins=J1-0, outs=('biogas', 'digestate'), 
-        V_liq=1.1*MGD2cmd, V_gas=0.11*MGD2cmd, 
+        V_liq=0.95*MGD2cmd, V_gas=0.117*MGD2cmd, 
         fixed_headspace_P=False, fraction_retain=0,
         T=T_ad, model=adm,
         pH_ctrl=7.0,
@@ -135,37 +133,40 @@ def create_h1_system(flowsheet=None, default_init_conds=True):
     J2 = su.ADM1ptomASM2d('J2', upstream=AD-1, thermo=thermo_asm, isdynamic=True, 
                           adm1_model=adm, asm2d_model=asm)
     qs.set_thermo(thermo_asm)
-     
-    DW = su.IdealClarifier(
-        'DW', J2-0, outs=('', 'cake'),
-        sludge_flow_rate=0.00625*MGD2cmd,   # aim for 18% TS
-        solids_removal_efficiency=0.9
+    
+    DW = su.PrimaryClarifier(
+        'DW', J2-0, outs=['', 'cake'],
+        sludge_flow_rate=0.00715*MGD2cmd,    # aim for 18% TS
+        solids_removal_efficiency=0.9,
         )
-    M2 = su.Mixer('M2', ins=[PR-1, MT-0, DW-0])
-    
+
+    M2 = su.Mixer('M2', ins=(GT-0, MT-0, DW-0))
     HD = su.HydraulicDelay('HD', ins=M2-0, outs=1-PC)
-    
+
     if default_init_conds:
-        # asdct = asinit.to_dict('index')
-        # for i in (A1, A2, O3, O4, A5, O6):
-        #     i.set_init_conc(**asdct[i.ID])
-        ASR.set_init_conc(concentrations=asinit)
+        asdct = asinit.to_dict('index')
+        for i in (A1, A2, A3, A4, O5, O6):
+            i.set_init_conc(**asdct[i.ID])
+        # ASR.set_init_conc(concentrations=asinit)
         FC.set_init_solubles(**fcinit)
         FC.set_init_sludge_solids(**fcinit)
         FC.set_init_TSS(default_fctss_init)
         AD.set_init_conc(**adinit)
-
+    
     sys = qs.System(
         ID, 
-        path=(MD, PC, PR, ASR, FC, MT, J1, AD, J2, DW, M2, HD),
-        recycle=(FC-1, HD-0)
+        path=(PC, GT, S1, A1, A2, A3, A4, O5, O6, FC, 
+              MT, M1, J1, AD, J2, DW, M2, HD),
+        recycle=(O6-0, FC-1, HD-0)
+        # path=(PC, GT, ASR, FC, MT, M1, J1, AD, J2, DW, M2, HD),
+        # recycle=(FC-1, HD-0)
         )
-
     sys.set_dynamic_tracker(FC-0, AD)
-
+    
     return sys
 
-#%%
+# %%
+
 @time_printer
 def run(sys, t, t_step, method=None, **kwargs):
     msg = f'Method {method}'
@@ -182,11 +183,10 @@ def run(sys, t, t_step, method=None, **kwargs):
         # atol=1e-3,
         # export_state_to=f'results/sol_{t}d_{method}.xlsx',
         **kwargs)
-    
 
 #%%
 if __name__ == '__main__':
-    sys = create_h1_system()
+    sys = create_g1_system()
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     
@@ -203,8 +203,8 @@ if __name__ == '__main__':
     # biomass_IDs = ('X_H', 'X_PAO', 'X_AUT')
     # srt = get_SRT(sys, biomass_IDs,
     #               wastage=[WAS],
-    #               # active_unit_IDs=('A1', 'A2', 'O3', 'O4', 'A5', 'O6'))
-    #               active_unit_IDs=('ASR'))
+    #               active_unit_IDs=('A1', 'A2', 'A3', 'A4', 'O5', 'O6'))
+    #               # active_unit_IDs=('ASR'))
     # if srt: print(f'Estimated SRT assuming at steady state is {round(srt, 2)} days')
     
     # from exposan.werf import figures_path
