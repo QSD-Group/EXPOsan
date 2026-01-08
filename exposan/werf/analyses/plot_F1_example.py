@@ -117,7 +117,7 @@ def stacked_bar(opex=None, recv=(), ID='F1'):
         c, hat = style
         y = df.loc[:,cat].to_numpy()
         patch = ax.bar(x, y, bottom=y_offset, width=0.65, 
-                       color=c, hatch=hat, hatch_linewidth=0.5,
+                       color=c, hatch=hat, 
                        tick_label=['Baseline', 'Adjusted', 'With HA', 'With ECS'])
         handles.append(patch)
         y_offset += y

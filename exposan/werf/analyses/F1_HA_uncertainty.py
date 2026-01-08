@@ -5,6 +5,7 @@ EXPOsan: Exposition of sanitation and resource recovery systems
 This module is developed by:
     
     Joy Zhang <joycheung1994@gmail.com>
+    Zixuan Wang <wyatt4428@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
@@ -412,14 +413,157 @@ def compile_stats_by_strength(ID='F1'):
         )
     out.to_excel(ospath.join(results_path, f'HA_{ID}_UA_opex_stats_by_strength.xlsx'))
     return out
+#%%
+def compile_stats_by_strength_and_removal_efficiency(ID='F1'):
+    """
+    Create HA_{ID}_UA_opex_stats_by_strength&removal_efficiency.xlsx with three sheets (0.05, 0.50, 0.95).
+    Each sheet has column groups:
+      - 'Influent'     : COD, BOD, TSS, TN, NH4-N, TP, OP (same for all sheets)
+      - 'OPEX_noHA'    : the chosen quantile of baseline Total OPEX [USD/d]
+      - 'OPEX'         : the chosen quantile of Total OPEX [USD/d] for each removal efficiency (sheet names in HA files)
+      - 'dOPEX'        : the chosen quantile of (OPEX_noHA - OPEX) for each removal efficiency
+    """
+
+
+    # ---------- Build Influent table exactly like compile_stats_by_strength ----------
+    sys, wws = load_system_with_upstream_uncertainty()
+    _low = wws['low'].copy('low_strength')
+    _high = wws['high'].copy('high_strength')
+    s = sys.flowsheet.stream
+
+    inf_rows = []
+    strengths = [int(f*100) for f in np.linspace(0, 1, 11)]
+    for f_pct in strengths:
+        f = f_pct / 100
+        _low.scale(1 - f)
+        _high.scale(f)
+        s.RWW.mix_from([_low, _high])
+        inf_rows.append([
+            f_pct, s.RWW.COD, s.RWW.BOD, s.RWW.get_TSS(),
+            s.RWW.TN, s.RWW.iconc['S_NH4'],
+            s.RWW.TP, s.RWW.iconc['S_PO4'],
+        ])
+        _low.copy_like(wws['low'])
+        _high.copy_like(wws['high'])
+
+    infs = pd.DataFrame(
+        inf_rows,
+        columns=['Strength', 'COD', 'BOD', 'TSS', 'TN', 'NH4-N', 'TP', 'OP']
+    ).set_index('Strength')
+
+    # ---------- Load baseline (no-HA) Monte Carlo results across strengths ----------
+    bl_dfs = load_data(
+        ospath.join(results_path, f'{ID}_UA.xlsx'),
+        header=[0, 1],
+        skiprows=[2,],
+        sheet=None
+    )
+    # Collect baseline OPEX samples for each strength into columns (index = sample)
+    bl_opex_cols = []
+    for f_pct in strengths:
+        df = bl_dfs[str(f_pct)]
+        bl_opex_cols.append(df[('OPEX', 'Total OPEX [USD/d]')].reset_index(drop=True))
+    bl_opex = pd.concat(bl_opex_cols, axis=1)
+    bl_opex.columns = strengths  # columns labeled by strength (%)
+
+    # Pre-compute baseline quantiles we need
+    needed_qs = [0.05, 0.50, 0.95]
+    bl_q = {q: bl_opex.quantile(q=q, axis=0) for q in needed_qs}  # Series indexed by strength
+
+    # ---------- Helper to build one sheet for a target quantile ----------
+    def build_sheet_for_quantile(q_target: float) -> pd.DataFrame:
+        # OPEX_noHA: single column (the chosen quantile) indexed by strength
+        opex_noha_q = bl_q[q_target].copy()  # Series with index strengths
+
+        # For OPEX and dOPEX: columns per removal efficiency, rows per strength
+        # We will discover the set of removal efficiency sheet names from one HA file
+        # (Assume same set across strengths, as produced by run_model_with_HA)
+        # Fallback if a file has a different set: we union across strengths.
+        all_reff = set()
+        ha_files = {}
+        for f_pct in strengths:
+            ha_path = ospath.join(results_path, f'HA_{ID}_UA-strength{int(f_pct)}.xlsx')
+            dfs = load_data(ha_path, header=[0, 1], skiprows=[2,], sheet=None)
+            ha_files[f_pct] = dfs
+            all_reff.update(dfs.keys())
+
+        # Sort removal efficiencies numerically but keep string labels
+        reff_sorted = sorted(all_reff, key=lambda x: float(x))
+
+        # Prepare result holders
+        opex_q_rows = []
+        dopex_q_rows = []
+
+        for f_pct in strengths:
+            dfs = ha_files[f_pct]
+            noha_vec = bl_opex[f_pct].to_numpy()  # baseline samples aligned by sampling order
+
+            # Compute per-removal-efficiency quantiles
+            opex_vals = []
+            dopex_vals = []
+            for r_key in reff_sorted:
+                if r_key not in dfs:
+                    # If missing for this strength, write NaN
+                    opex_vals.append(np.nan)
+                    dopex_vals.append(np.nan)
+                    continue
+                df = dfs[r_key]
+                col = df[('OPEX', 'Total OPEX [USD/d]')].to_numpy()
+                # Quantile of OPEX for this rmv efficiency
+                opex_vals.append(np.quantile(col, q_target))
+                # Quantile of delta (noHA - HA) (quantile of difference, not difference of quantiles)
+                dopex_vals.append(np.quantile(noha_vec - col, q_target))
+
+            opex_q_rows.append(pd.Series(opex_vals, index=reff_sorted, name=f_pct))
+            dopex_q_rows.append(pd.Series(dopex_vals, index=reff_sorted, name=f_pct))
+
+        opex_q = pd.DataFrame(opex_q_rows)   # rows = strength, cols = removal efficiencies
+        dopex_q = pd.DataFrame(dopex_q_rows) # rows = strength, cols = removal efficiencies
+
+        # Assemble MultiIndex columns: ('Influent', inflow_cols...), ('OPEX_noHA','Total OPEX [USD/d]'),
+        # ('OPEX', rmv_eff), ('dOPEX', rmv_eff)
+        # 1) Influent block
+        inf_block = infs.copy()
+        inf_block.columns = pd.MultiIndex.from_product([['Influent'], inf_block.columns])
+
+        # 2) OPEX_noHA single column
+        opex_noha_block = pd.DataFrame({'Total OPEX [USD/d]': opex_noha_q})
+        opex_noha_block.columns = pd.MultiIndex.from_product([['OPEX_noHA'], opex_noha_block.columns])
+        opex_noha_block.index.name = 'Strength'
+
+        # 3) OPEX block (columns = rmv efficiency strings)
+        opex_block = opex_q.copy()
+        opex_block.columns = pd.MultiIndex.from_product([['OPEX'], opex_block.columns])
+
+        # 4) dOPEX block (columns = rmv efficiency strings)
+        dopex_block = dopex_q.copy()
+        dopex_block.columns = pd.MultiIndex.from_product([['dOPEX'], dopex_block.columns])
+
+        # Concatenate along columns
+        sheet_df = pd.concat([inf_block, opex_noha_block, opex_block, dopex_block], axis=1)
+        # Ensure row order by strength
+        sheet_df = sheet_df.reindex(index=strengths)
+        return sheet_df
+
+    # ---------- Write the three sheets ----------
+    save_as = ospath.join(results_path, f'HA_{ID}_UA_opex_stats_by_strength&removal_efficiency.xlsx')
+    with pd.ExcelWriter(save_as) as writer:
+        for q in needed_qs:
+            dfq = build_sheet_for_quantile(q)
+            # Sheet names exactly as requested: '0.05', '0.50', '0.95'
+            sheet_name = f'{q:.2f}'
+            dfq.to_excel(writer, sheet_name=sheet_name)
+
+    return save_as
 
 # %%
 
 if __name__ == '__main__':
     # smp = load_data(ospath.join(results_path, 'HA_F1_UA-low.xlsx'), header=[0,1], skiprows=[2,])
     # smp = smp.iloc[:,:5].to_numpy()
-    # smp = run_model(seed=711, n_strength=11)
+    smp = run_model(seed=711, n_strength=11)
     # smp = run_model(samples=smp, interval=(0.1, 0.9), n_strength=9)
-    # run_model_with_HA(samples=smp, n_strength=11)
+    run_model_with_HA(samples=smp, n_strength=11)
     # compile_stats()
     out = compile_stats_by_strength()
+    save_as = compile_stats_by_strength_and_removal_efficiency(ID='F1')

@@ -52,7 +52,7 @@ for ID in (
         elif 'AED' in u: cake_tss = 17e4
         else: cake_tss = 20e4
     else: 
-        cake_tss = 17e4
+        cake_tss = 17e4 #g/L
     
     if "thickened_WAS" in s: 
         thickened = s.thickened_WAS

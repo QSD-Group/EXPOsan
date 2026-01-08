@@ -102,7 +102,9 @@ def single_scenario_stacked_bar(opex=None, scenario='Baseline', save_as=''):
         c, hat = style
         y = opex.loc[:,cat].to_numpy()
         patch = ax.bar(x, y, bottom=y_offset, width=0.65, 
-                       color=c, hatch=hat, hatch_linewidth=0.5)
+                       color=c, hatch=hat, 
+                       # hatch_linewidth=0.5
+                       )
         handles.append(patch)
         y_offset += y
 
@@ -149,7 +151,8 @@ def stacked_bar(opex=None, save_as=''):
             c, hat = style
             y = df.loc[:,cat].to_numpy()
             patch = ax.bar(x, y, bottom=y_offset, width=0.65, 
-                           color=c, hatch=hat, hatch_linewidth=0.5,
+                           color=c, hatch=hat, 
+                           # hatch_linewidth=0.5,
                            tick_label=df.index.values)
             if ID == 'B1': handles.append(patch)
             y_offset += y
@@ -201,7 +204,8 @@ def horizontal_stacked_bar(opex=None, save_as=''):
             c, hat = style
             y = df.loc[:,cat].to_numpy()
             patch = ax.barh(x, y, left=y_offset, height=0.65, 
-                            color=c, hatch=hat, hatch_linewidth=0.5,
+                            color=c, hatch=hat, 
+                            # hatch_linewidth=0.5,
                             tick_label=df.index.values)
             if ID == 'B1': handles.append(patch)
             y_offset += y
@@ -237,7 +241,7 @@ def horizontal_stacked_bar(opex=None, save_as=''):
 #%%
 if __name__ == '__main__':
     opex = compile_opex()
-    stacked_bar(opex, save_as='opex.tif')
+    # stacked_bar(opex, save_as='opex.tif')
     # stacked_bar(opex, save_as='opex_wrrfs.png')
     # horizontal_stacked_bar(opex, save_as='opexh.tif')
-    # single_scenario_stacked_bar(save_as='opex.tif')
+    single_scenario_stacked_bar(save_as='opex.tif')
