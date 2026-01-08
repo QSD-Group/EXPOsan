@@ -207,13 +207,12 @@ def create_tea(sys, OSBL_units=None, cls=None, **kwargs):
     kwargs_keys = list(kwargs.keys())
     for i in ('IRR_value', 'income_tax_value', 'finance_interest_value', 'labor_cost_value'):
         if i in kwargs_keys: kwargs[i.rstrip('_value')] = kwargs.pop(i)
-    
     default_kwargs = {
         'IRR': 0.03, # use 0%-3%-5% triangular distribution for waste management, and 5%-10%-15% triangular distribution for biofuel production
         'duration': (2022, 2052),
         'depreciation': 'MACRS7', # Jones et al. 2014
         'income_tax': 0.275, # Davis et al. 2018
-        'operating_days': sys.operating_hours/24, # Jones et al. 2014
+        'operating_days': 330, # Jones et al. 2014
         'lang_factor': None, # related to expansion, not needed here
         'construction_schedule': (0.08, 0.60, 0.32), # Jones et al. 2014
         'startup_months': 6, # Jones et al. 2014

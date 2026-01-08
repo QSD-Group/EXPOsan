@@ -310,6 +310,7 @@ def create_components(set_thermo=True):
     C7BENZ = Component('C7BENZ', search_ID='1078-71-3',
                        particle_size='Soluble', degradability='Slowly',
                        organic=True)
+    C6BENZ.copy_models_from(C7BENZ, ['mu'])
 
     C8BENZ = Component('C8BENZ', search_ID='2189-60-8',
                        particle_size='Soluble', degradability='Slowly',

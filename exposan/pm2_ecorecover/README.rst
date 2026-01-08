@@ -12,10 +12,8 @@ This module is used to calibrate and validate the Phototrophic-Mixotrophic Proce
 
 - ``system.py`` constructs EcoRecover system above.
 - ``model.py`` creates a model for uncertainty and sensitivity analysis.
-- ``analyses.py`` runs uncertainty and sensitivity analysis and plots the results.
 - ``calibration.py`` calibrates model parameters.
-- ``calibration_result.py`` is used to check the calibration restuls.
-- ``validation_result.py`` is used to check the validation restuls.
+- ``data_cleaning.py`` cleans raw online sensor data.
 
 
 Load the system
