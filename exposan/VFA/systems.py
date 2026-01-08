@@ -13,6 +13,8 @@ from exposan.VFA import _sanunits_copy as su
 from qsdsan import sanunits as qsu
 import biosteam as bst
 
+# !!! import _tea from VFA folder
+
 bst.PowerUtility.price = 0.0855 
 #$/kWh data US total industrial electricity price from EIA
 # Average retail price of electricity by sector, 2025 Jan to Aug average for the industry sector
