@@ -24,40 +24,58 @@ from qsdsan.sanunits import Pump
 
 __all__ = ('SolidsSeparation', 'SludgeThickening', 'BaseDosing', 'RedoxED',)
 
+#%%
+## some global constants, might include uncertainty range in the future
+
+# conversion factors
+m3_per_gal = 0.00378541
+min_per_hr = 60
+
+# assumption for the vonnecting pipes at WWTP
+hazen_william_C = 110 # dimensionless
+pipe_length = 150 # ft
+min_velocity = 2.5 # ft, based on minimum flowrate suggestion from manual of practice No.8, 6th ed page 173
+
+# assume positive gas pressure in anaerobic digestor
+gas_pressure = 10/12 # ft
+
+# densities
+ss_weight = 8000 # density of stainless steel 316 in kg/m3
+
 
 #%% Pretreatment: solids separation using centrifugation
 centrifuge_path = ospath.join(data_path, 'sanunit_data/VFA/_centrifuge.csv')
 
-hazen_william_C = 110 # dimensionless
-pipe_length = 150 # ft
-min_velocity = 2.5 # ft, based on minimum flowrate suggestion from manual of practice No. 8 6th ed page 173
-gas_pressure = 10/12 # ft, positive gas pressure in anaerobic digestor
 
-@cost(basis='Power', ID='SolidsSeparation', units='hp',
-      cost=2620000, S=1, N = 'Number of centrifuges',
-      CE=CEPCI_by_year[2014], n=0.7021)
+@cost(basis='Power required', ID='SolidsSeparation', units='hp',
+      cost=1730000, S=150, N = 'Number of centrifuges',
+      CE=CEPCI_by_year[2014], n=0.8023)
 # parameters in @cost are obtained from CapdetWorks, exponential is calculated by fitting unit costs of different power requirement, 
 # the default BM of 1 is used because CapdetWorks lumps equipment and construction costs.
+# the construction and equipment costs of a single centrifuge is dependent on the total required power in an exponential relationship
+# the total power required can be calculated by the feeding rate multiplied by the power of centrifuge in hp/gpm
 class SolidsSeparation(SanUnit):
     '''
-    Function of unit:
-    A solids separation class for simulation of a solid bowl centrifuge 
-    to separate solids from mixed stream.
-    Calculation:
-    Separation split is calculated based on moisture content 
-    in the sludge and solids separation rate, both defined by user.
-    Assume solubles and water share the same split.
-    If the moiture content in the feed is smaller than the targeted moiture
-    moisture content in sludge, the target moiture content will be ignored.
-    Material in cost and design:
-    References:
-    Reference units are G2RTSolidsSeparation developed by Zixuan Wang, 
-    the SolidCetrifuge developed by Yoel, and Thickener by Yalin.
+    -Function of unit:
+        A solids separation class for simulation of a solid bowl centrifuge 
+        to separate solids from mixed stream.
+    -Mass balance calculation:
+        Separation split is calculated based on moisture content 
+        in the sludge and solids separation rate, both defined by user.
+        Assume solubles and water share the same split.
+        If the moiture content in the feed is smaller than the targeted moiture 
+        content in sludge, the target moiture content will be ignored.
+    -Material in cost and design:
+        
+    -References:
+        Reference units are G2RTSolidsSeparation developed by Zixuan Wang, 
+        the SolidCetrifuge developed by Yoel, and Thickener by Yalin.
     
     Parameters
     ----------
     Ins: Iterable (stream)
-        Incoming waste stream.
+        ins[0] is incoming waste stream.
+        ins[1] is polymer addition.
     Outs: Iterable (stream)
         outs[0] is supernatent effluent
         outs[1] is sludge
@@ -74,44 +92,46 @@ class SolidsSeparation(SanUnit):
 # !!! This is the first unit of the system, the in flow would be AD effluent   
     _N_ins = 2
     _N_outs = 2
-    _units = {'Flow rate': 'm3/hr',
-              'Power': 'hp'}
-    flow_rate_range = (0.95, 3.42) 
+    _units = {'Power required': 'hp'}
+    power_range = (0, 200) 
     # solids loading rate for solid boal centrifuge determined from reported cases in the EPA design manual
-    m3_per_gal = 0.00378541
-    min_per_hr = 60
+
     auxiliary_unit_names = ('feed_pump', 'dosing_pump', 'centrate_pump')
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream', 
                  removal_rate = 0.82, sludge_moisture = 0.926, polymer_dose = 0.0054, 
-                 disposal_cost = 125/907.18474, kW_per_m3_per_hr = 85.74, 
-                 operating_hours = 5127.86, labor_hour = 1.088, auger_cost = 500,
+                 disposal_cost = 450, kW_per_m3_per_hr = 85.74, 
+                 operating_hours = 8 * 5 * 52, labor_hour = 1.088, auger_cost = 500,
                  conveyor_belt_cost = 229.67, sludge_density = 1.03*998.2, 
-                 feed_flowrate = 1.50, material_repair_and_replacement_cost = 0.035, 
-                 conveyer_power = 50, centrifuge_power = 1, auger_conveyer_cost = 0.0004, wages = 5, **kwargs):
+                 feed_flowrate = 182 , material_repair_and_replacement_cost = 0.035, 
+                 conveyer_power = 30.08, centrifuge_power = 180, auger_conveyer_cost = 0.0004, 
+                 wages = 29.32, wall_thickness = 0.015, bowl_diameter = 0.88, bowl_length = 2.914, 
+                 motor_power = 156.25, **kwargs):
         SanUnit.__init__(self, ID, ins, outs, thermo=thermo, init_with=init_with,
                          F_BM_default=1)
         self.tss_removal = removal_rate
         self.sludge_moisture = sludge_moisture
         self.polymer_dose = polymer_dose
-        self.disposal_cost = disposal_cost
+        self.disposal_cost = disposal_cost # $/dry ton
         self.kW_per_m3_per_hr = kW_per_m3_per_hr # power consumption per gpm of sludge into the centrifuge
         self.operating_hours = operating_hours # this is number of operations per year
         self.labor_hour = labor_hour
         self.auger_cost = auger_cost
         self.conveyor_belt_cost = conveyor_belt_cost
         self.sludge_density = sludge_density
-        self.feed_flowrate = feed_flowrate
+        self.feed_flowrate = feed_flowrate # in gpm
         self.material_repair_and_replacement_cost = material_repair_and_replacement_cost
-        self.conveyer_power = conveyer_power # kW
+        self.conveyer_power = conveyer_power # HP
         # !!! replace place holder value for conveyer_power
-        self.centrifuge_power = centrifuge_power
+        self.centrifuge_power = centrifuge_power # hp, typical values can be 150 - 250 hp based on case studies in EPA design manual
         self.auger_conveyer_cost = auger_conveyer_cost
         self.wages = wages
+        self.wall_thickness = wall_thickness
+        self.bowl_diameter = bowl_diameter
+        self.bowl_length = bowl_length
         # sludge density is estimated by specific gravity of primary slidge + WAS and water density at 20 C from MtCalf&Eddy; density of AD effluent was not foudn in the book
-# !!! Disposal cost is a place holder value taken from Yalin's sludge thickening unit, check recent value
-# !!! Find recent polymer costs or adjust inflation for EPA design manual numbers
-# !!! Check the default value of pump_pressure
+
+
 # !!! Check what F_BM_default = 1 means, deleted scale up, ppl, and estreme arguments from parent class
 
 # !!! in the line below, what components is it referring to? Should import from _components.py?        
@@ -123,15 +143,9 @@ class SolidsSeparation(SanUnit):
         self.construction = [Construction("stainless_steel", linked_unit=self,
                                           item = "StainlessSteel", 
                                           quantity_unit= "kg"),
-                             Construction("polyethylene", linked_unit=self,
-                                          item = "Polyethylene",
-                                          quantity_unit= "kg"),
                              Construction("electric_motor", linked_unit=self,
                                           item = "ElectricMotor",
-                                          quantity_unit= "kg"),
-                             Construction("pump", linked_unit=self,
-                                          item = "Pump",
-                                          quantity_unit= "ea"),
+                                          quantity_unit= "kg")
                              ]        
         
     def _run(self):
@@ -166,30 +180,45 @@ class SolidsSeparation(SanUnit):
         friction_head = 3.02 * pipe_length * (min_velocity ** 1.85) * \
         (hazen_william_C ** (-1.85)) * (pipe_diameter ** (-1.17)) # Using equation ESI-7 in the SI of Brian Shoener's 2016 paper
         feed_pump_p = friction_head + gas_pressure + 10 # include 10ft water column for pressure head
-        centrate_pump_p = friction_head
+        centrate_pump_p = friction_head + 101325 # Pa
         feed_pump = self.auxiliary('feed_pump', cls = SludgePump, ins = self.ins[0].copy('feed_pump_in'), P = feed_pump_p)
         dosing_pump = self.auxiliary('dosing_pump', cls = Pump, ins = self.ins[1].copy('dose_pump_in'))
-        centrate_pump = self.auxiliary('centrate_pump', cls = SludgePump, outs = self.outs[0].copy('centrate_pump_out'), P = centrate_pump_p)
+        centrate_pump = self.auxiliary('centrate_pump', cls = SludgePump, ins = self.outs[0].copy('centrate_pump_out'), P = centrate_pump_p)
 
         # !!! the pump_pressure argument is the pressure of the output stream, assume atmospheric pressure for the feeding
         # and the dosing pumps.
         #!!! estimate the pressure of the centrate pu,p considering 3m (10ft) of elevation lift and the frictional loss in the pipes
         # calculate using the energy balance equation in fluid mechanics
-
+        self.ins[0].P = centrate_pump_p
+        
     def _design(self):
-        self.design_results['Feeding rate'] = feeding_rate = self.F_vol_in
-        lower_bound, upper_bound = self.flow_rate_range
-        if feeding_rate < lower_bound:
-            lb_warning(self, 'Feeding rate', feeding_rate, 'm3/hr', lower_bound)
-        self.design_results['Number of centrifuges'] = ceil(feeding_rate/upper_bound) 
-        self.power_utility(self.F_vol_in * self.kW_per_m3_per_hr + self.conveyer_power * 
-                           self.operating_hours) # this is electricity consumption not including pumping
-    
+        design = self.design_results
+        design['Feeding rate'] = feeding_rate = self.F_vol_in
+        design['Power required'] = power_required = feeding_rate * self.centrifuge_power
+        lower_bound, upper_bound = self.power_range
+        if power_required < lower_bound:
+            lb_warning(self, 'Power required', power_required, 'hp', lower_bound)
+        design['Number of centrifuges'] = ceil(feeding_rate/upper_bound)
+        # assuming the power requirement per gpm is 1 hp for each centrifuge, and using the total feeding rate and the typical total power that one centrifuge can provide from CapdetWorks,
+        # we calculate the number of centrifuges needed.
+        design['Number of motor'] = design['Number of centrifuges']
+        
+        out_d = self.bowl_diameter
+        in_d = out_d - self.wall_thickness
+        design['StainlessSteel'] = (out_d**2 - in_d**2) / 4 * pi * self.bowl_length * ss_weight \
+            + out_d * out_d / 2 * self.bowl_length * self.wall_thickness
+        # centrifuge bowl and hosuing stianless steel requirement
+        
+        self.power_utility(self.F_vol_in * self.kW_per_m3_per_hr + self.conveyer_power * 0.7457 *
+                           self.operating_hours) 
+        # this is electricity consumption not including pumping, 1 hp = 0.7457 kW
+        # this uses the energy consumption per m3/hr from the EPA design manual, which might include more that the energy requirement of the centrifuge pump
+        # on top of that add the energy consumption of the conveyor
         
     def _cost(self):
         # capital cost for auger and conveyor belt for sludge removal
         ts_out = self.outs[-1].F_mass
-        self.baseline_purchase_costs['centrifuge'] = 3E6 * self.centrifuge_power ** 0.7021 * CEPCI_by_year[2023] / CEPCI_by_year[2014]
+        self.baseline_purchase_costs['centrifuge'] = 31188 * self.centrifuge_power ** 0.8023 * CEPCI_by_year[2023] / CEPCI_by_year[2014]
         self.F_BM['centrifuge']= 1
         self.baseline_purchase_costs['Auger_conveyer'] = self.baseline_purchase_costs['centrifuge'] * self.auger_conveyer_cost 
         # using a ratio here becasue it's time consuming to find accurate price that statisfied the solids loading rate as well as the scaling factors
@@ -199,13 +228,14 @@ class SolidsSeparation(SanUnit):
 
         # OPEX = sludge disposal, material replacement (include as a ratio), labor, 
         # electricity (scale with flow in the design fxn), and polymer dosage (scale with flow int he design fxn)
-        self.add_OPEX = {'Sludge disposal': ts_out * 24 * self.disposal_cost, 
+        self.add_OPEX = {'Sludge disposal': ts_out * 24 * self.disposal_cost * 0.00110231, 
                          'Labor': self.wages * self.operating_hours / 365 * self.labor_hour,
                          'Maintenance': tot_equip_and_constr * self.material_repair_and_replacement_cost / 365} # two operators per shift
+        # 0.00110231 short ton per kg
         # units all converted to $ per day: sludge disposal - kg/hr * hr/day * $/kg; labor - $/hr * hr/year / (day/year) * hr/hr
         # !!! find costs in the add_OPEX dictionary
         for p in (self.feed_pump, self.dosing_pump, self.centrate_pump): p.simulate()
-
+        # !!! should include multiple feed, centrate, and dosing pumps matching with the number of centrifuge units?
 #%% Pretreatment: solids separation using microfiltration       
 class SludgeThickening(SanUnit, Splitter):
     '''
@@ -220,7 +250,7 @@ class SludgeThickening(SanUnit, Splitter):
 
     Separation split is determined by the moisture (i.e., water)
     content of the sludge, soluble components will have the same split as water,
-    insolubles components will all go to the retentate.
+    all insolubles components will all go to the retentate.
 
     Note that if the moisture content of the incoming feeds are smaller than
     the target moisture content, the target moisture content will be ignored.
@@ -259,7 +289,7 @@ class SludgeThickening(SanUnit, Splitter):
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream',
                  sludge_moisture=0.96, solids=(),
-                 disposal_cost=125/907.18474): # converting from $/U.S. ton
+                 disposal_cost=450): # converting from $/U.S. ton
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with=init_with)
         self.sludge_moisture = sludge_moisture
         cmps = self.components
@@ -276,7 +306,7 @@ class SludgeThickening(SanUnit, Splitter):
         self._set_split_at_mc()
 
 # _set_split_at_mc calculates the solubles and water content in the sludge using
-# the moisture content in the sludege and assuming all solids go into the sludge
+# the moisture content in the sludge and assuming all solids go into the sludge
     def _set_split_at_mc(self):
         mixed = self._mixed
         eff, sludge = self.outs
@@ -318,21 +348,25 @@ class SludgeThickening(SanUnit, Splitter):
 
 
     def _run(self):
-        eff, sludge = self.outs
+        effluent, sludge = self.outs
         solubles, solids = self.solubles, self.solids
 
         mixed = self._mixed
         mixed.mix_from(self.ins)
-        eff.T = sludge.T = mixed.T
+        effluent.T = sludge.T = mixed.T
         sludge.copy_flow(mixed, solids, remove=True) # all solids go to sludge
-        eff.copy_flow(mixed, solubles)
+        effluent.copy_flow(mixed, solubles)
 
         self._set_split_at_mc()
         flx.IQ_interpolation(
             f=self._mc_at_split, x0=1e-3, x1=1.-1e-3,
-            args=(solubles, mixed, eff, sludge, self.sludge_moisture),
+            args=(solubles, mixed, effluent, sludge, self.sludge_moisture),
             checkbounds=False)
         self._set_split_at_mc() #!!! not sure if still needs this
+        
+    def _design(self):
+        design = self.design_results
+        pass
 
 # the IQ_interpolation finds split in a specified range, and then calls _mc_at_split
 # to calculate the mc based on solubles split. It then compare the calculated mc with
@@ -371,12 +405,12 @@ class BaseDosing(SanUnit):
         
     def _run(self):
         inf, base = self.ins
-        eff, = self.outs
+        effluent, = self.outs
         
         base.ivol['H2O'] = inf.F_vol * self.titr_factor * 1000
         base.imass['Na'] = base.ivol['H2O'] * self.base_conc * 23 # MW of NaOH = 40 g/mol
         # by defining the base stream here, no need to initiate the stream in system.py
-        eff = eff.mix_from(self.ins)
+        effluent = effluent.mix_from(self.ins)
         
     def _design(self):
         pass
