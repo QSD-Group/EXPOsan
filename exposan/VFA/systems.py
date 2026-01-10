@@ -12,7 +12,7 @@ from exposan.VFA._components import create_components
 from exposan.VFA import _sanunits_copy as su
 from qsdsan import sanunits as qsu
 import biosteam as bst
-
+from exposan.htl import _tea
 # !!! import _tea from VFA folder
 
 bst.PowerUtility.price = 0.0855 
@@ -60,4 +60,101 @@ RedoxED = su.RedoxED('RedoxED', ins = (BasePump-0, AC_influent), outs = ('feedin
 
 # Creating system
 sys = qs.System.from_units(ID = 'sys', units = [Centrifuge, Microfiltration, BasePump, RedoxED])
+
+
+
+
+
+
+    
+flowsheet_ID = 'htl_geospatial'
+
+# clear flowsheet and registry for reloading
+if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
+    getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
+    clear_lca_registries()
+flowsheet = qs.Flowsheet(flowsheet_ID)
+stream = flowsheet.stream
+qs.main_flowsheet.set_flowsheet(flowsheet)
+
+_load_components()
+_load_process_settings(location=state)
+
+folder = '/Users/jiananfeng/Desktop/PhD_CEE/NSF_PFAS/HTL_geospatial/'
+qs.ImpactIndicator.load_from_file(os.path.join(folder, 'data/impact_indicators.csv'))
+qs.ImpactItem.load_from_file(os.path.join(folder, 'data/impact_items.xlsx'))
+
+raw_wastewater = qs.WasteStream('sludge_assumed_in_wastewater', H2O=size, units='MGD', T=25+273.15)
+# set H2O equal to the total raw wastewater into the WWTP
+
+
+
+
+
+
+# load construction impact
+
+
+# add stream impact items
+# add impact for waste sludge
+qs.StreamImpactItem(ID='waste_sludge1_item',
+                    linked_stream=stream.sludge,
+                    Acidification=0,
+                    Ecotoxicity=0,
+                    Eutrophication=0,
+                    GlobalWarming=-WWTP.ww_2_dry_sludge*waste_GWP/3.79/(10**6),
+                    OzoneDepletion=0,
+                    PhotochemicalOxidation=0,
+                    Carcinogenics=0,
+                    NonCarcinogenics=0,
+                    RespiratoryEffects=0)
+
+qs.StreamImpactItem(ID='waste_sludge2_item',
+                    linked_stream=stream.sludge,
+                    Acidification=0,
+                    Ecotoxicity=0,
+                    Eutrophication=0,
+                    GlobalWarming=-WWTP.ww_2_dry_sludge*waste_GWP/3.79/(10**6),
+                    OzoneDepletion=0,
+                    PhotochemicalOxidation=0,
+                    Carcinogenics=0,
+                    NonCarcinogenics=0,
+                    RespiratoryEffects=0)
+
+# add impact of pH adjustment
+qs.StreamImpactItem(ID='NaOH_item',
+                    linked_stream=stream.NaOH,
+                    Acidification=0.33656,
+                    Ecotoxicity=0.77272,
+                    Eutrophication=0.00032908,
+                    GlobalWarming=1.2514,
+                    OzoneDepletion=7.89E-07,
+                    PhotochemicalOxidation=0.0033971,
+                    Carcinogenics=0.0070044,
+                    NonCarcinogenics=13.228,
+                    RespiratoryEffects=0.0024543)
+    
+
+
+
+
+    
+
+    
+
+    
+
+    
+
+    
+
+_tea.create_tea(sys, IRR_value=0.03, income_tax_value=0.21, finance_interest_value=0.03, labor_cost_value=29.32)
+
+qs.LCA(system=sys, lifetime=30, lifetime_unit='yr',
+       Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30,
+       Cooling=lambda:sys.get_cooling_duty()/1000*30)
+    
+    # for income tax, 0.35 is the old federal income tax rate
+    # in the future, use 0.21 (new federal income tax rate) as the income tax rate
+    # if it is necessary to add a state income tax, see exposan.htl.income_tax
 sys.simulate()

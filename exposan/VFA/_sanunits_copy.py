@@ -209,6 +209,9 @@ class SolidsSeparation(SanUnit):
             + out_d * out_d / 2 * self.bowl_length * self.wall_thickness
         # centrifuge bowl and hosuing stianless steel requirement
         
+        design['ElectricMotor'] = design['Number of centrifuges']
+        design['ConveyerBelt'] = 1
+        
         self.power_utility(self.F_vol_in * self.kW_per_m3_per_hr + self.conveyer_power * 0.7457 *
                            self.operating_hours) 
         # this is electricity consumption not including pumping, 1 hp = 0.7457 kW
