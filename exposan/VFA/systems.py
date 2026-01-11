@@ -8,7 +8,7 @@ Created on Fri Sep 12 14:46:31 2025
 
 import qsdsan as qs
 from qsdsan import WasteStream
-from qsdsan.utils import ospath, data_path
+from qsdsan.utils import ospath, data_path, misc
 from exposan.VFA._components import create_components
 from exposan.VFA import _sanunits_copy as su
 from qsdsan import sanunits as qsu
@@ -50,6 +50,21 @@ AC_influent = WasteStream('AC_influent', Na=13.67, Cl=21.08, K=0, H2O=7743.28,
 
 
 #%%
+flowsheet_ID = 'vfa_separation'
+# clear flowsheet and registry for reloading
+if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
+    getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
+    misc.clear_lca_registries()
+flowsheet = qs.Flowsheet(flowsheet_ID)
+stream = flowsheet.stream
+qs.main_flowsheet.set_flowsheet(flowsheet)
+
+
+### load construction impact
+qs.ImpactIndicator.load_from_file(ospath.join(data_path, 'sanunit_data/VFA/impact_indicators.csv'))
+qs.ImpactItem.load_from_file(ospath.join(data_path, 'sanunit_data/VFA/impact_items.xlsx'))
+
+
 ### Creating SanUnit instances
 Centrifuge = su.SolidsSeparation('Centrifuge', ins = (AD_effluent, 'polymer'), outs = ('liquid_stream', 'solids_stream'))
 # the second influent of the SolidsSeparation unit is polymer, which is calculated based on the first influent, we would not need to define a separate stream for polymer. Polymer requirement will be calculated from ws0
@@ -62,44 +77,36 @@ RedoxED = su.RedoxED('RedoxED', ins = (BasePump-0, AC_influent), outs = ('feedin
 ### Creating system
 sys = qs.System.from_units(ID = 'sys', units = [Centrifuge, Microfiltration, BasePump, RedoxED])
 
-flowsheet_ID = 'vfa_separation'
-# clear flowsheet and registry for reloading
-if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
-    getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-    qs.clear_lca_registries()
-flowsheet = qs.Flowsheet(flowsheet_ID)
-stream = flowsheet.stream
-qs.main_flowsheet.set_flowsheet(flowsheet)
-
-
-### load construction impact
-qs.ImpactIndicator.load_from_file(ospath.join(data_path, 'sanunit_data/VFA/impact_indicators.csv'))
-qs.ImpactItem.load_from_file(ospath.join(data_path, 'sanunit_data/VFA/impact_items.xlsx'))
-
 
 ### add stream impact items
 
 # add impact for polymer
 qs.StreamImpactItem(ID='polymer_item',
+                    linked_stream=stream.polymer,
                     GlobalWarming=5.19)
 
 # add impact for waste sludge
 qs.StreamImpactItem(ID='waste_sludge1_item',
+                    linked_stream=stream.solids_stream,
                     GlobalWarming=0.292)
 
 qs.StreamImpactItem(ID='waste_sludge2_item',
+                    linked_stream=stream.sludge,
                     GlobalWarming=0.292)
 
 # add impact of pH adjustment
 qs.StreamImpactItem(ID='NaOH_item',
+                    linked_stream=stream.base,
                     GlobalWarming=1.2514)
     
 
-_tea.create_tea(sys, IRR_value=0.03, income_tax_value=0.21, finance_interest_value=0.03, labor_cost_value = 29.32)
+tea = _tea.create_tea(sys, IRR_value=0.03, income_tax_value=0.21, finance_interest_value=0.03, labor_cost_value = 29.32)
 
-qs.LCA(system=sys, lifetime=30, lifetime_unit='yr',
-       Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30,
-       Cooling=lambda:sys.get_cooling_duty()/1000*30)
+Electricity = qs.ImpactItem('Electricity', 'kWh', GWP=1.1)
+get_power = sum([u.power_utility.rate for u in sys.units]) * (24 * 365 * 30)
+
+lca = qs.LCA(system=sys, lifetime=30, lifetime_unit='yr',
+       Electricity = get_power)
     
     # for income tax, 0.35 is the old federal income tax rate
     # in the future, use 0.21 (new federal income tax rate) as the income tax rate
