@@ -145,7 +145,10 @@ class SolidsSeparation(SanUnit):
                                           quantity_unit= "kg"),
                              Construction("electric_motor", linked_unit=self,
                                           item = "ElectricMotor",
-                                          quantity_unit= "kg")
+                                          quantity_unit= "kg"),
+                             Construction("conveyor_belt", linked_unit=self,
+                                          item = "ConveyorBelt", 
+                                          quantity_unit= "kg"),
                              ]        
         
     def _run(self):
