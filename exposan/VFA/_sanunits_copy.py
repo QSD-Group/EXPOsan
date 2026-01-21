@@ -100,8 +100,8 @@ class SolidsSeparation(SanUnit):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream', 
                  removal_rate = 0.82, sludge_moisture = 0.926, polymer_dose = 0.0054, 
-                 disposal_cost = 450, kW_per_m3_per_hr = 85.74, 
-                 operating_hours = 8 * 5 * 52, labor_hour = 1.088, auger_cost = 500,
+                 disposal_cost = 60, kW_per_m3_per_hr = 85.74, 
+                 operating_hours = 24 * 365, labor_hour = 1.088, auger_cost = 500,
                  conveyor_belt_cost = 229.67, sludge_density = 1.03*998.2, 
                  feed_flowrate = 182 , material_repair_and_replacement_cost = 0.035, 
                  conveyer_power = 30.08, centrifuge_power = 180, auger_conveyer_cost = 0.0004, 
@@ -112,10 +112,10 @@ class SolidsSeparation(SanUnit):
         self.tss_removal = removal_rate
         self.sludge_moisture = sludge_moisture
         self.polymer_dose = polymer_dose
-        self.disposal_cost = disposal_cost # $/dry ton
+        self.disposal_cost = disposal_cost # 450 $/dry ton
         self.kW_per_m3_per_hr = kW_per_m3_per_hr # power consumption per gpm of sludge into the centrifuge
         self.operating_hours = operating_hours # this is number of operations per year
-        self.labor_hour = labor_hour
+        self.labor_hour = labor_hour # num of labor hour required per operating hour
         self.auger_cost = auger_cost
         self.conveyor_belt_cost = conveyor_belt_cost
         self.sludge_density = sludge_density
@@ -145,39 +145,39 @@ class SolidsSeparation(SanUnit):
                                           quantity_unit= "kg"),
                              Construction("electric_motor", linked_unit=self,
                                           item = "ElectricMotor",
-                                          quantity_unit= "kg"),
-                             Construction("conveyor_belt", linked_unit=self,
-                                          item = "ConveyorBelt", 
-                                          quantity_unit= "kg"),
-                             ]        
+                                          quantity_unit= "ea"),
+                             Construction("auguer_conveyor", linked_unit=self,
+                                          item = "AugerConveyor", 
+                                          quantity_unit= "m"),
+                             ]
+    #!!! unit of conveyor belt should be m but is not calculated in LCA       
         
     def _run(self):
-        inf, polymer = self.ins # index or comma needed when there is only one stream in inlets
+        AD_effluent, polymer = self.ins # index or comma needed when there is only one stream in inlets
         liquid_stream, solid_stream = self.outs
 # This following is defining the subset of components that later could be accessed through []
         solubles, solids = self.solubles, self.solids
-        
-        TL_in = inf.F_mass - inf.imass[solids].sum()
-        mc_in = TL_in / inf.F_mass # including both water and solubles in the moisture content
+        TL_in = AD_effluent.F_mass - AD_effluent.imass[solids].sum()
+        mc_in = TL_in / AD_effluent.F_mass # including both water and solubles in the moisture content
         mc_out = self.sludge_moisture # this moisture data should assume the total mass of water and solubles
 # !!! Below the logic check is for moisture content in the solids but the focus here is the liquid stream
         # if mc_in < mc_out*0.999:
         if mc_in < mc_out:
             mc_out = mc_in
         
-        solid_stream.imass[solids] = inf.imass[solids] * self.tss_removal
+        solid_stream.imass[solids] = AD_effluent.imass[solids] * self.tss_removal
         TS_out = solid_stream.imass[solids].sum() # total soilds in the solids stream
         TL_out = TS_out / (1 - mc_out) * mc_out # total solubles and water mass flowrate in the solids stream
-        solid_stream.imass[solubles] = inf.imass[solubles] * TL_out / TL_in 
-        solid_stream.imass['H2O'] = TL_out - solid_stream.imass[solubles].sum()
+        solid_stream.imass[solubles] = AD_effluent.imass[solubles] * TL_out / TL_in
+        # solid_stream.imass['H2O'] = TL_out - solid_stream.imass[solubles].sum()
         # the above line assumes that the solubles (including water and soluble chemicals) partition together and by the same ratio
         #liquid_stream.imass['H2O'] = TS_out*(1-mc_out) * mc_out - liquid_stream.imass[solubles].sum()
         
-        liquid_stream.imass[solids] = inf.imass[solids] * (1 - self.tss_removal)
-        liquid_stream.imass[solubles] = inf.imass[solubles] - solid_stream.imass[solubles]
-        liquid_stream.imass['H2O'] = inf.imass['H2O'] - solid_stream.imass['H2O']
+        liquid_stream.imass[solids] = AD_effluent.imass[solids] * (1 - self.tss_removal)
+        liquid_stream.imass[solubles] = AD_effluent.imass[solubles] - solid_stream.imass[solubles]
+        #liquid_stream.imass['H2O'] = AD_effluent.imass['H2O'] - solid_stream.imass['H2O']
         
-        polymer.imass['Polymer'] = inf.imass[solids].sum() * self.polymer_dose
+        polymer.imass['Polymer'] = AD_effluent.imass[solids].sum() * self.polymer_dose
         
         pipe_diameter = sqrt(4 * self.feed_flowrate * 35.3147/3600 / pi / min_velocity)
         friction_head = 3.02 * pipe_length * (min_velocity ** 1.85) * \
@@ -196,37 +196,39 @@ class SolidsSeparation(SanUnit):
         
     def _design(self):
         design = self.design_results
-        design['Feeding rate'] = feeding_rate = self.F_vol_in
-        design['Power required'] = power_required = feeding_rate * self.centrifuge_power
+        design['Feeding_rate'] = feeding_rate = self.F_vol_in
+        design['Power_required'] = power_required = feeding_rate * self.centrifuge_power
         lower_bound, upper_bound = self.power_range
         if power_required < lower_bound:
-            lb_warning(self, 'Power required', power_required, 'hp', lower_bound)
-        design['Number of centrifuges'] = ceil(feeding_rate/upper_bound)
+            lb_warning(self, 'Power_required', power_required, 'hp', lower_bound)
+        design['Number_of_centrifuges'] = ceil(feeding_rate/upper_bound)
         # assuming the power requirement per gpm is 1 hp for each centrifuge, and using the total feeding rate and the typical total power that one centrifuge can provide from CapdetWorks,
         # we calculate the number of centrifuges needed.
-        design['Number of motor'] = design['Number of centrifuges']
+        design['Number_of_motor'] = self.construction[1].quantity \
+            = design['Number_of_centrifuges']
+        design['Auger_conveyor'] = self.construction[2].quantity = 10 #!!! assume 10-m auger conveyor
         
         out_d = self.bowl_diameter
         in_d = out_d - self.wall_thickness
-        design['StainlessSteel'] = (out_d**2 - in_d**2) / 4 * pi * self.bowl_length * ss_weight \
+        design['Stainless_Steel'] = self.construction[0].quantity = (out_d**2 - in_d**2) / 4 * pi * self.bowl_length * ss_weight \
             + out_d * out_d / 2 * self.bowl_length * self.wall_thickness
         # centrifuge bowl and hosuing stianless steel requirement
         
-        design['ElectricMotor'] = design['Number of centrifuges']
-        design['ConveyerBelt'] = 1
         
         self.power_utility(self.F_vol_in * self.kW_per_m3_per_hr + self.conveyer_power * 0.7457 *
-                           self.operating_hours) 
+                           self.operating_hours)
+        #!!! check calculation
         # this is electricity consumption not including pumping, 1 hp = 0.7457 kW
         # this uses the energy consumption per m3/hr from the EPA design manual, which might include more that the energy requirement of the centrifuge pump
         # on top of that add the energy consumption of the conveyor
         
+        
     def _cost(self):
         # capital cost for auger and conveyor belt for sludge removal
         ts_out = self.outs[-1].F_mass
-        self.baseline_purchase_costs['centrifuge'] = 31188 * self.centrifuge_power ** 0.8023 * CEPCI_by_year[2023] / CEPCI_by_year[2014]
-        self.F_BM['centrifuge']= 1
-        self.baseline_purchase_costs['Auger_conveyer'] = self.baseline_purchase_costs['centrifuge'] * self.auger_conveyer_cost 
+        self.baseline_purchase_costs['Centrifuge'] = 31188 * self.centrifuge_power ** 0.8023 * CEPCI_by_year[2023] / CEPCI_by_year[2014]
+        self.F_BM['Centrifuge']= 1
+        self.baseline_purchase_costs['Auger_conveyer'] = self.baseline_purchase_costs['Centrifuge'] * self.auger_conveyer_cost 
         # using a ratio here becasue it's time consuming to find accurate price that statisfied the solids loading rate as well as the scaling factors
         self.F_BM['Auger_conveyer'] = 1
         # using 1 because we icluded the other construction costs in the purchase cost
@@ -234,9 +236,9 @@ class SolidsSeparation(SanUnit):
 
         # OPEX = sludge disposal, material replacement (include as a ratio), labor, 
         # electricity (scale with flow in the design fxn), and polymer dosage (scale with flow int he design fxn)
-        self.add_OPEX = {'Sludge disposal': ts_out * 24 * self.disposal_cost * 0.00110231, 
-                         'Labor': self.wages * self.operating_hours / 365 * self.labor_hour,
-                         'Maintenance': tot_equip_and_constr * self.material_repair_and_replacement_cost / 365} # two operators per shift
+        self.add_OPEX = {'Sludge_disposal': ts_out * 24 * self.disposal_cost * 0.00110231, # $/day
+                         'Labor': self.wages * self.operating_hours / 365 * self.labor_hour, # $/day
+                         'Maintenance': tot_equip_and_constr * self.material_repair_and_replacement_cost / 365} # two operators per shift, units in $/day
         # 0.00110231 short ton per kg
         # units all converted to $ per day: sludge disposal - kg/hr * hr/day * $/kg; labor - $/hr * hr/year / (day/year) * hr/hr
         # !!! find costs in the add_OPEX dictionary
@@ -342,6 +344,7 @@ class SludgeThickening(SanUnit, Splitter):
                 split[idx] = eff.mass[idx]/mixed.mass[idx]
                 self.SKIPPED = False
         self._isplit = self.thermo.chemicals.isplit(split)
+        # might be an inssue with line 346 calculating self._isplit   
 
 # _mc_at_split calculates moisture content from the solubles separation, and
 # then compare the calculated mc with the target mc
@@ -352,17 +355,14 @@ class SludgeThickening(SanUnit, Splitter):
         mc = sludge.imass['Water'] / sludge.F_mass
         return mc-target_mc
 
-
     def _run(self):
         effluent, sludge = self.outs
         solubles, solids = self.solubles, self.solids
-
         mixed = self._mixed
         mixed.mix_from(self.ins)
         effluent.T = sludge.T = mixed.T
         sludge.copy_flow(mixed, solids, remove=True) # all solids go to sludge
         effluent.copy_flow(mixed, solubles)
-
         self._set_split_at_mc()
         flx.IQ_interpolation(
             f=self._mc_at_split, x0=1e-3, x1=1.-1e-3,
@@ -397,7 +397,7 @@ class SludgeThickening(SanUnit, Splitter):
 #%% Pretreatment: pH adjustment by adding 1 M NaOH
 base_dosing_path = ospath.join(data_path, 'sanunit_data/VFA/base_dosing_path.csv')
 class BaseDosing(SanUnit):
-    _N_ins = 2
+    _N_ins = 3
     _N_outs = 1
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
@@ -408,15 +408,16 @@ class BaseDosing(SanUnit):
         self.base_conc = base_conc
         self.titr_factor = titr_factor
         # titr_factor calculated based on the experimental data from Wangsuk: 1.98 ml of 1 M NaOH into 160 ml of AD effluent.
-        
+        # AD_red only used to calculate base addition and not participate in mass balance
     def _run(self):
-        inf, base = self.ins
+        inf, ad_ref, base = self.ins
         effluent, = self.outs
         
-        base.ivol['H2O'] = inf.F_vol * self.titr_factor * 1000
-        base.imass['Na'] = base.ivol['H2O'] * self.base_conc * 23 # MW of NaOH = 40 g/mol
+        base_vol = ad_ref.F_vol * self.titr_factor
+        base.ivol['H2O'] = base_vol
+        base.imol['Na'] = base_vol * self.base_conc * 1000 # kmol/hr
         # by defining the base stream here, no need to initiate the stream in system.py
-        effluent = effluent.mix_from(self.ins)
+        effluent = effluent.mix_from((inf, base))
         
     def _design(self):
         pass
@@ -500,6 +501,13 @@ class RedoxED(SanUnit):
         # a supporting electrolyte solution that only inlcudes sodium, potassium,
         # and chloride
         fc_out, ac_out = self.outs
+        
+        fc_out.copy_like(fc_in)
+        ac_out.copy_like(ac_in)
+
+        fc_out.imass['H2O'] = fc_in.imass['H2O']
+        ac_out.imass['H2O'] = ac_in.imass['H2O']
+        
         # Calculate the average flux from cell voltage
         # !!! how to reduce repetitiveness? when flux extrapolation constants
         # are imported in other ways instead of as class attributes in future,
@@ -509,22 +517,53 @@ class RedoxED(SanUnit):
         c6_flux = self.c6_slope*self.voltage + self.c6_const
         
         # Calculate accumulating channel effluent concentration
-        ac_out.imass['Propionate'] = ac_in.imass['Propionate'] + \
+        ac_out.imol['Propionate'] = ac_in.imol['Propionate'] + \
         c3_flux * self.area / self.flowrate 
-        ac_out.imass['Butyrate'] = ac_in.imass['Butyrate'] + \
+        ac_out.imol['Butyrate'] = ac_in.imol['Butyrate'] + \
         c4_flux * self.area / self.flowrate
-        ac_out.imass['Hexanoate'] = ac_in.imass['Hexanoate'] + \
+        ac_out.imol['Hexanoate'] = ac_in.imol['Hexanoate'] + \
         c6_flux * self.area / self.flowrate
         
         # Calcualte feeding channel effluent concentration        
-        fc_out.imass['Propionate'] = fc_in.imass['Propionate'] - \
+        fc_out.imol['Propionate'] = fc_in.imol['Propionate'] - \
         c3_flux * self.area / self.flowrate
-        fc_out.imass['Butyrate'] = fc_in.imass['Butyrate'] - \
+        fc_out.imol['Butyrate'] = fc_in.imol['Butyrate'] - \
         c4_flux * self.area / self.flowrate
-        fc_out.imass['Hexanoate'] = fc_in.imass['Hexanoate'] - \
+        fc_out.imol['Hexanoate'] = fc_in.imol['Hexanoate'] - \
         c6_flux * self.area / self.flowrate
         
 # !!! need to consider the mass transport of water?
+# =============================================================================
+#         J3 = self.c3_slope * self.voltage + self.c3_const  # mol/m2/s
+#         J4 = self.c4_slope * self.voltage + self.c4_const
+#         J6 = self.c6_slope * self.voltage + self.c6_const
+# 
+#         A = self.area  # m2
+#         n3_tr = J3 * A * 3600  # mol/hr
+#         n4_tr = J4 * A * 3600
+#         n6_tr = J6 * A * 3600
+# 
+#         def transfer(solute_id, n_tr):
+#             n_avail = fc_in.imol[solute_id]
+#             n_move = min(max(n_tr, 0.0), n_avail)  # no negative transfer, cannot exceed available
+#             breakpoint()
+#             fc_out.imol[solute_id] = n_avail - n_move
+#             ac_out.imol[solute_id] = ac_in.imol[solute_id] + n_move
+# 
+#         transfer('Propionate', n3_tr)
+#         transfer('Butyrate', n4_tr)
+#         transfer('Hexanoate', n6_tr)
+# =============================================================================
+        
+        # Set Na from electroneutrality (Cl conservative)
+        # Na+ = Cl- + sum(VFA-)
+        fc_vfa = sum(fc_out.imol[i] for i in ('Propionate', 'Butyrate', 'Hexanoate'))
+        ac_vfa = sum(ac_out.imol[i] for i in ('Propionate', 'Butyrate', 'Hexanoate'))
+
+        fc_out.imol['Na'] = max(fc_out.imol['Cl'] + fc_vfa, 0.0)
+        ac_out.imol['Na'] = max(ac_out.imol['Cl'] + ac_vfa, 0.0)
+
+
         
 # =============================================================================
 #     def _init_lca(self):

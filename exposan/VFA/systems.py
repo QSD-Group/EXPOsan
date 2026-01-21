@@ -11,10 +11,8 @@ from qsdsan import WasteStream
 from qsdsan.utils import ospath, data_path, misc
 from exposan.VFA._components import create_components
 from exposan.VFA import _sanunits_copy as su
-from qsdsan import sanunits as qsu
 import biosteam as bst
 from exposan.htl import _tea
-# !!! import _tea from VFA folder
 
 bst.PowerUtility.price = 0.0855 
 #$/kWh data US total industrial electricity price from EIA
@@ -25,10 +23,11 @@ bst.PowerUtility.price = 0.0855
 
 create_components()
 
-AD_effluent = WasteStream('AD_effluent', Na=13.67, Cl=21.08, K=0, H2O=7743.28, 
+AD_effluent = WasteStream('AD_effluent', Na=13.67, Cl=21.10, K=0, H2O=7743.28, 
                   Propionate=14.68, Butyrate=17.46, Hexanoate=23.02, 
-                  Digestate_solids = 233.5, units='kg/hr') # !!! change units to mass per time
+                  Digestate_solids = 412.274, units='kg/hr') # !!! change units to mass per time
 # The influent stream composition is estimated from the mass flowrate of the AD effluent in the AD unit in Joy's agile benchmarking paper
+# assuming 5% TSS content
 # Propionate MW = 74.08 g/mol
 # Butyrate MW = 88.11 g/mol
 # Hexanoate MW = 116.1583 g/mol
@@ -40,7 +39,7 @@ AD_effluent = WasteStream('AD_effluent', Na=13.67, Cl=21.08, K=0, H2O=7743.28,
 # # and water molar weight is 18.015 g/mol.
 # =============================================================================
 
-AC_influent = WasteStream('AC_influent', Na=13.67, Cl=21.08, K=0, H2O=7743.28,
+AC_influent = WasteStream('AC_influent', Na=13.67, Cl=21.10, K=0, H2O=7743.28,
                      Propionate=0, Butyrate=0, Hexanoate=0, units='kg/hr')
 # !!! to be changed, accumulating channel influent should be scaled based on the effluent flowrate from the pretreatment
 # concentrations taken from raw data: NaCl is 75 mM/min, volumetric flowrate
@@ -70,16 +69,25 @@ Centrifuge = su.SolidsSeparation('Centrifuge', ins = (AD_effluent, 'polymer'), o
 # the second influent of the SolidsSeparation unit is polymer, which is calculated based on the first influent, we would not need to define a separate stream for polymer. Polymer requirement will be calculated from ws0
 Centrifuge.ins[1].price = 1.3 / 0.453592 * qs.CEPCI_by_year[2023] / qs.CEPCI_by_year[2014] #unit price of polymer in $/lb from CapdetWorks 2014 database, convert from lb to kg, not including Ferric Chloride cost
 
-Microfiltration = qsu.SludgeThickening('Microfiltration', ins = Centrifuge-0, outs = ('effluent', 'sludge'), sludge_moisture = 0.5)
-BasePump = su.BaseDosing('BasePump', ins = (Microfiltration-0, 'base'), outs = ('effluent',))
-RedoxED = su.RedoxED('RedoxED', ins = (BasePump-0, AC_influent), outs = ('feeding_channel_out', 'accumulating_channel_out'), voltage = 1)
+Microfiltration = su.SludgeThickening('Microfiltration', ins = Centrifuge-0, outs = ('mf_effluent', 'sludge'), sludge_moisture = 0.5)
+BasePump = su.BaseDosing('BasePump', ins = (Microfiltration-0, AD_effluent.copy('AD_ref'), 'base'), outs = ('bp_effluent',))
+RedoxED = su.RedoxED('RedoxED', ins = (BasePump-0, AC_influent), outs = ('feeding_channel_out', 'accumulating_channel_out'), voltage = 0.8)
+### Match accumulating-channel influent volume to feeding-channel flow
+@RedoxED.add_specification(run=True)
+def match_ac_to_fc_flow():
+    fc = BasePump-0
+    ac = AC_influent
+    print("Spec called: FC flow =", fc.F_vol, "AC flow before =", ac.F_vol)
+    if ac.F_vol > 0:
+        ac.scale(fc.F_vol / ac.F_vol)
+    print("AC flow after =", ac.F_vol)
+
 
 ### Creating system
 sys = qs.System.from_units(ID = 'sys', units = [Centrifuge, Microfiltration, BasePump, RedoxED])
 
 
 ### add stream impact items
-
 # add impact for polymer
 qs.StreamImpactItem(ID='polymer_item',
                     linked_stream=stream.polymer,
@@ -100,15 +108,17 @@ qs.StreamImpactItem(ID='NaOH_item',
                     GlobalWarming=1.2514)
     
 
-tea = _tea.create_tea(sys, IRR_value=0.03, income_tax_value=0.21, finance_interest_value=0.03, labor_cost_value = 29.32)
+tea = _tea.create_tea(sys, IRR_value=0.03, income_tax_value=0.21, finance_interest_value=0.03, labor_cost_value = 29.32, duration = (2025, 2035))
 
-Electricity = qs.ImpactItem('Electricity', 'kWh', GWP=1.1)
-get_power = sum([u.power_utility.rate for u in sys.units]) * (24 * 365 * 30)
+sys.simulate()
 
-lca = qs.LCA(system=sys, lifetime=30, lifetime_unit='yr',
+Electricity = qs.ImpactItem('Electricity', 'kWh', GWP=1.1) #!!! include uncertainty range for electricity GWP in the technical assumption data sheet
+get_power = sum([u.power_utility.rate for u in sys.units]) * (24 * 365 * 10)
+
+lca = qs.LCA(system=sys, lifetime=10, lifetime_unit='yr',
        Electricity = get_power)
     
     # for income tax, 0.35 is the old federal income tax rate
     # in the future, use 0.21 (new federal income tax rate) as the income tax rate
     # if it is necessary to add a state income tax, see exposan.htl.income_tax
-sys.simulate()
+
