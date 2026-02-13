@@ -610,7 +610,7 @@ class FePO4_recovery(SanUnit):
         Mass purity of produced FePO4, [-].
     '''
     _N_ins = 2
-    _N_outs = 2
+    _N_outs = 3
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
                  isdynamic=False, food_sludge_ratio=1, food_waste_moisture=0.2,
@@ -622,12 +622,13 @@ class FePO4_recovery(SanUnit):
     
     def _run(self):
         sludge, food_waste = self.ins
-        product, effluent = self.outs
+        product, effluent, cake = self.outs
         
         sludge.phase = 'l'
         food_waste.phase = 'l'
         product.phase = 's'
         effluent.phase = 'l'
+        cake.phase = 'l'
         
         if self.food_sludge_ratio not in [0, 1/3, 2/3, 1, 4/3]:
             raise RuntimeError('food_sludge_ratio must be one of the follow: 0, 1/3, 2/3, 1, 4/3.')
@@ -645,17 +646,26 @@ class FePO4_recovery(SanUnit):
         
         self.cmps = self.thermo.chemicals
         
+        # TODO: this works for at least G1 and H1 for now, but may need further fine-tuning
+        
+        # =====================================================================
+        
         # TODO: adjust the Fe dosage in `MetalDosage`
         # no other Fe-containing components other than S_PO4 and X_FePO4
         Fe_released = (sludge.imol['X_FeOH'] + sludge.imol['X_FePO4']) * metal_P_release[self.food_sludge_ratio]['metal']/100
         # no other P-containing components other than S_PO4 and X_FePO4
-        P_released = (sludge.imol['S_PO4'] + sludge.imol['X_FePO4']) * metal_P_release[self.food_sludge_ratio]['metal']/100
+        P_released = (sludge.imol['S_PO4'] + sludge.imol['X_FePO4']) * metal_P_release[self.food_sludge_ratio]['P']/100
         
-        product.imass['X_FePO4'] = min(Fe_released, P_released)
+        product.imol['X_FePO4'] = min(Fe_released, P_released)
         product.imass['X_I'] = product.imass['X_FePO4']/self.product_purity*(1 - self.product_purity)
         
-        # T0ODO: update; can ignore mass balance
+        cake.imass['X_I'] = sludge.imass['X_I'] - product.imass['X_I']
+        # TODO: write 0.8 as a parameter?
+        cake.imass['H2O'] = cake.imass['X_I']/0.2*0.8
+        
+        # TODO: update; can ignore mass balance
         effluent.mix_from(self.ins)
+        # TODO: in this way, S_PO4 and X_FeOH will unevenly build up
         effluent.imol['S_PO4'] = effluent.imol['S_PO4'] + effluent.imol['X_FePO4'] - product.imol['X_FePO4']
         effluent.imol['X_FeOH'] = effluent.imol['X_FeOH'] + effluent.imol['X_FePO4'] - product.imol['X_FePO4']
         effluent.imol['X_FePO4'] = 0
@@ -664,6 +674,12 @@ class FePO4_recovery(SanUnit):
         effluent.imass['S_A'] += effluent.imass['X_S'] * 0.65
         # TODO: write 0.03 as a parameter
         effluent.imass['S_F'] += effluent.imass['X_S'] * 0.03
+        # TODO: in this away, X_S will build up
+        effluent.imass['X_S'] = 0
+        # remove water from food waste
+        effluent.imass['H2O'] -= food_waste.imass['H2O']
+        
+        # =====================================================================
         
         # ('S_N2', 0.21009170299490135): minimal; assume no change
         # ('S_NH4', 0.302415334699883): minimal; assume no change
@@ -700,18 +716,30 @@ class FePO4_recovery(SanUnit):
         self._dstate = self._state * 0.
     
     def _update_state(self):
-        product, effluent = self.outs
+        product, effluent, cake = self.outs
+        
         if product.state is None: product.state = self._state.copy()
+        
         if effluent.state is None:
             effluent.state = self._state.copy()
         else:
             effluent.state[:-1] = effluent.conc
             effluent.state[-1] = effluent.F_vol * 24
+        
+        if cake.state is None:
+            cake.state = self._state.copy()
+        else:
+            cake.state[:-1] = cake.conc
+            cake.state[-1] = cake.F_vol * 24
     
     def _update_dstate(self):
-        product, effluent = self.outs
+        product, effluent, cake = self.outs
+        
         if product.dstate is None: product.dstate = self._dstate.copy()
+        
         if effluent.dstate is None: effluent.dstate = self._dstate.copy()
+        
+        if cake.dstate is None: cake.dstate = self._dstate.copy()
     
     @property
     def AE(self):

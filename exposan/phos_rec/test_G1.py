@@ -67,7 +67,7 @@ def create_g1_system(flowsheet=None, default_init_conds=True):
         )
     
     PR = psu.FePO4_recovery(
-        'PR', ins=[PC-1, 'food_waste'], outs=['FePO4', 'PR_effluent'], isdynamic=True
+        'PR', ins=[PC-1, 'food_waste'], outs=['FePO4', 'PR_effluent', 'PR_cake'], isdynamic=True
         )
     
     n_zones = 6
