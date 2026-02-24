@@ -653,8 +653,15 @@ class FePO4_recovery(SanUnit):
         # TODO: adjust the Fe dosage in `MetalDosage`
         # no other Fe-containing components other than S_PO4 and X_FePO4
         Fe_released = (sludge.imol['X_FeOH'] + sludge.imol['X_FePO4']) * metal_P_release[self.food_sludge_ratio]['metal']/100
-        # no other P-containing components other than S_PO4 and X_FePO4
-        P_released = (sludge.imol['S_PO4'] + sludge.imol['X_FePO4']) * metal_P_release[self.food_sludge_ratio]['P']/100
+        
+        # P released as a function of available total P and food_sludge_ratio
+        cmps = sludge.components
+        MW_P = 30.97  # g/mol
+        MW  = np.array([sludge.chemicals[c.ID].MW for c in cmps], dtype=float)  # g/mol
+        nuP = np.array(cmps.i_P, dtype=float) * MW / MW_P                       # mol P / mol comp
+        imol = np.array([sludge.imol[c.ID] for c in cmps], dtype=float)         # kmol/hr
+        P_total = float(imol @ nuP)                                             # kmol-P/hr
+        P_released = P_total * metal_P_release[self.food_sludge_ratio]['P'] / 100
         
         product.imol['X_FePO4'] = min(Fe_released, P_released)
         product.imass['X_I'] = product.imass['X_FePO4']/self.product_purity*(1 - self.product_purity)
@@ -674,7 +681,7 @@ class FePO4_recovery(SanUnit):
         effluent.imass['S_A'] += effluent.imass['X_S'] * 0.65
         # TODO: write 0.03 as a parameter
         effluent.imass['S_F'] += effluent.imass['X_S'] * 0.03
-        # TODO: in this away, X_S will build up
+        # TODO: in this way, X_S will build up
         effluent.imass['X_S'] = 0
         # remove water from food waste
         effluent.imass['H2O'] -= food_waste.imass['H2O']
