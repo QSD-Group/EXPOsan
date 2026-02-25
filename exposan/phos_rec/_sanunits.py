@@ -672,7 +672,7 @@ class FePO4_recovery(SanUnit):
         
         # TODO: adjust the Fe dosage in `MetalDosage`
         
-        # P released as a function of TP and food_sludge_ratio (probably not the case)
+        # P released as a function of TP and food_sludge_ratio (probably not the case, therefore commented)
         # MW_P = 30.97  # g/mol
         # MW  = np.array([sludge.chemicals[c.ID].MW for c in cmps], dtype=float)  # g/mol
         # nuP = np.array(cmps.i_P, dtype=float) * MW / MW_P                       # mol P / mol comp
@@ -682,16 +682,21 @@ class FePO4_recovery(SanUnit):
         
         # P released as a function of available PO4 and food_sludge_ratio
         cmps = sludge.components
-        P_released = (sludge.imol['S_PO4'] + sludge.imol['X_FePO4'] + sludge.imol['X_AlPO4']) * metal_P_release[self.food_sludge_ratio]['P']/100
+        PO4_released = (sludge.imol['S_PO4'] + sludge.imol['X_FePO4'] + sludge.imol['X_AlPO4']) * metal_P_release[self.food_sludge_ratio]['P']/100
         
         # Fe released as a function of available Fe and food_sludge_ratio
         Fe_released = (sludge.imol['X_FeOH'] + sludge.imol['X_FePO4']) * metal_P_release[self.food_sludge_ratio]['metal']/100
         
-        product.imol['X_FePO4'] = min(Fe_released, P_released)
+        product.imol['X_FePO4'] = min(Fe_released, PO4_released)
         product.imass['X_I'] = product.imass['X_FePO4']/self.product_purity*(1 - self.product_purity)
         
-        cake.imass['X_I'] = sludge.imass['X_I'] - product.imass['X_I']
-        # TODO: write 0.8 as a parameter?
+        if (sludge.imass['X_I'] - product.imass['X_I']) < -1e-9: # tol = 1e-9
+            raise ValueError(
+                f"Negative X_I mass in cake: {sludge.imass['X_I'] - product.imass['X_I']:.6e} kg/hr. "
+                "Check mass balance or upstream removal."
+            )
+        cake.imass['X_I'] = max(sludge.imass['X_I'] - product.imass['X_I'], 0.0)
+        
         cake.imass['H2O'] = cake.imass['X_I']/(1- self.cake_moisture) * self.cake_moisture
         
         # TODO: update; can ignore mass balance
