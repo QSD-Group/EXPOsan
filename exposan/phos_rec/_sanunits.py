@@ -605,9 +605,21 @@ class FePO4_recovery(SanUnit):
     food_sludge_ratio : float
         Mass ratio of organics bewteen food waste and sludge, [-].
     food_waste_moisture : float
-        Mositure content of food waste, [-].
+        Moisture content of food waste, [-].
     product_purity : float
         Mass purity of produced FePO4, [-].
+    f_XS_SA : float,
+        Fraction of food waste organics fermented to acetate
+    f_XS_vfa : float
+        Fraction of food waste organics fermented to VFAs and Lactate
+    f_XS_eth : float
+        Fraction of food waste organics fermented to ethanol
+    f_XS_cake : float
+        Fraction of food waste organics lost to residue
+    f_XS_gas : float
+        Fraction of food waste organics lost to CO2
+    cake_moisture : float
+        Moisture content of cake, [-].
     '''
     _N_ins = 2
     _N_outs = 4
@@ -615,7 +627,7 @@ class FePO4_recovery(SanUnit):
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
                  isdynamic=False, food_sludge_ratio=1, food_waste_moisture=0.2,
                  product_purity=0.99, f_XS_SA = 0.325, f_XS_vfa = 0.325, f_XS_eth = 0.02, 
-                 f_XS_cake = 0.25, f_XS_gas = 0.05):
+                 f_XS_cake = 0.25, f_XS_gas = 0.05, cake_moisture=0.8):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with, isdynamic=isdynamic)
         self.food_sludge_ratio = food_sludge_ratio
         self.food_waste_moisture = food_waste_moisture
@@ -625,6 +637,7 @@ class FePO4_recovery(SanUnit):
         self.f_XS_eth = f_XS_eth 
         self.f_XS_cake = f_XS_cake 
         self.f_XS_gas = f_XS_gas 
+        self.cake_moisture = cake_moisture
     
     def _run(self):
         sludge, food_waste = self.ins
@@ -658,24 +671,28 @@ class FePO4_recovery(SanUnit):
         # =====================================================================
         
         # TODO: adjust the Fe dosage in `MetalDosage`
-        # no other Fe-containing components other than S_PO4 and X_FePO4
-        Fe_released = (sludge.imol['X_FeOH'] + sludge.imol['X_FePO4']) * metal_P_release[self.food_sludge_ratio]['metal']/100
         
-        # P released as a function of available total P and food_sludge_ratio
+        # P released as a function of TP and food_sludge_ratio (probably not the case)
+        # MW_P = 30.97  # g/mol
+        # MW  = np.array([sludge.chemicals[c.ID].MW for c in cmps], dtype=float)  # g/mol
+        # nuP = np.array(cmps.i_P, dtype=float) * MW / MW_P                       # mol P / mol comp
+        # imol = np.array([sludge.imol[c.ID] for c in cmps], dtype=float)         # kmol/hr
+        # P_total = float(imol @ nuP)                                             # kmol-P/hr
+        # P_released = P_total * metal_P_release[self.food_sludge_ratio]['P'] / 100
+        
+        # P released as a function of available PO4 and food_sludge_ratio
         cmps = sludge.components
-        MW_P = 30.97  # g/mol
-        MW  = np.array([sludge.chemicals[c.ID].MW for c in cmps], dtype=float)  # g/mol
-        nuP = np.array(cmps.i_P, dtype=float) * MW / MW_P                       # mol P / mol comp
-        imol = np.array([sludge.imol[c.ID] for c in cmps], dtype=float)         # kmol/hr
-        P_total = float(imol @ nuP)                                             # kmol-P/hr
-        P_released = P_total * metal_P_release[self.food_sludge_ratio]['P'] / 100
+        P_released = (sludge.imol['S_PO4'] + sludge.imol['X_FePO4'] + sludge.imol['X_AlPO4']) * metal_P_release[self.food_sludge_ratio]['P']/100
+        
+        # Fe released as a function of available Fe and food_sludge_ratio
+        Fe_released = (sludge.imol['X_FeOH'] + sludge.imol['X_FePO4']) * metal_P_release[self.food_sludge_ratio]['metal']/100
         
         product.imol['X_FePO4'] = min(Fe_released, P_released)
         product.imass['X_I'] = product.imass['X_FePO4']/self.product_purity*(1 - self.product_purity)
         
         cake.imass['X_I'] = sludge.imass['X_I'] - product.imass['X_I']
         # TODO: write 0.8 as a parameter?
-        cake.imass['H2O'] = cake.imass['X_I']/0.2*0.8
+        cake.imass['H2O'] = cake.imass['X_I']/(1- self.cake_moisture) * self.cake_moisture
         
         # TODO: update; can ignore mass balance
         effluent.mix_from(self.ins)
@@ -685,22 +702,12 @@ class FePO4_recovery(SanUnit):
         effluent.imol['X_FePO4'] = 0
         effluent.imol['X_I'] = 0
         
-        org_to_ethanol=0.02,
-        org_to_residue=0.25,
-        VFA_ratio={'Ac': 0.5, 'Pr': 0.24, 'Bu': 0.23, 'Va': 0.02, 'Lac': 0.01},
-        
-        f_XS_SA = 0.325
-        f_XS_vfa = 0.325
-        f_XS_eth = 0.02
-        f_XS_cake = 0.25
-        f_XS_gas = 0.05
-        
-        effluent.imass['S_A'] += effluent.imass['X_S'] * (f_XS_SA) # share of acetate
-        effluent.imass['S_F'] += effluent.imass['X_S'] * (f_XS_eth + f_XS_vfa) # share of ethanol + all non-acetate VFAs (and lactate)
-        cake.imass['X_S'] += effluent.imass['X_S']*f_XS_cake
+        effluent.imass['S_A'] += effluent.imass['X_S'] * (self.f_XS_SA) # share of acetate
+        effluent.imass['S_F'] += effluent.imass['X_S'] * (self.f_XS_eth + self.f_XS_vfa) # share of ethanol + all non-acetate VFAs (and lactate)
+        cake.imass['X_S'] += effluent.imass['X_S']*self.f_XS_cake
         # (COD kg/hr) * f_XS_2_SIC * (g C/g COD) * (g SIC/g C) =  kg SIC / hr (Assuming the unit is NOT anaerobic)
-        gas.imass['S_IC'] += effluent.imass['X_S']*f_XS_gas*effluent.components.X_S.i_C*gas.components.S_IC.i_mass # released as CO2
-        effluent.imass['X_S'] -= effluent.imass['X_S']*(1 -f_XS_SA -f_XS_vfa -f_XS_eth -f_XS_cake -f_XS_gas)
+        gas.imass['S_IC'] += effluent.imass['X_S']*self.f_XS_gas*effluent.components.X_S.i_C*gas.components.S_IC.i_mass # released as CO2
+        effluent.imass['X_S'] -= effluent.imass['X_S']*(1 -self.f_XS_SA -self.f_XS_vfa -self.f_XS_eth -self.f_XS_cake -self.f_XS_gas)
         # remove water from food waste
         
         effluent.imass['H2O'] -= food_waste.imass['H2O']
