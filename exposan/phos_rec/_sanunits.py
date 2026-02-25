@@ -610,7 +610,7 @@ class FePO4_recovery(SanUnit):
         Mass purity of produced FePO4, [-].
     '''
     _N_ins = 2
-    _N_outs = 3
+    _N_outs = 4
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
                  isdynamic=False, food_sludge_ratio=1, food_waste_moisture=0.2,
@@ -622,13 +622,14 @@ class FePO4_recovery(SanUnit):
     
     def _run(self):
         sludge, food_waste = self.ins
-        product, effluent, cake = self.outs
+        product, effluent, cake, gas = self.outs
         
         sludge.phase = 'l'
         food_waste.phase = 'l'
         product.phase = 's'
         effluent.phase = 'l'
         cake.phase = 'l'
+        gas.phase = 'g'
         
         if self.food_sludge_ratio not in [0, 1/3, 2/3, 1, 4/3]:
             raise RuntimeError('food_sludge_ratio must be one of the follow: 0, 1/3, 2/3, 1, 4/3.')
@@ -677,14 +678,22 @@ class FePO4_recovery(SanUnit):
         effluent.imol['X_FeOH'] = effluent.imol['X_FeOH'] + effluent.imol['X_FePO4'] - product.imol['X_FePO4']
         effluent.imol['X_FePO4'] = 0
         effluent.imol['X_I'] = 0
-        # TODO: write 0.65 as a parameter
-        effluent.imass['S_A'] += effluent.imass['X_S'] * 0.65
-        # TODO: write 0.03 as a parameter
-        effluent.imass['S_F'] += effluent.imass['X_S'] * 0.03
-        # TODO: in this way, X_S will build up
-        effluent.imass['X_S'] = 0
+        
+        org_to_ethanol=0.02,
+        org_to_residue=0.25,
+        VFA_ratio={'Ac': 0.5, 'Pr': 0.24, 'Bu': 0.23, 'Va': 0.02, 'Lac': 0.01},
+        
+        
+        # TODO: write 0.65, 0.5, 0.02, 0.25, and 0.05 as parameters
+        effluent.imass['S_A'] += effluent.imass['X_S'] * (0.65*0.5) # share of acetate
+        effluent.imass['S_F'] += effluent.imass['X_S'] * (0.02 + 0.65*0.5) # share of ethanol + all non-acetate VFAs (and lactate)
+        cake.imass['X_S'] += effluent.imass['X_S']*0.25
+        # (COD kg/hr) * f_XS_2_SIC * (g C/g COD) * (g SIC/g C) =  kg SIC / hr (Assuming the unit is NOT anaerobic)
+        gas.imass['S_IC'] += effluent.imass['X_S']*0.05*effluent.components.X_S.i_C*gas.components.S_IC.i_mass # released as CO2
+        effluent.imass['X_S'] -= effluent.imass['X_S']*0.97
         # remove water from food waste
         effluent.imass['H2O'] -= food_waste.imass['H2O']
+        print(f"effluent.imass.H2O = {effluent.imass['H2O']}")
         
         # =====================================================================
         
@@ -723,7 +732,7 @@ class FePO4_recovery(SanUnit):
         self._dstate = self._state * 0.
     
     def _update_state(self):
-        product, effluent, cake = self.outs
+        product, effluent, cake, gas = self.outs
         
         if product.state is None: product.state = self._state.copy()
         
@@ -738,15 +747,23 @@ class FePO4_recovery(SanUnit):
         else:
             cake.state[:-1] = cake.conc
             cake.state[-1] = cake.F_vol * 24
+            
+        if gas.state is None:
+            gas.state = self._state.copy()
+        else:
+            gas.state[:-1] = gas.conc
+            gas.state[-1] = gas.F_vol * 24
     
     def _update_dstate(self):
-        product, effluent, cake = self.outs
+        product, effluent, cake, gas = self.outs
         
         if product.dstate is None: product.dstate = self._dstate.copy()
         
         if effluent.dstate is None: effluent.dstate = self._dstate.copy()
         
         if cake.dstate is None: cake.dstate = self._dstate.copy()
+        
+        if gas.dstate is None: gas.dstate = self._dstate.copy()
     
     @property
     def AE(self):
