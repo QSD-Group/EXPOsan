@@ -67,7 +67,7 @@ def create_g1_system(flowsheet=None, default_init_conds=True):
         )
     
     PR = psu.FePO4_recovery(
-        'PR', ins=[PC-1, 'food_waste'], outs=['FePO4', 'PR_effluent', 'PR_cake'], isdynamic=True
+        'PR', ins=[PC-1, 'food_waste'], outs=['FePO4', 'PR_effluent', 'PR_cake', 'PR_gas'], isdynamic=True
         )
     
     n_zones = 6
@@ -160,8 +160,8 @@ def create_g1_system(flowsheet=None, default_init_conds=True):
     sys = qs.System(
         ID, 
         path=(MD, PC, PR, S1, A1, A2, A3, A4, O5, O6, FC, 
-              MT, J1, AD, J2, DW, M2, HD),
-        recycle=(O6-0, FC-1, HD-0)
+              MT, J1, AD, J2, DW, M2, HD)
+        # , recycle=(O6-0, FC-1, HD-0)
         )
     sys.set_dynamic_tracker(FC-0, AD)
     
@@ -180,7 +180,7 @@ def run(sys, t, t_step, method=None, **kwargs):
         t_span=(0,t),
         # t_eval=np.arange(0, t+t_step, t_step),
         method=method,
-        print_t=True,
+        print_t=False,
         # rtol=1e-2,
         # atol=1e-3,
         # export_state_to=f'results/sol_{t}d_{method}.xlsx',
@@ -202,6 +202,11 @@ if __name__ == '__main__':
     # method = 'LSODA'
     
     run(sys, t, t_step, method=method)
+    fs = sys.flowsheet.stream
+    fu = sys.flowsheet.unit
+    sys.diagram()
+    fig, axis = fs.SE.scope.plot_time_series(('S_A', 'S_F', 'X_S', 'S_NH4', 'X_I', 'S_I', 'S_N2')) 
+    #     fig
     # biomass_IDs = ('X_H', 'X_PAO', 'X_AUT')
     # srt = get_SRT(sys, biomass_IDs,
     #               wastage=[WAS],
