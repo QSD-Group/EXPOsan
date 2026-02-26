@@ -585,6 +585,9 @@ class FePO4_recovery(SanUnit):
     with this unit. This unit only needs operational costs as the benchmarking
     models do not have capital costs and LCA.
     
+    The unit has two inputs primary sludge, and food waste. FePO4 is recovered, along
+    with cake, effluent stream, and a gas stream.
+    
     Operational costs can be added using the `add_OPEX` function. Operational costs
     include the following items. Relevant data and calculation methods may be found
     in `exposan.werf.models`.
@@ -619,7 +622,7 @@ class FePO4_recovery(SanUnit):
     f_XS_gas : float
         Fraction of food waste organics lost to CO2
     cake_moisture : float
-        Moisture content of cake, [-].
+        Moisture content of cake, [-]. 
     '''
     _N_ins = 2
     _N_outs = 4
@@ -650,7 +653,7 @@ class FePO4_recovery(SanUnit):
         cake.phase = 'l'
         gas.phase = 'g'
         
-        effluent.mix_from(self.ins)
+        self.cmps = self.thermo.chemicals
         
         if self.food_sludge_ratio not in [0, 1/3, 2/3, 1, 4/3]:
             raise RuntimeError('food_sludge_ratio must be one of the follow: 0, 1/3, 2/3, 1, 4/3.')
@@ -658,20 +661,11 @@ class FePO4_recovery(SanUnit):
         food_waste.imass['X_S'] = sludge.imass['X_S']*self.food_sludge_ratio
         food_waste.imass['H2O'] = food_waste.imass['X_S']/(1-self.food_waste_moisture) * self.food_waste_moisture
         
-        metal_P_release = {
-            0: {'metal': 2.124263, 'P': 11.0693},
-            1/3: {'metal': 21.13664, 'P': 44.31886},
-            2/3: {'metal': 60.67351, 'P': 71.22673},
-            1: {'metal': 83.07559, 'P': 82.30645},
-            4/3: {'metal': 85, 'P': 83}
-        }
-        
-        self.cmps = self.thermo.chemicals
-        
         # TODO: this works for at least G1 and H1 for now, but may need further fine-tuning
         # TODO: adjust the Fe dosage in `MetalDosage`
         
         # P released as a function of TP and food_sludge_ratio (probably not the case, therefore commented)
+        
         # MW_P = 30.97  # g/mol
         # MW  = np.array([sludge.chemicals[c.ID].MW for c in cmps], dtype=float)  # g/mol
         # nuP = np.array(cmps.i_P, dtype=float) * MW / MW_P                       # mol P / mol comp
@@ -687,7 +681,7 @@ class FePO4_recovery(SanUnit):
             4/3: {'metal': 85, 'P': 83}
         }
 
-        P_pct  = metal_P_release[self.food_sludge_ratio]['P']     / 100
+        P_pct  = metal_P_release[self.food_sludge_ratio]['P'] / 100
         Fe_pct = metal_P_release[self.food_sludge_ratio]['metal'] / 100
 
         # FePO4 contains both Fe and P; therefore it would mobilize only once 
@@ -716,28 +710,20 @@ class FePO4_recovery(SanUnit):
         product.imass['X_I'] = product.imass['X_FePO4']/self.product_purity*(1 - self.product_purity)
         
         if (sludge.imass['X_I'] - product.imass['X_I']) < -1e-9: # tol = 1e-9
-            raise ValueError(
-                f"Negative X_I mass in cake: {sludge.imass['X_I'] - product.imass['X_I']:.6e} kg/hr. "
-                "Check mass balance or upstream removal."
-            )
+            raise ValueError(f"Negative X_I mass in cake: {sludge.imass['X_I'] - product.imass['X_I']:.6e} kg/hr. "
+                "Check mass balance or upstream removal.")
         cake.imass['X_I'] = max(sludge.imass['X_I'] - product.imass['X_I'], 0.0)
+        
+        sludge.imass['X_I'] -= (product.imass['X_I'] + cake.imass['X_I'])
+        sludge.imass['X_I'] = max(sludge.imass['X_I'], 0.0)
         
         cake.imass['H2O'] = cake.imass['X_I']/(1- self.cake_moisture) * self.cake_moisture
         
-        # Now since effluent = sum of flow of food waste + primary sludge
-        # And cake.imass['H2O'] is already defined
-        # For water mass balance
+        effluent.mix_from(self.ins)
+        # Now since effluent = sum of flow of food waste + primary sludge, and cake.imass['H2O'] is already defined.
         effluent.imass['H2O'] -= cake.imass['H2O'] # Because effluent.mix_from(self.ins) 
         if effluent.imass['H2O'] < -1e-9: # tol = 1e-9
-            raise ValueError(
-                f"Negative flow in effluent. Reduce moisture in cake"
-            )
-        
-        # TODO: in this way, S_PO4 and X_FeOH will unevenly build up
-        # effluent.imol['S_PO4'] = effluent.imol['S_PO4'] + effluent.imol['X_FePO4'] - product.imol['X_FePO4']
-        # effluent.imol['X_FeOH'] = effluent.imol['X_FeOH'] + effluent.imol['X_FePO4'] - product.imol['X_FePO4']
-        # effluent.imol['X_FePO4'] = 0
-        # effluent.imol['X_I'] = 0
+            raise ValueError("Negative flow in effluent. Reduce moisture in cake")
         
         effluent.imass['S_A'] += effluent.imass['X_S'] * (self.f_XS_SA) # share of acetate
         effluent.imass['S_F'] += effluent.imass['X_S'] * (self.f_XS_eth + self.f_XS_vfa) # share of ethanol + all non-acetate VFAs (and lactate)
@@ -746,7 +732,7 @@ class FePO4_recovery(SanUnit):
         #  kg SIC / hr    =    (COD kg/hr)         * f_XS_2_SIC    *          (g C/g COD)        *           (g SIC/g C) (Assuming the unit is NOT anaerobic)
         gas.imass['S_IC'] += effluent.imass['X_S'] * self.f_XS_gas * effluent.components.X_S.i_C * gas.components.S_IC.i_mass # released as CO2
         
-        effluent.imass['X_S'] -= effluent.imass['X_S']*(1 -self.f_XS_SA -self.f_XS_vfa -self.f_XS_eth -self.f_XS_cake -self.f_XS_gas)
+        effluent.imass['X_S'] -= effluent.imass['X_S']*(self.f_XS_SA + self.f_XS_vfa + self.f_XS_eth + self.f_XS_cake + self.f_XS_gas)
 
         # =====================================================================
         
@@ -787,12 +773,8 @@ class FePO4_recovery(SanUnit):
     def _update_state(self):
         product, effluent, cake, gas = self.outs
         
-        if product.state is None: 
-            product.state = self._state.copy()
-        else:
-            product.state[:-1] = product.conc
-            product.state[-1] = product.F_vol * 24
-            
+        if product.state is None: product.state = self._state.copy()
+        
         if effluent.state is None:
             effluent.state = self._state.copy()
         else:
@@ -805,12 +787,8 @@ class FePO4_recovery(SanUnit):
             cake.state[:-1] = cake.conc
             cake.state[-1] = cake.F_vol * 24
             
-        if gas.state is None:
-            gas.state = self._state.copy()
-        else:
-            gas.state[:-1] = gas.conc
-            gas.state[-1] = gas.F_vol * 24
-    
+        if gas.state is None: gas.state = self._state.copy()
+        
     def _update_dstate(self):
         product, effluent, cake, gas = self.outs
         
