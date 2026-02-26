@@ -650,6 +650,8 @@ class FePO4_recovery(SanUnit):
         cake.phase = 'l'
         gas.phase = 'g'
         
+        effluent.mix_from(self.ins)
+        
         if self.food_sludge_ratio not in [0, 1/3, 2/3, 1, 4/3]:
             raise RuntimeError('food_sludge_ratio must be one of the follow: 0, 1/3, 2/3, 1, 4/3.')
         
@@ -667,9 +669,6 @@ class FePO4_recovery(SanUnit):
         self.cmps = self.thermo.chemicals
         
         # TODO: this works for at least G1 and H1 for now, but may need further fine-tuning
-        
-        # =====================================================================
-        
         # TODO: adjust the Fe dosage in `MetalDosage`
         
         # P released as a function of TP and food_sludge_ratio (probably not the case, therefore commented)
@@ -680,14 +679,40 @@ class FePO4_recovery(SanUnit):
         # P_total = float(imol @ nuP)                                             # kmol-P/hr
         # P_released = P_total * metal_P_release[self.food_sludge_ratio]['P'] / 100
         
-        # P released as a function of available PO4 and food_sludge_ratio
-        cmps = sludge.components
-        PO4_released = (sludge.imol['S_PO4'] + sludge.imol['X_FePO4'] + sludge.imol['X_AlPO4']) * metal_P_release[self.food_sludge_ratio]['P']/100
+        metal_P_release = {
+            0: {'metal': 2.124263, 'P': 11.0693},
+            1/3: {'metal': 21.13664, 'P': 44.31886},
+            2/3: {'metal': 60.67351, 'P': 71.22673},
+            1: {'metal': 83.07559, 'P': 82.30645},
+            4/3: {'metal': 85, 'P': 83}
+        }
+
+        P_pct  = metal_P_release[self.food_sludge_ratio]['P']     / 100
+        Fe_pct = metal_P_release[self.food_sludge_ratio]['metal'] / 100
+
+        # FePO4 contains both Fe and P; therefore it would mobilize only once 
+        FePO4_pct = min(P_pct, Fe_pct) # This is a conservative assumption 
+        dFePO4_mob     = sludge.imol['X_FePO4'] * FePO4_pct   
+        dFe_from_FeOH  = sludge.imol['X_FeOH']  * Fe_pct
+        dAlPO4_mob     = sludge.imol['X_AlPO4'] * P_pct
+        dPO4_from_S    = sludge.imol['S_PO4']   * 1  # completely available since it is soluble 
+
+        Fe_available   = dFe_from_FeOH + dFePO4_mob
+        PO4_available  = dPO4_from_S + dFePO4_mob + dAlPO4_mob
+
+        dFePO4_precip = min(Fe_available, PO4_available)
+        product.imol['X_FePO4'] = dFePO4_precip
+
+        sludge.imol['X_FeOH']  -= dFe_from_FeOH
+        sludge.imol['X_FePO4'] -= dFePO4_mob
+        sludge.imol['X_AlPO4'] -= dAlPO4_mob
+        sludge.imol['S_PO4']   -= dPO4_from_S
+
+        # Return excess back to sludge
+        sludge.imol['S_PO4']  += max(PO4_available - dFePO4_precip, 0.0)
+        sludge.imol['X_FeOH'] += max(Fe_available  - dFePO4_precip, 0.0)
         
-        # Fe released as a function of available Fe and food_sludge_ratio
-        Fe_released = (sludge.imol['X_FeOH'] + sludge.imol['X_FePO4']) * metal_P_release[self.food_sludge_ratio]['metal']/100
-        
-        product.imol['X_FePO4'] = min(Fe_released, PO4_released)
+        # Balance of inert material
         product.imass['X_I'] = product.imass['X_FePO4']/self.product_purity*(1 - self.product_purity)
         
         if (sludge.imass['X_I'] - product.imass['X_I']) < -1e-9: # tol = 1e-9
@@ -699,24 +724,30 @@ class FePO4_recovery(SanUnit):
         
         cake.imass['H2O'] = cake.imass['X_I']/(1- self.cake_moisture) * self.cake_moisture
         
-        # TODO: update; can ignore mass balance
-        effluent.mix_from(self.ins)
+        # Now since effluent = sum of flow of food waste + primary sludge
+        # And cake.imass['H2O'] is already defined
+        # For water mass balance
+        effluent.imass['H2O'] -= cake.imass['H2O'] # Because effluent.mix_from(self.ins) 
+        if effluent.imass['H2O'] < -1e-9: # tol = 1e-9
+            raise ValueError(
+                f"Negative flow in effluent. Reduce moisture in cake"
+            )
+        
         # TODO: in this way, S_PO4 and X_FeOH will unevenly build up
-        effluent.imol['S_PO4'] = effluent.imol['S_PO4'] + effluent.imol['X_FePO4'] - product.imol['X_FePO4']
-        effluent.imol['X_FeOH'] = effluent.imol['X_FeOH'] + effluent.imol['X_FePO4'] - product.imol['X_FePO4']
-        effluent.imol['X_FePO4'] = 0
-        effluent.imol['X_I'] = 0
+        # effluent.imol['S_PO4'] = effluent.imol['S_PO4'] + effluent.imol['X_FePO4'] - product.imol['X_FePO4']
+        # effluent.imol['X_FeOH'] = effluent.imol['X_FeOH'] + effluent.imol['X_FePO4'] - product.imol['X_FePO4']
+        # effluent.imol['X_FePO4'] = 0
+        # effluent.imol['X_I'] = 0
         
         effluent.imass['S_A'] += effluent.imass['X_S'] * (self.f_XS_SA) # share of acetate
         effluent.imass['S_F'] += effluent.imass['X_S'] * (self.f_XS_eth + self.f_XS_vfa) # share of ethanol + all non-acetate VFAs (and lactate)
         cake.imass['X_S'] += effluent.imass['X_S']*self.f_XS_cake
-        # (COD kg/hr) * f_XS_2_SIC * (g C/g COD) * (g SIC/g C) =  kg SIC / hr (Assuming the unit is NOT anaerobic)
-        gas.imass['S_IC'] += effluent.imass['X_S']*self.f_XS_gas*effluent.components.X_S.i_C*gas.components.S_IC.i_mass # released as CO2
+        
+        #  kg SIC / hr    =    (COD kg/hr)         * f_XS_2_SIC    *          (g C/g COD)        *           (g SIC/g C) (Assuming the unit is NOT anaerobic)
+        gas.imass['S_IC'] += effluent.imass['X_S'] * self.f_XS_gas * effluent.components.X_S.i_C * gas.components.S_IC.i_mass # released as CO2
+        
         effluent.imass['X_S'] -= effluent.imass['X_S']*(1 -self.f_XS_SA -self.f_XS_vfa -self.f_XS_eth -self.f_XS_cake -self.f_XS_gas)
-        # remove water from food waste
-        
-        effluent.imass['H2O'] -= food_waste.imass['H2O']
-        
+
         # =====================================================================
         
         # ('S_N2', 0.21009170299490135): minimal; assume no change
