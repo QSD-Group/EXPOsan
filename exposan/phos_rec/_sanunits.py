@@ -836,21 +836,7 @@ class FePO4_recovery(SanUnit):
         sludge.imol['S_PO4']  += max(PO4_available - dFePO4_precip, 0.0)
         sludge.imol['X_FeOH'] += max(Fe_available  - dFePO4_precip, 0.0)
         
-<<<<<<< Updated upstream
         # Balance of inert material
-=======
-        self.cmps = self.thermo.chemicals
-        self.XS_to_SA = 0.65
-        self.XS_to_SF = 0.03
-        
-        # TODO: adjust the Fe dosage in `MetalDosage`
-        # no other Fe-containing components other than S_PO4 and X_FePO4
-        Fe_released = (sludge.imol['X_FeOH'] + sludge.imol['X_FePO4']) * metal_P_release[self.food_sludge_ratio]['metal']/100
-        # no other P-containing components other than S_PO4 and X_FePO4
-        P_released = (sludge.imol['S_PO4'] + sludge.imol['X_FePO4']) * metal_P_release[self.food_sludge_ratio]['metal']/100
-        
-        product.imass['X_FePO4'] = min(Fe_released, P_released)
->>>>>>> Stashed changes
         product.imass['X_I'] = product.imass['X_FePO4']/self.product_purity*(1 - self.product_purity)
         
         if (sludge.imass['X_I'] - product.imass['X_I']) < -1e-9: # tol = 1e-9
@@ -864,7 +850,6 @@ class FePO4_recovery(SanUnit):
         cake.imass['H2O'] = cake.imass['X_I']/(1- self.cake_moisture) * self.cake_moisture
         
         effluent.mix_from(self.ins)
-<<<<<<< Updated upstream
         # Now since effluent = sum of flow of food waste + primary sludge, and cake.imass['H2O'] is already defined.
         effluent.imass['H2O'] -= cake.imass['H2O'] # Because effluent.mix_from(self.ins) 
         if effluent.imass['H2O'] < -1e-9: # tol = 1e-9
@@ -880,16 +865,6 @@ class FePO4_recovery(SanUnit):
         effluent.imass['X_S'] -= effluent.imass['X_S']*(self.f_XS_SA + self.f_XS_vfa + self.f_XS_eth + self.f_XS_cake + self.f_XS_gas)
 
         # =====================================================================
-=======
-        effluent.imol['S_PO4'] = effluent.imol['S_PO4'] + effluent.imol['X_FePO4'] - product.imol['X_FePO4']
-        effluent.imol['X_FeOH'] = effluent.imol['X_FeOH'] + effluent.imol['X_FePO4'] - product.imol['X_FePO4']
-        effluent.imol['X_FePO4'] = 0
-        effluent.imol['X_I'] = 0
-        # TODO: write 0.65 as a parameter
-        effluent.imass['S_A'] += effluent.imass['X_S'] * self.XS_to_SA
-        # TODO: write 0.03 as a parameter
-        effluent.imass['S_F'] += effluent.imass['X_S'] * self.XS_to_SF
->>>>>>> Stashed changes
         
         # ('S_N2', 0.21009170299490135): minimal; assume no change
         # ('S_NH4', 0.302415334699883): minimal; assume no change
