@@ -75,6 +75,7 @@ def create_components(set_thermo=True):
     
     PO4 = Component(
         ID='PO4',
+        #formula = 'PO4',
         search_ID='Water',
         phase='l',
         particle_size='Soluble',

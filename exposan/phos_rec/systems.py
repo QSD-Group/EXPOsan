@@ -22,8 +22,8 @@ from exposan.phos_rec import _sanunits as su
 
 # unit & basis conversion
 _C_to_K = 273.15
-_ton_to_kg = auom('ton').conversion_factor('kg')
 _MMBTU_to_MJ = auom('BTU').conversion_factor('MJ') * 10**6
+_ton_to_kg = auom('ton').conversion_factor('kg')
 
 # year
 lifetime = 30
@@ -47,6 +47,7 @@ def create_system(water_mass_flow=1000000):
     bst.CE = qs.CEPCI_by_year[2023]
 
     flowsheet = qs.Flowsheet(flowsheet_ID)
+    unit = flowsheet.unit
     stream = flowsheet.stream
     qs.main_flowsheet.set_flowsheet(flowsheet)
     
@@ -68,15 +69,30 @@ def create_system(water_mass_flow=1000000):
     AF = su.AcidogenicFermenter(ID='AF', ins=(P2-0, 'food_waste'), outs=('fermentate', 'fermentation_gas'),
                                 food_sludge_ratio=1)
     
-    FC = qsu.SludgeCentrifuge(ID='FC', ins=AF-0, outs=('fermentation_supernatant', 'residue'),
-                              sludge_moisture=0.85, solids=('Inert','Residue'))
+    #FC = qsu.SludgeCentrifuge(ID='FC', ins=AF-0, outs=('fermentation_supernatant', 'residue'),
+                              #sludge_moisture=0.85, solids=('Inert','Residue'))
+    FC = su.SludgeCentrifugeWithElementFlow(
+    ID='FC',
+    ins=AF-0,
+    outs=('fermentation_supernatant', 'residue'),
+    sludge_moisture=0.85,
+    solids=('Inert', 'Residue')
+)
     
-    SP = su.SelectivePrecipitation(ID='SP', ins=(FC-0, 'acid', 'oxidant'), outs='slurry',
-                                   P_recovery=0.82)
+    
+    
+    SP = su.SelectivePrecipitation(ID='SP', ins=(FC-0, 'acid', 'oxidant'), outs='slurry')
     
     # TODO: Org seems low, but conservative: less organics for heat generation, and more go back to WRRF headworks
-    PC = qsu.SludgeCentrifuge(ID='PC', ins=SP-0, outs=('precipitation_supernatant', 'precipitate'), 
-                              sludge_moisture=0.92, solids=('FePO4_2H2O',))
+    #PC = qsu.SludgeCentrifuge(ID='PC', ins=SP-0, outs=('precipitation_supernatant', 'precipitate'), 
+                              #sludge_moisture=0.92, solids=('FePO4_2H2O',))
+    PC = su.SludgeCentrifugeWithElementFlow(
+    ID='PC',
+    ins=SP-0,
+    outs=('precipitation_supernatant', 'precipitate'),
+    sludge_moisture=0.92,
+    solids=('FePO4_2H2O',)
+)                         
     
     HD = su.HeatDrying(ID='HD', ins=(PC-1, 'heat_drying_natural_gas'), outs=('dried_precipitate', 'heat_drying_vapor'),
                        T=105+_C_to_K)
@@ -86,13 +102,19 @@ def create_system(water_mass_flow=1000000):
     # operate at much lower temperatures (37 °C and 40 °C, respectively)
     # when ΔT is large, there can be problems such as scale mismatch and operational complexity
     SI = su.Sintering(ID='SI', ins=(HD-0, 'sintering_natural_gas', 'air'), outs=('product', 'sintering_vapor'))
+    # ---- for recovery calculation in SI @property
+    SI.feedstock = fe_sludge
+    SI.food_waste = AF.ins[1]   # 可选：如果你想把 food_waste 计入 C 的分母
     
     sys = qs.System.from_units(ID='phos_rec', units=list(flowsheet.unit), operating_hours=operation_hours)
     
     sys.simulate()
     
     # TODO: may need update
-    fe_sludge.price = - 0.5 * (fe_sludge.F_mass - fe_sludge.imass['Water']) / fe_sludge.F_mass
+    # fe_sludge.price = - 0.5 * (fe_sludge.F_mass - fe_sludge.imass['Water']) / fe_sludge.F_mass
+    sludge_credit_used_per_ton_dry = 62.28 #$/ton dry solids in https://www.wasteoptima.com/blog/eref-2024-landfill-tipping-fees?utm_source
+    dry_kg_d = fe_sludge.F_mass - fe_sludge.imass['Water']
+    fe_sludge.price = - sludge_credit_used_per_ton_dry * (dry_kg_d/1000) / fe_sludge.F_mass
     
     # price of H2SO4 is 0.08$/kg, from Everbatt2023
     SP.ins[1].price = 0.08 * stream.acid.imass['H2SO4'] / stream.acid.F_mass
@@ -102,7 +124,7 @@ def create_system(water_mass_flow=1000000):
     
     # TODO: biosteam has a default price
     # price of natural gas is 7.7$/MMBTU, from Everbatt2023, LHV_ng = 50.1 MJ/kg
-    # Natural gas consumption was calculated using the lower heating value (LHV = 50.1 MJ/kg), assuming that the latent heat of water vapor in the flue gas was not recovered.
+    # natural gas consumption was calculated using the lower heating value (LHV = 50.1 MJ/kg), assuming that the latent heat of water vapor in the flue gas was not recovered
     HD.ins[1].price = 7.7 / _MMBTU_to_MJ * 50.1
     
     SI.ins[1].price = 7.7 / _MMBTU_to_MJ * 50.1
