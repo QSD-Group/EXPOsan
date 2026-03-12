@@ -14,7 +14,7 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-import qsdsan as qs
+import qsdsan as qs, biosteam as bst
 from chaospy import distributions as shape
 from qsdsan.utils import auom, DictAttrSetter
 
@@ -23,7 +23,13 @@ __all__ = ('create_model',)
 _MMBTU_to_MJ = auom('BTU').conversion_factor('MJ') * 10**6
 _ton_to_kg = auom('ton').conversion_factor('kg')
 
-def create_model(system=None): #revised version：def create_model(system): flowsheet = system.flowsheet  for the creat_model() to a AttributeError
+MW_CH4 = 16
+
+def create_model(system=None, perspective='FePO4'): #revised version：def create_model(system): flowsheet = system.flowsheet  for the creat_model() to a AttributeError
+    
+    if perspective not in ['FePO4','sludge']:
+        raise KeyError('perspective can only be FePO4 or sludge')
+    
     flowsheet = system.flowsheet
     unit = flowsheet.unit
     stream = flowsheet.stream
@@ -34,18 +40,120 @@ def create_model(system=None): #revised version：def create_model(system): flow
     # AcidogenicFermenter
     # =============================================================================
     AF = unit.AF
-    #discrete scenarcios for food_slduge_ratio
-    _choices = [0,1/3,2/3,1,4/3] #5 discrete points
-    dist = shape.DiscreteUniform(0,len(_choices)-1)
-    @param(name='food_sludge_ratio',
+    
+    # # TODO: remove this; add this add a scenario analysis instead
+    # #discrete scenarcios for food_slduge_ratio
+    # _choices = [0, 1/3, 2/3, 1, 4/3] #5 discrete points
+    # dist = shape.DiscreteUniform(0,len(_choices)-1)
+    # @param(name='food_sludge_ratio',
+    #        element='AF',
+    #        kind='coupled',
+    #        units='-',
+    #        baseline=3, # TODO: the value of i
+    #        distribution=dist)
+    # def set_food_sludge_ratio(i):
+    #     AF.food_sludge_ratio=_choices[int(i)]  
+    
+    dist = shape.Uniform(0.02124263*0.8,0.02124263*1.2)
+    @param(name='metal_release_ratio_0',
            element='AF',
            kind='coupled',
            units='-',
-           baseline=1,
+           baseline=0.02124263,
            distribution=dist)
-    def set_food_sludge_ratio(i):
-        AF.food_sludge_ratio=_choices[int(i)]  
-        
+    def set_metal_release_ratio_0(i):
+        AF.metal_release_ratio_0=i
+    
+    dist = shape.Uniform(0.2113664*0.8,0.2113664*1.2)
+    @param(name='metal_release_ratio_1_3',
+           element='AF',
+           kind='coupled',
+           units='-',
+           baseline=0.2113664,
+           distribution=dist)
+    def set_metal_release_ratio_1_3(i):
+        AF.metal_release_ratio_1_3=i
+    
+    dist = shape.Uniform(0.6067351*0.8,0.6067351*1.2)
+    @param(name='metal_release_ratio_2_3',
+           element='AF',
+           kind='coupled',
+           units='-',
+           baseline=0.6067351,
+           distribution=dist)
+    def set_metal_release_ratio_2_3(i):
+        AF.metal_release_ratio_2_3=i
+    
+    dist = shape.Uniform(0.8307559*0.8,0.8307559*1.2)
+    @param(name='metal_release_ratio_1',
+           element='AF',
+           kind='coupled',
+           units='-',
+           baseline=0.8307559,
+           distribution=dist)
+    def set_metal_release_ratio_1(i):
+        AF.metal_release_ratio_1=i
+    
+    dist = shape.Uniform(0.85*0.8,0.85*1.2)
+    @param(name='metal_release_ratio_4_3',
+           element='AF',
+           kind='coupled',
+           units='-',
+           baseline=0.85,
+           distribution=dist)
+    def set_metal_release_ratio_4_3(i):
+        AF.metal_release_ratio_4_3=i
+    
+    dist = shape.Uniform(0.110693*0.8,0.110693*1.2)
+    @param(name='P_release_ratio_0',
+           element='AF',
+           kind='coupled',
+           units='-',
+           baseline=0.110693,
+           distribution=dist)
+    def set_P_release_ratio_0(i):
+        AF.P_release_ratio_0=i
+    
+    dist = shape.Uniform(0.4431886*0.8,0.4431886*1.2)
+    @param(name='P_release_ratio_1_3',
+           element='AF',
+           kind='coupled',
+           units='-',
+           baseline=0.4431886,
+           distribution=dist)
+    def set_P_release_ratio_1_3(i):
+        AF.P_release_ratio_1_3=i
+    
+    dist = shape.Uniform(0.7122673*0.8,0.7122673*1.2)
+    @param(name='P_release_ratio_2_3',
+           element='AF',
+           kind='coupled',
+           units='-',
+           baseline=0.7122673,
+           distribution=dist)
+    def set_P_release_ratio_2_3(i):
+        AF.P_release_ratio_2_3=i
+    
+    dist = shape.Uniform(0.8230645*0.8,0.8230645*1.2)
+    @param(name='P_release_ratio_1',
+           element='AF',
+           kind='coupled',
+           units='-',
+           baseline=0.8230645,
+           distribution=dist)
+    def set_P_release_ratio_1(i):
+        AF.P_release_ratio_1=i
+    
+    dist = shape.Uniform(0.83*0.8,0.83*1.2)
+    @param(name='P_release_ratio_4_3',
+           element='AF',
+           kind='coupled',
+           units='-',
+           baseline=0.83,
+           distribution=dist)
+    def set_P_release_ratio_4_3(i):
+        AF.P_release_ratio_4_3=i
+    
     dist = shape.Uniform(0.68,0.8)
     @param(name='food_waste_moisture',
            element='AF',
@@ -56,15 +164,16 @@ def create_model(system=None): #revised version：def create_model(system): flow
     def set_sludge_moisture(i):
         AF.food_waste_moisture=i  
     
+    # TODO: leave HRT in uncertainty analysis for now; but this can be removed if that makes sense
     dist = shape.Uniform(80,120)
-    @param(name='HRT', # whether to be the name='AF_HRT'
+    @param(name='AF_HRT',
            element='AF',
            kind='coupled',
            units='hr',
            baseline=100,
            distribution=dist)
     def set_AF_HRT(i):
-        # TODO: check if the value actually changes
+        # TODO: check if the value actually changes: the HRT value changes in the result spreadsheet, however, it may be safer to write HRT as a parameter in the sanunit
         AF.HRT=i
     
     dist = shape.Uniform(0.018,0.022)
@@ -144,15 +253,16 @@ def create_model(system=None): #revised version：def create_model(system): flow
     def set_oxidant_excess(i):
         SP.oxidant_excess=i
     
+    # TODO: leave HRT in uncertainty analysis for now; but this can be removed if that makes sense
     dist = shape.Uniform(8,12)
-    @param(name='HRT', # whether to be the name='SP_HRT'
+    @param(name='SP_HRT',
            element='SP',
            kind='coupled',
            units='hr',
            baseline=10,
            distribution=dist)
     def set_SP_HRT(i):
-        # TODO: check if the value actually changes
+        # TODO: check if the value actually changes: the HRT value changes in the result spreadsheet, however, it may be safer to write HRT as a parameter in the sanunit
         SP.HRT=i
     
     # =============================================================================
@@ -194,20 +304,16 @@ def create_model(system=None): #revised version：def create_model(system): flow
     def set_FePO4_price(i):
         FePO4.price=i
     
-    # TODO: biosteam has a default price
-    # price of natural gas is 7.7$/MMBTU, from Everbatt2023, LHV_ng = 50.1 MJ/kg
-    # natural gas consumption was calculated using the lower heating value (LHV = 50.1 MJ/kg), assuming that the latent heat of water vapor in the flue gas was not recovered
     # heat drying natural gas
     HD_NG = stream.heat_drying_natural_gas
     # sintering natural gas
     SI_NG = stream.sintering_natural_gas
-    # TODO: update if needed
-    dist = shape.Uniform(7.7 / _MMBTU_to_MJ * 50.1*0.9,7.7 / _MMBTU_to_MJ * 50.1*1.1)
+    dist = shape.Uniform(bst.HeatUtility.heating_agents[-1].regeneration_price/MW_CH4*0.9,bst.HeatUtility.heating_agents[-1].regeneration_price/MW_CH4*1.1)
     @param(name='NG_price',
            element='TEA',
            kind='isolated',
            units='$/kg',
-           baseline=7.7 / _MMBTU_to_MJ * 50.1,
+           baseline=bst.HeatUtility.heating_agents[-1].regeneration_price/MW_CH4,
            distribution=dist)
     def set_NG_price(i):
         HD_NG.price=SI_NG.price=i
@@ -223,6 +329,27 @@ def create_model(system=None): #revised version：def create_model(system): flow
            distribution=dist)
     def set_landfill_price(i):
         landfill.price=i
+    
+    if perspective == 'FePO4':
+        dist = shape.Triangle(0.05,0.1,0.15)
+        @param(name='IRR',
+               element='TEA',
+               kind='isolated',
+               units='-',
+               baseline=0.1,
+               distribution=dist)
+        def set_IRR(i):
+            tea.IRR=i
+    else:
+        dist = shape.Triangle(0,0.03,0.05)
+        @param(name='IRR',
+               element='TEA',
+               kind='isolated',
+               units='-',
+               baseline=0.03,
+               distribution=dist)
+        def set_IRR(i):
+            tea.IRR=i
     
     # =========================================================================
     # LCA (unifrom ± 10%)
@@ -248,6 +375,7 @@ def create_model(system=None): #revised version：def create_model(system): flow
     metric = model.metric
     tea = system.TEA
     lca = system.LCA
+    fe_sludge = stream.fe_sludge
     product = stream.product
     SI = unit.SI
     
@@ -258,21 +386,30 @@ def create_model(system=None): #revised version：def create_model(system): flow
     @metric(name='P_recovery', units='-', element='Performance')
     def get_P_recovery():
         return SI.P_recovery
-
-    @metric(name='C_recovery', units='-', element='Performance')
-    def get_C_recovery():
-        return SI.C_recovery
     
-    # TODO: may need update
-    @metric(name='FePO4_minimum_price',units='$/kg',element='TEA')
-    def get_FePO4_minimum_price():
-        return tea.solve_price(product)
-    
-    # TODO: may need update
-    @metric(name='FePO4_GWP',units='kg_CO2_eq/kg',element='LCA')
-    def get_FePO4_GWP():
-        return lca.get_total_impacts(operation_only=True,
-                                     exclude=(product,),
-                                     annual=True)['GlobalWarming']/product.F_mass/system.operating_hours
+    if perspective == 'FePO4':
+        # TODO: may need update
+        @metric(name='FePO4_MSP',units='$/kg',element='TEA')
+        def get_FePO4_MSP():
+            return tea.solve_price(product)
+        
+        # TODO: may need update
+        @metric(name='FePO4_GWP',units='kg_CO2_eq/kg',element='LCA')
+        def get_FePO4_GWP():
+            return lca.get_total_impacts(operation_only=True,
+                                         exclude=(product,),
+                                         annual=True)['GlobalWarming']/product.F_mass/system.operating_hours
+    else:
+        # TODO: may need update (*1000 is to convert kg to tonne, need to add this as a constant, *100 is just a rough estimate assuming the moisture content of fe_sludge is 99%)
+        @metric(name='sludge_management_cost',units='$/tonne',element='TEA')
+        def get_sludge_management_cost():
+            return -tea.solve_price(fe_sludge)*1000*100
+        
+        # TODO: may need update (*1000 is to convert kg to tonne, need to add this as a constant, *100 is just a rough estimate assuming the moisture content of fe_sludge is 99%)
+        @metric(name='sludge_management_GWP',units='kg_CO2_eq/tonne',element='LCA')
+        def get_sludge_management_GWP():
+            return lca.get_total_impacts(operation_only=True,
+                                         exclude=(fe_sludge,),
+                                         annual=True)['GlobalWarming']/fe_sludge.F_mass/system.operating_hours*1000*100
     
     return model

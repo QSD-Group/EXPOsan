@@ -33,56 +33,52 @@ MW_P = 30.97
 MW_PO4 = 94.97
 MW_Fe = 55.845
 MW_FePO4 = 150.82
-# C is directly use org
+MW_FePO4_2H2O = 186.85
+
 def P_mass(stream):
-    """kg P per hour"""
+    '''kg P per hour'''
     return (
         stream.imass['PO4'] * MW_P / MW_PO4
         + stream.imass['FePO4'] * MW_P / MW_FePO4
-        + stream.imass['FePO4_2H2O'] * MW_P / MW_FePO4
+        + stream.imass['FePO4_2H2O'] * MW_P / MW_FePO4_2H2O
     )
 
 def Fe_mass(stream):
-    """kg Fe per hour"""
+    '''kg Fe per hour'''
     return (
         stream.imass['Fe2']
         + stream.imass['Fe3']
         + stream.imass['FePO4'] * MW_Fe / MW_FePO4
-        + stream.imass['FePO4_2H2O'] * MW_Fe / MW_FePO4
+        + stream.imass['FePO4_2H2O'] * MW_Fe / MW_FePO4_2H2O
     )
 
-def C_mass(stream):
-    """kg C per hour (use Org directly)"""
-    return stream.imass['Org']
 class ElementFlowMixin:
-    """
+    '''
     Provide elemental flow properties (Fe / P / C) for SanUnit.
-    """
+    '''
 
     @property
     def element_in(self):
-        """Total elemental inflow to the unit (kg/hr)."""
+        '''Total elemental inflow to the unit [kg/hr].'''
         return {
             'Fe': sum(Fe_mass(s) for s in self.ins),
-            'P':  sum(P_mass(s)  for s in self.ins),
-            'C':  sum(C_mass(s)  for s in self.ins),
+            'P':  sum(P_mass(s)  for s in self.ins)
         }
 
     @property
     def element_out(self):
-        """Total elemental outflow from the unit (kg/hr)."""
+        '''Total elemental outflow from the unit (kg/hr).'''
         return {
             'Fe': sum(Fe_mass(s) for s in self.outs),
-            'P':  sum(P_mass(s)  for s in self.outs),
-            'C':  sum(C_mass(s)  for s in self.outs),
+            'P':  sum(P_mass(s)  for s in self.outs)
         }
 
     @property
     def element_distribution(self):
-        """
+        '''
         Elemental distribution to each outlet.
         Returns: list of dicts, one per outlet.
-        """
+        '''
         total_in = self.element_in
         dist = []
 
@@ -90,19 +86,9 @@ class ElementFlowMixin:
             dist.append({
                 'stream': s.ID,
                 'Fe': Fe_mass(s) / total_in['Fe'] if total_in['Fe'] > 0 else 0,
-                'P':  P_mass(s)  / total_in['P']  if total_in['P']  > 0 else 0,
-                'C':  C_mass(s)  / total_in['C']  if total_in['C']  > 0 else 0,
+                'P':  P_mass(s)  / total_in['P']  if total_in['P']  > 0 else 0
             })
         return dist
-
-
-class SludgeCentrifugeWithElementFlow(ElementFlowMixin, SludgeCentrifuge):
-    """SludgeCentrifuge with elemental flow @property."""
-    pass
-
-
-
-
 
 _C_to_K = 273.15
 _316_over_304 = factors['Stainless steel 316'] / factors['Stainless steel 304']
@@ -110,6 +96,7 @@ _ton_to_tonne = auom('ton').conversion_factor('tonne')
 
 __all__ = (
     'AcidogenicFermenter',
+    'SludgeCentrifugeWithElementFlow',
     'SelectivePrecipitation',
     'HeatDrying',
     'Sintering',
@@ -161,6 +148,10 @@ class AcidogenicFermenter(ElementFlowMixin, SanUnit):
         Mass fractions of individual VFAs, [-].
     Fe_reduction : float
         Fe3+ reduction ratio during acidogenic fermentation, [-].
+    metal_release_ratio_X : float
+        metal release ratio at different food_sludge_ratio (X), [-].
+    P_release_ratio_X : float
+        phosphorus release ratio at different food_sludge_ratio (X), [-].
     T : float
         Required temperature for fermentation, [K].
     
@@ -201,11 +192,21 @@ class AcidogenicFermenter(ElementFlowMixin, SanUnit):
                  food_sludge_ratio=1,
                  food_waste_moisture=0.74,
                  org_to_gas=0.05,
-                 org_to_vfa=0.65, 
+                 org_to_vfa=0.65,
                  org_to_ethanol=0.02,
                  org_to_residue=0.25,
                  VFA_ratio={'Ac': 0.5, 'Pr': 0.24, 'Bu': 0.23, 'Va': 0.02, 'Lac': 0.01},
                  Fe_reduction=0.98,
+                 metal_release_ratio_0 = 0.02124263,
+                 metal_release_ratio_1_3 = 0.2113664,
+                 metal_release_ratio_2_3 = 0.6067351,
+                 metal_release_ratio_1 = 0.8307559,
+                 metal_release_ratio_4_3 = 0.85,
+                 P_release_ratio_0 = 0.110693,
+                 P_release_ratio_1_3 = 0.4431886,
+                 P_release_ratio_2_3 = 0.7122673,
+                 P_release_ratio_1 = 0.8230645,
+                 P_release_ratio_4_3 = 0.83,
                  T=37+_C_to_K):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.food_sludge_ratio = food_sludge_ratio
@@ -216,6 +217,16 @@ class AcidogenicFermenter(ElementFlowMixin, SanUnit):
         self.org_to_residue = org_to_residue
         self.VFA_ratio = VFA_ratio
         self.Fe_reduction = Fe_reduction
+        self.metal_release_ratio_0 = metal_release_ratio_0
+        self.metal_release_ratio_1_3 = metal_release_ratio_1_3
+        self.metal_release_ratio_2_3 = metal_release_ratio_2_3
+        self.metal_release_ratio_1 = metal_release_ratio_1
+        self.metal_release_ratio_4_3 = metal_release_ratio_4_3
+        self.P_release_ratio_0 = P_release_ratio_0
+        self.P_release_ratio_1_3 = P_release_ratio_1_3
+        self.P_release_ratio_2_3 = P_release_ratio_2_3
+        self.P_release_ratio_1 = P_release_ratio_1
+        self.P_release_ratio_4_3 = P_release_ratio_4_3
         self.T = T
         fermentate = self.outs[0].proxy(f'{ID}_fermentate')
         self.fermentate_pump = SludgePump(f'.{ID}_fermentate_pump', ins=fermentate, init_with=init_with)
@@ -263,23 +274,22 @@ class AcidogenicFermenter(ElementFlowMixin, SanUnit):
         fermentate.imass['Fe2'] = fermentate.imass['Fe3'] * self.Fe_reduction
         fermentate.imass['Fe3'] -= fermentate.imass['Fe2']
         
-        # The range is according to the experimental results +/-5%
         metal_P_release = {
-            0: {'metal': (0, 7.124263), 'P': (6.0693,16.0693) },
-            1/3: {'metal': (16.13664, 26.13664), 'P': (39.31886, 49.31886)},
-            2/3: {'metal': (55.67351, 65.67351), 'P': (66.22673, 76.22673)},
-            1: {'metal': (78.07559, 88.07559), 'P': (77.30645, 87.30645)},
-            4/3: {'metal': (80, 90), 'P': (78, 88)}
+            0: {'metal': self.metal_release_ratio_0, 'P': self.P_release_ratio_0},
+            1/3: {'metal': self.metal_release_ratio_1_3, 'P': self.P_release_ratio_1_3},
+            2/3: {'metal': self.metal_release_ratio_2_3, 'P': self.P_release_ratio_2_3},
+            1: {'metal': self.metal_release_ratio_1, 'P': self.P_release_ratio_1},
+            4/3: {'metal': self.metal_release_ratio_4_3, 'P': self.P_release_ratio_4_3}
         }
         
         metal_P_to_residue = 0
         
         for metal in ['Fe2','Fe3','Ca2','Mg2']:
-            metal_P_to_residue += fermentate.imass[metal]*(1 - metal_P_release[self.food_sludge_ratio]['metal']/100)
-            fermentate.imass[metal] *= metal_P_release[self.food_sludge_ratio]['metal']/100
+            metal_P_to_residue += fermentate.imass[metal]*(1 - metal_P_release[self.food_sludge_ratio]['metal'])
+            fermentate.imass[metal] *= metal_P_release[self.food_sludge_ratio]['metal']
         
-        metal_P_to_residue += fermentate.imass['PO4']*(1 - metal_P_release[self.food_sludge_ratio]['P']/100)
-        fermentate.imass['PO4'] *= metal_P_release[self.food_sludge_ratio]['P']/100
+        metal_P_to_residue += fermentate.imass['PO4']*(1 - metal_P_release[self.food_sludge_ratio]['P'])
+        fermentate.imass['PO4'] *= metal_P_release[self.food_sludge_ratio]['P']
         
         fermentate.imass['Residue'] += metal_P_to_residue
         
@@ -305,6 +315,14 @@ class AcidogenicFermenter(ElementFlowMixin, SanUnit):
         self.fermentate_pump.simulate()
 
 # =============================================================================
+# SludgeCentrifugeWithElementFlow
+# =============================================================================
+
+class SludgeCentrifugeWithElementFlow(ElementFlowMixin, SludgeCentrifuge):
+    '''SludgeCentrifuge with elemental flow @property.'''
+    pass
+
+# =============================================================================
 # SelectivePrecipitation
 # =============================================================================
 
@@ -319,7 +337,7 @@ class AcidogenicFermenter(ElementFlowMixin, SanUnit):
 @cost('Reactor duty', 'Heat exchangers', CE=522, cost=23900*_316_over_304,
       S=20920000.0, n=0.7, BM=2.2, N='Number of reactors',
       magnitude=True)
-class SelectivePrecipitation(ElementFlowMixin,SanUnit):
+class SelectivePrecipitation(ElementFlowMixin, SanUnit):
     '''
     Selective precipitation of FePO4 by adding acid and oxidant.
     Assume only pumps already use 316 SS; others need to be converted
@@ -469,7 +487,7 @@ class SelectivePrecipitation(ElementFlowMixin,SanUnit):
       cost=220000*80/2/3.17, S=80, CE=qs.CEPCI_by_year[2018], n=0.7, BM=3.17)
 @cost(ID='Dryer 2', basis='Half dry solids flow', units='tonne/day',
       cost=220000*80/2/3.17, S=80, CE=qs.CEPCI_by_year[2018], n=0.7, BM=3.17)
-class HeatDrying(ElementFlowMixin,SanUnit):
+class HeatDrying(ElementFlowMixin, SanUnit):
     '''
     Heat drying of sludge or biosolids.
     
@@ -585,9 +603,8 @@ class Sintering(ElementFlowMixin, SanUnit):
         self.combustion_eff = combustion_eff
         self.natural_gas_HHV = natural_gas_HHV
         self.unit_electricity = unit_electricity
-        # --- references for recovery calculation (assigned in systems.py)
+        # references for recovery calculation (assigned in systems.py)
         self.feedstock = None
-        self.food_waste = None
     
     def _run(self):
         feed, natural_gas, air = self.ins
@@ -657,51 +674,29 @@ class Sintering(ElementFlowMixin, SanUnit):
         
     @property
     def Fe_recovery(self):
-        """
+        '''
         Fe recovery to final product (dimensionless).
         Defined as Fe in product / Fe in feedstock.
-        """
+        '''
         if self.feedstock is None:
-            raise AttributeError("Sintering.feedstock is not set. Assign it in systems.py.")
+            raise AttributeError('Sintering.feedstock is not set. Assign it in systems.py.')
         Fe_in = Fe_mass(self.feedstock)
         Fe_out = Fe_mass(self.outs[0])  # product
         return Fe_out / Fe_in if Fe_in > 0 else 0
 
     @property
     def P_recovery(self):
-        """
+        '''
         P recovery to final product (dimensionless).
         Defined as P in product / P in feedstock.
-        """
+        '''
         if self.feedstock is None:
-            raise AttributeError("Sintering.feedstock is not set. Assign it in systems.py.")
+            raise AttributeError('Sintering.feedstock is not set. Assign it in systems.py.')
         P_in = P_mass(self.feedstock)
         P_out = P_mass(self.outs[0])  # product
         return P_out / P_in if P_in > 0 else 0
 
-    @property
-    def C_recovery(self):
-        """
-        C recovery to final product (dimensionless).
-        You said use Org as carbon proxy.
-
-        IMPORTANT: product typically has ~0 Org after sintering,
-        so this will likely be ~0. That's fine if your definition is
-        'C recovered into product'.
-        """
-        if self.feedstock is None:
-            raise AttributeError("Sintering.feedstock is not set. Assign it in systems.py.")
-
-        # Denominator choice:
-        # Option 1 (sludge-only): C_in = C_mass(feedstock)
-        # Option 2 (sludge + food): if you set self.food_waste, include it too
-        C_in = C_mass(self.feedstock)
-        if self.food_waste is not None:
-            C_in += C_mass(self.food_waste)
-
-        C_out = C_mass(self.outs[0])  # product
-        return C_out / C_in if C_in > 0 else 0
-
+# TODO: update this unit based on the changes in the units above later
 # =============================================================================
 # FePO4_recovery
 # =============================================================================
@@ -840,8 +835,8 @@ class FePO4_recovery(SanUnit):
         product.imass['X_I'] = product.imass['X_FePO4']/self.product_purity*(1 - self.product_purity)
         
         if (sludge.imass['X_I'] - product.imass['X_I']) < -1e-9: # tol = 1e-9
-            raise ValueError(f"Negative X_I mass in cake: {sludge.imass['X_I'] - product.imass['X_I']:.6e} kg/hr. "
-                "Check mass balance or upstream removal.")
+            raise ValueError(f'Negative X_I mass in cake: {sludge.imass['X_I'] - product.imass['X_I']:.6e} kg/hr.'
+                'Check mass balance or upstream removal.')
         cake.imass['X_I'] = max(sludge.imass['X_I'] - product.imass['X_I'], 0.0)
         
         sludge.imass['X_I'] -= (product.imass['X_I'] + cake.imass['X_I'])
@@ -853,7 +848,7 @@ class FePO4_recovery(SanUnit):
         # Now since effluent = sum of flow of food waste + primary sludge, and cake.imass['H2O'] is already defined.
         effluent.imass['H2O'] -= cake.imass['H2O'] # Because effluent.mix_from(self.ins) 
         if effluent.imass['H2O'] < -1e-9: # tol = 1e-9
-            raise ValueError("Negative flow in effluent. Reduce moisture in cake")
+            raise ValueError('Negative flow in effluent. Reduce moisture in cake')
         
         effluent.imass['S_A'] += effluent.imass['X_S'] * (self.f_XS_SA) # share of acetate
         effluent.imass['S_F'] += effluent.imass['X_S'] * (self.f_XS_eth + self.f_XS_vfa) # share of ethanol + all non-acetate VFAs (and lactate)

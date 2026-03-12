@@ -25,6 +25,9 @@ _C_to_K = 273.15
 _MMBTU_to_MJ = auom('BTU').conversion_factor('MJ') * 10**6
 _ton_to_kg = auom('ton').conversion_factor('kg')
 
+# MW
+MW_CH4 = 16
+
 # year
 lifetime = 30
 
@@ -35,7 +38,8 @@ __all__ = (
     'create_system',
 )
 
-def create_system(water_mass_flow=1000000):
+# TODO: use temp_ratio to scale fe_sludge temporarily
+def create_system(temp_ratio=1, food_sludge_ratio=1):
     
     flowsheet_ID = 'phos_rec'
     
@@ -47,7 +51,6 @@ def create_system(water_mass_flow=1000000):
     bst.CE = qs.CEPCI_by_year[2023]
 
     flowsheet = qs.Flowsheet(flowsheet_ID)
-    unit = flowsheet.unit
     stream = flowsheet.stream
     qs.main_flowsheet.set_flowsheet(flowsheet)
     
@@ -56,43 +59,33 @@ def create_system(water_mass_flow=1000000):
     # TODO: instead, assign concentrations to components except water
     # TODO: consider adding a cost for fe_sludge as credits (e.g., avoid landfilling, etc.)
     # Inert represents other inorganics; now VSS/TSS = 0.74, which is reasonable
-    fe_sludge = qs.WasteStream(ID='fe_sludge', Fe3=180, Org=5000, PO4=300, Water=water_mass_flow,
-                               Ca2=150, Mg2=100, Inert=1000, units='kg/d')
+    fe_sludge = qs.WasteStream(ID='fe_sludge', Fe3=180*temp_ratio, Org=5000*temp_ratio,
+                               PO4=300*temp_ratio, Water=1000000*temp_ratio, Ca2=150*temp_ratio,
+                               Mg2=100*temp_ratio, Inert=1000*temp_ratio, units='kg/d')
     
     P1 = qsu.SludgePump(ID='P1', ins=fe_sludge, outs='sludge_to_ST')
     
-    # the same as AF: 4 days of reaction+ 3 hr for cleaning and unloading
+    # the same as AF: 4 days of reaction + 3 hr for cleaning and unloading
     ST = qsu.StorageTank(ID='ST', ins=P1-0, outs='sludge_to_P2', tau=4*24+3)
     
     P2 = qsu.SludgePump(ID='P2', ins=ST-0, outs='sludge_to_AF')
     
     AF = su.AcidogenicFermenter(ID='AF', ins=(P2-0, 'food_waste'), outs=('fermentate', 'fermentation_gas'),
-                                food_sludge_ratio=1)
+                                food_sludge_ratio=food_sludge_ratio)
     
-    #FC = qsu.SludgeCentrifuge(ID='FC', ins=AF-0, outs=('fermentation_supernatant', 'residue'),
-                              #sludge_moisture=0.85, solids=('Inert','Residue'))
-    FC = su.SludgeCentrifugeWithElementFlow(
-    ID='FC',
-    ins=AF-0,
-    outs=('fermentation_supernatant', 'residue'),
-    sludge_moisture=0.85,
-    solids=('Inert', 'Residue')
-)
-    
-    
+    FC = su.SludgeCentrifugeWithElementFlow(ID='FC', ins=AF-0, outs=('fermentation_supernatant', 'residue'),
+                                            sludge_moisture=0.85, solids=('Inert','Residue'))
     
     SP = su.SelectivePrecipitation(ID='SP', ins=(FC-0, 'acid', 'oxidant'), outs='slurry')
     
+    # TODO: may need to remove the scenario where food_sludge_ratio = 0 due to its very high costs and GHG emissions, also due to its different moisture content set here (only 0.99 works for the scenario where food_sludge_ratio = 0)
     # TODO: Org seems low, but conservative: less organics for heat generation, and more go back to WRRF headworks
-    #PC = qsu.SludgeCentrifuge(ID='PC', ins=SP-0, outs=('precipitation_supernatant', 'precipitate'), 
-                              #sludge_moisture=0.92, solids=('FePO4_2H2O',))
-    PC = su.SludgeCentrifugeWithElementFlow(
-    ID='PC',
-    ins=SP-0,
-    outs=('precipitation_supernatant', 'precipitate'),
-    sludge_moisture=0.92,
-    solids=('FePO4_2H2O',)
-)                         
+    if food_sludge_ratio != 0:
+        PC = su.SludgeCentrifugeWithElementFlow(ID='PC', ins=SP-0, outs=('precipitation_supernatant', 'precipitate'),
+                                                sludge_moisture=0.92, solids=('FePO4_2H2O',))
+    else:
+        PC = su.SludgeCentrifugeWithElementFlow(ID='PC', ins=SP-0, outs=('precipitation_supernatant', 'precipitate'),
+                                                sludge_moisture=0.99, solids=('FePO4_2H2O',))
     
     HD = su.HeatDrying(ID='HD', ins=(PC-1, 'heat_drying_natural_gas'), outs=('dried_precipitate', 'heat_drying_vapor'),
                        T=105+_C_to_K)
@@ -102,19 +95,22 @@ def create_system(water_mass_flow=1000000):
     # operate at much lower temperatures (37 °C and 40 °C, respectively)
     # when ΔT is large, there can be problems such as scale mismatch and operational complexity
     SI = su.Sintering(ID='SI', ins=(HD-0, 'sintering_natural_gas', 'air'), outs=('product', 'sintering_vapor'))
-    # ---- for recovery calculation in SI @property
+    # for recovery calculation in SI @property
     SI.feedstock = fe_sludge
-    SI.food_waste = AF.ins[1]   # 可选：如果你想把 food_waste 计入 C 的分母
     
     sys = qs.System.from_units(ID='phos_rec', units=list(flowsheet.unit), operating_hours=operation_hours)
     
     sys.simulate()
     
-    # TODO: may need update
-    # fe_sludge.price = - 0.5 * (fe_sludge.F_mass - fe_sludge.imass['Water']) / fe_sludge.F_mass
-    sludge_credit_used_per_ton_dry = 62.28 #$/ton dry solids in https://www.wasteoptima.com/blog/eref-2024-landfill-tipping-fees?utm_source
-    dry_kg_d = fe_sludge.F_mass - fe_sludge.imass['Water']
-    fe_sludge.price = - sludge_credit_used_per_ton_dry * (dry_kg_d/1000) / fe_sludge.F_mass
+    # TODO: update the value
+    sludge_credit_used_per_ton_dry = 300 # $/ton dry solids
+    sludge_dry_kg_d = fe_sludge.F_mass - fe_sludge.imass['Water']
+    fe_sludge.price = -sludge_credit_used_per_ton_dry*(sludge_dry_kg_d/1000)/fe_sludge.F_mass
+    
+    # TODO: update the value
+    food_waste_credit_used_per_ton_dry = 300 # $/ton dry solids
+    food_waste_dry_kg_d = AF.ins[1].F_mass - AF.ins[1].imass['Water']
+    AF.ins[1].price = -food_waste_credit_used_per_ton_dry*(food_waste_dry_kg_d/1000)/fe_sludge.F_mass
     
     # price of H2SO4 is 0.08$/kg, from Everbatt2023
     SP.ins[1].price = 0.08 * stream.acid.imass['H2SO4'] / stream.acid.F_mass
@@ -122,19 +118,22 @@ def create_system(water_mass_flow=1000000):
     # price of H2O2 is 1.46$/kg, from Everbatt2023
     SP.ins[2].price = 1.46 * stream.oxidant.imass['H2O2'] / stream.oxidant.F_mass
     
-    # TODO: biosteam has a default price
-    # price of natural gas is 7.7$/MMBTU, from Everbatt2023, LHV_ng = 50.1 MJ/kg
-    # natural gas consumption was calculated using the lower heating value (LHV = 50.1 MJ/kg), assuming that the latent heat of water vapor in the flue gas was not recovered
-    HD.ins[1].price = 7.7 / _MMBTU_to_MJ * 50.1
+    HD.ins[1].price = bst.HeatUtility.heating_agents[-1].regeneration_price/MW_CH4
     
-    SI.ins[1].price = 7.7 / _MMBTU_to_MJ * 50.1
+    # TODO: this only applies to the sludge management perspective; the value needs to be updated
+    SI.outs[0].price = 1
     
+    SI.ins[1].price = bst.HeatUtility.heating_agents[-1].regeneration_price/MW_CH4
+    
+    # TODO: -62.28 is from the value above for sludge credit, but it may be suitable here
     # the landfill cost (tipping fee) can be found in https://www.wasteoptima.com/blog/eref-2024-landfill-tipping-fees?utm_source with the $62.28 per ton
     FC.outs[1].price = - 62.28 / _ton_to_kg
-    # TODO: labor cost needs to be considered
-    # TODO: not consider avoided costs for sludge landfilling
-    # assume food waste is free, labor cost is 0 $/kg
-    # electricity and steam use default prices
+    
+    # TODO: food waste now is free and emission-free, but it could provide credits as well
+    # TODO: now, electricity and steam use default prices
+    
+    # TODO: this is a guess from Xuan
+    PC.outs[0].price = 0.01/7
  
     GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
                                        method='IPCC',
@@ -201,7 +200,10 @@ def create_system(water_mass_flow=1000000):
         linked_stream=stream.sintering_natural_gas,
         GlobalWarming=0.573511217751451 * stream.sintering_natural_gas.F_vol / stream.sintering_natural_gas.F_mass
     )
-
+    
+    # TODO: add FePO4 (product) and VFAs as impact items (both should be credits)
+    
+    # TODO: add labor costs
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
