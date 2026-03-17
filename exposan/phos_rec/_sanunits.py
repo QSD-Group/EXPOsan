@@ -754,7 +754,7 @@ class FePO4_recovery(SanUnit):
 
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
                  isdynamic=False, food_sludge_ratio=1, food_waste_moisture=0.2,
-                 product_purity=0.99, f_XS_SA = 0.325, f_XS_vfa = 0.325, f_XS_eth = 0.02, 
+                 product_purity=1, f_XS_SA = 0.325, f_XS_vfa = 0.325, f_XS_eth = 0.02, 
                  f_XS_cake = 0.25, f_XS_gas = 0.05, cake_moisture=0.8):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with, isdynamic=isdynamic)
         self.food_sludge_ratio = food_sludge_ratio
@@ -1076,7 +1076,7 @@ class FePO4_recovery(SanUnit):
 
         self._state = np.concatenate((y_product, y_effluent, y_cake, y_gas))
         self._dstate = np.zeros_like(self._state)
-
+        
     def _update_state(self):
         """
         Push slices of self._state to each outlet stream.state.
@@ -1150,8 +1150,7 @@ class FePO4_recovery(SanUnit):
     def _compile_AE(self):
         """
         Pure algebraic unit. Outlet states are an instantaneous function of inlet states.
-        Because the mapping is nonlinear and piecewise, compute dstate numerically from
-        inlet dy_ins rather than deriving a full analytic expression.
+        Because the mapping is nonlinear and piecewise, computing dstate numerically from inlet dy_ins.
         """
         _state = self._state
         _dstate = self._dstate
@@ -1166,7 +1165,8 @@ class FePO4_recovery(SanUnit):
 
             # Numerical directional derivative:
             # y(t+dt) ≈ F(y_ins + dy_ins*dt)
-            dt_num = 1e-6  # days
+            # yins​(t+dt) ≈ yins​(t) + y˙​ins​(t)*dt
+            dt_num = 1e-6  # days # TODO: dt_num can be updated.
             y_ins_pert = np.asarray(y_ins, dtype=float) + np.asarray(dy_ins, dtype=float) * dt_num
 
             # avoid negative concentrations/flows in perturbed inlet states
