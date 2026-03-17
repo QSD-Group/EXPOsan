@@ -779,64 +779,130 @@ class FePO4_recovery(SanUnit):
         gas.phase = 'g'
         
         self.cmps = self.thermo.chemicals
+        MW_P = 30.97  # g/mol
+        IDs = list(self.cmps.IDs)
         
         if self.food_sludge_ratio not in [0, 1/3, 2/3, 1, 4/3]:
             raise RuntimeError('food_sludge_ratio must be one of the follow: 0, 1/3, 2/3, 1, 4/3.')
         
-        food_waste.imass['X_S'] = sludge.imass['X_S']*self.food_sludge_ratio
-        food_waste.imass['H2O'] = food_waste.imass['X_S']/(1-self.food_waste_moisture) * self.food_waste_moisture
-        
-        # TODO: this works for at least G1 and H1 for now, but may need further fine-tuning
-        # TODO: adjust the Fe dosage in `MetalDosage`
-        
-        # P released as a function of TP and food_sludge_ratio (probably not the case, therefore commented)
-        
-        # MW_P = 30.97  # g/mol
-        # MW  = np.array([sludge.chemicals[c.ID].MW for c in cmps], dtype=float)  # g/mol
-        # nuP = np.array(cmps.i_P, dtype=float) * MW / MW_P                       # mol P / mol comp
-        # imol = np.array([sludge.imol[c.ID] for c in cmps], dtype=float)         # kmol/hr
-        # P_total = float(imol @ nuP)                                             # kmol-P/hr
-        # P_released = P_total * metal_P_release[self.food_sludge_ratio]['P'] / 100
+        food_waste.imass['X_S'] = sludge.imass['X_S'] * self.food_sludge_ratio
+        food_waste.imass['H2O'] = (food_waste.imass['X_S'] / (1 - self.food_waste_moisture)) * self.food_waste_moisture
         
         metal_P_release = {
-            0: {'metal': 2.124263, 'P': 11.0693},
+            0:   {'metal': 2.124263, 'P': 11.0693},
             1/3: {'metal': 21.13664, 'P': 44.31886},
             2/3: {'metal': 60.67351, 'P': 71.22673},
-            1: {'metal': 83.07559, 'P': 82.30645},
+            1:   {'metal': 83.07559, 'P': 82.30645},
             4/3: {'metal': 85, 'P': 83}
         }
-
+        
         P_pct  = metal_P_release[self.food_sludge_ratio]['P'] / 100
         Fe_pct = metal_P_release[self.food_sludge_ratio]['metal'] / 100
-
-        # FePO4 contains both Fe and P; therefore it would mobilize only once 
-        FePO4_pct = min(P_pct, Fe_pct) # This is a conservative assumption 
-        dFePO4_mob     = sludge.imol['X_FePO4'] * FePO4_pct   
-        dFe_from_FeOH  = sludge.imol['X_FeOH']  * Fe_pct
-        dAlPO4_mob     = sludge.imol['X_AlPO4'] * P_pct
-        dPO4_from_S    = sludge.imol['S_PO4']   * 1  # completely available since it is soluble 
-
-        Fe_available   = dFe_from_FeOH + dFePO4_mob
-        PO4_available  = dPO4_from_S + dFePO4_mob + dAlPO4_mob
-
-        dFePO4_precip = min(Fe_available, PO4_available)
-        product.imol['X_FePO4'] = dFePO4_precip
-
-        sludge.imol['X_FeOH']  -= dFe_from_FeOH
-        sludge.imol['X_FePO4'] -= dFePO4_mob
-        sludge.imol['X_AlPO4'] -= dAlPO4_mob
-        sludge.imol['S_PO4']   -= dPO4_from_S
-
-        # Return excess back to sludge
-        sludge.imol['S_PO4']  += max(PO4_available - dFePO4_precip, 0.0)
-        sludge.imol['X_FeOH'] += max(Fe_available  - dFePO4_precip, 0.0)
         
+        # -----------------------------
+        # Store original balances
+        # -----------------------------
+        iP   = np.array(self.cmps.i_P, dtype=float)
+        iCOD = np.array(self.cmps.i_COD, dtype=float)
+        
+        sludge_imass_initial = np.array([sludge.imass[i] for i in IDs], dtype=float) # kg/hr
+        P_initial = np.sum(iP * sludge_imass_initial)        # kg-P/hr
+        COD_initial = np.sum(iCOD * sludge_imass_initial)    # kg-COD/hr
+        
+        P_selected_particulates = ( # kmol-P/hr
+            np.array(self.cmps.x, dtype=float) 
+            * np.array(self.cmps.i_P, dtype=float) # g-P / g-component 
+            * np.array([sludge.imass[i] for i in self.cmps.IDs], dtype=float) # kg-component / hr
+            / MW_P
+        )
+        
+        P_selected_solubles = ( # kmol-P/hr
+            np.array(self.cmps.s, dtype=float)
+            * np.array(self.cmps.i_P, dtype=float) # g-P / g-component 
+            * np.array([sludge.imass[i] for i in self.cmps.IDs], dtype=float) # kg-component / hr
+            / MW_P
+        )
+        
+        P_selected_particulates[[IDs.index(i) for i in ('X_I', 'X_FePO4') if i in IDs]] = P_selected_solubles[[IDs.index(i) for i in ('S_I') if i in IDs]] = 0.0
+        dFePO4_mob = sludge.imol['X_FePO4'] * min(P_pct, Fe_pct) # kmol-P/hr and kmol-Fe/hr
+        dFe_from_FeOH = sludge.imol['X_FeOH'] * Fe_pct
+        
+        P_released_total = np.sum(P_selected_solubles) + (np.sum(P_selected_particulates) * P_pct) + dFePO4_mob
+        Fe_released_total = dFe_from_FeOH + dFePO4_mob
+        product.imol['X_FePO4'] = min(P_released_total, Fe_released_total) # Formation of product
+        
+        # -----------------------------
+        # POST-PROCESSING MASS BALANCE
+        # -----------------------------
+        
+        # Before doing anything else, reducing just mobilized FePO4 from sludge
+        sludge.imol['X_FePO4'] = max(0.0, sludge.imol['X_FePO4'] - dFePO4_mob)
+        
+        P_used_total_mol = product.imol['X_FePO4']
+        f_used = min(1.0, P_used_total_mol / P_released_total)
+        imass0 = np.array([sludge.imass[i] for i in IDs], dtype=float)
+        P_used_part_by_cmp = (P_selected_particulates * P_pct) * f_used
+        
+        mass_consumed_part = np.zeros_like(imass0)
+        mask = iP > 0
+        mass_consumed_part[mask] = P_used_part_by_cmp[mask] * MW_P / iP[mask] # kg-component/hr
+        mass_consumed_part = np.minimum(mass_consumed_part, imass0)
+        
+        P_used_sol_by_cmp = P_selected_solubles * f_used
+        
+        mass_consumed_sol = np.zeros_like(imass0)
+        mass_consumed_sol[mask] = P_used_sol_by_cmp[mask] * MW_P / iP[mask] # kg-component/hr
+        mass_consumed_sol = np.minimum(mass_consumed_sol, imass0 - mass_consumed_part)
+        
+        new_imass = imass0.copy()
+        new_imass -= mass_consumed_part
+        new_imass -= mass_consumed_sol
+        
+        # COD transfer
+        COD_lost_total = (iCOD * (mass_consumed_part + mass_consumed_sol)).sum()
+        SA_idx = IDs.index('S_A')
+        
+        new_imass[SA_idx] += COD_lost_total / iCOD[SA_idx]
+        
+        for i, cmp_id in enumerate(IDs):
+            sludge.imass[cmp_id] = new_imass[i]
+        
+        # -----------------------------
+        # BALANCE CHECKS
+        # -----------------------------
+        sludge_imass_final = np.array([sludge.imass[i] for i in IDs], dtype=float)
+        
+        P_final_sludge = np.sum(iP * sludge_imass_final)                # kg-P/hr
+        P_in_product   = product.imol['X_FePO4'] * MW_P                 # kg-P/hr
+        P_total_after  = P_final_sludge + P_in_product
+        
+        COD_final = np.sum(iCOD * sludge_imass_final)                   # kg-COD/hr
+        
+        # Relative errors
+        P_err   = abs((P_total_after - P_initial) / P_initial)
+        COD_err = abs((COD_final - COD_initial) / COD_initial)
+        
+        # Tolerance
+        tol = 0.01  # 1%
+        
+        if P_err > tol:
+            raise RuntimeError(
+                f"P balance error exceeds tolerance: {P_err*100:.2f}%\n"
+                f"P_initial={P_initial:.6f}, P_final_total={P_total_after:.6f}"
+            )
+        
+        if COD_err > tol:
+            raise RuntimeError(
+                f"COD balance error exceeds tolerance: {COD_err*100:.2f}%\n"
+                f"COD_initial={COD_initial:.6f}, COD_final={COD_final:.6f}"
+            )
+    
         # Balance of inert material
         product.imass['X_I'] = product.imass['X_FePO4']/self.product_purity*(1 - self.product_purity)
         
         if (sludge.imass['X_I'] - product.imass['X_I']) < -1e-9: # tol = 1e-9
-            raise ValueError(f'Negative X_I mass in cake: {sludge.imass['X_I'] - product.imass['X_I']:.6e} kg/hr.'
-                'Check mass balance or upstream removal.')
+            raise ValueError(f"Negative X_I mass in cake: {sludge.imass['X_I'] - product.imass['X_I']:.6e} kg/hr."
+                "Check mass balance or upstream removal.")
         cake.imass['X_I'] = max(sludge.imass['X_I'] - product.imass['X_I'], 0.0)
         
         sludge.imass['X_I'] -= (product.imass['X_I'] + cake.imass['X_I'])
@@ -855,9 +921,12 @@ class FePO4_recovery(SanUnit):
         cake.imass['X_S'] += effluent.imass['X_S']*self.f_XS_cake
         
         #  kg SIC / hr    =    (COD kg/hr)         * f_XS_2_SIC    *          (g C/g COD)        *           (g SIC/g C) (Assuming the unit is NOT anaerobic)
+        # COD is being lost in this step
         gas.imass['S_IC'] += effluent.imass['X_S'] * self.f_XS_gas * effluent.components.X_S.i_C * gas.components.S_IC.i_mass # released as CO2
         
         effluent.imass['X_S'] -= effluent.imass['X_S']*(self.f_XS_SA + self.f_XS_vfa + self.f_XS_eth + self.f_XS_cake + self.f_XS_gas)
+        
+        breakpoint()
 
         # =====================================================================
         
