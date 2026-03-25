@@ -19,8 +19,16 @@ from exposan.phos_rec import create_system, create_model, simulate_and_save
 
 for perspective in ['FePO4','sludge']:
     for ratio in [0, 1/3, 2/3, 1, 4/3]:
-        sys = create_system(temp_ratio=10, food_sludge_ratio=ratio)
+        if ratio == 4/3:
+            sys = create_system(temp_ratio=10, food_sludge_ratio=ratio,HRT=132)
+        
+            model = create_model(sys, perspective=perspective)
 
-        model = create_model(sys, perspective=perspective)
+            simulate_and_save(model, notes=perspective+'_'+str(round(ratio, 2))+'_132')
+        else:
+            for HRT in [0,12,24,36,48,60,72,84,96,108,120,132]:
+                sys = create_system(temp_ratio=10, food_sludge_ratio=ratio,HRT=HRT)
+            
+                model = create_model(sys, perspective=perspective)
 
-        simulate_and_save(model, notes=perspective+'_'+str(round(ratio, 2)))
+                simulate_and_save(model, notes=perspective+'_'+str(round(ratio, 2))+'_'+str(HRT))

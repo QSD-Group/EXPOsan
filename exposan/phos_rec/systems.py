@@ -39,7 +39,7 @@ __all__ = (
 )
 
 # TODO: use temp_ratio to scale fe_sludge temporarily
-def create_system(temp_ratio=1, food_sludge_ratio=1):
+def create_system(temp_ratio=1, food_sludge_ratio=1, HRT=132):
     
     flowsheet_ID = 'phos_rec'
     
@@ -57,7 +57,6 @@ def create_system(temp_ratio=1, food_sludge_ratio=1):
     _load_components()
     
     # TODO: instead, assign concentrations to components except water
-    # TODO: consider adding a cost for fe_sludge as credits (e.g., avoid landfilling, etc.)
     # Inert represents other inorganics; now VSS/TSS = 0.74, which is reasonable
     fe_sludge = qs.WasteStream(ID='fe_sludge', Fe3=180*temp_ratio, Org=5000*temp_ratio,
                                PO4=300*temp_ratio, Water=1000000*temp_ratio, Ca2=150*temp_ratio,
@@ -65,13 +64,13 @@ def create_system(temp_ratio=1, food_sludge_ratio=1):
     
     P1 = qsu.SludgePump(ID='P1', ins=fe_sludge, outs='sludge_to_ST')
     
-    # the same as AF: 4 days of reaction + 3 hr for cleaning and unloading
-    ST = qsu.StorageTank(ID='ST', ins=P1-0, outs='sludge_to_P2', tau=4*24+3)
+    # the same as AF: 5 days of reaction + 3 hr for cleaning and unloading
+    ST = qsu.StorageTank(ID='ST', ins=P1-0, outs='sludge_to_P2', tau=5*24+3)
     
     P2 = qsu.SludgePump(ID='P2', ins=ST-0, outs='sludge_to_AF')
     
     AF = su.AcidogenicFermenter(ID='AF', ins=(P2-0, 'food_waste'), outs=('fermentate', 'fermentation_gas'),
-                                food_sludge_ratio=food_sludge_ratio)
+                                food_sludge_ratio=food_sludge_ratio, HRT=HRT)
     
     FC = su.SludgeCentrifugeWithElementFlow(ID='FC', ins=AF-0, outs=('fermentation_supernatant', 'residue'),
                                             sludge_moisture=0.85, solids=('Inert','Residue'))
@@ -79,7 +78,6 @@ def create_system(temp_ratio=1, food_sludge_ratio=1):
     SP = su.SelectivePrecipitation(ID='SP', ins=(FC-0, 'acid', 'oxidant'), outs='slurry')
     
     # TODO: may need to remove the scenario where food_sludge_ratio = 0 due to its very high costs and GHG emissions, also due to its different moisture content set here (only 0.99 works for the scenario where food_sludge_ratio = 0)
-    # TODO: Org seems low, but conservative: less organics for heat generation, and more go back to WRRF headworks
     if food_sludge_ratio != 0:
         PC = su.SludgeCentrifugeWithElementFlow(ID='PC', ins=SP-0, outs=('precipitation_supernatant', 'precipitate'),
                                                 sludge_moisture=0.92, solids=('FePO4_2H2O',))
@@ -102,13 +100,13 @@ def create_system(temp_ratio=1, food_sludge_ratio=1):
     
     sys.simulate()
     
-    # TODO: update the value
+    # the value：https://pubs.acs.org/doi/10.1021/es505329q
     sludge_credit_used_per_ton_dry = 300 # $/ton dry solids
     sludge_dry_kg_d = fe_sludge.F_mass - fe_sludge.imass['Water']
     fe_sludge.price = -sludge_credit_used_per_ton_dry*(sludge_dry_kg_d/1000)/fe_sludge.F_mass
     
-    # TODO: update the value
-    food_waste_credit_used_per_ton_dry = 300 # $/ton dry solids
+    # the value: https://www.sciencedirect.com/science/article/pii/S0959652621022757
+    food_waste_credit_used_per_ton_dry = 75.8 # $/ton dry solids
     food_waste_dry_kg_d = AF.ins[1].F_mass - AF.ins[1].imass['Water']
     AF.ins[1].price = -food_waste_credit_used_per_ton_dry*(food_waste_dry_kg_d/1000)/fe_sludge.F_mass
     
@@ -120,20 +118,19 @@ def create_system(temp_ratio=1, food_sludge_ratio=1):
     
     HD.ins[1].price = bst.HeatUtility.heating_agents[-1].regeneration_price/MW_CH4
     
-    # TODO: this only applies to the sludge management perspective; the value needs to be updated
-    SI.outs[0].price = 1
+    # TODO: this only applies to the sludge management perspective; the value needs to be updated: the price of FePO4 is 15000 rmb/ton, means 2.14 $/kg
+    SI.outs[0].price = 2.14
     
     SI.ins[1].price = bst.HeatUtility.heating_agents[-1].regeneration_price/MW_CH4
     
-    # TODO: -62.28 is from the value above for sludge credit, but it may be suitable here
     # the landfill cost (tipping fee) can be found in https://www.wasteoptima.com/blog/eref-2024-landfill-tipping-fees?utm_source with the $62.28 per ton
     FC.outs[1].price = - 62.28 / _ton_to_kg
     
-    # TODO: food waste now is free and emission-free, but it could provide credits as well
+    # TODO: food waste now is emission-free, but it could provide credits as well
     # TODO: now, electricity and steam use default prices
     
-    # TODO: this is a guess from Xuan
-    PC.outs[0].price = 0.01/7
+    # TODO: this is a guess from Xuan: the outs is rich in VFAs at 4000-5000 mg-VFAs/L (COD = 1 mg VFA)= 4.45-5.5 kg-COD/m3 =5 kg/m3 value=5*0.4=2$/m3 =0.002 $/kg
+    PC.outs[0].price = 0.002
  
     GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
                                        method='IPCC',
@@ -201,7 +198,21 @@ def create_system(temp_ratio=1, food_sludge_ratio=1):
         GlobalWarming=0.573511217751451 * stream.sintering_natural_gas.F_vol / stream.sintering_natural_gas.F_mass
     )
     
-    # TODO: add FePO4 (product) and VFAs as impact items (both should be credits)
+    # the CI of FePO4: https://www.sciencedirect.com/science/article/pii/S1383586624004258#s0085  2-3.5-6 kg CO2-eq/kg FePO4
+    qs.StreamImpactItem(
+    ID='FePO4_credit',
+    linked_stream=stream.product,
+    GlobalWarming = -4
+    )
+    # kg CO2/kg FePO4
+    
+    qs.StreamImpactItem(
+    ID='VFA_credit',
+    linked_stream=stream.precipitation_supernatant,
+    GlobalWarming = -0.002
+    )
+
+    
     
     # TODO: add labor costs
     create_tea(sys,

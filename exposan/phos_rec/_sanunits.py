@@ -177,7 +177,7 @@ class AcidogenicFermenter(ElementFlowMixin, SanUnit):
     }
     
     # hydraulic retention time, [hr]
-    HRT = 4*24
+    # HRT = 5*24
     
     # cleaning and unloading, [hr]
     tau_cleaning = 3
@@ -190,6 +190,7 @@ class AcidogenicFermenter(ElementFlowMixin, SanUnit):
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
                  food_sludge_ratio=1,
+                 HRT=132,
                  food_waste_moisture=0.74,
                  org_to_gas=0.05,
                  org_to_vfa=0.65,
@@ -197,16 +198,104 @@ class AcidogenicFermenter(ElementFlowMixin, SanUnit):
                  org_to_residue=0.25,
                  VFA_ratio={'Ac': 0.5, 'Pr': 0.24, 'Bu': 0.23, 'Va': 0.02, 'Lac': 0.01},
                  Fe_reduction=0.98,
-                 metal_release_ratio_0 = 0.02124263,
-                 metal_release_ratio_1_3 = 0.2113664,
-                 metal_release_ratio_2_3 = 0.6067351,
-                 metal_release_ratio_1 = 0.8307559,
-                 metal_release_ratio_4_3 = 0.85,
-                 P_release_ratio_0 = 0.110693,
-                 P_release_ratio_1_3 = 0.4431886,
-                 P_release_ratio_2_3 = 0.7122673,
-                 P_release_ratio_1 = 0.8230645,
-                 P_release_ratio_4_3 = 0.83,
+                 metal_release_ratio_0_0 = 0.00739,
+                 metal_release_ratio_0_12 = 0.007535,
+                 metal_release_ratio_0_24 = 0.006234,
+                 metal_release_ratio_0_36 = 0.004403,
+                 metal_release_ratio_0_48 = 0.0058,
+                 metal_release_ratio_0_60 = 0.004596,
+                 metal_release_ratio_0_72 = 0.006041,
+                 metal_release_ratio_0_84 = 0.0077053,
+                 metal_release_ratio_0_96 = 0.006668,
+                 metal_release_ratio_0_108 = 0.004837,
+                 metal_release_ratio_0_120 = 0.00397,              
+                 metal_release_ratio_0_132 = 0.02124263,
+                 metal_release_ratio_1_3_0 = 0.00739,
+                 metal_release_ratio_1_3_12 = 0.105381,
+                 metal_release_ratio_1_3_24 = 0.140121,
+                 metal_release_ratio_1_3_36 = 0.16433,
+                 metal_release_ratio_1_3_48 = 0.175555,
+                 metal_release_ratio_1_3_60 = 0.180373,
+                 metal_release_ratio_1_3_72 = 0.19049,
+                 metal_release_ratio_1_3_84 = 0.186636,
+                 metal_release_ratio_1_3_96 = 0.196753,
+                 metal_release_ratio_1_3_108 = 0.173146,
+                 metal_release_ratio_1_3_120 = 0.148576,
+                 metal_release_ratio_1_3_132 = 0.2113664,
+                 metal_release_ratio_2_3_0 = 0.00739,
+                 metal_release_ratio_2_3_12 = 0.149463,
+                 metal_release_ratio_2_3_24 = 0.290793,
+                 metal_release_ratio_2_3_36 = 0.361517,
+                 metal_release_ratio_2_3_48 = 0.40054,
+                 metal_release_ratio_2_3_60 = 0.427037,
+                 metal_release_ratio_2_3_72 = 0.443898,
+                 metal_release_ratio_2_3_84 = 0.475695,
+                 metal_release_ratio_2_3_96 = 0.488221,
+                 metal_release_ratio_2_3_108 = 0.5099,
+                 metal_release_ratio_2_3_120 = 0.514718,
+                 metal_release_ratio_2_3_132 = 0.6067351,
+                 metal_release_ratio_1_0 = 0.00739,
+                 metal_release_ratio_1_12 = 0.175141,
+                 metal_release_ratio_1_24 = 0.357759,
+                 metal_release_ratio_1_36 = 0.454979,
+                 metal_release_ratio_1_48 = 0.48533,
+                 metal_release_ratio_1_60 = 0.516645,
+                 metal_release_ratio_1_72 = 0.577829,
+                 metal_release_ratio_1_84 = 0.627451,
+                 metal_release_ratio_1_96 = 0.671292,
+                 metal_release_ratio_1_108 = 0.728622,
+                 metal_release_ratio_1_120 = 0.772462,
+                 metal_release_ratio_1_132 = 0.8307559,
+                 metal_release_ratio_4_3_132 = 0.85,
+                 P_release_ratio_0_0 = 0.08391,
+                 P_release_ratio_0_12 = 0.138184,
+                 P_release_ratio_0_24 = 0.147972,
+                 P_release_ratio_0_36 = 0.160052,
+                 P_release_ratio_0_48 = 0.162135,
+                 P_release_ratio_0_60 = 0.093407,
+                 P_release_ratio_0_72 = 0.099447,
+                 P_release_ratio_0_84 = 0.10809,
+                 P_release_ratio_0_96 = 0.112151,
+                 P_release_ratio_0_108 = 0.113921,
+                 P_release_ratio_0_120 = 0.110693,
+                 P_release_ratio_0_132 = 0.110693,
+                 P_release_ratio_1_3_0 = 0.083931,
+                 P_release_ratio_1_3_12 = 0.248252,
+                 P_release_ratio_1_3_24 = 0.412365,
+                 P_release_ratio_1_3_36 = 0.460266,
+                 P_release_ratio_1_3_48 = 0.502336,
+                 P_release_ratio_1_3_60 = 0.494005,
+                 P_release_ratio_1_3_72 = 0.516498,
+                 P_release_ratio_1_3_84 = 0.514832,
+                 P_release_ratio_1_3_96 = 0.527744,
+                 P_release_ratio_1_3_108 = 0.522746,
+                 P_release_ratio_1_3_120 = 0.512749,
+                 P_release_ratio_1_3_132 = 0.4431886,
+                 P_release_ratio_2_3_0 = 0.083931,
+                 P_release_ratio_2_3_12 = 0.284178,
+                 P_release_ratio_2_3_24 = 0.544405,
+                 P_release_ratio_2_3_36 = 0.634793,
+                 P_release_ratio_2_3_48 = 0.612717,
+                 P_release_ratio_2_3_60 = 0.62313,
+                 P_release_ratio_2_3_72 = 0.651454,
+                 P_release_ratio_2_3_84 = 0.650204,
+                 P_release_ratio_2_3_96 = 0.667699,
+                 P_release_ratio_2_3_108 = 0.655619,
+                 P_release_ratio_2_3_120 = 0.69394,
+                 P_release_ratio_2_3_132 = 0.7122673,
+                 P_release_ratio_1_0 = 0.083931,
+                 P_release_ratio_1_12 = 0.299277,
+                 P_release_ratio_1_24 = 0.576062,
+                 P_release_ratio_1_36 = 0.628128,
+                 P_release_ratio_1_48 = 0.655619,
+                 P_release_ratio_1_60 = 0.67228,
+                 P_release_ratio_1_72 = 0.706019,
+                 P_release_ratio_1_84 = 0.700188,
+                 P_release_ratio_1_96 = 0.736426,
+                 P_release_ratio_1_108 = 0.741424,
+                 P_release_ratio_1_120 = 0.79724,
+                 P_release_ratio_1_132 = 0.8230645,
+                 P_release_ratio_4_3_132 = 0.83,
                  T=37+_C_to_K):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.food_sludge_ratio = food_sludge_ratio
@@ -216,17 +305,106 @@ class AcidogenicFermenter(ElementFlowMixin, SanUnit):
         self.org_to_ethanol = org_to_ethanol
         self.org_to_residue = org_to_residue
         self.VFA_ratio = VFA_ratio
+        self.HRT = HRT
         self.Fe_reduction = Fe_reduction
-        self.metal_release_ratio_0 = metal_release_ratio_0
-        self.metal_release_ratio_1_3 = metal_release_ratio_1_3
-        self.metal_release_ratio_2_3 = metal_release_ratio_2_3
-        self.metal_release_ratio_1 = metal_release_ratio_1
-        self.metal_release_ratio_4_3 = metal_release_ratio_4_3
-        self.P_release_ratio_0 = P_release_ratio_0
-        self.P_release_ratio_1_3 = P_release_ratio_1_3
-        self.P_release_ratio_2_3 = P_release_ratio_2_3
-        self.P_release_ratio_1 = P_release_ratio_1
-        self.P_release_ratio_4_3 = P_release_ratio_4_3
+        self.metal_release_ratio_0_0 = metal_release_ratio_0_0
+        self.metal_release_ratio_0_12 = metal_release_ratio_0_12
+        self.metal_release_ratio_0_24 = metal_release_ratio_0_24
+        self.metal_release_ratio_0_36 = metal_release_ratio_0_36
+        self.metal_release_ratio_0_48 = metal_release_ratio_0_48
+        self.metal_release_ratio_0_60 = metal_release_ratio_0_60
+        self.metal_release_ratio_0_72 = metal_release_ratio_0_72
+        self.metal_release_ratio_0_84 = metal_release_ratio_0_84
+        self.metal_release_ratio_0_96 = metal_release_ratio_0_96
+        self.metal_release_ratio_0_108 = metal_release_ratio_0_108
+        self.metal_release_ratio_0_120 = metal_release_ratio_0_120
+        self.metal_release_ratio_0_132 = metal_release_ratio_0_132
+        self.metal_release_ratio_1_3_0 = metal_release_ratio_1_3_0
+        self.metal_release_ratio_1_3_12 = metal_release_ratio_1_3_12
+        self.metal_release_ratio_1_3_24 = metal_release_ratio_1_3_24
+        self.metal_release_ratio_1_3_36 = metal_release_ratio_1_3_36
+        self.metal_release_ratio_1_3_48 = metal_release_ratio_1_3_48
+        self.metal_release_ratio_1_3_60 = metal_release_ratio_1_3_60
+        self.metal_release_ratio_1_3_72 = metal_release_ratio_1_3_72
+        self.metal_release_ratio_1_3_84 = metal_release_ratio_1_3_84
+        self.metal_release_ratio_1_3_96 = metal_release_ratio_1_3_96
+        self.metal_release_ratio_1_3_108 = metal_release_ratio_1_3_108
+        self.metal_release_ratio_1_3_120 = metal_release_ratio_1_3_120
+        self.metal_release_ratio_1_3_132 = metal_release_ratio_1_3_132
+        self.metal_release_ratio_2_3_0 = metal_release_ratio_2_3_0
+        self.metal_release_ratio_2_3_12 = metal_release_ratio_2_3_12
+        self.metal_release_ratio_2_3_24 = metal_release_ratio_2_3_24
+        self.metal_release_ratio_2_3_36 = metal_release_ratio_2_3_36
+        self.metal_release_ratio_2_3_48 = metal_release_ratio_2_3_48
+        self.metal_release_ratio_2_3_60 = metal_release_ratio_2_3_60
+        self.metal_release_ratio_2_3_72 = metal_release_ratio_2_3_72
+        self.metal_release_ratio_2_3_84 = metal_release_ratio_2_3_84
+        self.metal_release_ratio_2_3_96 = metal_release_ratio_2_3_96
+        self.metal_release_ratio_2_3_108 = metal_release_ratio_2_3_108
+        self.metal_release_ratio_2_3_120 = metal_release_ratio_2_3_120
+        self.metal_release_ratio_2_3_132 = metal_release_ratio_2_3_132
+        self.metal_release_ratio_1_0 = metal_release_ratio_1_0
+        self.metal_release_ratio_1_12 = metal_release_ratio_1_12
+        self.metal_release_ratio_1_24 = metal_release_ratio_1_24
+        self.metal_release_ratio_1_36 = metal_release_ratio_1_36
+        self.metal_release_ratio_1_48 = metal_release_ratio_1_48
+        self.metal_release_ratio_1_60 = metal_release_ratio_1_60
+        self.metal_release_ratio_1_72 = metal_release_ratio_1_72
+        self.metal_release_ratio_1_84 = metal_release_ratio_1_84
+        self.metal_release_ratio_1_96 = metal_release_ratio_1_96
+        self.metal_release_ratio_1_108 = metal_release_ratio_1_108
+        self.metal_release_ratio_1_120 = metal_release_ratio_1_120
+        self.metal_release_ratio_1_132 = metal_release_ratio_1_132
+        self.metal_release_ratio_4_3_132 = metal_release_ratio_4_3_132
+        self.P_release_ratio_0_0 = P_release_ratio_0_0
+        self.P_release_ratio_0_12 = P_release_ratio_0_12
+        self.P_release_ratio_0_24 = P_release_ratio_0_24
+        self.P_release_ratio_0_36 = P_release_ratio_0_36
+        self.P_release_ratio_0_48 = P_release_ratio_0_48
+        self.P_release_ratio_0_60 = P_release_ratio_0_60
+        self.P_release_ratio_0_72 = P_release_ratio_0_72
+        self.P_release_ratio_0_84 = P_release_ratio_0_84
+        self.P_release_ratio_0_96 = P_release_ratio_0_96
+        self.P_release_ratio_0_108 = P_release_ratio_0_108
+        self.P_release_ratio_0_120 = P_release_ratio_0_120
+        self.P_release_ratio_0_132 = P_release_ratio_0_132
+        self.P_release_ratio_1_3_0 = P_release_ratio_1_3_0
+        self.P_release_ratio_1_3_12 = P_release_ratio_1_3_12
+        self.P_release_ratio_1_3_24 = P_release_ratio_1_3_24
+        self.P_release_ratio_1_3_36 = P_release_ratio_1_3_36
+        self.P_release_ratio_1_3_48 = P_release_ratio_1_3_48
+        self.P_release_ratio_1_3_60 = P_release_ratio_1_3_60
+        self.P_release_ratio_1_3_72 = P_release_ratio_1_3_72
+        self.P_release_ratio_1_3_84 = P_release_ratio_1_3_84
+        self.P_release_ratio_1_3_96 = P_release_ratio_1_3_96
+        self.P_release_ratio_1_3_108 = P_release_ratio_1_3_108
+        self.P_release_ratio_1_3_120 = P_release_ratio_1_3_120
+        self.P_release_ratio_1_3_132 = P_release_ratio_1_3_132
+        self.P_release_ratio_2_3_0 = P_release_ratio_2_3_0
+        self.P_release_ratio_2_3_12 = P_release_ratio_2_3_12
+        self.P_release_ratio_2_3_24 = P_release_ratio_2_3_24
+        self.P_release_ratio_2_3_36 = P_release_ratio_2_3_36
+        self.P_release_ratio_2_3_48 = P_release_ratio_2_3_48
+        self.P_release_ratio_2_3_60 = P_release_ratio_2_3_60
+        self.P_release_ratio_2_3_72 = P_release_ratio_2_3_72
+        self.P_release_ratio_2_3_84 = P_release_ratio_2_3_84
+        self.P_release_ratio_2_3_96 = P_release_ratio_2_3_96
+        self.P_release_ratio_2_3_108 = P_release_ratio_2_3_108
+        self.P_release_ratio_2_3_120 = P_release_ratio_2_3_120
+        self.P_release_ratio_2_3_132 = P_release_ratio_2_3_132
+        self.P_release_ratio_1_0 = P_release_ratio_1_0
+        self.P_release_ratio_1_12 = P_release_ratio_1_12
+        self.P_release_ratio_1_24 = P_release_ratio_1_24
+        self.P_release_ratio_1_36 = P_release_ratio_1_36
+        self.P_release_ratio_1_48 = P_release_ratio_1_48
+        self.P_release_ratio_1_60 = P_release_ratio_1_60
+        self.P_release_ratio_1_72 = P_release_ratio_1_72
+        self.P_release_ratio_1_84 = P_release_ratio_1_84
+        self.P_release_ratio_1_96 = P_release_ratio_1_96
+        self.P_release_ratio_1_108 = P_release_ratio_1_108
+        self.P_release_ratio_1_120 = P_release_ratio_1_120
+        self.P_release_ratio_1_132 = P_release_ratio_1_132
+        self.P_release_ratio_4_3_132 = P_release_ratio_4_3_132
         self.T = T
         fermentate = self.outs[0].proxy(f'{ID}_fermentate')
         self.fermentate_pump = SludgePump(f'.{ID}_fermentate_pump', ins=fermentate, init_with=init_with)
@@ -274,22 +452,82 @@ class AcidogenicFermenter(ElementFlowMixin, SanUnit):
         fermentate.imass['Fe2'] = fermentate.imass['Fe3'] * self.Fe_reduction
         fermentate.imass['Fe3'] -= fermentate.imass['Fe2']
         
+        # metal_P_release = {
+        #     0: {'metal': self.metal_release_ratio_0, 'P': self.P_release_ratio_0},
+        #     1/3: {'metal': self.metal_release_ratio_1_3, 'P': self.P_release_ratio_1_3},
+        #     2/3: {'metal': self.metal_release_ratio_2_3, 'P': self.P_release_ratio_2_3},
+        #     1: {'metal': self.metal_release_ratio_1, 'P': self.P_release_ratio_1},
+        #     4/3: {'metal': self.metal_release_ratio_4_3, 'P': self.P_release_ratio_4_3}
+        # }
+        
         metal_P_release = {
-            0: {'metal': self.metal_release_ratio_0, 'P': self.P_release_ratio_0},
-            1/3: {'metal': self.metal_release_ratio_1_3, 'P': self.P_release_ratio_1_3},
-            2/3: {'metal': self.metal_release_ratio_2_3, 'P': self.P_release_ratio_2_3},
-            1: {'metal': self.metal_release_ratio_1, 'P': self.P_release_ratio_1},
-            4/3: {'metal': self.metal_release_ratio_4_3, 'P': self.P_release_ratio_4_3}
+            0: {
+                0:{'metal': self.metal_release_ratio_0_0, 'P': self.P_release_ratio_0_0},
+                12:{'metal': self.metal_release_ratio_0_12, 'P': self.P_release_ratio_0_12},
+                24:{'metal': self.metal_release_ratio_0_24, 'P': self.P_release_ratio_0_24},
+                36:{'metal': self.metal_release_ratio_0_36, 'P': self.P_release_ratio_0_36},
+                48:{'metal': self.metal_release_ratio_0_48, 'P': self.P_release_ratio_0_48},
+                60:{'metal': self.metal_release_ratio_0_60, 'P': self.P_release_ratio_0_60},
+                72:{'metal': self.metal_release_ratio_0_72, 'P': self.P_release_ratio_0_72},
+                84:{'metal': self.metal_release_ratio_0_84, 'P': self.P_release_ratio_0_84},
+                96:{'metal': self.metal_release_ratio_0_96, 'P': self.P_release_ratio_0_96},
+                108:{'metal': self.metal_release_ratio_0_108, 'P': self.P_release_ratio_0_108},           
+                120: {'metal': self.metal_release_ratio_0_120, 'P': self.P_release_ratio_0_120},
+                132:{'metal': self.metal_release_ratio_0_132, 'P': self.P_release_ratio_0_132},
+                },
+            1/3: {
+                0:{'metal': self.metal_release_ratio_1_3_0, 'P': self.P_release_ratio_1_3_0},
+                12:{'metal': self.metal_release_ratio_1_3_12, 'P': self.P_release_ratio_1_3_12},
+                24:{'metal': self.metal_release_ratio_1_3_24, 'P': self.P_release_ratio_1_3_24},
+                36:{'metal': self.metal_release_ratio_1_3_36, 'P': self.P_release_ratio_1_3_36},
+                48:{'metal': self.metal_release_ratio_1_3_48, 'P': self.P_release_ratio_1_3_48},
+                60:{'metal': self.metal_release_ratio_1_3_60, 'P': self.P_release_ratio_1_3_60},
+                72:{'metal': self.metal_release_ratio_1_3_72, 'P': self.P_release_ratio_1_3_72},
+                84:{'metal': self.metal_release_ratio_1_3_84, 'P': self.P_release_ratio_1_3_84},
+                96:{'metal': self.metal_release_ratio_1_3_96, 'P': self.P_release_ratio_1_3_96},
+                108:{'metal': self.metal_release_ratio_1_3_108, 'P': self.P_release_ratio_1_3_108},
+                120:{'metal': self.metal_release_ratio_1_3_120, 'P': self.P_release_ratio_1_3_120},
+                132:{'metal': self.metal_release_ratio_1_3_132, 'P': self.P_release_ratio_1_3_132},
+                },
+            2/3: {
+                0:{'metal': self.metal_release_ratio_2_3_0, 'P': self.P_release_ratio_2_3_0},
+                12:{'metal': self.metal_release_ratio_2_3_12, 'P': self.P_release_ratio_2_3_12},
+                24:{'metal': self.metal_release_ratio_2_3_24, 'P': self.P_release_ratio_2_3_24},
+                36:{'metal': self.metal_release_ratio_2_3_36, 'P': self.P_release_ratio_2_3_36},
+                48:{'metal': self.metal_release_ratio_2_3_48, 'P': self.P_release_ratio_2_3_48},
+                60:{'metal': self.metal_release_ratio_2_3_60, 'P': self.P_release_ratio_2_3_60},
+                72:{'metal': self.metal_release_ratio_2_3_72, 'P': self.P_release_ratio_2_3_72},
+                84:{'metal': self.metal_release_ratio_2_3_84, 'P': self.P_release_ratio_2_3_84},
+                96:{'metal': self.metal_release_ratio_2_3_96, 'P': self.P_release_ratio_2_3_96},
+                108:{'metal': self.metal_release_ratio_2_3_108, 'P': self.P_release_ratio_2_3_108},
+                120:{'metal': self.metal_release_ratio_2_3_120, 'P': self.P_release_ratio_2_3_120},
+                132:{'metal': self.metal_release_ratio_2_3_132, 'P': self.P_release_ratio_2_3_132},
+                },
+            1: {
+                0:{'metal': self.metal_release_ratio_1_0, 'P': self.P_release_ratio_1_0},
+                12:{'metal': self.metal_release_ratio_1_12, 'P': self.P_release_ratio_1_12},
+                24:{'metal': self.metal_release_ratio_1_24, 'P': self.P_release_ratio_1_24},
+                36:{'metal': self.metal_release_ratio_1_36, 'P': self.P_release_ratio_1_36},
+                48:{'metal': self.metal_release_ratio_1_48, 'P': self.P_release_ratio_1_48},
+                60:{'metal': self.metal_release_ratio_1_60, 'P': self.P_release_ratio_1_60},
+                72:{'metal': self.metal_release_ratio_1_72, 'P': self.P_release_ratio_1_72},
+                84:{'metal': self.metal_release_ratio_1_84, 'P': self.P_release_ratio_1_84},
+                96:{'metal': self.metal_release_ratio_1_96, 'P': self.P_release_ratio_1_96},
+                108:{'metal': self.metal_release_ratio_1_108, 'P': self.P_release_ratio_1_108},           
+                120: {'metal': self.metal_release_ratio_1_120, 'P': self.P_release_ratio_1_120},
+                132:{'metal': self.metal_release_ratio_1_132, 'P': self.P_release_ratio_1_132},
+                },
+            4/3: {'metal': self.metal_release_ratio_4_3_132, 'P': self.P_release_ratio_4_3_132}
         }
         
         metal_P_to_residue = 0
         
         for metal in ['Fe2','Fe3','Ca2','Mg2']:
-            metal_P_to_residue += fermentate.imass[metal]*(1 - metal_P_release[self.food_sludge_ratio]['metal'])
-            fermentate.imass[metal] *= metal_P_release[self.food_sludge_ratio]['metal']
+            metal_P_to_residue += fermentate.imass[metal]*(1 - metal_P_release[self.food_sludge_ratio][self.HRT]['metal'])
+            fermentate.imass[metal] *= metal_P_release[self.food_sludge_ratio][self.HRT]['metal']
         
-        metal_P_to_residue += fermentate.imass['PO4']*(1 - metal_P_release[self.food_sludge_ratio]['P'])
-        fermentate.imass['PO4'] *= metal_P_release[self.food_sludge_ratio]['P']
+        metal_P_to_residue += fermentate.imass['PO4']*(1 - metal_P_release[self.food_sludge_ratio][self.HRT]['P'])
+        fermentate.imass['PO4'] *= metal_P_release[self.food_sludge_ratio][self.HRT]['P']
         
         fermentate.imass['Residue'] += metal_P_to_residue
         
@@ -383,7 +621,7 @@ class SelectivePrecipitation(ElementFlowMixin, SanUnit):
     }
     
     # hydraulic retention time, [hr]
-    HRT = 12
+    HRT = 6
     
     # cleaning and unloading, [hr]
     tau_cleaning = 1

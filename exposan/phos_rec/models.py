@@ -14,7 +14,7 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-import qsdsan as qs, biosteam as bst
+import os, qsdsan as qs, biosteam as bst, pandas as pd
 from chaospy import distributions as shape
 from qsdsan.utils import auom, DictAttrSetter
 
@@ -24,6 +24,8 @@ _MMBTU_to_MJ = auom('BTU').conversion_factor('MJ') * 10**6
 _ton_to_kg = auom('ton').conversion_factor('kg')
 
 MW_CH4 = 16
+
+folder = os.path.dirname(__file__)
 
 def create_model(system=None, perspective='FePO4'): #revised version：def create_model(system): flowsheet = system.flowsheet  for the creat_model() to a AttributeError
     
@@ -54,105 +56,124 @@ def create_model(system=None, perspective='FePO4'): #revised version：def creat
     # def set_food_sludge_ratio(i):
     #     AF.food_sludge_ratio=_choices[int(i)]  
     
-    dist = shape.Uniform(0.02124263*0.8,0.02124263*1.2)
-    @param(name='metal_release_ratio_0',
-           element='AF',
-           kind='coupled',
-           units='-',
-           baseline=0.02124263,
-           distribution=dist)
-    def set_metal_release_ratio_0(i):
-        AF.metal_release_ratio_0=i
     
-    dist = shape.Uniform(0.2113664*0.8,0.2113664*1.2)
-    @param(name='metal_release_ratio_1_3',
-           element='AF',
-           kind='coupled',
-           units='-',
-           baseline=0.2113664,
-           distribution=dist)
-    def set_metal_release_ratio_1_3(i):
-        AF.metal_release_ratio_1_3=i
+    df = pd.read_excel(os.path.join(folder, 'data/model_HRT.xlsx'))
+    for _, row in df.iterrows():
+        
+        name = row['name']
+        baseline = row['baseline']
+
+        # 创建分布
+        dist = shape.Uniform(baseline*0.8, baseline*1.2)
+
+        @param(name=name,
+               element='AF',
+               kind='coupled',
+               units='-',
+               baseline=baseline,
+               distribution=dist)
+        def set_param(i, name=name):
+            setattr(AF, name, i)     
+       
+    # dist = shape.Uniform(0.02124263*0.8,0.02124263*1.2)
+    # @param(name='metal_release_ratio_0',
+    #        element='AF',
+    #        kind='coupled',
+    #        units='-',
+    #        baseline=0.02124263,
+    #        distribution=dist)
+    # def set_metal_release_ratio_0(i):
+    #     AF.metal_release_ratio_0=i
     
-    dist = shape.Uniform(0.6067351*0.8,0.6067351*1.2)
-    @param(name='metal_release_ratio_2_3',
-           element='AF',
-           kind='coupled',
-           units='-',
-           baseline=0.6067351,
-           distribution=dist)
-    def set_metal_release_ratio_2_3(i):
-        AF.metal_release_ratio_2_3=i
+    # dist = shape.Uniform(0.2113664*0.8,0.2113664*1.2)
+    # @param(name='metal_release_ratio_1_3',
+    #        element='AF',
+    #        kind='coupled',
+    #        units='-',
+    #        baseline=0.2113664,
+    #        distribution=dist)
+    # def set_metal_release_ratio_1_3(i):
+    #     AF.metal_release_ratio_1_3=i
     
-    dist = shape.Uniform(0.8307559*0.8,0.8307559*1.2)
-    @param(name='metal_release_ratio_1',
-           element='AF',
-           kind='coupled',
-           units='-',
-           baseline=0.8307559,
-           distribution=dist)
-    def set_metal_release_ratio_1(i):
-        AF.metal_release_ratio_1=i
+    # dist = shape.Uniform(0.6067351*0.8,0.6067351*1.2)
+    # @param(name='metal_release_ratio_2_3',
+    #        element='AF',
+    #        kind='coupled',
+    #        units='-',
+    #        baseline=0.6067351,
+    #        distribution=dist)
+    # def set_metal_release_ratio_2_3(i):
+    #     AF.metal_release_ratio_2_3=i
     
-    dist = shape.Uniform(0.85*0.8,0.85*1.2)
-    @param(name='metal_release_ratio_4_3',
-           element='AF',
-           kind='coupled',
-           units='-',
-           baseline=0.85,
-           distribution=dist)
-    def set_metal_release_ratio_4_3(i):
-        AF.metal_release_ratio_4_3=i
+    # dist = shape.Uniform(0.8307559*0.8,0.8307559*1.2)
+    # @param(name='metal_release_ratio_1',
+    #        element='AF',
+    #        kind='coupled',
+    #        units='-',
+    #        baseline=0.8307559,
+    #        distribution=dist)
+    # def set_metal_release_ratio_1(i):
+    #     AF.metal_release_ratio_1=i
     
-    dist = shape.Uniform(0.110693*0.8,0.110693*1.2)
-    @param(name='P_release_ratio_0',
-           element='AF',
-           kind='coupled',
-           units='-',
-           baseline=0.110693,
-           distribution=dist)
-    def set_P_release_ratio_0(i):
-        AF.P_release_ratio_0=i
+    # dist = shape.Uniform(0.85*0.8,0.85*1.2)
+    # @param(name='metal_release_ratio_4_3',
+    #        element='AF',
+    #        kind='coupled',
+    #        units='-',
+    #        baseline=0.85,
+    #        distribution=dist)
+    # def set_metal_release_ratio_4_3(i):
+    #     AF.metal_release_ratio_4_3=i
     
-    dist = shape.Uniform(0.4431886*0.8,0.4431886*1.2)
-    @param(name='P_release_ratio_1_3',
-           element='AF',
-           kind='coupled',
-           units='-',
-           baseline=0.4431886,
-           distribution=dist)
-    def set_P_release_ratio_1_3(i):
-        AF.P_release_ratio_1_3=i
+    # dist = shape.Uniform(0.110693*0.8,0.110693*1.2)
+    # @param(name='P_release_ratio_0',
+    #        element='AF',
+    #        kind='coupled',
+    #        units='-',
+    #        baseline=0.110693,
+    #        distribution=dist)
+    # def set_P_release_ratio_0(i):
+    #     AF.P_release_ratio_0=i
     
-    dist = shape.Uniform(0.7122673*0.8,0.7122673*1.2)
-    @param(name='P_release_ratio_2_3',
-           element='AF',
-           kind='coupled',
-           units='-',
-           baseline=0.7122673,
-           distribution=dist)
-    def set_P_release_ratio_2_3(i):
-        AF.P_release_ratio_2_3=i
+    # dist = shape.Uniform(0.4431886*0.8,0.4431886*1.2)
+    # @param(name='P_release_ratio_1_3',
+    #        element='AF',
+    #        kind='coupled',
+    #        units='-',
+    #        baseline=0.4431886,
+    #        distribution=dist)
+    # def set_P_release_ratio_1_3(i):
+    #     AF.P_release_ratio_1_3=i
     
-    dist = shape.Uniform(0.8230645*0.8,0.8230645*1.2)
-    @param(name='P_release_ratio_1',
-           element='AF',
-           kind='coupled',
-           units='-',
-           baseline=0.8230645,
-           distribution=dist)
-    def set_P_release_ratio_1(i):
-        AF.P_release_ratio_1=i
+    # dist = shape.Uniform(0.7122673*0.8,0.7122673*1.2)
+    # @param(name='P_release_ratio_2_3',
+    #        element='AF',
+    #        kind='coupled',
+    #        units='-',
+    #        baseline=0.7122673,
+    #        distribution=dist)
+    # def set_P_release_ratio_2_3(i):
+    #     AF.P_release_ratio_2_3=i
     
-    dist = shape.Uniform(0.83*0.8,0.83*1.2)
-    @param(name='P_release_ratio_4_3',
-           element='AF',
-           kind='coupled',
-           units='-',
-           baseline=0.83,
-           distribution=dist)
-    def set_P_release_ratio_4_3(i):
-        AF.P_release_ratio_4_3=i
+    # dist = shape.Uniform(0.8230645*0.8,0.8230645*1.2)
+    # @param(name='P_release_ratio_1',
+    #        element='AF',
+    #        kind='coupled',
+    #        units='-',
+    #        baseline=0.8230645,
+    #        distribution=dist)
+    # def set_P_release_ratio_1(i):
+    #     AF.P_release_ratio_1=i
+    
+    # dist = shape.Uniform(0.83*0.8,0.83*1.2)
+    # @param(name='P_release_ratio_4_3',
+    #        element='AF',
+    #        kind='coupled',
+    #        units='-',
+    #        baseline=0.83,
+    #        distribution=dist)
+    # def set_P_release_ratio_4_3(i):
+    #     AF.P_release_ratio_4_3=i
     
     dist = shape.Uniform(0.68,0.8)
     @param(name='food_waste_moisture',
@@ -164,17 +185,17 @@ def create_model(system=None, perspective='FePO4'): #revised version：def creat
     def set_sludge_moisture(i):
         AF.food_waste_moisture=i  
     
-    # TODO: leave HRT in uncertainty analysis for now; but this can be removed if that makes sense
-    dist = shape.Uniform(80,120)
-    @param(name='AF_HRT',
-           element='AF',
-           kind='coupled',
-           units='hr',
-           baseline=100,
-           distribution=dist)
-    def set_AF_HRT(i):
-        # TODO: check if the value actually changes: the HRT value changes in the result spreadsheet, however, it may be safer to write HRT as a parameter in the sanunit
-        AF.HRT=i
+    # # TODO: leave HRT in uncertainty analysis for now; but this can be removed if that makes sense
+    # dist = shape.Uniform(96,144)
+    # @param(name='AF_HRT',
+    #        element='AF',
+    #        kind='coupled',
+    #        units='hr',
+    #        baseline=120,
+    #        distribution=dist)
+    # def set_AF_HRT(i):
+    #     # TODO: check if the value actually changes: the HRT value changes in the result spreadsheet, however, it may be safer to write HRT as a parameter in the sanunit
+    #     AF.HRT=i
     
     dist = shape.Uniform(0.018,0.022)
     @param(name='org_to_gas',
@@ -253,24 +274,24 @@ def create_model(system=None, perspective='FePO4'): #revised version：def creat
     def set_oxidant_excess(i):
         SP.oxidant_excess=i
     
-    # TODO: leave HRT in uncertainty analysis for now; but this can be removed if that makes sense
-    dist = shape.Uniform(8,12)
-    @param(name='SP_HRT',
-           element='SP',
-           kind='coupled',
-           units='hr',
-           baseline=10,
-           distribution=dist)
-    def set_SP_HRT(i):
-        # TODO: check if the value actually changes: the HRT value changes in the result spreadsheet, however, it may be safer to write HRT as a parameter in the sanunit
-        SP.HRT=i
+    # # TODO: leave HRT in uncertainty analysis for now; but this can be removed if that makes sense
+    # dist = shape.Uniform(4.8,7.2)
+    # @param(name='SP_HRT',
+    #        element='SP',
+    #        kind='coupled',
+    #        units='hr',
+    #        baseline=6,
+    #        distribution=dist)
+    # def set_SP_HRT(i):
+    #     # TODO: check if the value actually changes: the HRT value changes in the result spreadsheet, however, it may be safer to write HRT as a parameter in the sanunit
+    #     SP.HRT=i
     
     # =============================================================================
     # TEA
     # =============================================================================
     H2SO4 = stream.acid
     # TODO: update if needed
-    dist = shape.Uniform(0.08*0.9,0.08*1.1)
+    dist = shape.Uniform(0.08*0.8,0.08*1.2)
     @param(name='H2SO4_price',
            element='TEA',
            kind='isolated',
@@ -282,7 +303,7 @@ def create_model(system=None, perspective='FePO4'): #revised version：def creat
     
     H2O2 = stream.oxidant
     # TODO: update if needed
-    dist = shape.Uniform(1.46*0.9,1.46*1.1)
+    dist = shape.Uniform(1.46*0.8,1.46*1.2)
     @param(name='H2O2_price',
            element='TEA',
            kind='isolated',
@@ -294,12 +315,12 @@ def create_model(system=None, perspective='FePO4'): #revised version：def creat
     
     FePO4 = stream.product
     # TODO: update if needed
-    dist = shape.Uniform(0.2*0.9,0.2*1.1)
+    dist = shape.Uniform(2.14*0.8,2.14*1.2)
     @param(name='FePO4_price',
            element='TEA',
            kind='isolated',
            units='$/kg',
-           baseline=0.2,
+           baseline=2.14,
            distribution=dist)
     def set_FePO4_price(i):
         FePO4.price=i
@@ -320,7 +341,7 @@ def create_model(system=None, perspective='FePO4'): #revised version：def creat
     
     landfill = stream.residue
     # TODO: update if needed
-    dist = shape.Uniform(-62.28/_ton_to_kg*1.1,-62.28/_ton_to_kg*0.9)
+    dist = shape.Uniform(-62.28/_ton_to_kg*1.2,-62.28/_ton_to_kg*0.8)
     @param(name='landfill_price',
            element='TEA',
            kind='isolated',
@@ -368,9 +389,12 @@ def create_model(system=None, perspective='FePO4'): #revised version：def creat
                    distribution=dist)
             def set_LCA(i):
                 qs.ImpactItem.get_item(item).CFs['GlobalWarming']=i
+
+        
+    
     
     # =========================================================================
-    # metrics
+    # metrics!
     # =========================================================================
     metric = model.metric
     tea = system.TEA
