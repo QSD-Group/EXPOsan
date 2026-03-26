@@ -58,22 +58,16 @@ def create_model(system=None, perspective='FePO4'): #revised version：def creat
     
     
     df = pd.read_excel(os.path.join(folder, 'data/model_HRT.xlsx'))
-    for _, row in df.iterrows():
-        
-        name = row['name']
-        baseline = row['baseline']
-
-        # 创建分布
-        dist = shape.Uniform(baseline*0.8, baseline*1.2)
-
-        @param(name=name,
+    for _, row in df.iterrows():        
+        dist = shape.Uniform(row['baseline']*0.8, row['baseline']*1.2)
+        @param(name=row['name'],
                element='AF',
                kind='coupled',
                units='-',
-               baseline=baseline,
+               baseline=row['baseline'],
                distribution=dist)
-        def set_param(i, name=name):
-            setattr(AF, name, i)     
+        def set_param(i, name=row['name']):
+            setattr(AF, row['name'], i)     
        
     # dist = shape.Uniform(0.02124263*0.8,0.02124263*1.2)
     # @param(name='metal_release_ratio_0',
@@ -389,12 +383,9 @@ def create_model(system=None, perspective='FePO4'): #revised version：def creat
                    distribution=dist)
             def set_LCA(i):
                 qs.ImpactItem.get_item(item).CFs['GlobalWarming']=i
-
-        
-    
     
     # =========================================================================
-    # metrics!
+    # metrics
     # =========================================================================
     metric = model.metric
     tea = system.TEA

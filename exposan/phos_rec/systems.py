@@ -129,6 +129,7 @@ def create_system(temp_ratio=1, food_sludge_ratio=1, HRT=132):
     # TODO: food waste now is emission-free, but it could provide credits as well
     # TODO: now, electricity and steam use default prices
     
+    # TODO: food_sludge_ratio and HRT also affect the concentration of VFAs, and therefore their price
     # TODO: this is a guess from Xuan: the outs is rich in VFAs at 4000-5000 mg-VFAs/L (COD = 1 mg VFA)= 4.45-5.5 kg-COD/m3 =5 kg/m3 value=5*0.4=2$/m3 =0.002 $/kg
     PC.outs[0].price = 0.002
  
@@ -211,7 +212,6 @@ def create_system(temp_ratio=1, food_sludge_ratio=1, HRT=132):
     linked_stream=stream.precipitation_supernatant,
     GlobalWarming = -0.002
     )
-
     
     # TODO: add labor costs
     # labor cost=1 FTE*8000h/year*25$-wage/hour=200,000 $/year
