@@ -213,14 +213,18 @@ def create_system(temp_ratio=1, food_sludge_ratio=1, HRT=132):
     )
 
     
-    
     # TODO: add labor costs
+    # labor cost=1 FTE*8000h/year*25$-wage/hour=200,000 $/year
+    # wage:U.S. Bureau of Labor Statistics. Producer Price Index–Metals and Metal Products: Mid–Atlantic Information Office: U.S. Bureau of Labor Statistics. Available online: https://www.bls.gov/regions/mid-atlantic/data/producerpriceindexmetals_us_table.htm (accessed on 28 June 2022).
+    # FTE amount: https://www.mheducation.com/highered/product/wastewater-engineering-treatment-resource-recovery-metcalf-eddy/M9780073401188.html (highly automated treatment processes require minimal operator attention)
+    # other refer-1: the labor cost is €462.25 per month:https://www.sciencedirect.com/science/article/pii/S0959652617305504
+    # other refer-2: operation labor in need (number of operator·hours per year):https://pubs.acs.org/doi/10.1021/acssuschemeng.0c05189
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
                income_tax_value=0.3,
                finance_interest_value=0.03,
-               labor_cost_value=0) 
+               labor_cost_value=200000) 
     
     qs.LCA(
         system=sys, lifetime=lifetime, lifetime_unit='yr',
