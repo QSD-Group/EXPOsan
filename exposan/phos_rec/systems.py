@@ -78,13 +78,24 @@ def create_system(temp_ratio=1, food_sludge_ratio=1, HRT=132):
     SP = su.SelectivePrecipitation(ID='SP', ins=(FC-0, 'acid', 'oxidant'), outs='slurry')
     
     # TODO: may need to remove the scenario where food_sludge_ratio = 0 due to its very high costs and GHG emissions, also due to its different moisture content set here (only 0.99 works for the scenario where food_sludge_ratio = 0)
-    if food_sludge_ratio != 0:
-        PC = su.SludgeCentrifugeWithElementFlow(ID='PC', ins=SP-0, outs=('precipitation_supernatant', 'precipitate'),
-                                                sludge_moisture=0.92, solids=('FePO4_2H2O',))
-    else:
-        PC = su.SludgeCentrifugeWithElementFlow(ID='PC', ins=SP-0, outs=('precipitation_supernatant', 'precipitate'),
-                                                sludge_moisture=0.99, solids=('FePO4_2H2O',))
+    # if food_sludge_ratio != 0:
+    #     PC = su.SludgeCentrifugeWithElementFlow(ID='PC', ins=SP-0, outs=('precipitation_supernatant', 'precipitate'),
+    #                                             sludge_moisture=0.92, solids=('FePO4_2H2O',))
+    # else:
+    #     PC = su.SludgeCentrifugeWithElementFlow(ID='PC', ins=SP-0, outs=('precipitation_supernatant', 'precipitate'),
+    #                                             sludge_moisture=0.99, solids=('FePO4_2H2O',))
+        
+    precip_mass = (SP-0).imass['FePO4_2H2O']
     
+    if precip_mass < 1e-6:
+        pc_moisture = 0.99
+    else:
+        pc_moisture = 0.92
+        
+    PC = su.SludgeCentrifugeWithElementFlow(ID='PC', ins=SP-0, outs=('precipitation_supernatant', 'precipitate'),
+                                            sludge_moisture=pc_moisture, solids=('FePO4_2H2O',))
+        
+        
     HD = su.HeatDrying(ID='HD', ins=(PC-1, 'heat_drying_natural_gas'), outs=('dried_precipitate', 'heat_drying_vapor'),
                        T=105+_C_to_K)
     
@@ -131,7 +142,70 @@ def create_system(temp_ratio=1, food_sludge_ratio=1, HRT=132):
     
     # TODO: food_sludge_ratio and HRT also affect the concentration of VFAs, and therefore their price
     # TODO: this is a guess from Xuan: the outs is rich in VFAs at 4000-5000 mg-VFAs/L (COD = 1 mg VFA)= 4.45-5.5 kg-COD/m3 =5 kg/m3 value=5*0.4=2$/m3 =0.002 $/kg
-    PC.outs[0].price = 0.002
+    
+    def get_precipitation_supernatant_price(food_sludge_ratio, HRT):
+        VFA_conc_dict = {
+            (0, 0):229.836,    #mg/L
+            (0, 12):229.836,
+            (0, 24):229.836,
+            (0, 36):229.836,
+            (0, 48):229.836,
+            (0, 60):229.836,
+            (0, 72):229.836,
+            (0, 84):315.014,
+            (0, 96):324.748,
+            (0, 108):474.744,
+            (0, 120):503.468,
+            (0, 132):574.002,
+            (1_3, 0):229.836,    #mg/L
+            (1_3, 12):318.997,
+            (1_3, 24):891.924,
+            (1_3, 36):930.369,
+            (1_3, 48):942.929,
+            (1_3, 60):1019.904,
+            (1_3, 72):1030.104,
+            (1_3, 84):1058.436,
+            (1_3, 96):1065.347,
+            (1_3, 108):1235.25,
+            (1_3, 120):1295.057,
+            (1_3, 132):1486.757,
+            (2_3, 0):229.836,
+            (2_3, 12):619.055,
+            (2_3, 24):1342.854,
+            (2_3, 36):1975.393,
+            (2_3, 48):2195.785,
+            (2_3, 60):2540.621,
+            (2_3, 72):2677.336,
+            (2_3, 84):2740.366,
+            (2_3, 96):2754.408,
+            (2_3, 108):2835.845,
+            (2_3, 120):2882.61,
+            (2_3, 132):3123.319,
+            (3_3, 0):229.836,    #mg/L
+            (3_3, 12):755.134,
+            (3_3, 24):1534.219,
+            (3_3, 36):2006.594,
+            (3_3, 48):2624.859,
+            (3_3, 60):3049.32,
+            (3_3, 72):3413.96,
+            (3_3, 84):3716.996,
+            (3_3, 96):3763.005,
+            (3_3, 108):3953.696,
+            (3_3, 120):4114.03,
+            (3_3, 132):4500,
+            (4_3, 132):4650,
+          }
+            
+        vfa_conc = VFA_conc_dict[(food_sludge_ratio),HRT]  # mg/L
+        price = 0.002 * (vfa_conc / 4500)
+        
+        return price
+    
+    ratio = AF.food_sludge_ratio
+    HRT = AF.HRT
+    PC.outs[0].price = get_precipitation_supernatant_price(ratio, HRT)
+ 
+    # PC.outs[0].price = 0.002
  
     GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
                                        method='IPCC',
