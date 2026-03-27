@@ -418,6 +418,7 @@ class AcidogenicFermenter(ElementFlowMixin, SanUnit):
         fermentate.phase = 'l'
         gas.phase = 'g'
         
+        # TODO: add if statement for HRT
         if self.food_sludge_ratio not in [0, 1/3, 2/3, 1, 4/3]:
             raise RuntimeError('food_sludge_ratio must be one of the follow: 0, 1/3, 2/3, 1, 4/3.')
         

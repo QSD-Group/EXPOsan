@@ -85,15 +85,19 @@ def create_system(temp_ratio=1, food_sludge_ratio=1, HRT=132):
     #     PC = su.SludgeCentrifugeWithElementFlow(ID='PC', ins=SP-0, outs=('precipitation_supernatant', 'precipitate'),
     #                                             sludge_moisture=0.99, solids=('FePO4_2H2O',))
         
-    precip_mass = (SP-0).imass['FePO4_2H2O']
+    # precip_mass = (SP-0).imass['FePO4_2H2O']
     
-    if precip_mass < 1e-6:
-        pc_moisture = 0.99
-    else:
-        pc_moisture = 0.92
+    # if precip_mass < 1e-6:
+    #     pc_moisture = 0.99
+    # else:
+    #     pc_moisture = 0.80
         
-    PC = su.SludgeCentrifugeWithElementFlow(ID='PC', ins=SP-0, outs=('precipitation_supernatant', 'precipitate'),
-                                            sludge_moisture=pc_moisture, solids=('FePO4_2H2O',))
+    if food_sludge_ratio == 0:
+        PC = su.SludgeCentrifugeWithElementFlow(ID='PC', ins=SP-0, outs=('precipitation_supernatant', 'precipitate'),
+                                            sludge_moisture=0.999, solids=('FePO4_2H2O',))
+    else:
+        PC = su.SludgeCentrifugeWithElementFlow(ID='PC', ins=SP-0, outs=('precipitation_supernatant', 'precipitate'),
+                                            sludge_moisture=0.92, solids=('FePO4_2H2O',))
         
         
     HD = su.HeatDrying(ID='HD', ins=(PC-1, 'heat_drying_natural_gas'), outs=('dried_precipitate', 'heat_drying_vapor'),
@@ -157,43 +161,43 @@ def create_system(temp_ratio=1, food_sludge_ratio=1, HRT=132):
             (0, 108):474.744,
             (0, 120):503.468,
             (0, 132):574.002,
-            (1_3, 0):229.836,    #mg/L
-            (1_3, 12):318.997,
-            (1_3, 24):891.924,
-            (1_3, 36):930.369,
-            (1_3, 48):942.929,
-            (1_3, 60):1019.904,
-            (1_3, 72):1030.104,
-            (1_3, 84):1058.436,
-            (1_3, 96):1065.347,
-            (1_3, 108):1235.25,
-            (1_3, 120):1295.057,
-            (1_3, 132):1486.757,
-            (2_3, 0):229.836,
-            (2_3, 12):619.055,
-            (2_3, 24):1342.854,
-            (2_3, 36):1975.393,
-            (2_3, 48):2195.785,
-            (2_3, 60):2540.621,
-            (2_3, 72):2677.336,
-            (2_3, 84):2740.366,
-            (2_3, 96):2754.408,
-            (2_3, 108):2835.845,
-            (2_3, 120):2882.61,
-            (2_3, 132):3123.319,
-            (3_3, 0):229.836,    #mg/L
-            (3_3, 12):755.134,
-            (3_3, 24):1534.219,
-            (3_3, 36):2006.594,
-            (3_3, 48):2624.859,
-            (3_3, 60):3049.32,
-            (3_3, 72):3413.96,
-            (3_3, 84):3716.996,
-            (3_3, 96):3763.005,
-            (3_3, 108):3953.696,
-            (3_3, 120):4114.03,
-            (3_3, 132):4500,
-            (4_3, 132):4650,
+            (1/3, 0):229.836,    #mg/L
+            (1/3, 12):318.997,
+            (1/3, 24):891.924,
+            (1/3, 36):930.369,
+            (1/3, 48):942.929,
+            (1/3, 60):1019.904,
+            (1/3, 72):1030.104,
+            (1/3, 84):1058.436,
+            (1/3, 96):1065.347,
+            (1/3, 108):1235.25,
+            (1/3, 120):1295.057,
+            (1/3, 132):1486.757,
+            (2/3, 0):229.836,
+            (2/3, 12):619.055,
+            (2/3, 24):1342.854,
+            (2/3, 36):1975.393,
+            (2/3, 48):2195.785,
+            (2/3, 60):2540.621,
+            (2/3, 72):2677.336,
+            (2/3, 84):2740.366,
+            (2/3, 96):2754.408,
+            (2/3, 108):2835.845,
+            (2/3, 120):2882.61,
+            (2/3, 132):3123.319,
+            (3/3, 0):229.836,    #mg/L
+            (3/3, 12):755.134,
+            (3/3, 24):1534.219,
+            (3/3, 36):2006.594,
+            (3/3, 48):2624.859,
+            (3/3, 60):3049.32,
+            (3/3, 72):3413.96,
+            (3/3, 84):3716.996,
+            (3/3, 96):3763.005,
+            (3/3, 108):3953.696,
+            (3/3, 120):4114.03,
+            (3/3, 132):4500,
+            (4/3, 132):4650,
           }
             
         vfa_conc = VFA_conc_dict[(food_sludge_ratio),HRT]  # mg/L

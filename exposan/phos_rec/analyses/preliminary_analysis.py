@@ -16,6 +16,7 @@ for license details.
 
 import os, pandas as pd
 from exposan.phos_rec import create_system, create_model
+from datetime import date
 
 folder = os.path.dirname(os.path.dirname(__file__))
 
@@ -118,5 +119,5 @@ for perspective in ['FePO4','sludge']:
         sludge_result['sludge_GWP_95th'] = sludge_GWP_95th
         sludge_result['sludge_GWP_mean'] = sludge_GWP_mean
         
-FePO4_result.to_excel(os.path.join(folder, 'results/FePO4_result.xlsx'))
-sludge_result.to_excel(os.path.join(folder, 'results/sludge_result.xlsx'))
+FePO4_result.to_excel(os.path.join(folder, f'results/FePO4_result_{date.today()}.xlsx'))
+sludge_result.to_excel(os.path.join(folder, f'results/sludge_result_{date.today()}.xlsx'))
