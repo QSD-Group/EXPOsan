@@ -88,7 +88,7 @@ def create_g1_system(flowsheet=None, default_init_conds=True):
     O5 = su.CSTR('O5', A4-0, V_max=V_tot*fr_V[4], **ae_kwargs)
     O6 = su.CSTR('O6', O5-0, [1-A3, 'treated'], split=[40, 14],
                   V_max=V_tot*fr_V[5], **ae_kwargs)
-
+    
     # ASR = su.PFR(
     #     'ASR', ins=[PC-0, 'RAS', carb], outs='treated', 
     #     N_tanks_in_series=n_zones,
@@ -175,6 +175,9 @@ def run(sys, t, t_step, method=None, **kwargs):
     print(f'\n{msg}\n{"-"*len(msg)}')
     print(f'Time span 0-{t}d \n')
     
+    # sys.isdynamic = False
+    # sys.simulate()
+    
     sys.simulate(
         # state_reset_hook='reset_cache',
         t_span=(0,t),
@@ -206,7 +209,8 @@ if __name__ == '__main__':
     fu = sys.flowsheet.unit
     sys.diagram()
     fig, axis = fs.SE.scope.plot_time_series(('S_A', 'S_F', 'X_S', 'S_NH4', 'X_I', 'S_I', 'S_N2')) 
-    #     fig
+    fig
+    
     # biomass_IDs = ('X_H', 'X_PAO', 'X_AUT')
     # srt = get_SRT(sys, biomass_IDs,
     #               wastage=[WAS],

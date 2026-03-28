@@ -9,6 +9,8 @@ This module is developed by:
     
     Jianan Feng <jiananf2@illinois.edu>
     
+    Saumitra Rai <raisaumitra9@gmail.com>
+    
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
@@ -1400,17 +1402,16 @@ class FePO4_recovery(SanUnit):
         _evaluate_outlet_states = self._evaluate_outlet_states
 
         def y_t(t, y_ins, dy_ins):
-            # Main algebraic evaluation
             y0 = _evaluate_outlet_states(y_ins)
             _state[:] = y0
 
-            # Numerical directional derivative:
+           
             # y(t+dt) ≈ F(y_ins + dy_ins*dt)
             # yins​(t+dt) ≈ yins​(t) + y˙​ins​(t)*dt
-            dt_num = 1e-6  # days # TODO: dt_num can be updated.
+            dt_num = 1e-6  # days # dt_num can be updated in the future.
             y_ins_pert = np.asarray(y_ins, dtype=float) + np.asarray(dy_ins, dtype=float) * dt_num
 
-            # avoid negative concentrations/flows in perturbed inlet states
+            # avoid negative concentrations/flows in perturbed inlet states (maybe have errors instead)
             y_ins_pert[:, :-1] = np.maximum(y_ins_pert[:, :-1], 0.0)
             y_ins_pert[:, -1] = np.maximum(y_ins_pert[:, -1], 0.0)
 

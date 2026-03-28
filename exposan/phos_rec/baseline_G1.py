@@ -178,7 +178,7 @@ def run(sys, t, t_step, method=None, **kwargs):
         t_span=(0,t),
         # t_eval=np.arange(0, t+t_step, t_step),
         method=method,
-        print_t=True,
+        print_t=False,
         # rtol=1e-2,
         # atol=1e-3,
         # export_state_to=f'results/sol_{t}d_{method}.xlsx',
@@ -190,7 +190,7 @@ if __name__ == '__main__':
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     
-    t = 300
+    t = 100
     t_step = 1
     # method = 'RK45'
     # method = 'RK23'
