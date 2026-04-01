@@ -48,10 +48,10 @@ patch_dct = {
     'Sludge disposal': (a, ''),
     'AD heating': (o,''),
     # uncomment the following line for heat recovery confifuration:
-    # 'Heat recovery': (g,''),
+    'Heat recovery': (g,''),
     # uncomment the following two lines for CHP confifuration:
-    'CHP heat recovery': (g,''), 
-    'CHP electricity recovery': (b,'/////'),
+    # 'CHP heat recovery': (g,''), 
+    # 'CHP electricity recovery': (b,'/////'),
     }
 
 configs=('B1', 'B2', 'B3', 'C1', 'C2', 'C3', 'E2', 'E2P', 'F1', 
@@ -86,9 +86,9 @@ def compile_opex(normalize_by_flow=True):
     opex.columns = [i[1].split(' cost')[0] for i in opex.columns]
     opex['Lime stabilization'] = opex.loc[:,['Lime', 'Lime stablization energy']].sum(axis=1)
     # uncomment the following line for heat recovery confifuration:
-    # opex.drop(columns=['Lime stablization energy', 'CHP heat recovery','CHP electricity','Total OPEX [USD/d]','Total OPEX CHP [USD/d]'], inplace=True)
+    opex.drop(columns=['Lime stablization energy', 'CHP heat recovery','CHP electricity recovery','Total OPEX [USD/d]','Total OPEX CHP [USD/d]'], inplace=True)
     # uncomment the following line for CHP confifuration:
-    opex.drop(columns=['Lime stablization energy', 'Heat recovery','Total OPEX [USD/d]','Total OPEX CHP [USD/d]'], inplace=True)
+    # opex.drop(columns=['Lime stablization energy', 'Heat recovery','Total OPEX [USD/d]','Total OPEX CHP [USD/d]'], inplace=True)
     if normalize_by_flow:
         opex /= (10*MGD2cmd)
     return opex
@@ -193,17 +193,17 @@ def stacked_bar(opex=None, save_as=''):
             y_offset_pos += y_pos
             y_offset_neg += y_neg
         y_total = y_offset_pos + y_offset_neg
-        ax.bar(x, y_total, width=0.65, ec='black', fc=(1,1,1,0), lw=0.25)
+        ax.bar(x, y_total, width=0.65, ec='black', fc=(1,1,1,0), lw=0.8)
         ax.axhline(0, color='black', lw=0.8)
         # ax.bar(x, y_offset, width=0.65, ec='black', fc=(1,1,1,0), lw=0.25)
         xx = x[y_total == 0]
         # xx = x[y_offset == 0]
         if xx: ax.scatter(xx, 0.01, s=12, c='black', marker='x', linewidths=0.75)
         # uncomment the following line for heat recovery confifuration:
-        # ax.set_title(ID, fontsize=14, fontweight='bold')
+        ax.set_title(ID, fontsize=14, fontweight='bold')
         # uncomment the following three lines for CHP confifuration:
-        ID_title = ID + 'E' if ID.endswith('1') else ID
-        ax.set_title(ID_title, fontsize=14, fontweight='bold')
+        # ID_title = ID + 'E' if ID.endswith('1') else ID
+        # ax.set_title(ID_title, fontsize=14, fontweight='bold')
         ax.set_xlim((-0.75, df.shape[0]-0.25))
         if ID == 'B1': 
             ax.set_ylabel('$\mathbf{OPEX}$ [USD·m$^{-3}$]', fontname='Arial', fontsize=14)
@@ -288,19 +288,19 @@ def horizontal_stacked_bar(opex=None, save_as=''):
             y_offset_neg += y_neg
             # y_offset += y
         y_total = y_offset_pos + y_offset_neg
-        ax.barh(x, y_total, height=0.65, ec='black', fc=(1, 1, 1, 0), lw=0.25)
+        ax.barh(x, y_total, height=0.65, ec='black', fc=(1, 1, 1, 0), lw=0.8)
         ax.axvline(0, color='black', lw=0.8)
         # ax.barh(x, y_offset, height=0.65, ec='black', fc=(1,1,1,0), lw=0.25)
         xx = x[y_total == 0]
         # xx = x[y_offset == 0]
         if len(xx): ax.scatter(0.01, xx, s=12, c='black', marker='x', linewidths=0.75)
         # uncomment the following line for heat recovery confifuration:
-        # ax.set_title(ID+'  ', fontsize=14, fontweight='bold',
-        #              loc='right', y=0.4, pad=0)
+        ax.set_title(ID+'  ', fontsize=14, fontweight='bold',
+                     loc='right', y=0.4, pad=0)
         # uncomment the following three lines for CHP confifuration:
-        ID_title = ID + 'E' if ID.endswith('1') else ID
-        ax.set_title(ID_title, fontsize=14, fontweight='bold',
-                     loc='right', y=0.4, pad=0)    
+        # ID_title = ID + 'E' if ID.endswith('1') else ID
+        # ax.set_title(ID_title, fontsize=14, fontweight='bold',
+        #              loc='right', y=0.4, pad=0)    
         ax.set_ylim((-0.75, df.shape[0]-0.25))
         if ID == 'N2': 
             ax.set_xlabel('$\mathbf{OPEX}$ [USD·m${^{-3}}$]', fontname='Arial', fontsize=14)
@@ -400,8 +400,8 @@ def screen_chp_electricity_recovery(
 #%%
 if __name__ == '__main__':
     opex = compile_opex()
-    stacked_bar(opex, save_as='opex_w_CHP_energy_recovery.tif')
+    stacked_bar(opex, save_as='opex_w_CHP_heat_recovery.tif')
     # stacked_bar(opex, save_as='opex_wrrfs.png')
-    horizontal_stacked_bar(opex, save_as='opexh_w_CHP_energy_recovery.tif')
+    horizontal_stacked_bar(opex, save_as='opexh_w_CHP_heat_recovery.tif')
     # single_scenario_stacked_bar(save_as='opex.tif')
     hits = screen_chp_electricity_recovery(opex,energy_cols=("Aeration energy",), print_details=True)
