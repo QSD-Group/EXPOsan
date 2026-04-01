@@ -1441,10 +1441,10 @@ class HeatDrying(SanUnit):
         Outlet solids temperature, [K].
     unit_heat : float
         Energy for removing unit water from solids, [GJ/tonne water].
-    unit_electricity : float
-        Electricity for heat drying, [kWh/dry tonne solids].
     natural_gas_HHV : float
         Higher heating value of natural gas, [MJ/m3].
+    unit_electricity : float
+        Electricity for heat drying, [kWh/dry tonne solids].
     
     References
     ----------
@@ -1466,8 +1466,8 @@ class HeatDrying(SanUnit):
         self.target_moisture = target_moisture
         self.T_out = T_out
         self.unit_heat = unit_heat
-        self.unit_electricity = unit_electricity
         self.natural_gas_HHV = natural_gas_HHV
+        self.unit_electricity = unit_electricity
     
     def _run(self):
         input_sludge, natural_gas = self.ins
