@@ -12,14 +12,14 @@ https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-import pkg_resources
+import importlib.metadata as impmeta
 try:
-    __version__ = pkg_resources.get_distribution('exposan').version
-except pkg_resources.DistributionNotFound:
+    __version__ = impmeta.version('exposan')
+except impmeta.PackageNotFoundError:
     __version__ = None
     
 import os
 es_path = os.path.dirname(__file__)
-del os, pkg_resources
+del os, impmeta
 
 from . import utils
