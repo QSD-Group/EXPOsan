@@ -105,7 +105,6 @@ def create_system(flowsheet=None, pm2_kwargs={}, init_conds={}):
     cmps = pc.create_pm2_cmps()
 
     # Streams
-
     DYINF = WasteStream('Dynamic_influent', T=Temp)
     PHO = WasteStream('To_PBR', T=Temp)
 

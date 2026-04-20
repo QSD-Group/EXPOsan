@@ -23,7 +23,7 @@ Load the system
 	>>> g1 = create_system('G1')
 	>>> # g1.simulate(method='BDF', t_span=(0, 300))
 	>>> # Check the states of any one or more components
-	>>> # fig, axis = g1.AD.scope.plot_time_series(('S_fa', 'S_bu', 'S_va', 'S_pro', 'S_ac'))
+	>>> # fig, axis = g1.flowsheet.unit.AD.scope.plot_time_series(('S_fa', 'S_bu', 'S_va', 'S_pro', 'S_ac'))
 	>>> # fig
 
 
