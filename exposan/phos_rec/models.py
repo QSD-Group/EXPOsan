@@ -179,7 +179,7 @@ def create_model(system=None, perspective='FePO4'): #revised version：def creat
     def set_sludge_moisture(i):
         AF.food_waste_moisture=i  
     
-    # # TODO: leave HRT in uncertainty analysis for now; but this can be removed if that makes sense
+    # TODO: DO NOT INCLUDE THIS!
     # dist = shape.Uniform(96,144)
     # @param(name='AF_HRT',
     #        element='AF',
@@ -268,7 +268,7 @@ def create_model(system=None, perspective='FePO4'): #revised version：def creat
     def set_oxidant_excess(i):
         SP.oxidant_excess=i
     
-    # # TODO: leave HRT in uncertainty analysis for now; but this can be removed if that makes sense
+    # TODO: DO NOT INCLUDE THIS!
     # dist = shape.Uniform(4.8,7.2)
     # @param(name='SP_HRT',
     #        element='SP',

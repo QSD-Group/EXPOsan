@@ -39,7 +39,7 @@ __all__ = (
 )
 
 # TODO: use temp_ratio to scale fe_sludge temporarily
-def create_system(temp_ratio=1, food_sludge_ratio=1, HRT=132):
+def create_system(temp_ratio=1, food_sludge_ratio=1, HRT=132, sludge_credit=300, sludge_CI_credit=300):
     
     flowsheet_ID = 'phos_rec'
     
@@ -116,7 +116,8 @@ def create_system(temp_ratio=1, food_sludge_ratio=1, HRT=132):
     sys.simulate()
     
     # the value：https://pubs.acs.org/doi/10.1021/es505329q
-    sludge_credit_used_per_ton_dry = 300 # $/ton dry solids
+    sludge_credit_used_per_ton_dry = sludge_credit # $/ton dry solids
+    temp_ratio = temp_ratio # size of WRRF
     sludge_dry_kg_d = fe_sludge.F_mass - fe_sludge.imass['Water']
     fe_sludge.price = -sludge_credit_used_per_ton_dry*(sludge_dry_kg_d/1000)/fe_sludge.F_mass
     
@@ -246,7 +247,7 @@ def create_system(temp_ratio=1, food_sludge_ratio=1, HRT=132):
     qs.StreamImpactItem(
         ID='fe_sludge',
         linked_stream=stream.fe_sludge,
-        GlobalWarming=-0.00582207178953914/30
+        GlobalWarming=-0.00582207178953914/30*sludge_CI_credit
     )
     
     # market for process-specific burdens, sanitary landfill, Rest-of-World (RoW): 0.00582207178953914
