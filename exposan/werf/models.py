@@ -14,8 +14,8 @@ for license details.
 import numpy as np, qsdsan as qs
 from qsdsan import WasteStream, sanunits as su
 from qsdsan.utils import AttrGetter, auom, load_data, ospath, get_SRT
-from . import data_path
-from ._units import SelectiveRecovery
+from exposan.werf import data_path
+from exposan.werf._units import SelectiveRecovery
 from exposan.werf.utils import plantwide_aeration_demand, plantwide_aeration_energy
 from chaospy import distributions as shape
 
@@ -418,7 +418,7 @@ def add_downstream_uncertainty(model):
         )
     data = eia_df.loc[:,('All Sectors', 'March 2025 YTD')].to_numpy()
 
-    b = eia_df.loc['U.S. Total', ('All Sectors', 'March 2025 YTD')] 
+    b = eia_df.loc['U.S. Total', ('Industrial', 'March 2025 YTD')] 
     D = shape.TruncNormal(data.min()-0.5, data.max()+0.5, mu=b, sigma=data.std())
     @param(name='Electricity price', units='cents/kWh', element='System', 
            baseline=b, distribution=D)

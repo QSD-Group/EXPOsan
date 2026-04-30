@@ -595,7 +595,7 @@ def create_geospatial_system(test_run=False,
     # facilities
     # =========================================================================
     
-    # previously used 86 C with self-defined heat utility
+    # previously used 86 C with self-defined heat utility in systems.py
     # now use natural gas for heating, and use the default T_min_app
     qsu.HeatExchangerNetwork(ID='HXN',
                              force_ideal_thermo=True)
