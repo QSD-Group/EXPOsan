@@ -279,6 +279,55 @@ def create_model(system=None, perspective='FePO4'): #revised version：def creat
     # def set_SP_HRT(i):
     #     # TODO: check if the value actually changes: the HRT value changes in the result spreadsheet, however, it may be safer to write HRT as a parameter in the sanunit
     #     SP.HRT=i
+ 
+    # =============================================================================
+    # HeatDrying
+    # =============================================================================
+    HD=unit.HD
+    
+    dist = shape.Uniform(4.5*0.8,4.5*1.2)
+    @param(name='unit_heat',
+           element='HD',
+           kind='coupled',
+           units='-',
+           baseline=4.5,
+           distribution=dist)
+    def set_unit_heat(i):
+        HD.unit_heat=i
+    
+    dist = shape.Uniform(214*0.8,214*1.2)
+    @param(name='unit_HD_electricity',
+           element='HD',
+           kind='coupled',
+           units='kWh/t',  
+           baseline=214,
+           distribution=dist)
+    def set_HD_unit_electricity(i):
+        HD.unit_electricity=i
+
+    # =============================================================================
+    # Sintering
+    # =============================================================================
+    SI=unit.SI
+    dist = shape.Uniform(0.8*0.8,0.8*1.2)
+    @param(name='combustion_eff',
+           element='SI',
+           kind='coupled',
+           units='-',
+           baseline=0.8,
+           distribution=dist)
+    def set_combustion_eff(i):
+        SI.combustion_eff=i
+    
+    dist = shape.Uniform(30*0.8,30*1.2)
+    @param(name='unit_SI_electricity',
+           element='SI',
+           kind='coupled',
+           units='kWh/t',
+           baseline=30,
+           distribution=dist)
+    def set_SI_unit_electricity(i):
+        SI.unit_electricity=i       
     
     # =============================================================================
     # TEA
@@ -332,6 +381,17 @@ def create_model(system=None, perspective='FePO4'): #revised version：def creat
            distribution=dist)
     def set_NG_price(i):
         HD_NG.price=SI_NG.price=i
+    
+    dist = shape.Uniform(0.0782*0.8,0.0782*1.2)
+    @param(name='electricity_price',
+           element='TEA',
+           kind='isolated',
+           units='$/kWh',
+           baseline=0.0782,
+           distribution=dist)
+    def set_electricity_price(i):
+        qs.PowerUtility.price = i
+    
     
     landfill = stream.residue
     # TODO: update if needed
