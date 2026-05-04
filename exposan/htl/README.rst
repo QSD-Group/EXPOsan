@@ -196,6 +196,16 @@ Getting Started
     NonCarcinogenics (kg toluene-eq)        1.49e+08               0  7.26e+09 3.18e+09  1.06e+10
     GlobalWarming (kg CO2-eq)               4.87e+06               0    -1e+08 4.19e+08  3.24e+08
 
+HTL geospatial analysis
+-----------------------
+To run analyses in [2]_, run exposan/htl/analyses/geospatial_analysis.py
+
+HTL landscape analysis
+-----------------------
+To run analyses in [3]_, run exposan/htl/analyses/landscape_analysis.py
+
 References
 ----------
 .. [1] Feng, J.; Li, Y.; Strathmann, T. J.; Guest, J. S. Characterizing the Opportunity Space for Sustainable Hydrothermal Valorization of Wet Organic Wastes. *Environ. Sci. Technol.* **2024**, *58* (5), 2528–2541. https://doi.org/10.1021/acs.est.3c07394.
+.. [2] Feng, J.; Strathmann, T. J.; Guest, J. S. Hydrothermal-Based Wastewater Solids Management for Targeted Resource Recovery and Decarbonization in the Contiguous U.S. *Environ. Sci. Technol.* **2025**, *59* (38), 20389–20400. https://doi.org/10.1021/acs.est.5c07190.
+.. [3] Feng, J. and Guest, J. S. Thermochemical Treatment of Wastewater Residual Solids for Global Mitigation of Emerging Contaminants. In revision.

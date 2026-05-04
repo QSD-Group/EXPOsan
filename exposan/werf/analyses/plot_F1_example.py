@@ -54,7 +54,7 @@ patch_dct = {
 configs=('F1', )
 data_handles = {
     'Baseline': ('baseline_unopt_performance', 0),   # file name, sheet
-    'Adjusted': ('baseline_opt_performance', 'combined'),
+    'Adjusted': ('baseline_opt_performance', 0),
     'HA': ('HA_opt_performance', 0),
     'ECS': ('ECS_opt_performance', 0)
     }
@@ -117,7 +117,7 @@ def stacked_bar(opex=None, recv=(), ID='F1'):
         c, hat = style
         y = df.loc[:,cat].to_numpy()
         patch = ax.bar(x, y, bottom=y_offset, width=0.65, 
-                       color=c, hatch=hat, hatch_linewidth=0.5,
+                       color=c, hatch=hat, 
                        tick_label=['Baseline', 'Adjusted', 'With HA', 'With ECS'])
         handles.append(patch)
         y_offset += y
@@ -125,7 +125,7 @@ def stacked_bar(opex=None, recv=(), ID='F1'):
         ax.text(x[i], tot[i]+30, dopex[i], fontsize=11, color='black', ha='center')
     ax.hlines(y=tot[0], xmin=x[0]-0.65/2, xmax=x[-1]+0.65/2, ls='--', color=a)
     ax.set_xlim((-0.75, df.shape[0]-0.25))
-    ax.set_ylabel('$\mathbf{WWTP\ OPEX}$ [USD·day${^{-1}}$]', fontname='Arial', fontsize=13)
+    ax.set_ylabel('$\mathbf{WWTP\ OPEX}$ [USD·day$^{-1}$]', fontname='Arial', fontsize=13)
     ax.tick_params(axis='y', which='major', direction='inout', length=8, labelsize=12)
     ax.tick_params(axis='y', which='minor', direction='inout', length=5)
     ax.tick_params(axis='x', which='major', direction='out', length=4, labelsize=12, labelrotation=45)
