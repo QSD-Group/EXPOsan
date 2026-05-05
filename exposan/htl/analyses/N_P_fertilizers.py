@@ -16,6 +16,7 @@ for license details.
 
 import os, pandas as pd, geopandas as gpd, numpy as np, matplotlib.pyplot as plt, matplotlib.colors as colors
 from colorpalette import Color
+from exposan.htl._data import get_htl_data_path
 from qsdsan.utils import palettes
 
 folder = os.path.dirname(os.path.dirname(__file__))
@@ -106,8 +107,8 @@ US_county['STCOFIPS'] = US_county['STCOFIPS'].astype('int64')
 
 US_county = US_county.to_crs(crs='EPSG:3857')
 
-farm_fertilizer = pd.read_excel(folder + '/data/N-P_from_fertilizer_1950-2017-july23-2020.xlsx','farm')
-nonfarm_fertilizer = pd.read_excel(folder + '/data/N-P_from_fertilizer_1950-2017-july23-2020.xlsx','nonfarm')
+farm_fertilizer = pd.read_excel(get_htl_data_path('N-P_from_fertilizer_1950-2017-july23-2020.xlsx'),'farm')
+nonfarm_fertilizer = pd.read_excel(get_htl_data_path('N-P_from_fertilizer_1950-2017-july23-2020.xlsx'),'nonfarm')
 
 N_farm = farm_fertilizer[['STCOFIPS','farmfertN-kg-2017']]
 N_nonfarm = nonfarm_fertilizer[['STCOFIPS','nonffertN-kg-2017']]
