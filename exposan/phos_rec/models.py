@@ -17,6 +17,7 @@ for license details.
 import os, qsdsan as qs, biosteam as bst, pandas as pd
 from chaospy import distributions as shape
 from qsdsan.utils import auom, DictAttrSetter
+from exposan.phos_rec import get_precipitation_supernatant_price
 
 __all__ = ('create_model',)
 
@@ -43,8 +44,8 @@ def create_model(system=None, perspective='FePO4'): #revised version：def creat
     # =============================================================================
     AF = unit.AF
     
-    # # TODO: remove this; add this add a scenario analysis instead
-    # #discrete scenarcios for food_slduge_ratio
+    # TODO: DO NOT INCLUDE THIS!
+    # discrete scenarcios for food_slduge_ratio
     # _choices = [0, 1/3, 2/3, 1, 4/3] #5 discrete points
     # dist = shape.DiscreteUniform(0,len(_choices)-1)
     # @param(name='food_sludge_ratio',
@@ -68,106 +69,6 @@ def create_model(system=None, perspective='FePO4'): #revised version：def creat
                distribution=dist)
         def set_param(i, name=row['name']):
             setattr(AF, row['name'], i)     
-       
-    # dist = shape.Uniform(0.02124263*0.8,0.02124263*1.2)
-    # @param(name='metal_release_ratio_0',
-    #        element='AF',
-    #        kind='coupled',
-    #        units='-',
-    #        baseline=0.02124263,
-    #        distribution=dist)
-    # def set_metal_release_ratio_0(i):
-    #     AF.metal_release_ratio_0=i
-    
-    # dist = shape.Uniform(0.2113664*0.8,0.2113664*1.2)
-    # @param(name='metal_release_ratio_1_3',
-    #        element='AF',
-    #        kind='coupled',
-    #        units='-',
-    #        baseline=0.2113664,
-    #        distribution=dist)
-    # def set_metal_release_ratio_1_3(i):
-    #     AF.metal_release_ratio_1_3=i
-    
-    # dist = shape.Uniform(0.6067351*0.8,0.6067351*1.2)
-    # @param(name='metal_release_ratio_2_3',
-    #        element='AF',
-    #        kind='coupled',
-    #        units='-',
-    #        baseline=0.6067351,
-    #        distribution=dist)
-    # def set_metal_release_ratio_2_3(i):
-    #     AF.metal_release_ratio_2_3=i
-    
-    # dist = shape.Uniform(0.8307559*0.8,0.8307559*1.2)
-    # @param(name='metal_release_ratio_1',
-    #        element='AF',
-    #        kind='coupled',
-    #        units='-',
-    #        baseline=0.8307559,
-    #        distribution=dist)
-    # def set_metal_release_ratio_1(i):
-    #     AF.metal_release_ratio_1=i
-    
-    # dist = shape.Uniform(0.85*0.8,0.85*1.2)
-    # @param(name='metal_release_ratio_4_3',
-    #        element='AF',
-    #        kind='coupled',
-    #        units='-',
-    #        baseline=0.85,
-    #        distribution=dist)
-    # def set_metal_release_ratio_4_3(i):
-    #     AF.metal_release_ratio_4_3=i
-    
-    # dist = shape.Uniform(0.110693*0.8,0.110693*1.2)
-    # @param(name='P_release_ratio_0',
-    #        element='AF',
-    #        kind='coupled',
-    #        units='-',
-    #        baseline=0.110693,
-    #        distribution=dist)
-    # def set_P_release_ratio_0(i):
-    #     AF.P_release_ratio_0=i
-    
-    # dist = shape.Uniform(0.4431886*0.8,0.4431886*1.2)
-    # @param(name='P_release_ratio_1_3',
-    #        element='AF',
-    #        kind='coupled',
-    #        units='-',
-    #        baseline=0.4431886,
-    #        distribution=dist)
-    # def set_P_release_ratio_1_3(i):
-    #     AF.P_release_ratio_1_3=i
-    
-    # dist = shape.Uniform(0.7122673*0.8,0.7122673*1.2)
-    # @param(name='P_release_ratio_2_3',
-    #        element='AF',
-    #        kind='coupled',
-    #        units='-',
-    #        baseline=0.7122673,
-    #        distribution=dist)
-    # def set_P_release_ratio_2_3(i):
-    #     AF.P_release_ratio_2_3=i
-    
-    # dist = shape.Uniform(0.8230645*0.8,0.8230645*1.2)
-    # @param(name='P_release_ratio_1',
-    #        element='AF',
-    #        kind='coupled',
-    #        units='-',
-    #        baseline=0.8230645,
-    #        distribution=dist)
-    # def set_P_release_ratio_1(i):
-    #     AF.P_release_ratio_1=i
-    
-    # dist = shape.Uniform(0.83*0.8,0.83*1.2)
-    # @param(name='P_release_ratio_4_3',
-    #        element='AF',
-    #        kind='coupled',
-    #        units='-',
-    #        baseline=0.83,
-    #        distribution=dist)
-    # def set_P_release_ratio_4_3(i):
-    #     AF.P_release_ratio_4_3=i
     
     dist = shape.Uniform(0.68,0.8)
     @param(name='food_waste_moisture',
@@ -392,18 +293,87 @@ def create_model(system=None, perspective='FePO4'): #revised version：def creat
     def set_electricity_price(i):
         qs.PowerUtility.price = i
     
+    for heating_agent in bst.HeatUtility.heating_agents:
+        if heating_agent.ID == 'low_pressure_steam':
+            dist = shape.Uniform(0.2378*0.8,0.2378*1.2)
+            @param(name='low_pressure_steam_price',
+                   element='TEA',
+                   kind='isolated',
+                   units='$/kmol',
+                   baseline=0.2378,
+                   distribution=dist)
+            def set_low_pressure_steam_price(i):
+                heating_agent.regeneration_price = i
+        
+        if heating_agent.ID == 'medium_pressure_steam':
+            dist = shape.Uniform(0.2756*0.8,0.2756*1.2)
+            @param(name='medium_pressure_steam_price',
+                   element='TEA',
+                   kind='isolated',
+                   units='$/kmol',
+                   baseline=0.2756,
+                   distribution=dist)
+            def set_medium_pressure_steam_price(i):
+                heating_agent.regeneration_price = i
+        
+        if heating_agent.ID == 'high_pressure_steam':
+            dist = shape.Uniform(0.3171*0.8,0.3171*1.2)
+            @param(name='high_pressure_steam_price',
+                   element='TEA',
+                   kind='isolated',
+                   units='$/kmol',
+                   baseline=0.3171,
+                   distribution=dist)
+            def set_high_pressure_steam_price(i):
+                heating_agent.regeneration_price = i
+        
+        if heating_agent.ID == 'natural_gas':
+            dist = shape.Uniform(3.49672*0.8,3.49672*1.2)
+            @param(name='natural_gas_utility_price',
+                   element='TEA',
+                   kind='isolated',
+                   units='$/kmol',
+                   baseline=3.49672,
+                   distribution=dist)
+            def set_natural_gas_utility_price_price(i):
+                heating_agent.regeneration_price = i
     
-    landfill = stream.residue
+    precipitation_supernatant = stream.precipitation_supernatant
+    precipitation_supernatant_baseline_price = get_precipitation_supernatant_price(AF.food_sludge_ratio, AF.HRT)
+    dist = shape.Uniform(precipitation_supernatant_baseline_price*0.8,precipitation_supernatant_baseline_price*1.2)
+    @param(name='precipitation_supernatant_price',
+           element='TEA',
+           kind='isolated',
+           units='$/kg',
+           baseline=precipitation_supernatant_baseline_price,
+           distribution=dist)
+    def set_precipitation_supernatant_price(i):
+        precipitation_supernatant.price = i
+    
+    food_waste = stream.food_waste
+    dist = shape.Uniform(75.8*0.8,75.8*1.2)
+    @param(name='food_waste_credit',
+           element='TEA',
+           kind='isolated',
+           units='$/kg',
+           baseline=75.8,
+           distribution=dist)
+    def set_food_waste_credit(i):
+        food_waste_dry_kg_d = food_waste.F_mass - food_waste.imass['Water']
+        # TODO: replaced fe_sludge.F_mass with AF.ins[1].F_mass; check this
+        food_waste.price = -i*(food_waste_dry_kg_d/1000)/food_waste.F_mass
+    
+    residue = stream.residue
     # TODO: update if needed
     dist = shape.Uniform(-62.28/_ton_to_kg*1.2,-62.28/_ton_to_kg*0.8)
-    @param(name='landfill_price',
+    @param(name='residue_price',
            element='TEA',
            kind='isolated',
            units='$/kg',
            baseline=-62.28/_ton_to_kg, # landfill price: 62.28 $/ton
            distribution=dist)
     def set_landfill_price(i):
-        landfill.price=i
+        residue.price=i
     
     if perspective == 'FePO4':
         dist = shape.Triangle(0.05,0.1,0.15)

@@ -14,6 +14,10 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
+# =============================================================================
+# TODO: add this (and any other parameters, e.g., electiricity price) to uncertainty analysis
+# =============================================================================
+
 import biosteam as bst, qsdsan as qs
 from qsdsan.utils import clear_lca_registries, auom
 from qsdsan import sanunits as qsu
@@ -35,8 +39,67 @@ lifetime = 30
 operation_hours = 365*24
 
 __all__ = (
+    'get_precipitation_supernatant_price',
     'create_system',
 )
+
+def get_precipitation_supernatant_price(food_sludge_ratio, HRT):
+    VFA_conc_dict = {
+        (0, 0):229.836,    #mg/L
+        (0, 12):229.836,
+        (0, 24):229.836,
+        (0, 36):229.836,
+        (0, 48):229.836,
+        (0, 60):229.836,
+        (0, 72):229.836,
+        (0, 84):315.014,
+        (0, 96):324.748,
+        (0, 108):474.744,
+        (0, 120):503.468,
+        (0, 132):574.002,
+        (1/3, 0):229.836,    #mg/L
+        (1/3, 12):318.997,
+        (1/3, 24):891.924,
+        (1/3, 36):930.369,
+        (1/3, 48):942.929,
+        (1/3, 60):1019.904,
+        (1/3, 72):1030.104,
+        (1/3, 84):1058.436,
+        (1/3, 96):1065.347,
+        (1/3, 108):1235.25,
+        (1/3, 120):1295.057,
+        (1/3, 132):1486.757,
+        (2/3, 0):229.836,
+        (2/3, 12):619.055,
+        (2/3, 24):1342.854,
+        (2/3, 36):1975.393,
+        (2/3, 48):2195.785,
+        (2/3, 60):2540.621,
+        (2/3, 72):2677.336,
+        (2/3, 84):2740.366,
+        (2/3, 96):2754.408,
+        (2/3, 108):2835.845,
+        (2/3, 120):2882.61,
+        (2/3, 132):3123.319,
+        (3/3, 0):229.836,    #mg/L
+        (3/3, 12):755.134,
+        (3/3, 24):1534.219,
+        (3/3, 36):2006.594,
+        (3/3, 48):2624.859,
+        (3/3, 60):3049.32,
+        (3/3, 72):3413.96,
+        (3/3, 84):3716.996,
+        (3/3, 96):3763.005,
+        (3/3, 108):3953.696,
+        (3/3, 120):4114.03,
+        (3/3, 132):4500,
+        (4/3, 132):4650,
+      }
+        
+    vfa_conc = VFA_conc_dict[(food_sludge_ratio), HRT]  # mg/L
+    price = 0.002 * (vfa_conc / 4500)
+    
+    return price
 
 # TODO: use temp_ratio to scale fe_sludge temporarily
 def create_system(temp_ratio=1, food_sludge_ratio=1, HRT=132, sludge_credit=300, sludge_CI_credit=300):
@@ -124,7 +187,8 @@ def create_system(temp_ratio=1, food_sludge_ratio=1, HRT=132, sludge_credit=300,
     # the value: https://www.sciencedirect.com/science/article/pii/S0959652621022757
     food_waste_credit_used_per_ton_dry = 75.8 # $/ton dry solids
     food_waste_dry_kg_d = AF.ins[1].F_mass - AF.ins[1].imass['Water']
-    AF.ins[1].price = -food_waste_credit_used_per_ton_dry*(food_waste_dry_kg_d/1000)/fe_sludge.F_mass
+    # TODO: replaced fe_sludge.F_mass with AF.ins[1].F_mass; check this
+    AF.ins[1].price = -food_waste_credit_used_per_ton_dry*(food_waste_dry_kg_d/1000)/AF.ins[1].F_mass
     
     # price of H2SO4 is 0.08$/kg, from Everbatt2023
     SP.ins[1].price = 0.08 * stream.acid.imass['H2SO4'] / stream.acid.F_mass
@@ -143,72 +207,8 @@ def create_system(temp_ratio=1, food_sludge_ratio=1, HRT=132, sludge_credit=300,
     FC.outs[1].price = - 62.28 / _ton_to_kg
     
     # TODO: food waste now is emission-free, but it could provide credits as well
-    # TODO: now, electricity and steam use default prices
     
-    # TODO: food_sludge_ratio and HRT also affect the concentration of VFAs, and therefore their price
-    # TODO: this is a guess from Xuan: the outs is rich in VFAs at 4000-5000 mg-VFAs/L (COD = 1 mg VFA)= 4.45-5.5 kg-COD/m3 =5 kg/m3 value=5*0.4=2$/m3 =0.002 $/kg
-    
-    def get_precipitation_supernatant_price(food_sludge_ratio, HRT):
-        VFA_conc_dict = {
-            (0, 0):229.836,    #mg/L
-            (0, 12):229.836,
-            (0, 24):229.836,
-            (0, 36):229.836,
-            (0, 48):229.836,
-            (0, 60):229.836,
-            (0, 72):229.836,
-            (0, 84):315.014,
-            (0, 96):324.748,
-            (0, 108):474.744,
-            (0, 120):503.468,
-            (0, 132):574.002,
-            (1/3, 0):229.836,    #mg/L
-            (1/3, 12):318.997,
-            (1/3, 24):891.924,
-            (1/3, 36):930.369,
-            (1/3, 48):942.929,
-            (1/3, 60):1019.904,
-            (1/3, 72):1030.104,
-            (1/3, 84):1058.436,
-            (1/3, 96):1065.347,
-            (1/3, 108):1235.25,
-            (1/3, 120):1295.057,
-            (1/3, 132):1486.757,
-            (2/3, 0):229.836,
-            (2/3, 12):619.055,
-            (2/3, 24):1342.854,
-            (2/3, 36):1975.393,
-            (2/3, 48):2195.785,
-            (2/3, 60):2540.621,
-            (2/3, 72):2677.336,
-            (2/3, 84):2740.366,
-            (2/3, 96):2754.408,
-            (2/3, 108):2835.845,
-            (2/3, 120):2882.61,
-            (2/3, 132):3123.319,
-            (3/3, 0):229.836,    #mg/L
-            (3/3, 12):755.134,
-            (3/3, 24):1534.219,
-            (3/3, 36):2006.594,
-            (3/3, 48):2624.859,
-            (3/3, 60):3049.32,
-            (3/3, 72):3413.96,
-            (3/3, 84):3716.996,
-            (3/3, 96):3763.005,
-            (3/3, 108):3953.696,
-            (3/3, 120):4114.03,
-            (3/3, 132):4500,
-            (4/3, 132):4650,
-          }
-            
-        vfa_conc = VFA_conc_dict[(food_sludge_ratio),HRT]  # mg/L
-        price = 0.002 * (vfa_conc / 4500)
-        
-        return price
-    
-    ratio = AF.food_sludge_ratio
-    HRT = AF.HRT
-    PC.outs[0].price = get_precipitation_supernatant_price(ratio, HRT)
+    PC.outs[0].price = get_precipitation_supernatant_price(AF.food_sludge_ratio, AF.HRT)
  
     # PC.outs[0].price = 0.002
  
@@ -284,20 +284,21 @@ def create_system(temp_ratio=1, food_sludge_ratio=1, HRT=132, sludge_credit=300,
     linked_stream=stream.product,
     GlobalWarming = -4
     )
-    # kg CO2/kg FePO4
     
+    # TODO: any reference?
     qs.StreamImpactItem(
     ID='VFA_credit',
     linked_stream=stream.precipitation_supernatant,
     GlobalWarming = -0.002
     )
     
+    # TODO: add the FePO4 production perspective as well (or just in model is fine?)
     # TODO: add labor costs
     # labor cost=1 FTE*8000h/year*25$-wage/hour=200,000 $/year
-    # wage:U.S. Bureau of Labor Statistics. Producer Price Index–Metals and Metal Products: Mid–Atlantic Information Office: U.S. Bureau of Labor Statistics. Available online: https://www.bls.gov/regions/mid-atlantic/data/producerpriceindexmetals_us_table.htm (accessed on 28 June 2022).
+    # wage: U.S. Bureau of Labor Statistics. Producer Price Index–Metals and Metal Products: Mid–Atlantic Information Office: U.S. Bureau of Labor Statistics. Available online: https://www.bls.gov/regions/mid-atlantic/data/producerpriceindexmetals_us_table.htm (accessed on 28 June 2022).
     # FTE amount: https://www.mheducation.com/highered/product/wastewater-engineering-treatment-resource-recovery-metcalf-eddy/M9780073401188.html (highly automated treatment processes require minimal operator attention)
-    # other refer-1: the labor cost is €462.25 per month:https://www.sciencedirect.com/science/article/pii/S0959652617305504
-    # other refer-2: operation labor in need (number of operator·hours per year):https://pubs.acs.org/doi/10.1021/acssuschemeng.0c05189
+    # other refer-1: the labor cost is €462.25 per month: https://www.sciencedirect.com/science/article/pii/S0959652617305504
+    # other refer-2: operation labor in need (number of operator·hours per year): https://pubs.acs.org/doi/10.1021/acssuschemeng.0c05189
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,
