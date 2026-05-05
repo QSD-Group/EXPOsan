@@ -480,7 +480,7 @@ percent_limit = 0.01
 learning_curve_percent = 0.9
 def get_scaled_capital(tea):
     if tea.system.ID[-1] == 'D':
-        new_CAPEX_annualized = tea.annualized_CAPEX
+        new_CAPEX_annualized = tea.annualized_equipment_cost
     else:
         new_CAPEX_annualized = get_generic_scaled_capital(
             tea=tea,
