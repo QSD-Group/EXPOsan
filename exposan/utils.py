@@ -236,8 +236,9 @@ def get_generic_scaled_capital(tea, percent_CAPEX_to_scale, number_of_units,
     learning_curve_percent : float
         The percent factor of the learning curve.
     '''
-    CAPEX_to_scale = tea.annualized_CAPEX * percent_CAPEX_to_scale
-    CAPEX_not_scaled = tea.annualized_CAPEX - CAPEX_to_scale
+    annualized_capital = tea.annualized_equipment_cost
+    CAPEX_to_scale = annualized_capital * percent_CAPEX_to_scale
+    CAPEX_not_scaled = annualized_capital - CAPEX_to_scale
     scaled_limited = CAPEX_to_scale * percent_limit
     b = log(learning_curve_percent)/log(2)
     scaled_CAPEX_annualized  = (CAPEX_to_scale - scaled_limited)*number_of_units**b + scaled_limited

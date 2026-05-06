@@ -16,6 +16,7 @@ for license details.
 
 import os, pandas as pd, geopandas as gpd
 from colorpalette import Color
+from exposan.htl._data import get_htl_data_path
 from qsdsan.utils import palettes
 
 folder = os.path.dirname(os.path.dirname(__file__))
@@ -103,7 +104,7 @@ US_county['Area\nCode'] = US_county['STATEFP'] + US_county['COUNTYFP']
 
 US_county = US_county.to_crs(crs='EPSG:3857')
 
-labor_cost = pd.read_excel(folder + '/data/county_labor_cost_2022.xlsx','US_St_Cn_MSA')
+labor_cost = pd.read_excel(get_htl_data_path('county_labor_cost_2022.xlsx'),'US_St_Cn_MSA')
 
 US_average_labor_cost = labor_cost[(labor_cost['St'] == 'US') & (labor_cost['Ownership'] == 'Local Government')]['Annual Average Pay']
 

@@ -18,7 +18,7 @@ from setuptools import setup
 setup(
     name='exposan',
     packages=['exposan'],
-    version='1.4.3',
+    version='1.4.4',
     license='UIUC',
     author='Quantitative Sustainable Design Group',
     author_email='quantitative.sustainable.design@gmail.com',
@@ -30,7 +30,7 @@ setup(
         'Documentation': 'https://qsdsan.readthedocs.io',
         'Repository': 'https://github.com/QSD-Group/EXPOsan',
     },
-    install_requires=['qsdsan==1.4.3',],
+    install_requires=['qsdsan==1.4.4',],
     package_data=
         {'exposan': [
             'adm/*',
@@ -52,7 +52,14 @@ setup(
             'eco_san/data/*',
             'hap/*',
             'htl/*',
-            'htl/data/*',
+            'htl/data/crude_oil_price_2022.xlsx',
+            'htl/data/electricity_CI_2025-10-09.xlsx',
+            'htl/data/electricity_price_2025-10-09.xlsx',
+            'htl/data/impact_indicators.csv',
+            'htl/data/impact_items.xlsx',
+            'htl/data/labor_cost_2025-10-09.xlsx',
+            'htl/data/PLI_2025-10-09.xlsx',
+            'htl/data/state_elec_price_2022.xlsx',
             'metab/*',
             'metab/data/*',
             'metab/utils/*',
