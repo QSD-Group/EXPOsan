@@ -26,6 +26,7 @@ from chaospy import distributions as shape
 from warnings import filterwarnings
 from datetime import date
 from qsdsan.utils import auom
+from exposan.htl._data import get_htl_data_path
 from exposan.htl import (create_C1_system, create_C2_system, create_C3_system,
                          create_C4_system, create_C5_system, create_C6_system,
                          create_C7_system, create_C8_system, create_C9_system,
@@ -617,7 +618,7 @@ plt.savefig('/Users/jiananfeng/Desktop/MPs_removal.pdf', transparent=True, bbox_
 
 #%% PhACs concentration
 
-PhACs = pd.read_excel(folder + '/data/pharms-uba_v3_2021_0.xlsx')
+PhACs = pd.read_excel(get_htl_data_path('pharms-uba_v3_2021_0.xlsx'))
 set(PhACs['Matrix'])
 assert (PhACs['MEC standardized'].isna()).sum() == 0
 set(PhACs['Statistics'])
