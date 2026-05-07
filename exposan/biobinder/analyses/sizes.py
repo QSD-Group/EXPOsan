@@ -9,7 +9,7 @@ This module is developed by:
     Ali Ahmad <aa3056@scarletmail.rutgers.edu>
 
     Yalin Li <mailto.yalin.li@gmail.com>
-    
+
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
