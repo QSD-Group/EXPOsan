@@ -45,6 +45,9 @@ dependencies = [
 ci = [
     "pytest",
 ]
+integration = [
+    "qsdsan @ git+https://github.com/QSD-Group/QSDsan.git",
+]
 dev = [
     "pytest",
 ]
