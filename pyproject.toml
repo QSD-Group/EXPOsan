@@ -1,0 +1,111 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "exposan"
+version = "1.4.4"
+description = "Exposition of sanitation and resource recovery systems"
+readme = {file = "README.rst", content-type = "text/x-rst"}
+requires-python = ">=3.12"
+license = "NCSA"
+license-files = ["LICENSE.txt"]
+authors = [
+    {name = "Quantitative Sustainable Design Group", email = "quantitative.sustainable.design@gmail.com"},
+]
+keywords = [
+    "quantitative sustainable design",
+    "sanitation",
+    "resource recovery",
+    "techno-economic analysis",
+    "life cycle assessment",
+]
+classifiers = [
+    "Environment :: Console",
+    "Topic :: Education",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "Intended Audience :: Manufacturing",
+    "Intended Audience :: Science/Research",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "qsdsan==1.4.4",
+    "scikit-learn",
+    "tsp_solver",
+    "ortools",
+]
+
+[project.optional-dependencies]
+ci = [
+    "pytest",
+]
+dev = [
+    "pytest",
+]
+
+[project.urls]
+Homepage = "https://qsdsan.com"
+Documentation = "https://qsdsan.readthedocs.io"
+Repository = "https://github.com/QSD-Group/EXPOsan"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["exposan*"]
+namespaces = false
+
+[tool.setuptools.package-data]
+exposan = [
+    "adm/*",
+    "adm/data/*",
+    "asm/*",
+    "asm/data/*",
+    "biobinder/*",
+    "biobinder/data/*",
+    "biogenic_refinery/*",
+    "biogenic_refinery/data/*",
+    "bsm1/*",
+    "bsm1/data/*",
+    "bsm2/*",
+    "bsm2/data/*",
+    "bwaise/*",
+    "bwaise/data/*",
+    "cas/*",
+    "eco_san/*",
+    "eco_san/data/*",
+    "hap/*",
+    "htl/*",
+    "htl/data/crude_oil_price_2022.xlsx",
+    "htl/data/electricity_CI_2025-10-09.xlsx",
+    "htl/data/electricity_price_2025-10-09.xlsx",
+    "htl/data/impact_indicators.csv",
+    "htl/data/impact_items.xlsx",
+    "htl/data/labor_cost_2025-10-09.xlsx",
+    "htl/data/PLI_2025-10-09.xlsx",
+    "htl/data/state_elec_price_2022.xlsx",
+    "metab/*",
+    "metab/data/*",
+    "metab/utils/*",
+    "metro/*",
+    "new_generator/*",
+    "new_generator/data/*",
+    "pm2_batch/*",
+    "pm2_batch/data/*",
+    "pm2_ecorecover/*",
+    "pm2_ecorecover/data/*",
+    "pou_disinfection/*",
+    "pou_disinfection/data/*",
+    "reclaimer/*",
+    "reclaimer/data/*",
+    "saf/*",
+    "saf/data/*",
+    "werf/*",
+    "werf/data/*",
+    "werf/systems/*",
+    "werf/utils/*",
+]
