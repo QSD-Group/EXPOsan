@@ -86,7 +86,7 @@ then navigate into the repository (``cd EXPOsan``) and install the required pack
 
 .. code:: bash
 
-    pip install –r requirements.txt
+    pip install -e ".[dev]"
 
 
 .. note::
