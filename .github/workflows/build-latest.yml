@@ -10,7 +10,7 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
+  test-doc-examples:
 
     runs-on: ubuntu-latest
     strategy:
@@ -36,13 +36,77 @@ jobs:
     - name: Test doc examples
       run: |
         pytest exposan --doctest-modules
+
+  test-bsm2:
+
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+    - uses: actions/checkout@v6
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v6
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: "pip"
+        cache-dependency-path: |
+          pyproject.toml
+          .github/requirements-release.txt
+          .github/workflows/build-latest.yml
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -c .github/requirements-release.txt -e ".[ci,integration]"
+    - name: Test BSM2
+      run: |
+        pytest tests/test_bsm2.py
+
+  test-systems:
+
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+    - uses: actions/checkout@v6
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v6
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: "pip"
+        cache-dependency-path: |
+          pyproject.toml
+          .github/requirements-release.txt
+          .github/workflows/build-latest.yml
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -c .github/requirements-release.txt -e ".[ci,integration]"
     - name: Test systems
       run: |
         mkdir -p tmps
-        pytest tests -n 2 --dist loadfile --basetemp=tmps/pytest-${{ github.run_id }}-${{ github.run_attempt }}
+        pytest tests --ignore=tests/test_bsm2.py -n 2 --dist loadfile --basetemp=tmps/pytest-${{ github.run_id }}-${{ github.run_attempt }}
+
+  build:
+    needs: [test-doc-examples, test-bsm2, test-systems]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+    - name: Confirm test suite passed
+      run: |
+        echo "Doc examples, BSM2, and system tests passed."
 
   retry-with-upstream-master:
-    needs: build
+    needs: [test-doc-examples, test-bsm2, test-systems]
     if: ${{ failure() }}
     continue-on-error: true
     runs-on: ubuntu-latest
