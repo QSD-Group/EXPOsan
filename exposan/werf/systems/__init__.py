@@ -13,6 +13,7 @@ for license details.
 
 __all__ = (
     'create_system',
+    'SYSTEM_CREATORS',
 	)
 
 from . import (
@@ -45,6 +46,26 @@ from .I3 import *
 from .N1 import *
 from .N2 import *
 
+SYSTEM_CREATORS = {
+    'B1': create_b1_system,
+    'B2': create_b2_system,
+    'B3': create_b3_system,
+    'C1': create_c1_system,
+    'C2': create_c2_system,
+    'C3': create_c3_system,
+    'E2': create_e2_system,
+    'E2P': create_e2p_system,
+    'F1': create_f1_system,
+    'G1': create_g1_system,
+    'G2': create_g2_system,
+    'G3': create_g3_system,
+    'H1': create_h1_system,
+    'I1': create_i1_system,
+    'I2': create_i2_system,
+    'I3': create_i3_system,
+    'N1': create_n1_system,
+    'N2': create_n2_system,
+    }
+
 def create_system(ID):
-    f = globals()[f'create_{ID.lower()}_system']
-    return f()
+    return SYSTEM_CREATORS[ID.upper()]()
