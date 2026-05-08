@@ -130,7 +130,7 @@ default_init_conds = {
 # Validation & Verification of ADM1
 # =============================================================================
 
-def create_system(flowsheet=None, inf_kwargs={}, adm_kwargs={}, init_conds={}):
+def create_system(flowsheet=None, inf_kwargs=None, adm_kwargs=None, init_conds=None):
     flowsheet = flowsheet or qs.Flowsheet('adm')
     qs.main_flowsheet.set_flowsheet(flowsheet)
 
@@ -144,7 +144,7 @@ def create_system(flowsheet=None, inf_kwargs={}, adm_kwargs={}, init_conds={}):
     bg = WasteStream('Biogas')
     
     # Process model
-    adm1 = pc.ADM1(**adm_kwargs)
+    adm1 = pc.ADM1(**(adm_kwargs or {}))
     
     # System setup
     AD = su.AnaerobicCSTR('AD', ins=inf, outs=(bg, eff), model=adm1, T=Temp)

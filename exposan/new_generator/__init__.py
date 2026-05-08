@@ -38,8 +38,6 @@ if not os.path.isdir(os.path.join(qs_data_path, 'sanunit_data/ng')):
 ng_path = os.path.dirname(__file__)
 data_path = os.path.join(ng_path, 'data')
 results_path = os.path.join(ng_path, 'results')
-# To save simulation data
-if not os.path.isdir(results_path): os.mkdir(results_path)
 
 
 # %%

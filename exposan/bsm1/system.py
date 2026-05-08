@@ -192,9 +192,9 @@ def create_system(
         flowsheet=None, 
         suspended_growth_model='ASM1',
         reactor_model='CSTR',
-        inf_kwargs={},
-        asm_kwargs={},
-        settler_kwargs={},
+        inf_kwargs=None,
+        asm_kwargs=None,
+        settler_kwargs=None,
         init_conds=None,
         aeration_processes=(),
         ):

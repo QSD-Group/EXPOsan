@@ -126,7 +126,7 @@ def create_components():
      cmps.compile()
      return cmps
 
-def create_system(flowsheet=None, inf_kwargs={}, asm_kwargs={}, init_conds={},
+def create_system(flowsheet=None, inf_kwargs=None, asm_kwargs=None, init_conds=None,
                   aeration_processes=()):
     flowsheet = flowsheet or qs.Flowsheet('bsm1')
     qs.main_flowsheet.set_flowsheet(flowsheet)

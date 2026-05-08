@@ -24,7 +24,7 @@ from . import system
 from .system import *
 
 _system_loaded = False
-def load(reload=False, inf_kwargs={}, adm_kwargs={}, init_conds={}):
+def load(reload=False, inf_kwargs=None, adm_kwargs=None, init_conds=None):
     global _system_loaded
     if not _system_loaded: reload = True
     if reload:

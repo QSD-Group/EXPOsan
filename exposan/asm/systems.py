@@ -42,7 +42,7 @@ V_aer = 1333    # aerated zone tank volume [m3]
 # =============================================================================
 
 def create_system(flowsheet=None, process_model='ASM1', aerated=False,
-                  inf_kwargs={}, asm_kwargs={}, init_conds={}):
+                  inf_kwargs=None, asm_kwargs=None, init_conds=None):
     suffix = 'aer' if aerated else 'an'
     flowsheet = flowsheet or qs.Flowsheet(f'{process_model}_{suffix}')
     qs.main_flowsheet.set_flowsheet(flowsheet)

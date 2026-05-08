@@ -98,7 +98,7 @@ def batch_init(sys, path, sheet):
 # Validation & Verification of PM2
 # =============================================================================
 
-def create_system(flowsheet=None, pm2_kwargs={}, init_conds={}):
+def create_system(flowsheet=None, pm2_kwargs=None, init_conds=None):
 
     flowsheet = flowsheet or qs.Flowsheet('pm2_ecorecover')
     qs.main_flowsheet.set_flowsheet(flowsheet)

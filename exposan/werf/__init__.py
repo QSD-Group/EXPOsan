@@ -17,9 +17,6 @@ folder = os.path.dirname(__file__)
 data_path = os.path.join(folder, 'data')
 results_path = os.path.join(folder, 'results')
 figures_path = os.path.join(folder, 'figures')
-# To save simulation results and generated figures
-if not os.path.isdir(results_path): os.mkdir(results_path)
-if not os.path.isdir(figures_path): os.mkdir(figures_path)
 
 # from qsdsan import (
 #     ImpactIndicator as IInd, 

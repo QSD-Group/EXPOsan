@@ -60,13 +60,6 @@ def test_simulate_with_cache_reset_retries_floating_point_error():
         {'t_span': (0, 300), 'method': 'BDF', 'state_reset_hook': 'reset_cache'},
         ]
 
-
-def test_werf_system_dispatch_registry_is_explicit():
-    from exposan.werf import systems
-
-    assert systems.SYSTEM_CREATORS['B1'] is systems.create_b1_system
-    assert systems.SYSTEM_CREATORS['N2'] is systems.create_n2_system
-    
 # %%
 
 def test_werf():

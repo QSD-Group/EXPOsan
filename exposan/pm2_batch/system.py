@@ -92,7 +92,7 @@ default_pm2_kwargs = dict(
 # Batch system
 # =============================================================================
 
-def create_system(flowsheet=None, pm2_kwargs={}, init_conds={}, kind=''):
+def create_system(flowsheet=None, pm2_kwargs=None, init_conds=None, kind=''):
     flowsheet = flowsheet or qs.Flowsheet('pm2_batch')
     qs.main_flowsheet.set_flowsheet(flowsheet)
 

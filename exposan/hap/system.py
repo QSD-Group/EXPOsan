@@ -51,7 +51,7 @@ default_urine_concs = dict(
 # N = 100
 # Q = 1.4/24 * population * 0.01 # L/hr
 def create_system(total_pe_served=50000, N_locations=90, urination_rate=1.4,
-                  urine_concentrations={}, lifetime=10, 
+                  urine_concentrations=None, lifetime=10, 
                   income_tax=0.28, flowsheet=None):
     sys_ID = 'sys'
     

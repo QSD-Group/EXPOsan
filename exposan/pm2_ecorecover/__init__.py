@@ -26,7 +26,7 @@ from . import system
 from .system import *
 
 _system_loaded = False
-def load(reload=False, pm2_kwargs={}, init_conds={}):
+def load(reload=False, pm2_kwargs=None, init_conds=None):
 
     global _system_loaded
     if not _system_loaded: reload = True

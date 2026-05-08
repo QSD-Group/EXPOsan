@@ -48,7 +48,7 @@ __all__ = (
     )
 
 
-def _init_modules(module_name, include_data_path=False, include_figures_path=False):
+def _init_modules(module_name, include_data_path=False, include_figures_path=False, create=False):
     module_path = os.path.join(es_path, module_name)
     dirnames = ['results']
     if include_data_path: dirnames.insert(0, 'data')
@@ -57,7 +57,7 @@ def _init_modules(module_name, include_data_path=False, include_figures_path=Fal
     for dirname in dirnames:
         p = os.path.join(module_path, dirname)
         paths.append(p)
-        if not os.path.isdir(p): os.mkdir(p)
+        if create and not os.path.isdir(p): os.mkdir(p)
     return paths
 
 
