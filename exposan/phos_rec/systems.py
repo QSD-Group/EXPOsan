@@ -14,10 +14,6 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-# =============================================================================
-# TODO: add this (and any other parameters, e.g., electiricity price) to uncertainty analysis
-# =============================================================================
-
 import biosteam as bst, qsdsan as qs
 from qsdsan.utils import clear_lca_registries, auom
 from qsdsan import sanunits as qsu
@@ -26,7 +22,7 @@ from exposan.phos_rec import _sanunits as su
 
 # unit & basis conversion
 _C_to_K = 273.15
-_MMBTU_to_MJ = auom('BTU').conversion_factor('MJ') * 10**6
+_MMBTU_to_MJ = auom('BTU').conversion_factor('MJ')*10**6
 _ton_to_kg = auom('ton').conversion_factor('kg')
 
 # MW
@@ -102,6 +98,7 @@ def get_precipitation_supernatant_price(food_sludge_ratio, HRT):
     return price
 
 # TODO: use temp_ratio to scale fe_sludge temporarily
+# sludge_credit: $/tonne dry solids (https://pubs.acs.org/doi/10.1021/es505329q)
 def create_system(temp_ratio=1, food_sludge_ratio=1, HRT=132, sludge_credit=300, sludge_CI_credit=300):
     
     flowsheet_ID = 'phos_rec'
@@ -119,7 +116,6 @@ def create_system(temp_ratio=1, food_sludge_ratio=1, HRT=132, sludge_credit=300,
     
     _load_components()
     
-    # TODO: instead, assign concentrations to components except water
     # Inert represents other inorganics; now VSS/TSS = 0.74, which is reasonable
     fe_sludge = qs.WasteStream(ID='fe_sludge', Fe3=180*temp_ratio, Org=5000*temp_ratio,
                                PO4=300*temp_ratio, Water=1000000*temp_ratio, Ca2=150*temp_ratio,
@@ -139,22 +135,8 @@ def create_system(temp_ratio=1, food_sludge_ratio=1, HRT=132, sludge_credit=300,
                                             sludge_moisture=0.85, solids=('Inert','Residue'))
     
     SP = su.SelectivePrecipitation(ID='SP', ins=(FC-0, 'acid', 'oxidant'), outs='slurry')
-    
-    # TODO: may need to remove the scenario where food_sludge_ratio = 0 due to its very high costs and GHG emissions, also due to its different moisture content set here (only 0.99 works for the scenario where food_sludge_ratio = 0)
-    # if food_sludge_ratio != 0:
-    #     PC = su.SludgeCentrifugeWithElementFlow(ID='PC', ins=SP-0, outs=('precipitation_supernatant', 'precipitate'),
-    #                                             sludge_moisture=0.92, solids=('FePO4_2H2O',))
-    # else:
-    #     PC = su.SludgeCentrifugeWithElementFlow(ID='PC', ins=SP-0, outs=('precipitation_supernatant', 'precipitate'),
-    #                                             sludge_moisture=0.99, solids=('FePO4_2H2O',))
-        
-    # precip_mass = (SP-0).imass['FePO4_2H2O']
-    
-    # if precip_mass < 1e-6:
-    #     pc_moisture = 0.99
-    # else:
-    #     pc_moisture = 0.80
-        
+       
+    # TODO: use constant sludge_moisture for all scenarios
     if food_sludge_ratio == 0:
         PC = su.SludgeCentrifugeWithElementFlow(ID='PC', ins=SP-0, outs=('precipitation_supernatant', 'precipitate'),
                                             sludge_moisture=0.999, solids=('FePO4_2H2O',))
@@ -178,40 +160,36 @@ def create_system(temp_ratio=1, food_sludge_ratio=1, HRT=132, sludge_credit=300,
     
     sys.simulate()
     
-    # the value：https://pubs.acs.org/doi/10.1021/es505329q
-    sludge_credit_used_per_ton_dry = sludge_credit # $/ton dry solids
-    temp_ratio = temp_ratio # size of WRRF
-    sludge_dry_kg_d = fe_sludge.F_mass - fe_sludge.imass['Water']
-    fe_sludge.price = -sludge_credit_used_per_ton_dry*(sludge_dry_kg_d/1000)/fe_sludge.F_mass
+    sludge_dry_kg_hr = fe_sludge.F_mass - fe_sludge.imass['Water']
+    fe_sludge.price = -sludge_credit*(sludge_dry_kg_hr/1000)/fe_sludge.F_mass
     
-    # the value: https://www.sciencedirect.com/science/article/pii/S0959652621022757
-    food_waste_credit_used_per_ton_dry = 75.8 # $/ton dry solids
-    food_waste_dry_kg_d = AF.ins[1].F_mass - AF.ins[1].imass['Water']
-    # TODO: replaced fe_sludge.F_mass with AF.ins[1].F_mass; check this
-    AF.ins[1].price = -food_waste_credit_used_per_ton_dry*(food_waste_dry_kg_d/1000)/AF.ins[1].F_mass
+    # $/tonne dry solids, https://www.sciencedirect.com/science/article/pii/S0959652621022757
+    food_waste_credit = 75.8
+    food_waste_dry_kg_hr = AF.ins[1].F_mass - AF.ins[1].imass['Water']
+    AF.ins[1].price = -food_waste_credit*(food_waste_dry_kg_hr/1000)/AF.ins[1].F_mass
     
-    # price of H2SO4 is 0.08$/kg, from Everbatt2023
-    SP.ins[1].price = 0.08 * stream.acid.imass['H2SO4'] / stream.acid.F_mass
+    # 0.08 $/kg, from Everbatt2023
+    SP.ins[1].price = 0.08 * stream.acid.imass['H2SO4']/stream.acid.F_mass
     
-    # price of H2O2 is 1.46$/kg, from Everbatt2023
-    SP.ins[2].price = 1.46 * stream.oxidant.imass['H2O2'] / stream.oxidant.F_mass
+    # 1.46 $/kg, from Everbatt2023
+    SP.ins[2].price = 1.46 * stream.oxidant.imass['H2O2']/stream.oxidant.F_mass
     
-    HD.ins[1].price = bst.HeatUtility.heating_agents[-1].regeneration_price/MW_CH4
+    # 3.49672 $/kmol, from BioSTEAM
+    HD.ins[1].price = 3.49672/MW_CH4
     
-    # TODO: this only applies to the sludge management perspective; the value needs to be updated: the price of FePO4 is 15000 rmb/ton, means 2.14 $/kg
+    # TODO: any reference?
+    # 15000 rmb/ton -> 2.14 $/kg
     SI.outs[0].price = 2.14
     
-    SI.ins[1].price = bst.HeatUtility.heating_agents[-1].regeneration_price/MW_CH4
+    SI.ins[1].price = 3.49672/MW_CH4
     
-    # the landfill cost (tipping fee) can be found in https://www.wasteoptima.com/blog/eref-2024-landfill-tipping-fees?utm_source with the $62.28 per ton
-    FC.outs[1].price = - 62.28 / _ton_to_kg
+    # 62.28 $/ton, https://www.wasteoptima.com/blog/eref-2024-landfill-tipping-fees?utm_source
+    FC.outs[1].price = - 62.28/_ton_to_kg
+    
+    PC.outs[0].price = get_precipitation_supernatant_price(AF.food_sludge_ratio, AF.HRT)
     
     # TODO: food waste now is emission-free, but it could provide credits as well
     
-    PC.outs[0].price = get_precipitation_supernatant_price(AF.food_sludge_ratio, AF.HRT)
- 
-    # PC.outs[0].price = 0.002
- 
     GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
                                        method='IPCC',
                                        category='environmental impact',
@@ -242,12 +220,11 @@ def create_system(temp_ratio=1, food_sludge_ratio=1, HRT=132, sludge_credit=300,
         GlobalWarming=1.7460300053961*stream.oxidant.imass['H2O2']/stream.oxidant.F_mass
     )
     
-    # TODO: may need update: 30 is a rough number to consider sludge landfilling at 80% moisture content
-    # market for process-specific burdens, sanitary landfill, Rest-of-World (RoW): 0.00582207178953914
+    # TODO: check this
     qs.StreamImpactItem(
         ID='fe_sludge',
         linked_stream=stream.fe_sludge,
-        GlobalWarming=-0.00582207178953914/30*sludge_CI_credit
+        GlobalWarming=-sludge_CI_credit*(sludge_dry_kg_hr/1000)/fe_sludge.F_mass
     )
     
     # market for process-specific burdens, sanitary landfill, Rest-of-World (RoW): 0.00582207178953914
@@ -278,6 +255,7 @@ def create_system(temp_ratio=1, food_sludge_ratio=1, HRT=132, sludge_credit=300,
         GlobalWarming=0.573511217751451 * stream.sintering_natural_gas.F_vol / stream.sintering_natural_gas.F_mass
     )
     
+    # TODO: check this
     # the CI of FePO4: https://www.sciencedirect.com/science/article/pii/S1383586624004258#s0085  2-3.5-6 kg CO2-eq/kg FePO4
     qs.StreamImpactItem(
     ID='FePO4_credit',
@@ -285,6 +263,7 @@ def create_system(temp_ratio=1, food_sludge_ratio=1, HRT=132, sludge_credit=300,
     GlobalWarming = -4
     )
     
+    # TODO: should this also be a function of AF.food_sludge_ratio and AF.HRT?
     # TODO: any reference?
     qs.StreamImpactItem(
     ID='VFA_credit',
@@ -292,13 +271,13 @@ def create_system(temp_ratio=1, food_sludge_ratio=1, HRT=132, sludge_credit=300,
     GlobalWarming = -0.002
     )
     
-    # TODO: add the FePO4 production perspective as well (or just in model is fine?)
-    # TODO: add labor costs
+    # TODO: update the labor cost to be a variable (not a constant)
+    # TODO: why 8000 hours per year?
     # labor cost=1 FTE*8000h/year*25$-wage/hour=200,000 $/year
     # wage: U.S. Bureau of Labor Statistics. Producer Price Index–Metals and Metal Products: Mid–Atlantic Information Office: U.S. Bureau of Labor Statistics. Available online: https://www.bls.gov/regions/mid-atlantic/data/producerpriceindexmetals_us_table.htm (accessed on 28 June 2022).
     # FTE amount: https://www.mheducation.com/highered/product/wastewater-engineering-treatment-resource-recovery-metcalf-eddy/M9780073401188.html (highly automated treatment processes require minimal operator attention)
-    # other refer-1: the labor cost is €462.25 per month: https://www.sciencedirect.com/science/article/pii/S0959652617305504
-    # other refer-2: operation labor in need (number of operator·hours per year): https://pubs.acs.org/doi/10.1021/acssuschemeng.0c05189
+    # other reference-1: the labor cost is €462.25 per month: https://www.sciencedirect.com/science/article/pii/S0959652617305504
+    # other reference-2: operation labor in need (number of operator·hours per year): https://pubs.acs.org/doi/10.1021/acssuschemeng.0c05189
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,

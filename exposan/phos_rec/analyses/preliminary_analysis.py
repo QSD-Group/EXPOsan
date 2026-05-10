@@ -197,7 +197,6 @@ credit_result.to_excel(os.path.join(folder, f'results/FePO4_result_credit_{date.
 
 #%% for the simulation of N=1000 and HRT = 132 and food_sludge = 1 to the cost and CI (size of WRRF is a parameter)
 
-
 size_list = []
 
 FePO4_MSP_5th = []
@@ -294,12 +293,12 @@ for perspective in ['FePO4','sludge']:
 FePO4_result.to_excel(os.path.join(folder, f'results/FePO4_result_ratio_credit_{date.today()}.xlsx'))
 sludge_result.to_excel(os.path.join(folder, f'results/sludge_result_ratio_credit_{date.today()}.xlsx'))
 
-
 # model = create_model(sys)
 # result = []
 # result.to_excel(os.path.join(folder, f'results/FePO4_result_{date.today()}.xlsx'))
 
 #%% for the simulation of N=1000 and HRT = 132 and food_sludge = 1 to the cost and CI (size of WRRF=10)
+
 sys = create_system(temp_ratio=10, food_sludge_ratio=1, HRT=132, sludge_credit=300)
 sys.simulate()
 model = create_model(sys, perspective='sludge')
@@ -311,7 +310,6 @@ idx = len(model.parameters)
 parameters = model.table.iloc[:, :idx]
 results = model.table.iloc[:, idx:]
 results.to_excel(os.path.join(folder, f'results/sludge_management_cost_CI_basline_{date.today()}.xlsx'))
-
 
 #%% for the simulation of N=1000 and HRT = 132 and food_sludge_ratio = 1 to the avoided waste management CI analysis (sludge_CI_credit is a parameter)
 
@@ -367,9 +365,7 @@ credit_result['FePO4_GWP_mean'] = FePO4_GWP_mean
 
 credit_result.to_excel(os.path.join(folder, f'results/FePO4_result_CI_credit_{date.today()}.xlsx'),)
 
-
 #%% for the simulation of N=1000 and HRT = 132 and food_sludge = 1 to the cost and CI (size of WRRF is a parameter)
-
 
 sys = create_system(temp_ratio=10, food_sludge_ratio=1, HRT=132, sludge_credit=300  )
 model = create_model(sys, perspective='FePO4')

@@ -21,14 +21,15 @@ from exposan.phos_rec import get_precipitation_supernatant_price
 
 __all__ = ('create_model',)
 
-_MMBTU_to_MJ = auom('BTU').conversion_factor('MJ') * 10**6
+_MMBTU_to_MJ = auom('BTU').conversion_factor('MJ')*10**6
 _ton_to_kg = auom('ton').conversion_factor('kg')
+_tonne_to_kg = auom('tonne').conversion_factor('kg')
 
 MW_CH4 = 16
 
 folder = os.path.dirname(__file__)
 
-def create_model(system=None, perspective='FePO4'): #revised version：def create_model(system): flowsheet = system.flowsheet  for the creat_model() to a AttributeError
+def create_model(system=None, perspective='FePO4'):
     
     if perspective not in ['FePO4','sludge']:
         raise KeyError('perspective can only be FePO4 or sludge')
@@ -42,21 +43,7 @@ def create_model(system=None, perspective='FePO4'): #revised version：def creat
     # =============================================================================
     # AcidogenicFermenter
     # =============================================================================
-    AF = unit.AF
-    
-    # TODO: DO NOT INCLUDE THIS!
-    # discrete scenarcios for food_slduge_ratio
-    # _choices = [0, 1/3, 2/3, 1, 4/3] #5 discrete points
-    # dist = shape.DiscreteUniform(0,len(_choices)-1)
-    # @param(name='food_sludge_ratio',
-    #        element='AF',
-    #        kind='coupled',
-    #        units='-',
-    #        baseline=3, # TODO: the value of i
-    #        distribution=dist)
-    # def set_food_sludge_ratio(i):
-    #     AF.food_sludge_ratio=_choices[int(i)]  
-    
+    AF = unit.AF 
     
     df = pd.read_excel(os.path.join(folder, 'data/model_HRT.xlsx'))
     for _, row in df.iterrows():        
@@ -78,19 +65,7 @@ def create_model(system=None, perspective='FePO4'): #revised version：def creat
            baseline=0.74,
            distribution=dist)
     def set_sludge_moisture(i):
-        AF.food_waste_moisture=i  
-    
-    # TODO: DO NOT INCLUDE THIS!
-    # dist = shape.Uniform(96,144)
-    # @param(name='AF_HRT',
-    #        element='AF',
-    #        kind='coupled',
-    #        units='hr',
-    #        baseline=120,
-    #        distribution=dist)
-    # def set_AF_HRT(i):
-    #     # TODO: check if the value actually changes: the HRT value changes in the result spreadsheet, however, it may be safer to write HRT as a parameter in the sanunit
-    #     AF.HRT=i
+        AF.food_waste_moisture=i
     
     dist = shape.Uniform(0.018,0.022)
     @param(name='org_to_gas',
@@ -168,18 +143,6 @@ def create_model(system=None, perspective='FePO4'): #revised version：def creat
            distribution=dist)
     def set_oxidant_excess(i):
         SP.oxidant_excess=i
-    
-    # TODO: DO NOT INCLUDE THIS!
-    # dist = shape.Uniform(4.8,7.2)
-    # @param(name='SP_HRT',
-    #        element='SP',
-    #        kind='coupled',
-    #        units='hr',
-    #        baseline=6,
-    #        distribution=dist)
-    # def set_SP_HRT(i):
-    #     # TODO: check if the value actually changes: the HRT value changes in the result spreadsheet, however, it may be safer to write HRT as a parameter in the sanunit
-    #     SP.HRT=i
  
     # =============================================================================
     # HeatDrying
@@ -233,8 +196,19 @@ def create_model(system=None, perspective='FePO4'): #revised version：def creat
     # =============================================================================
     # TEA
     # =============================================================================
+    food_waste = stream.food_waste
+    dist = shape.Uniform(75.8*0.8,75.8*1.2)
+    @param(name='food_waste_credit',
+           element='TEA',
+           kind='isolated',
+           units='$/kg',
+           baseline=75.8,
+           distribution=dist)
+    def set_food_waste_credit(i):
+        food_waste_dry_kg_hr = food_waste.F_mass - food_waste.imass['Water']
+        food_waste.price = -i*(food_waste_dry_kg_hr/1000)/food_waste.F_mass
+    
     H2SO4 = stream.acid
-    # TODO: update if needed
     dist = shape.Uniform(0.08*0.8,0.08*1.2)
     @param(name='H2SO4_price',
            element='TEA',
@@ -246,7 +220,6 @@ def create_model(system=None, perspective='FePO4'): #revised version：def creat
         H2SO4.price=i
     
     H2O2 = stream.oxidant
-    # TODO: update if needed
     dist = shape.Uniform(1.46*0.8,1.46*1.2)
     @param(name='H2O2_price',
            element='TEA',
@@ -258,7 +231,6 @@ def create_model(system=None, perspective='FePO4'): #revised version：def creat
         H2O2.price=i
     
     FePO4 = stream.product
-    # TODO: update if needed
     dist = shape.Uniform(2.14*0.8,2.14*1.2)
     @param(name='FePO4_price',
            element='TEA',
@@ -269,16 +241,14 @@ def create_model(system=None, perspective='FePO4'): #revised version：def creat
     def set_FePO4_price(i):
         FePO4.price=i
     
-    # heat drying natural gas
     HD_NG = stream.heat_drying_natural_gas
-    # sintering natural gas
     SI_NG = stream.sintering_natural_gas
-    dist = shape.Uniform(bst.HeatUtility.heating_agents[-1].regeneration_price/MW_CH4*0.9,bst.HeatUtility.heating_agents[-1].regeneration_price/MW_CH4*1.1)
+    dist = shape.Uniform(3.49672/MW_CH4*0.9,3.49672/MW_CH4*1.1)
     @param(name='NG_price',
            element='TEA',
            kind='isolated',
            units='$/kg',
-           baseline=bst.HeatUtility.heating_agents[-1].regeneration_price/MW_CH4,
+           baseline=3.49672/MW_CH4,
            distribution=dist)
     def set_NG_price(i):
         HD_NG.price=SI_NG.price=i
@@ -350,27 +320,13 @@ def create_model(system=None, perspective='FePO4'): #revised version：def creat
     def set_precipitation_supernatant_price(i):
         precipitation_supernatant.price = i
     
-    food_waste = stream.food_waste
-    dist = shape.Uniform(75.8*0.8,75.8*1.2)
-    @param(name='food_waste_credit',
-           element='TEA',
-           kind='isolated',
-           units='$/kg',
-           baseline=75.8,
-           distribution=dist)
-    def set_food_waste_credit(i):
-        food_waste_dry_kg_d = food_waste.F_mass - food_waste.imass['Water']
-        # TODO: replaced fe_sludge.F_mass with AF.ins[1].F_mass; check this
-        food_waste.price = -i*(food_waste_dry_kg_d/1000)/food_waste.F_mass
-    
     residue = stream.residue
-    # TODO: update if needed
     dist = shape.Uniform(-62.28/_ton_to_kg*1.2,-62.28/_ton_to_kg*0.8)
     @param(name='residue_price',
            element='TEA',
            kind='isolated',
            units='$/kg',
-           baseline=-62.28/_ton_to_kg, # landfill price: 62.28 $/ton
+           baseline=-62.28/_ton_to_kg,
            distribution=dist)
     def set_landfill_price(i):
         residue.price=i
@@ -433,28 +389,24 @@ def create_model(system=None, perspective='FePO4'): #revised version：def creat
         return SI.P_recovery
     
     if perspective == 'FePO4':
-        # TODO: may need update
         @metric(name='FePO4_MSP',units='$/kg',element='TEA')
         def get_FePO4_MSP():
             return tea.solve_price(product)
         
-        # TODO: may need update
         @metric(name='FePO4_GWP',units='kg_CO2_eq/kg',element='LCA')
         def get_FePO4_GWP():
             return lca.get_total_impacts(operation_only=True,
                                          exclude=(product,),
                                          annual=True)['GlobalWarming']/product.F_mass/system.operating_hours
     else:
-        # TODO: may need update (*1000 is to convert kg to tonne, need to add this as a constant, *100 is just a rough estimate assuming the moisture content of fe_sludge is 99%)
         @metric(name='sludge_management_cost',units='$/tonne',element='TEA')
         def get_sludge_management_cost():
-            return -tea.solve_price(fe_sludge)*1000*100
+            return -tea.solve_price(fe_sludge)*_tonne_to_kg*fe_sludge.F_mass/(fe_sludge.F_mass - fe_sludge.imass['H2O'])
         
-        # TODO: may need update (*1000 is to convert kg to tonne, need to add this as a constant, *100 is just a rough estimate assuming the moisture content of fe_sludge is 99%)
         @metric(name='sludge_management_GWP',units='kg_CO2_eq/tonne',element='LCA')
         def get_sludge_management_GWP():
             return lca.get_total_impacts(operation_only=True,
                                          exclude=(fe_sludge,),
-                                         annual=True)['GlobalWarming']/fe_sludge.F_mass/system.operating_hours*1000*100
+                                         annual=True)['GlobalWarming']/(fe_sludge.F_mass - fe_sludge.imass['H2O'])/system.operating_hours*_tonne_to_kg
     
     return model

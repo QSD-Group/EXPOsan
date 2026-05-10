@@ -63,7 +63,7 @@ Figure_3D_avoid_waste_sludge_management_CI_data = pd.read_excel(Figure_2_file, '
 Figure_4AB_data = pd.read_excel(Figure_2_file, 'FePO4CostCI')
 Figure_4CD_data = pd.read_excel(Figure_2_file, 'sludgeCostCI')
 
-#SI
+# SI
 Figure_S1_NH4_release_data = pd.read_excel(Figure_2_file, 'SI_NH4+')
 
 #%% Figure 2A
@@ -876,6 +876,7 @@ ax.plot(x, low, color=r,linestyle='--',linewidth=3)
 ax.plot(x, high, color=r,linestyle='--',linewidth=3)
 
 ax.plot(x, mid, color=r, linewidth=4)
+
 #%% Figure 4A
 
 fig, ax = plt.subplots(figsize=(16, 12))
@@ -1272,7 +1273,9 @@ leg = ax.legend(loc='upper left',
 
 for text in leg.get_texts():
     text.set_fontname('Arial')
+
 #%% legend
+
 fig, ax = plt.subplots(figsize=(8,4))
 ax.axis('off')
 

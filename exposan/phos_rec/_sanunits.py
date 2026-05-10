@@ -37,6 +37,10 @@ MW_Fe = 55.845
 MW_FePO4 = 150.82
 MW_FePO4_2H2O = 186.85
 
+_C_to_K = 273.15
+_316_over_304 = factors['Stainless steel 316']/factors['Stainless steel 304']
+_ton_to_tonne = auom('ton').conversion_factor('tonne')
+
 def P_mass(stream):
     '''kg P per hour'''
     return (
@@ -54,11 +58,20 @@ def Fe_mass(stream):
         + stream.imass['FePO4_2H2O'] * MW_Fe / MW_FePO4_2H2O
     )
 
+__all__ = (
+    'ElementFlowMixin',
+    'AcidogenicFermenter',
+    'SludgeCentrifugeWithElementFlow',
+    'SelectivePrecipitation',
+    'HeatDrying',
+    'Sintering',
+    'FePO4_recovery'
+)
+
 class ElementFlowMixin:
     '''
     Provide elemental flow properties (Fe / P / C) for SanUnit.
     '''
-
     @property
     def element_in(self):
         '''Total elemental inflow to the unit [kg/hr].'''
@@ -92,19 +105,6 @@ class ElementFlowMixin:
             })
         return dist
 
-_C_to_K = 273.15
-_316_over_304 = factors['Stainless steel 316'] / factors['Stainless steel 304']
-_ton_to_tonne = auom('ton').conversion_factor('tonne')
-
-__all__ = (
-    'AcidogenicFermenter',
-    'SludgeCentrifugeWithElementFlow',
-    'SelectivePrecipitation',
-    'HeatDrying',
-    'Sintering',
-    'FePO4_recovery'
-)
-
 # =============================================================================
 # AcidogenicFermenter
 # =============================================================================
@@ -134,6 +134,8 @@ class AcidogenicFermenter(ElementFlowMixin, SanUnit):
         sludge, food_waste.
     outs : iterable
         fermentate, gas.
+    HRT : float
+        hydraulic retention time, [hr].
     food_sludge_ratio : float
         Mass ratio of organics bewteen food waste and sludge, [-].
     food_waste_moisture : float
@@ -178,9 +180,6 @@ class AcidogenicFermenter(ElementFlowMixin, SanUnit):
         'Recirculation flow rate': 'm3/hr'
     }
     
-    # hydraulic retention time, [hr]
-    # HRT = 5*24
-    
     # cleaning and unloading, [hr]
     tau_cleaning = 3
     
@@ -191,8 +190,8 @@ class AcidogenicFermenter(ElementFlowMixin, SanUnit):
     V_wf = 0.9
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-                 food_sludge_ratio=1,
                  HRT=132,
+                 food_sludge_ratio=1,
                  food_waste_moisture=0.74,
                  org_to_gas=0.05,
                  org_to_vfa=0.65,
@@ -300,6 +299,7 @@ class AcidogenicFermenter(ElementFlowMixin, SanUnit):
                  P_release_ratio_4_3_132 = 0.83,
                  T=37+_C_to_K):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
+        self.HRT = HRT
         self.food_sludge_ratio = food_sludge_ratio
         self.food_waste_moisture = food_waste_moisture
         self.org_to_gas = org_to_gas
@@ -307,7 +307,6 @@ class AcidogenicFermenter(ElementFlowMixin, SanUnit):
         self.org_to_ethanol = org_to_ethanol
         self.org_to_residue = org_to_residue
         self.VFA_ratio = VFA_ratio
-        self.HRT = HRT
         self.Fe_reduction = Fe_reduction
         self.metal_release_ratio_0_0 = metal_release_ratio_0_0
         self.metal_release_ratio_0_12 = metal_release_ratio_0_12
@@ -420,7 +419,9 @@ class AcidogenicFermenter(ElementFlowMixin, SanUnit):
         fermentate.phase = 'l'
         gas.phase = 'g'
         
-        # TODO: add if statement for HRT
+        if self.HRT not in np.arange(0, 144, 12):
+            raise RuntimeError('HRT must be one of the follow: 0, 12, 24, 36, 48, 60, 72, 84, 96, 108, 120, 132.')
+        
         if self.food_sludge_ratio not in [0, 1/3, 2/3, 1, 4/3]:
             raise RuntimeError('food_sludge_ratio must be one of the follow: 0, 1/3, 2/3, 1, 4/3.')
         
@@ -454,14 +455,6 @@ class AcidogenicFermenter(ElementFlowMixin, SanUnit):
 
         fermentate.imass['Fe2'] = fermentate.imass['Fe3'] * self.Fe_reduction
         fermentate.imass['Fe3'] -= fermentate.imass['Fe2']
-        
-        # metal_P_release = {
-        #     0: {'metal': self.metal_release_ratio_0, 'P': self.P_release_ratio_0},
-        #     1/3: {'metal': self.metal_release_ratio_1_3, 'P': self.P_release_ratio_1_3},
-        #     2/3: {'metal': self.metal_release_ratio_2_3, 'P': self.P_release_ratio_2_3},
-        #     1: {'metal': self.metal_release_ratio_1, 'P': self.P_release_ratio_1},
-        #     4/3: {'metal': self.metal_release_ratio_4_3, 'P': self.P_release_ratio_4_3}
-        # }
         
         metal_P_release = {
             0: {
