@@ -107,10 +107,7 @@ jobs:
 
   retry-with-upstream-master:
     needs: [test-doc-examples, test-bsm2, test-systems]
-    if: |
-      needs.test-doc-examples.result == 'failure' ||
-      needs.test-bsm2.result == 'failure' ||
-      needs.test-systems.result == 'failure'
+    if: ${{ failure() }}
     continue-on-error: true
     runs-on: ubuntu-latest
     strategy:
