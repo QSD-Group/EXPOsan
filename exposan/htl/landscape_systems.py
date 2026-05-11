@@ -15,7 +15,7 @@ for license details.
 #%% initialization
 
 import os, numpy as np, pandas as pd, qsdsan as qs, biosteam as bst
-from qsdsan import sanunits as qsu
+from qsdsan import unit_operations as qsu
 from biosteam import settings
 from qsdsan.utils import auom, clear_lca_registries, tea_indices
 from exposan.htl import _load_components, landscape_sanunits as lsu, create_tea

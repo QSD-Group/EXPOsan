@@ -19,7 +19,7 @@ import qsdsan as qs
 from math import ceil, pi, log
 from warnings import warn
 from qsdsan import SanUnit, Stream, Construction
-from qsdsan.sanunits import Reactor, HXutility, Tank
+from qsdsan.unit_operations import Reactor, HXutility, Tank
 from qsdsan.utils import auom
 from biosteam.units import StorageTank as BSTStorageTank
 from biosteam.units.decorators import cost

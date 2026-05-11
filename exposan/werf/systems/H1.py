@@ -14,8 +14,8 @@ for license details.
 import qsdsan as qs
 from qsdsan import (
     WasteStream,
-    processes as pc,
-    sanunits as su,
+    process_models as pc,
+    unit_operations as su,
     )
 from qsdsan.utils import ospath, time_printer, load_data, get_SRT
 from exposan.werf import data_path, default_rww#, default_fctss_init

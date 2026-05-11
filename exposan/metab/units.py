@@ -12,7 +12,7 @@ for license details.
 '''
 from biosteam import Stream, VacuumSystem
 from qsdsan import SanStream, WasteStream, CompiledProcesses, SanUnit, Construction
-from qsdsan.sanunits import AnaerobicCSTR, Pump, HXutility
+from qsdsan.unit_operations import AnaerobicCSTR, Pump, HXutility
 from qsdsan.utils import auom
 from exposan.metab.equipment import Beads
 from exposan.metab.utils import (

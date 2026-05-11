@@ -29,7 +29,7 @@ References:
 '''
 
 import os, qsdsan as qs
-from qsdsan import sanunits as qsu
+from qsdsan import unit_operations as qsu
 from biosteam.units import IsenthalpicValve
 from qsdsan.utils import clear_lca_registries
 from exposan.htl import (

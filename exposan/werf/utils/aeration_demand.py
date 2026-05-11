@@ -12,8 +12,8 @@ for license details.
 
 '''
 import numpy as np
-from qsdsan.sanunits import CSTR, PFR, CompletelyMixedMBR, AerobicDigester
-from qsdsan.processes import DiffusedAeration
+from qsdsan.unit_operations import CSTR, PFR, CompletelyMixedMBR, AerobicDigester
+from qsdsan.process_models import DiffusedAeration
 from warnings import warn
 
 __all__ = ('get_aeration_kLa', 
@@ -84,7 +84,7 @@ def get_crossflow_kLa(unit, Q_air, DOsat_s20=8.0, T_air=13,):
 
     See Also
     --------
-    :class:`qsdsan.processes.DiffusedAeration`
+    :class:`qsdsan.process_models.DiffusedAeration`
     
     '''
     if not isa(unit, CompletelyMixedMBR):
@@ -144,7 +144,7 @@ def get_aeration_demand(unit, kLa=None, DOsat_s20=8.0, alpha=0.5,
     
     See Also
     --------
-    :class:`qsdsan.processes.DiffusedAeration`
+    :class:`qsdsan.process_models.DiffusedAeration`
 
     '''
     

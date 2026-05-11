@@ -20,7 +20,7 @@ from math import log
 from sklearn.linear_model import LinearRegression as LR
 from chaospy import distributions as shape
 from thermosteam.functional import rho_to_V
-from qsdsan import ImpactItem, sanunits as su
+from qsdsan import ImpactItem, unit_operations as su
 from qsdsan.utils import (
     AttrSetter,
     DictAttrSetter,

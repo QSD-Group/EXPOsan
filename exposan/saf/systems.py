@@ -37,7 +37,7 @@ References
 
 import os, numpy as np, biosteam as bst, qsdsan as qs
 from biosteam import IsenthalpicValve
-from qsdsan import sanunits as qsu
+from qsdsan import unit_operations as qsu
 from qsdsan.utils import clear_lca_registries
 from exposan.htl import create_tea
 from exposan.saf import (

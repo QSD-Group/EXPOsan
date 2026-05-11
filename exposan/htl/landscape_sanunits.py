@@ -32,7 +32,7 @@ for license details.
 
 import os, qsdsan as qs, biosteam as bst
 from qsdsan import SanUnit
-from qsdsan.sanunits import SludgePump, HXutility, HXprocess, Pump
+from qsdsan.unit_operations import SludgePump, HXutility, HXprocess, Pump
 from qsdsan.utils import auom, calculate_excavation_volume
 from qsdsan.equipments import Blower, GasPiping
 from biosteam import Stream
@@ -2215,7 +2215,7 @@ class HydrothermalLiquefaction(SanUnit):
     
     See Also
     --------
-    :class:`qsdsan.sanunits.HydrothermalLiquefaction`
+    :class:`qsdsan.unit_operations.HydrothermalLiquefaction`
     
     :class:`exposan.saf._units.HydrothermalLiquefaction`
     
@@ -3061,7 +3061,7 @@ class CatalyticHydrothermalGasification(SanUnit):
     
     See Also
     --------
-    :class:`qsdsan.sanunits.CatalyticHydrothermalGasification`
+    :class:`qsdsan.unit_operations.CatalyticHydrothermalGasification`
     
     References
     ----------

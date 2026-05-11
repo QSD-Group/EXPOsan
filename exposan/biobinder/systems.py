@@ -23,7 +23,7 @@ References
 # warnings.filterwarnings('ignore')
 
 import os, biosteam as bst, qsdsan as qs
-from qsdsan import sanunits as qsu
+from qsdsan import unit_operations as qsu
 from qsdsan.utils import clear_lca_registries
 from exposan.htl import create_tea
 from exposan.biobinder import (
@@ -789,7 +789,7 @@ if __name__ == '__main__':
 
 # #%%
 # import qsdsan as qs
-# from qsdsan import sanunits as qsu
+# from qsdsan import unit_operations as qsu
 # import numpy as np
 
 

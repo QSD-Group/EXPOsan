@@ -14,7 +14,7 @@ for license details.
 import numpy as np
 from math import log10
 from scipy.optimize import brenth
-from qsdsan.processes._adm1 import (
+from qsdsan.process_models._adm1 import (
     R,
     mass2mol_conversion,
     T_correction_factor,

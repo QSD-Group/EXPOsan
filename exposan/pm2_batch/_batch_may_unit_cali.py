@@ -15,7 +15,7 @@ for license details.
 
 import numpy as np
 
-import qsdsan.processes as pc, qsdsan.sanunits as su
+import qsdsan.process_models as pc, qsdsan.unit_operations as su
 from qsdsan import System
 from qsdsan.utils import ospath, time_printer, \
     ExogenousDynamicVariable as EDV

@@ -23,7 +23,7 @@ warnings.filterwarnings('ignore', message='Solid content')
 from qsdsan import (
     Flowsheet, main_flowsheet,
     WasteStream,
-    sanunits as su,
+    unit_operations as su,
     ImpactItem,
     System, TEA, LCA,
     )

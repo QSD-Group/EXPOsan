@@ -13,8 +13,8 @@ for license details.
 '''
 import qsdsan as qs, numpy as np
 from qsdsan import (
-    processes as pc,
-    sanunits as su,
+    process_models as pc,
+    unit_operations as su,
     WasteStream,
     )
 from qsdsan.utils import time_printer, ospath, load_data, get_SRT

@@ -23,7 +23,7 @@ from chaospy import distributions as shape
 from math import log
 from qsdsan.utils import FuncGetter, AttrSetter, AttrFuncSetter, MethodSetter, \
     SanUnitScope, time_printer, ospath
-from qsdsan.sanunits import AnaerobicCSTR
+from qsdsan.unit_operations import AnaerobicCSTR
 
 __all__ = ('add_discrete_dv', 
            'add_continuous_params',

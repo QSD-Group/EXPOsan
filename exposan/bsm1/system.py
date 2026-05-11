@@ -14,7 +14,7 @@ for license details.
 '''
 
 import os, numpy as np, qsdsan as qs
-from qsdsan import processes as pc, sanunits as su, WasteStream, System
+from qsdsan import process_models as pc, unit_operations as su, WasteStream, System
 from qsdsan.utils import time_printer, load_data, get_SRT
 from exposan.bsm1 import data_path
 

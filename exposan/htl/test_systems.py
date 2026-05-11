@@ -13,7 +13,7 @@ for license details.
 '''
 
 import qsdsan as qs, biosteam as bst
-from qsdsan import sanunits as qsu
+from qsdsan import unit_operations as qsu
 from qsdsan.utils import auom, clear_lca_registries
 from exposan.htl import _load_components, _sanunits as su, test_sanunits as tsu, create_tea
 

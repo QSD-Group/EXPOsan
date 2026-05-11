@@ -16,7 +16,7 @@ For parameters/numbers not explained, see geospatial_systems.py or _sanunits.py 
 '''
 
 import os, qsdsan as qs, biosteam as bst, pandas as pd
-from qsdsan import sanunits as qsu
+from qsdsan import unit_operations as qsu
 from qsdsan.utils import auom, clear_lca_registries
 from exposan.htl import _load_components, create_tea, state_income_tax_rate_2022, _sanunits as su
 from biosteam.units import IsenthalpicValve, Stripper, MolecularSieve, IsothermalCompressor

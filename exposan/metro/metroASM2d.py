@@ -13,7 +13,7 @@ Please refer to https://github.com/QSD-Group/QSDsan/blob/main/LICENSE.txt
 for license details.
 '''
 import os, numpy as np, qsdsan as qs
-from qsdsan import processes as pc, sanunits as su, WasteStream, System
+from qsdsan import process_models as pc, unit_operations as su, WasteStream, System
 from qsdsan.utils import ospath, time_printer, load_data, get_SRT
 
 __all__ = (

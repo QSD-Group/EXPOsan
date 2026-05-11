@@ -24,7 +24,7 @@ from exposan.werf import (
     results_path
     )
 from exposan.werf.utils import cache_state, load_state
-from qsdsan import get_thermo, WasteStream, Model, System, processes as pc
+from qsdsan import get_thermo, WasteStream, Model, System, process_models as pc
 from qsdsan.utils import get_SRT, ospath, load_data
 from biosteam.evaluation._utils import var_columns
 

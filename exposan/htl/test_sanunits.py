@@ -14,7 +14,7 @@ for license details.
 
 import os, math, pandas as pd, qsdsan as qs
 from qsdsan import SanUnit
-from qsdsan.sanunits import HXutility
+from qsdsan.unit_operations import HXutility
 from qsdsan.utils import auom
 from biosteam.units.decorators import cost
 from biosteam.units.design_tools import CEPCI_by_year

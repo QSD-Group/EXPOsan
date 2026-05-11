@@ -23,7 +23,7 @@ from exposan.werf import (
     baseline_underflows
     )
 from exposan.werf.utils import plantwide_N_mass_flows, plantwide_P_mass_flows
-from qsdsan import System, Model, sanunits as su
+from qsdsan import System, Model, unit_operations as su
 from biosteam.evaluation._utils import var_columns
 
 import warnings

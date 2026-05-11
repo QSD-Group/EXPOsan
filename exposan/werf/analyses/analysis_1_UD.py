@@ -13,7 +13,7 @@ for license details.
 import time as tm, pandas as pd, os
 from exposan.werf import create_system, add_performance_metrics, add_OPEX_metrics, results_path, baseline_underflows
 from exposan.werf.utils import plantwide_N_mass_flows, plantwide_P_mass_flows, load_state
-from qsdsan import Model, WasteStream, sanunits as su, processes as pc
+from qsdsan import Model, WasteStream, unit_operations as su, process_models as pc
 from biosteam.evaluation._utils import var_columns
 
 import warnings

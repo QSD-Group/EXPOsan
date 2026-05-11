@@ -13,7 +13,7 @@ for license details.
 
 import numpy as np, qsdsan as qs
 from qsdsan import (
-    processes as pc, 
+    process_models as pc, 
     WasteStream, System, TEA, LCA, PowerUtility, Construction, Equipment,
     ImpactItem as IItm, 
     StreamImpactItem as SIItm,

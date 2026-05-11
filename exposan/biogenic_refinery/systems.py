@@ -22,7 +22,7 @@ for license details.
 from qsdsan import (
     Flowsheet, main_flowsheet,
     WasteStream,
-    sanunits as su,
+    unit_operations as su,
     ImpactItem,
     System, TEA, LCA,
     )

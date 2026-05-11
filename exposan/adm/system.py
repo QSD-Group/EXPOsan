@@ -13,7 +13,7 @@ for license details.
 
 import numpy as np, qsdsan as qs
 from chemicals.elements import molecular_weight as get_mw
-from qsdsan import sanunits as su, processes as pc, WasteStream, System
+from qsdsan import unit_operations as su, process_models as pc, WasteStream, System
 from qsdsan.utils import time_printer
 # from exposan.adm import data_path
 

@@ -12,7 +12,7 @@ for license details.
 '''
 
 import qsdsan as qs
-from qsdsan.sanunits import Splitter
+from qsdsan.unit_operations import Splitter
 
 __all__ = ('SelectiveRecovery',)
 

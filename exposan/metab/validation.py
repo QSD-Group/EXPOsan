@@ -7,7 +7,7 @@ Created on Tue Aug 29 09:19:24 2023
 
 import os, qsdsan as qs, matplotlib.pyplot as plt, numpy as np
 from qsdsan.utils import ospath
-from qsdsan import processes as pc
+from qsdsan import process_models as pc
 from exposan.metab import flex_rhos_adm1, METAB_BatchExp, figures_path
 
 

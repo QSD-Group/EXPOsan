@@ -19,7 +19,7 @@ import math, biosteam as bst, qsdsan as qs
 from biosteam.units.decorators import cost
 from qsdsan import (
     SanUnit,
-    sanunits as qsu,
+    unit_operations as qsu,
     Stream,
     )
 from exposan.saf import _units as safu
@@ -224,7 +224,7 @@ class PilotHTL(safu.HydrothermalLiquefaction):
         
     See Also
     --------    
-    :class:`qsdsan.sanunits.HydrothermalLiquefaction`
+    :class:`qsdsan.unit_operations.HydrothermalLiquefaction`
     '''
 
     _units= {

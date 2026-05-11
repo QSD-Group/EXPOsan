@@ -14,7 +14,7 @@ for license details.
 '''
 
 import os, numpy as np, qsdsan as qs
-from qsdsan import processes as pc, sanunits as su, System
+from qsdsan import process_models as pc, unit_operations as su, System
 from qsdsan.utils import time_printer, ExogenousDynamicVariable as EDV
 from exposan.pm2_batch import data_path
 
