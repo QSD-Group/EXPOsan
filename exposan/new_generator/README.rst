@@ -6,15 +6,9 @@ Summary
 -------
 Systems included in this module are based on the work described in Watabe et al., [1]_ for the NEWgenerator system designed by researchers at the University of South Florida [2]_. Please note that because detailed information of the unit operations is protected by a non-disclosure agreement, only the system configuration is available on the public repository. Please contact the corresponding authors of the referenced papers if further information is needed.
 
-Two system configurations are included in this module.
+.. figure:: ./readme_figures/process_flow_diagram.jpeg
 
-.. figure:: ./figures/sysA.png
-
-    *Scenario A (sysA): original NEWgenerator with front-end and photovoltaic electricity*
-
-.. figure:: ./figures/sysB.png
-
-    *Scenario B (sysB): original NEWgenerator with front-end and grid-tied electricity*
+    *Process flow diagram summarizing the prefabricated NEWgenerator units (within the gray box with a black dashed border) and additional units included in this analysis (outside of the gray box)*
 
 
 Loading systems
@@ -246,5 +240,5 @@ The ``country_specific.py`` module contains scripts to evaluate the system with 
 
 References
 ----------
-.. [1] Watabe et al., Prioritizing Research, Development, and Deployment Opportunities for the NEWgeneratorTM Non-Sewered Sanitation System through Quantitative Sustainable Design. In Prep.
+.. [1] Watabe, S.; Lohman, H. A. C.; Li, Y.; Morgan, V. L.; Rowles, L. S.; Stephen, T.; Shyu, H.-Y.; Bair, R. A.; Castro, C. J.; Cusick, R. D.; Yeh, D. H.; Guest, J. S. Advancing the Economic and Environmental Sustainability of the NEWgenerator Nonsewered Sanitation System. ACS Environ. Au 2023, 3 (4), 209–222. https://doi.org/10.1021/acsenvironau.3c00001.
 .. [2] Shyu et al., The NEWgeneratorTM Non-Sewered Sanitation System: Long-Term Field Testing at an Informal Settlement Community in EThekwini Municipality, South Africa. Journal of Environmental Management 2021, 296, 112921. https://doi.org/10.1016/j.jenvman.2021.112921.
