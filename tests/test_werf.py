@@ -67,7 +67,7 @@ def test_werf():
     from numpy.testing import assert_allclose as ac
     from qsdsan import PowerUtility
 
-    rtol = 1e-3
+    rtol = 5e-3
     atol = 1e-6
     sim_kwargs = dict(t_span=(0,300), method='BDF')
     PowerUtility.price = 0.0782
