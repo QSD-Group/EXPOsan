@@ -18,7 +18,7 @@ EXPOsan: EXPOsition of Sanitation and Resource Recovery Systems
 .. image:: https://github.com/QSD-Group/EXPOsan/actions/workflows/build-latest.yml/badge.svg?branch=main
    :target: https://github.com/QSD-Group/EXPOsan/actions/workflows/build-latest.yml
 
-.. Documentation build
+.. QSDsan documentation
 .. image:: https://readthedocs.org/projects/qsdsan/badge/?version=latest
    :target: https://qsdsan.readthedocs.io/en/latest
 
