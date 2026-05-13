@@ -3,9 +3,9 @@
 QSDsan: Quantitative Sustainable Design for sanitation and resource recovery systems
 
 This module is developed by:
-    
+
     Saumitra Rai <raisaumitra9@gmail.com>
-    
+
     Joy Zhang <joycheung1994@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
@@ -13,7 +13,7 @@ Please refer to https://github.com/QSD-Group/QSDsan/blob/main/LICENSE.txt
 for license details.
 '''
 import os, numpy as np, qsdsan as qs
-from qsdsan import processes as pc, sanunits as su, WasteStream, System
+from qsdsan import process_models as pc, unit_operations as su, WasteStream, System
 from qsdsan.utils import ospath, time_printer, load_data, get_SRT
 
 __all__ = (
@@ -126,7 +126,7 @@ def create_components():
      cmps.compile()
      return cmps
 
-def create_system(flowsheet=None, inf_kwargs={}, asm_kwargs={}, init_conds={},
+def create_system(flowsheet=None, inf_kwargs=None, asm_kwargs=None, init_conds=None,
                   aeration_processes=()):
     flowsheet = flowsheet or qs.Flowsheet('bsm1')
     qs.main_flowsheet.set_flowsheet(flowsheet)

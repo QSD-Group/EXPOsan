@@ -23,11 +23,10 @@ warnings.filterwarnings('ignore', message='Solid content')
 from qsdsan import (
     Flowsheet, main_flowsheet,
     WasteStream,
-    sanunits as su,
+    unit_operations as su,
     ImpactItem,
     System, TEA, LCA,
     )
-from qsdsan.utils import clear_lca_registries
 from exposan.utils import add_fugitive_items, clear_unit_costs
 from exposan.bwaise import (
     _load_components,
@@ -491,10 +490,9 @@ def create_system(system_ID='A', flowsheet=None, lca_kind='original'):
         flowsheet_ID = f'bw{ID}'
         if hasattr(main_flowsheet.flowsheet, flowsheet_ID): # clear flowsheet
             getattr(main_flowsheet.flowsheet, flowsheet_ID).clear()
-            clear_lca_registries()
-            reload_lca = True
         flowsheet = Flowsheet(flowsheet_ID)
         main_flowsheet.set_flowsheet(flowsheet)
+        reload_lca = True  # LCA items are per-flowsheet; always reload
 
     _load_components()
     loaded_status = _load_lca_data(lca_kind, reload_lca)
