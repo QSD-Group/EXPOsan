@@ -62,6 +62,7 @@ Figure_3D_avoid_waste_sludge_management_CI_data = pd.read_excel(Figure_2_file, '
 
 Figure_4AB_data = pd.read_excel(Figure_2_file, 'FePO4CostCI')
 Figure_4CD_data = pd.read_excel(Figure_2_file, 'sludgeCostCI')
+Figure_4EF_data = pd.read_excel(Figure_2_file, 'VFA_residue_FePO4MSPCI')
 
 # SI
 Figure_S1_NH4_release_data = pd.read_excel(Figure_2_file, 'SI_NH4+')
@@ -897,12 +898,12 @@ ax.set_xlim(1, 3)
 ax.set_ylim(12, 132)
 plt.subplots_adjust(bottom=0.15, left=0.15)
 
-ax.set_xlabel(r'$\mathbf{Food\ waste:Sludge}$',
+ax.set_xlabel(r'$\mathbf{Food\ waste:Sludge\ ratio}$',
               fontname='Arial',
               fontsize=45,
               labelpad=5)
 
-ax.set_ylabel(r'$\mathbf{HRT}$ [hr]',
+ax.set_ylabel(r'$\mathbf{Fermentation\ time}$ [hr]',
               fontname='Arial',
               fontsize=45,
               labelpad=5)
@@ -970,12 +971,12 @@ ax.set_xlim(1, 3)
 ax.set_ylim(12, 132)
 plt.subplots_adjust(bottom=0.15, left=0.15)
 
-ax.set_xlabel(r'$\mathbf{Food\ waste:Sludge}$',
+ax.set_xlabel(r'$\mathbf{Food\ waste:Sludge\ ratio}$',
               fontname='Arial',
               fontsize=45,
               labelpad=5)
 
-ax.set_ylabel(r'$\mathbf{HRT}$ [hr]',
+ax.set_ylabel(r'$\mathbf{Fermentation\ time}$ [hr]',
               fontname='Arial',
               fontsize=45,
               labelpad=5)
@@ -1043,12 +1044,12 @@ ax.set_xlim(1, 3)
 ax.set_ylim(12, 132)
 plt.subplots_adjust(bottom=0.15, left=0.15)
 
-ax.set_xlabel(r'$\mathbf{Food\ waste:Sludge}$',
+ax.set_xlabel(r'$\mathbf{Food\ waste:Sludge\ ratio}$',
               fontname='Arial',
               fontsize=45,
               labelpad=5)
 
-ax.set_ylabel(r'$\mathbf{HRT}$ [hr]',
+ax.set_ylabel(r'$\mathbf{Fermentation\ time}$ [hr]',
               fontname='Arial',
               fontsize=45,
               labelpad=5)
@@ -1116,12 +1117,12 @@ ax.set_xlim(1, 3)
 ax.set_ylim(12, 132)
 plt.subplots_adjust(bottom=0.15, left=0.15)
 
-ax.set_xlabel(r'$\mathbf{Food\ waste:Sludge}$',
+ax.set_xlabel(r'$\mathbf{Food\ waste:Sludge\ ratio}$',
               fontname='Arial',
               fontsize=45,
               labelpad=5)
 
-ax.set_ylabel(r'$\mathbf{HRT}$ [hr]',
+ax.set_ylabel(r'$\mathbf{Fermentation\ time}$ [hr]',
               fontname='Arial',
               fontsize=45,
               labelpad=5)
@@ -1169,6 +1170,149 @@ lines = ax.tricontour(X, Y, Z, levels=7, linewidths=5, linestyles='solid', color
 
 ax.clabel(lines, lines.levels, inline=True, fontsize=45)
 
+#%% Figure 4E
+
+fig, ax = plt.subplots(figsize=(18, 12))
+
+plt.rcParams['axes.linewidth'] = 5
+plt.rcParams['hatch.linewidth'] = 5
+plt.rcParams['xtick.labelsize'] = 45
+plt.rcParams['ytick.labelsize'] = 45
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+
+ax.set_xlim(0.03, 0.09)
+ax.set_ylim(0.001, 0.003)
+plt.subplots_adjust(bottom=0.14, left=0.25)
+
+ax.set_xlabel(r'$\mathbf{Landfill\ Credit}$ [$\$$ ·kg$^{-1}$]',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=5)
+
+ax.set_ylabel(r'$\mathbf{VFA\!-\!rich\ fermentation\ supernatant}$'
+              '\n[$\\$$·L$^{-1}$]',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=5)
+
+ax.tick_params(direction='inout', length=30, width=5,
+               bottom=True, top=False, left=True, right=False)
+
+plt.xticks(np.arange(0.03, 0.11, 0.02),  fontname='Arial')
+plt.yticks(np.arange(0.001, 0.0035, 0.0005), fontname='Arial')
+
+ax_top = ax.twiny()
+ax_top.set_xlim(ax.get_xlim())
+
+ax_top.tick_params(direction='in', length=15, width=5,
+                   bottom=False, top=True, left=False, right=False,
+                   labeltop=False)
+
+plt.xticks(np.arange(0.03, 0.09, 0.02), fontname='Arial')
+
+ax_right = ax.twinx()
+ax_right.set_ylim(ax.get_ylim())
+
+ax_right.tick_params(direction='in', length=15, width=5,
+                     bottom=False, top=False, left=False, right=True,
+                     labelright=False)
+
+plt.yticks(np.arange(0.001, 0.003, 0.0005), fontname='Arial')
+
+color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', [do, o, lo, 'w'][::-1])
+
+
+X = np.array(Figure_4EF_data['residue_price'])
+Y = np.array(Figure_4EF_data['VFA_price'])
+Z = np.array(Figure_4EF_data['FePO4_MSP_50th'])
+
+fills = ax.tricontourf(X, Y, Z, levels=10000, cmap=color_map_Guest)
+
+fig.colorbar(fills, ax=ax)
+
+fig.delaxes(fig.axes[3])
+
+lines = ax.tricontour(X, Y, Z, levels=7, linewidths=5, linestyles='solid', colors='k')
+
+ax.clabel(lines, lines.levels, inline=True, fontsize=45)
+
+#%% Figure 4F
+
+fig, ax = plt.subplots(figsize=(18, 12))
+
+plt.rcParams['axes.linewidth'] = 5
+plt.rcParams['hatch.linewidth'] = 5
+plt.rcParams['xtick.labelsize'] = 45
+plt.rcParams['ytick.labelsize'] = 45
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+
+ax.set_xlim(0.03, 0.09)
+ax.set_ylim(0.001, 0.003)
+plt.subplots_adjust(bottom=0.14, left=0.25)
+
+ax.set_xlabel(r'$\mathbf{Landfill\ Credit}$ [$\$$ ·kg$^{-1}$]',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=5)
+
+ax.set_ylabel(r'$\mathbf{VFA\!-\!rich\ fermentation\ supernatant}$'
+              '\n[$\\$$·L$^{-1}$]',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=5)
+
+ax.tick_params(direction='inout', length=30, width=5,
+               bottom=True, top=False, left=True, right=False)
+
+plt.xticks(np.arange(0.03, 0.11, 0.02),  fontname='Arial')
+plt.yticks(np.arange(0.001, 0.0035, 0.0005), fontname='Arial')
+
+ax_top = ax.twiny()
+ax_top.set_xlim(ax.get_xlim())
+
+ax_top.tick_params(direction='in', length=15, width=5,
+                   bottom=False, top=True, left=False, right=False,
+                   labeltop=False)
+
+plt.xticks(np.arange(0.03, 0.09, 0.02), fontname='Arial')
+
+ax_right = ax.twinx()
+ax_right.set_ylim(ax.get_ylim())
+
+ax_right.tick_params(direction='in', length=15, width=5,
+                     bottom=False, top=False, left=False, right=True,
+                     labelright=False)
+
+plt.yticks(np.arange(0.001, 0.003, 0.0005), fontname='Arial')
+
+color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', [do, o, lo, 'w'][::-1])
+
+
+X = np.array(Figure_4EF_data['residue_price'])
+Y = np.array(Figure_4EF_data['VFA_price'])
+Z = np.array(Figure_4EF_data['FePO4_GWP_50th'])
+
+fills = ax.tricontourf(X, Y, Z, levels=10000, cmap=color_map_Guest)
+
+fig.colorbar(fills, ax=ax)
+
+fig.delaxes(fig.axes[3])
+
+lines = ax.tricontour(X, Y, Z, levels=2, linewidths=5, linestyles='solid', colors='k')
+
+ax.clabel(lines, lines.levels, inline=True, fontsize=45)
 #%% SI- NH4+
 
 fig, ax = plt.subplots(figsize=(14, 12))
@@ -1274,11 +1418,141 @@ leg = ax.legend(loc='upper left',
 for text in leg.get_texts():
     text.set_fontname('Arial')
 
+#%% SI-IRR-A
+
+fig, ax = plt.subplots(figsize=(16, 12))
+
+plt.rcParams['axes.linewidth'] = 5
+plt.rcParams['hatch.linewidth'] = 5
+plt.rcParams['xtick.labelsize'] = 45
+plt.rcParams['ytick.labelsize'] = 45
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+
+ax.set_xlim(-300, 1900)
+ax.set_ylim(-1200, 600)
+plt.subplots_adjust(left=0.25, bottom=0.20)
+
+ax.set_xlabel(r'$\mathbf{Avoid\ waste\ management\ CI}$'+'\n' r' [$kg\ CO_2\ eq\cdot tonne^{-1}$]',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=0)
+
+ax.set_ylabel(r'$\mathbf{CI\ of\ recovered\ FePO_4}$'+'\n'+r'[$kg\ CO_2\ eq\cdot tonne^{-1}$]',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=5)
+
+ax.tick_params(direction='inout', length=30, width=5,
+               bottom=True, top=False, left=True, right=False)
+
+plt.xticks(np.arange(-300, 2100, 300), fontname='Arial')
+plt.yticks(np.arange(-1200, 800, 200), fontname='Arial')
+
+ax_top = ax.twiny()
+ax_top.set_xlim(ax.get_xlim())
+
+ax_top.tick_params(direction='in', length=15, width=5,
+                   bottom=False, top=True, left=False, right=False,
+                   labeltop=False)
+
+ax_right = ax.twinx()
+ax_right.set_ylim(ax.get_ylim())
+
+ax_right.tick_params(direction='in', length=15, width=5,
+                     bottom=False, top=False, left=False, right=True,
+                     labelright=False)
+
+x = Figure_3D_avoid_waste_sludge_management_CI_data['credit']
+low = Figure_3D_avoid_waste_sludge_management_CI_data['FePO4_GWP_5th']
+mid = Figure_3D_avoid_waste_sludge_management_CI_data['FePO4_GWP_50th']
+high = Figure_3D_avoid_waste_sludge_management_CI_data['FePO4_GWP_95th']
+
+ax.fill_between(x, low, high, color=p, alpha=0.85)
+
+ax.plot(x, low, color=r,linestyle='--',linewidth=3)
+ax.plot(x, high, color=r,linestyle='--',linewidth=3)
+
+ax.plot(x, mid, color=r, linewidth=4)
+
+#%% SI-IRR-B
+
+fig, ax = plt.subplots(figsize=(16, 12))
+
+plt.rcParams['axes.linewidth'] = 5
+plt.rcParams['hatch.linewidth'] = 5
+plt.rcParams['xtick.labelsize'] = 45
+plt.rcParams['ytick.labelsize'] = 45
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+
+ax.set_xlim(-300, 1900)
+ax.set_ylim(-1200, 600)
+plt.subplots_adjust(left=0.25, bottom=0.20)
+
+ax.set_xlabel(r'$\mathbf{Avoid\ waste\ management\ CI}$'+'\n' r' [$kg\ CO_2\ eq\cdot tonne^{-1}$]',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=0)
+
+ax.set_ylabel(r'$\mathbf{CI\ of\ recovered\ FePO_4}$'+'\n'+r'[$kg\ CO_2\ eq\cdot tonne^{-1}$]',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=5)
+
+ax.tick_params(direction='inout', length=30, width=5,
+               bottom=True, top=False, left=True, right=False)
+
+plt.xticks(np.arange(-300, 2100, 300), fontname='Arial')
+plt.yticks(np.arange(-1200, 800, 200), fontname='Arial')
+
+ax_top = ax.twiny()
+ax_top.set_xlim(ax.get_xlim())
+
+ax_top.tick_params(direction='in', length=15, width=5,
+                   bottom=False, top=True, left=False, right=False,
+                   labeltop=False)
+
+ax_right = ax.twinx()
+ax_right.set_ylim(ax.get_ylim())
+
+ax_right.tick_params(direction='in', length=15, width=5,
+                     bottom=False, top=False, left=False, right=True,
+                     labelright=False)
+
+x = Figure_3D_avoid_waste_sludge_management_CI_data['credit']
+low = Figure_3D_avoid_waste_sludge_management_CI_data['FePO4_GWP_5th']
+mid = Figure_3D_avoid_waste_sludge_management_CI_data['FePO4_GWP_50th']
+high = Figure_3D_avoid_waste_sludge_management_CI_data['FePO4_GWP_95th']
+
+ax.fill_between(x, low, high, color=p, alpha=0.85)
+
+ax.plot(x, low, color=r,linestyle='--',linewidth=3)
+ax.plot(x, high, color=r,linestyle='--',linewidth=3)
+
+ax.plot(x, mid, color=r, linewidth=4)
+
 #%% legend
 
 fig, ax = plt.subplots(figsize=(8,4))
 ax.axis('off')
 
+ax.text(0,1.05, 'Food Waste (FW): Sludge ratio',
+        transform=ax.transAxes,
+        fontsize=30,
+        fontweight='bold',
+        va='bottom',
+        ha='left')
 handles = [
 
     plt.Line2D([0],[0],
@@ -1287,7 +1561,7 @@ handles = [
                linestyle='dotted',
                marker='o',
                markersize=24,
-               label='FW:Sludge=0:3'),
+               label='0:3'),
 
     plt.Line2D([0],[0],
                color='k',
@@ -1295,7 +1569,7 @@ handles = [
                linestyle='dashdot',
                marker='s',
                markersize=24,
-               label='FW:Sludge=1:3'),
+               label='1:3'),
 
     plt.Line2D([0],[0],
                color='k',
@@ -1304,7 +1578,7 @@ handles = [
                dashes=(8,6),
                marker='^',
                markersize=24,
-               label='FW:Sludge=2:3'),
+               label='2:3'),
 
     plt.Line2D([0],[0],
                color='k',
@@ -1312,19 +1586,21 @@ handles = [
                linestyle='solid',
                marker='D',
                markersize=24,
-               label='FW:Sludge=3:3'),
+               label='3:3'),
 ]
 
 leg = ax.legend(handles=handles,
                 loc='center',
+                bbox_to_anchor=(0.52, 0.40),
                 frameon=False,
                 fontsize=28,
-                handlelength=8,
+                handlelength=10,
                 labelspacing=1.2)
 
 for t in leg.get_texts():
     t.set_fontname('Arial')
     t.set_fontweight('bold')
+    t.set_fontsize(36)
 
 plt.tight_layout()
 plt.show()

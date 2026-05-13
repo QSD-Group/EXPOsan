@@ -278,6 +278,7 @@ def create_system(temp_ratio=1, food_sludge_ratio=1, HRT=132, sludge_credit=300,
     # FTE amount: https://www.mheducation.com/highered/product/wastewater-engineering-treatment-resource-recovery-metcalf-eddy/M9780073401188.html (highly automated treatment processes require minimal operator attention)
     # other reference-1: the labor cost is €462.25 per month: https://www.sciencedirect.com/science/article/pii/S0959652617305504
     # other reference-2: operation labor in need (number of operator·hours per year): https://pubs.acs.org/doi/10.1021/acssuschemeng.0c05189
+    #TODO: update finance_interest_value
     create_tea(sys,
                duration=(2023, 2023+lifetime),
                IRR_value=0.03,

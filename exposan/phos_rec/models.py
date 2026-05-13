@@ -331,26 +331,26 @@ def create_model(system=None, perspective='FePO4'):
     def set_landfill_price(i):
         residue.price=i
     
-    if perspective == 'FePO4':
-        dist = shape.Triangle(0.05,0.1,0.15)
-        @param(name='IRR',
-               element='TEA',
-               kind='isolated',
-               units='-',
-               baseline=0.1,
-               distribution=dist)
-        def set_IRR(i):
-            tea.IRR=i
-    else:
-        dist = shape.Triangle(0,0.03,0.05)
-        @param(name='IRR',
-               element='TEA',
-               kind='isolated',
-               units='-',
-               baseline=0.03,
-               distribution=dist)
-        def set_IRR(i):
-            tea.IRR=i
+    # if perspective == 'FePO4':
+    #     dist = shape.Triangle(0.05,0.1,0.15)
+    #     @param(name='IRR',
+    #            element='TEA',
+    #            kind='isolated',
+    #            units='-',
+    #            baseline=0.1,
+    #            distribution=dist)
+    #     def set_IRR(i):
+    #         tea.IRR=i
+    # else:
+    #     dist = shape.Triangle(0,0.03,0.05)
+    #     @param(name='IRR',
+    #            element='TEA',
+    #            kind='isolated',
+    #            units='-',
+    #            baseline=0.03,
+    #            distribution=dist)
+    #     def set_IRR(i):
+    #         tea.IRR=i
     
     # =========================================================================
     # LCA (unifrom ± 10%)
