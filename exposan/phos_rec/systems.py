@@ -39,7 +39,7 @@ __all__ = (
     'create_system',
 )
 
-def get_precipitation_supernatant_price(food_sludge_ratio, HRT):
+def get_precipitation_supernatant_price(food_sludge_ratio, reaction_time):
     VFA_conc_dict = {
         (0, 0):229.836,    #mg/L
         (0, 12):229.836,
@@ -92,14 +92,17 @@ def get_precipitation_supernatant_price(food_sludge_ratio, HRT):
         (4/3, 132):4650,
       }
         
-    vfa_conc = VFA_conc_dict[(food_sludge_ratio), HRT]  # mg/L
-    price = 0.002 * (vfa_conc / 4500)
+    vfa_conc = VFA_conc_dict[(food_sludge_ratio), reaction_time]  # mg/L
+    price = 0.002*(vfa_conc/4500)
     
     return price
 
 # TODO: use temp_ratio to scale fe_sludge temporarily
 # sludge_credit: $/tonne dry solids (https://pubs.acs.org/doi/10.1021/es505329q)
-def create_system(temp_ratio=1, food_sludge_ratio=1, HRT=132, sludge_credit=300, sludge_CI_credit=300):
+def create_system(temp_ratio=10, food_sludge_ratio=1, reaction_time=132, sludge_credit=300, sludge_CI_credit=300, perspective='FePO4'):
+    
+    if perspective not in ['FePO4','sludge']:
+        raise KeyError('perspective can only be FePO4 or sludge')
     
     flowsheet_ID = 'phos_rec'
     
@@ -129,22 +132,26 @@ def create_system(temp_ratio=1, food_sludge_ratio=1, HRT=132, sludge_credit=300,
     P2 = qsu.SludgePump(ID='P2', ins=ST-0, outs='sludge_to_AF')
     
     AF = su.AcidogenicFermenter(ID='AF', ins=(P2-0, 'food_waste'), outs=('fermentate', 'fermentation_gas'),
-                                food_sludge_ratio=food_sludge_ratio, HRT=HRT)
+                                food_sludge_ratio=food_sludge_ratio, reaction_time=reaction_time)
     
     FC = su.SludgeCentrifugeWithElementFlow(ID='FC', ins=AF-0, outs=('fermentation_supernatant', 'residue'),
                                             sludge_moisture=0.85, solids=('Inert','Residue'))
     
     SP = su.SelectivePrecipitation(ID='SP', ins=(FC-0, 'acid', 'oxidant'), outs='slurry')
-       
-    # TODO: use constant sludge_moisture for all scenarios
-    if food_sludge_ratio == 0:
-        PC = su.SludgeCentrifugeWithElementFlow(ID='PC', ins=SP-0, outs=('precipitation_supernatant', 'precipitate'),
-                                            sludge_moisture=0.999, solids=('FePO4_2H2O',))
-    else:
-        PC = su.SludgeCentrifugeWithElementFlow(ID='PC', ins=SP-0, outs=('precipitation_supernatant', 'precipitate'),
-                                            sludge_moisture=0.92, solids=('FePO4_2H2O',))
-        
-        
+    
+    # TODO: test
+    moisture_candidates = (
+        [i / 100 for i in range(92, 100)] +
+        [i / 1000 for i in range(991, 1000)]
+    )
+    
+    for sludge_moisture in moisture_candidates:
+        try:
+            PC = su.SludgeCentrifugeWithElementFlow(ID='PC', ins=SP-0, outs=('precipitation_supernatant', 'precipitate'),
+                                                    sludge_moisture=sludge_moisture, solids=('FePO4_2H2O',))
+        except RuntimeError:
+            continue
+    
     HD = su.HeatDrying(ID='HD', ins=(PC-1, 'heat_drying_natural_gas'), outs=('dried_precipitate', 'heat_drying_vapor'),
                        T=105+_C_to_K)
     
@@ -186,9 +193,9 @@ def create_system(temp_ratio=1, food_sludge_ratio=1, HRT=132, sludge_credit=300,
     # 62.28 $/ton, https://www.wasteoptima.com/blog/eref-2024-landfill-tipping-fees?utm_source
     FC.outs[1].price = - 62.28/_ton_to_kg
     
-    PC.outs[0].price = get_precipitation_supernatant_price(AF.food_sludge_ratio, AF.HRT)
+    PC.outs[0].price = get_precipitation_supernatant_price(AF.food_sludge_ratio, AF.reaction_time)
     
-    # TODO: food waste now is emission-free, but it could provide credits as well
+    # TODO: food waste now is emission-free, but it could provide credits as well (but no data on this)
     
     GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
                                        method='IPCC',
@@ -220,7 +227,6 @@ def create_system(temp_ratio=1, food_sludge_ratio=1, HRT=132, sludge_credit=300,
         GlobalWarming=1.7460300053961*stream.oxidant.imass['H2O2']/stream.oxidant.F_mass
     )
     
-    # TODO: check this
     qs.StreamImpactItem(
         ID='fe_sludge',
         linked_stream=stream.fe_sludge,
@@ -245,30 +251,29 @@ def create_system(temp_ratio=1, food_sludge_ratio=1, HRT=132, sludge_credit=300,
     qs.StreamImpactItem(
         ID='heat_drying_natural_gas',
         linked_stream=stream.heat_drying_natural_gas,
-        GlobalWarming=0.573511217751451 * stream.heat_drying_natural_gas.F_vol / stream.heat_drying_natural_gas.F_mass
+        GlobalWarming=0.573511217751451*stream.heat_drying_natural_gas.F_vol/stream.heat_drying_natural_gas.F_mass
     )
     
     # market for natural gas, low pressure, United States of America (US)
     qs.StreamImpactItem(
         ID='sintering_natural_gas',
         linked_stream=stream.sintering_natural_gas,
-        GlobalWarming=0.573511217751451 * stream.sintering_natural_gas.F_vol / stream.sintering_natural_gas.F_mass
+        GlobalWarming=0.573511217751451*stream.sintering_natural_gas.F_vol/stream.sintering_natural_gas.F_mass
     )
     
-    # TODO: check this
-    # the CI of FePO4: https://www.sciencedirect.com/science/article/pii/S1383586624004258#s0085  2-3.5-6 kg CO2-eq/kg FePO4
+    # the CI of FePO4: https://www.sciencedirect.com/science/article/pii/S1383586624004258#s0085  2-6 kg CO2-eq/kg FePO4
     qs.StreamImpactItem(
     ID='FePO4_credit',
     linked_stream=stream.product,
-    GlobalWarming = -4
+    GlobalWarming=-4
     )
     
-    # TODO: should this also be a function of AF.food_sludge_ratio and AF.HRT?
+    # TODO: should this also be a function of AF.food_sludge_ratio and AF.reaction_time?
     # TODO: any reference?
     qs.StreamImpactItem(
     ID='VFA_credit',
     linked_stream=stream.precipitation_supernatant,
-    GlobalWarming = -0.002
+    GlobalWarming=-0.002
     )
     
     # TODO: update the labor cost to be a variable (not a constant)
@@ -278,13 +283,20 @@ def create_system(temp_ratio=1, food_sludge_ratio=1, HRT=132, sludge_credit=300,
     # FTE amount: https://www.mheducation.com/highered/product/wastewater-engineering-treatment-resource-recovery-metcalf-eddy/M9780073401188.html (highly automated treatment processes require minimal operator attention)
     # other reference-1: the labor cost is €462.25 per month: https://www.sciencedirect.com/science/article/pii/S0959652617305504
     # other reference-2: operation labor in need (number of operator·hours per year): https://pubs.acs.org/doi/10.1021/acssuschemeng.0c05189
-    #TODO: update finance_interest_value
-    create_tea(sys,
-               duration=(2023, 2023+lifetime),
-               IRR_value=0.03,
-               income_tax_value=0.3,
-               finance_interest_value=0.03,
-               labor_cost_value=200000) 
+    if perspective == 'FePO4':
+        create_tea(sys,
+                   duration=(2023, 2023+lifetime),
+                   IRR_value=0.1,
+                   income_tax_value=0.3,
+                   finance_interest_value=0.08,
+                   labor_cost_value=200000)
+    else:
+        create_tea(sys,
+                   duration=(2023, 2023+lifetime),
+                   IRR_value=0.03,
+                   income_tax_value=0.3,
+                   finance_interest_value=0.03,
+                   labor_cost_value=200000)
     
     qs.LCA(
         system=sys, lifetime=lifetime, lifetime_unit='yr',

@@ -53,6 +53,7 @@ Figure_2C_data = pd.read_excel(Figure_2_file, 'PO43-')
 Figure_2D_data = pd.read_excel(Figure_2_file, 'Fe2+')
 Figure_2E_data = pd.read_excel(Figure_2_file, 'FePmolar')
 
+# TODO: separate data from Figure_2_file to Figure_3_data, or change the name of the current file to something like Figure_file
 Figure_3B_P_recovery_data = pd.read_excel(Figure_2_file, 'Precovery')
 Figure_3B_Fe_recovery_data = pd.read_excel(Figure_2_file, 'Ferecovery')
 Figure_3B_sludge_management_cost_data = pd.read_excel(Figure_2_file, 'SludgeManagementCost')
@@ -60,11 +61,13 @@ Figure_3B_sludge_management_CI_data = pd.read_excel(Figure_2_file, 'SludgeManage
 Figure_3C_avoid_waste_sludge_management_cost_data = pd.read_excel(Figure_2_file, 'AvoidWMC_MSPFePO4')
 Figure_3D_avoid_waste_sludge_management_CI_data = pd.read_excel(Figure_2_file, 'AvoidWMCI_CIFePO4')
 
+# TODO: separate data from Figure_2_file to Figure_4_data, or change the name of the current file to something like Figure_file
 Figure_4AB_data = pd.read_excel(Figure_2_file, 'FePO4CostCI')
 Figure_4CD_data = pd.read_excel(Figure_2_file, 'sludgeCostCI')
 Figure_4EF_data = pd.read_excel(Figure_2_file, 'VFA_residue_FePO4MSPCI')
 
 # SI
+# TODO: separate data from Figure_2_file to Figure_SI_data, or change the name of the current file to something like Figure_file
 Figure_S1_NH4_release_data = pd.read_excel(Figure_2_file, 'SI_NH4+')
 
 #%% Figure 2A
@@ -539,6 +542,8 @@ plt.scatter(Figure_2E_data['Time/h'],
             s=500, color=p, lw=5, edgecolor=dp,marker='D', zorder=1)
 
 #%% Figure 3B P recovery
+
+# TODO: for all figure requireing gray background, add background to the lowest layer (z=0; adjust other z values if needed)
 
 fig, ax = plt.subplots(figsize=(5, 12))
 

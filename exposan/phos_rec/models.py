@@ -29,7 +29,10 @@ MW_CH4 = 16
 
 folder = os.path.dirname(__file__)
 
-def create_model(system=None, perspective='FePO4'):
+def create_model(system=None,
+                 perspective='FePO4',
+                 exclude_context=False,
+                 exclude_IRR=False):
     
     if perspective not in ['FePO4','sludge']:
         raise KeyError('perspective can only be FePO4 or sludge')
@@ -45,7 +48,7 @@ def create_model(system=None, perspective='FePO4'):
     # =============================================================================
     AF = unit.AF 
     
-    df = pd.read_excel(os.path.join(folder, 'data/model_HRT.xlsx'))
+    df = pd.read_excel(os.path.join(folder, 'data/ratio_reaction_time.xlsx'))
     for _, row in df.iterrows():        
         dist = shape.Uniform(row['baseline']*0.8, row['baseline']*1.2)
         @param(name=row['name'],
@@ -308,49 +311,51 @@ def create_model(system=None, perspective='FePO4'):
             def set_natural_gas_utility_price_price(i):
                 heating_agent.regeneration_price = i
     
-    precipitation_supernatant = stream.precipitation_supernatant
-    precipitation_supernatant_baseline_price = get_precipitation_supernatant_price(AF.food_sludge_ratio, AF.HRT)
-    dist = shape.Uniform(precipitation_supernatant_baseline_price*0.8,precipitation_supernatant_baseline_price*1.2)
-    @param(name='precipitation_supernatant_price',
-           element='TEA',
-           kind='isolated',
-           units='$/kg',
-           baseline=precipitation_supernatant_baseline_price,
-           distribution=dist)
-    def set_precipitation_supernatant_price(i):
-        precipitation_supernatant.price = i
+    if not exclude_context:
+        precipitation_supernatant = stream.precipitation_supernatant
+        precipitation_supernatant_baseline_price = get_precipitation_supernatant_price(AF.food_sludge_ratio, AF.reaction_time)
+        dist = shape.Uniform(precipitation_supernatant_baseline_price*0.8,precipitation_supernatant_baseline_price*1.2)
+        @param(name='precipitation_supernatant_price',
+               element='TEA',
+               kind='isolated',
+               units='$/kg',
+               baseline=precipitation_supernatant_baseline_price,
+               distribution=dist)
+        def set_precipitation_supernatant_price(i):
+            precipitation_supernatant.price = i
+        
+        residue = stream.residue
+        dist = shape.Uniform(-62.28/_ton_to_kg*1.2,-62.28/_ton_to_kg*0.8)
+        @param(name='residue_price',
+               element='TEA',
+               kind='isolated',
+               units='$/kg',
+               baseline=-62.28/_ton_to_kg,
+               distribution=dist)
+        def set_landfill_price(i):
+            residue.price=i
     
-    residue = stream.residue
-    dist = shape.Uniform(-62.28/_ton_to_kg*1.2,-62.28/_ton_to_kg*0.8)
-    @param(name='residue_price',
-           element='TEA',
-           kind='isolated',
-           units='$/kg',
-           baseline=-62.28/_ton_to_kg,
-           distribution=dist)
-    def set_landfill_price(i):
-        residue.price=i
-    
-    # if perspective == 'FePO4':
-    #     dist = shape.Triangle(0.05,0.1,0.15)
-    #     @param(name='IRR',
-    #            element='TEA',
-    #            kind='isolated',
-    #            units='-',
-    #            baseline=0.1,
-    #            distribution=dist)
-    #     def set_IRR(i):
-    #         tea.IRR=i
-    # else:
-    #     dist = shape.Triangle(0,0.03,0.05)
-    #     @param(name='IRR',
-    #            element='TEA',
-    #            kind='isolated',
-    #            units='-',
-    #            baseline=0.03,
-    #            distribution=dist)
-    #     def set_IRR(i):
-    #         tea.IRR=i
+    if not exclude_IRR:
+        if perspective == 'FePO4':
+            dist = shape.Triangle(0.05,0.1,0.15)
+            @param(name='IRR',
+                   element='TEA',
+                   kind='isolated',
+                   units='-',
+                   baseline=0.1,
+                   distribution=dist)
+            def set_IRR(i):
+                tea.IRR=i
+        else:
+            dist = shape.Triangle(0,0.03,0.05)
+            @param(name='IRR',
+                   element='TEA',
+                   kind='isolated',
+                   units='-',
+                   baseline=0.03,
+                   distribution=dist)
+            def set_IRR(i):
+                tea.IRR=i
     
     # =========================================================================
     # LCA (unifrom ± 10%)

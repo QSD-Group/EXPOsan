@@ -134,8 +134,8 @@ class AcidogenicFermenter(ElementFlowMixin, SanUnit):
         sludge, food_waste.
     outs : iterable
         fermentate, gas.
-    HRT : float
-        hydraulic retention time, [hr].
+    reaction_time : float
+        reaction time, [hr].
     food_sludge_ratio : float
         Mass ratio of organics bewteen food waste and sludge, [-].
     food_waste_moisture : float
@@ -190,7 +190,7 @@ class AcidogenicFermenter(ElementFlowMixin, SanUnit):
     V_wf = 0.9
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-                 HRT=132,
+                 reaction_time=132,
                  food_sludge_ratio=1,
                  food_waste_moisture=0.74,
                  org_to_gas=0.05,
@@ -299,7 +299,7 @@ class AcidogenicFermenter(ElementFlowMixin, SanUnit):
                  P_release_ratio_4_3_132 = 0.83,
                  T=37+_C_to_K):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
-        self.HRT = HRT
+        self.reaction_time = reaction_time
         self.food_sludge_ratio = food_sludge_ratio
         self.food_waste_moisture = food_waste_moisture
         self.org_to_gas = org_to_gas
@@ -419,8 +419,8 @@ class AcidogenicFermenter(ElementFlowMixin, SanUnit):
         fermentate.phase = 'l'
         gas.phase = 'g'
         
-        if self.HRT not in np.arange(0, 144, 12):
-            raise RuntimeError('HRT must be one of the follow: 0, 12, 24, 36, 48, 60, 72, 84, 96, 108, 120, 132.')
+        if self.reaction_time not in np.arange(0, 144, 12):
+            raise RuntimeError('reaction_time must be one of the follow: 0, 12, 24, 36, 48, 60, 72, 84, 96, 108, 120, 132.')
         
         if self.food_sludge_ratio not in [0, 1/3, 2/3, 1, 4/3]:
             raise RuntimeError('food_sludge_ratio must be one of the follow: 0, 1/3, 2/3, 1, 4/3.')
@@ -521,11 +521,11 @@ class AcidogenicFermenter(ElementFlowMixin, SanUnit):
         metal_P_to_residue = 0
         
         for metal in ['Fe2','Fe3','Ca2','Mg2']:
-            metal_P_to_residue += fermentate.imass[metal]*(1 - metal_P_release[self.food_sludge_ratio][self.HRT]['metal'])
-            fermentate.imass[metal] *= metal_P_release[self.food_sludge_ratio][self.HRT]['metal']
+            metal_P_to_residue += fermentate.imass[metal]*(1 - metal_P_release[self.food_sludge_ratio][self.reaction_time]['metal'])
+            fermentate.imass[metal] *= metal_P_release[self.food_sludge_ratio][self.reaction_time]['metal']
         
-        metal_P_to_residue += fermentate.imass['PO4']*(1 - metal_P_release[self.food_sludge_ratio][self.HRT]['P'])
-        fermentate.imass['PO4'] *= metal_P_release[self.food_sludge_ratio][self.HRT]['P']
+        metal_P_to_residue += fermentate.imass['PO4']*(1 - metal_P_release[self.food_sludge_ratio][self.reaction_time]['P'])
+        fermentate.imass['PO4'] *= metal_P_release[self.food_sludge_ratio][self.reaction_time]['P']
         
         fermentate.imass['Residue'] += metal_P_to_residue
         
@@ -538,7 +538,7 @@ class AcidogenicFermenter(ElementFlowMixin, SanUnit):
         
         D = self.design_results
         
-        D.update(size_batch(F_vol, self.HRT, self.tau_cleaning, self.N, self.V_wf))
+        D.update(size_batch(F_vol, self.reaction_time, self.tau_cleaning, self.N, self.V_wf))
         D['Number of reactors'] = self.N
         D['Recirculation flow rate'] =  F_vol/self.N
         
@@ -618,8 +618,8 @@ class SelectivePrecipitation(ElementFlowMixin, SanUnit):
         'Recirculation flow rate': 'm3/hr'
     }
     
-    # hydraulic retention time, [hr]
-    HRT = 6
+    # reaction time, [hr]
+    reaction_time = 6
     
     # cleaning and unloading, [hr]
     tau_cleaning = 1
@@ -699,7 +699,7 @@ class SelectivePrecipitation(ElementFlowMixin, SanUnit):
         
         D = self.design_results
         
-        D.update(size_batch(F_vol, self.HRT, self.tau_cleaning, self.N, self.V_wf))
+        D.update(size_batch(F_vol, self.reaction_time, self.tau_cleaning, self.N, self.V_wf))
         D['Number of reactors'] = self.N
         D['Recirculation flow rate'] =  F_vol/self.N
         
