@@ -68,9 +68,8 @@ def _load_lca_data(reload=False):
         Whether to force reload LCA data.
     '''
     global _impact_item_loaded
+    ImpactIndicator('GWP', unit='kg CO2-eq') # global warming potential; idempotent
     if not _impact_item_loaded or reload:
-        ImpactIndicator('GWP', unit='kg CO2-eq') # global warming potential
-
         item_path = os.path.join(data_path, 'impact_items.xlsx')
         qs.ImpactItem.load_from_file(item_path)
         _impact_item_loaded = True
