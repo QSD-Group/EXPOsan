@@ -170,7 +170,6 @@ def create_system(n_stages=1, reactor_type='UASB', gas_extraction='P',
                   lifetime=30, discount_rate=0.05, T=22,
                   Q=50, inf_concs=None, tot_HRT=12,
                   flowsheet=None):
-    if not _impact_item_loaded: _load_lca_data()
     PowerUtility.price = 0.0913
     Construction.registry.clear()
     Equipment.registry.clear()
@@ -178,9 +177,10 @@ def create_system(n_stages=1, reactor_type='UASB', gas_extraction='P',
     IItm.registry.safe_to_replace.update({i for i in IItm.registry if isa(i, SIItm)})
     Reactor = reactor_classes[reactor_type]
     sys_ID = f'{reactor_type}{n_stages}{gas_extraction}'
-    
+
     flowsheet = flowsheet or qs.Flowsheet(sys_ID)
     qs.main_flowsheet.set_flowsheet(flowsheet)
+    _load_lca_data()  # always reload: items are per-flowsheet
     
     cmps = pc.create_adm1_cmps()
     adm1 = pc.ADM1(flex_rate_function=flex_rhos_adm1)
