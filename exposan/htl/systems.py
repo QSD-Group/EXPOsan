@@ -31,7 +31,6 @@ References:
 import os, qsdsan as qs
 from qsdsan import unit_operations as qsu
 from biosteam.units import IsenthalpicValve
-from qsdsan.utils import clear_lca_registries
 from exposan.htl import (
     _load_components,
     _load_process_settings,
@@ -73,10 +72,9 @@ def create_system(configuration='baseline', capacity=100,
                          f'not "{configuration}".')
     flowsheet_ID = f'htl_{configuration}'
     
-    # clear flowsheet and registry for reloading
+    # clear flowsheet for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
     qs.main_flowsheet.set_flowsheet(flowsheet)

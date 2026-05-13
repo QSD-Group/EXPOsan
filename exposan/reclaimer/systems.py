@@ -24,7 +24,6 @@ from qsdsan import (
     ImpactItem,
     System, TEA, LCA,
     )
-from qsdsan.utils import clear_lca_registries
 from exposan.utils import add_fugitive_items
 from exposan.reclaimer import (
     _load_components,
@@ -399,10 +398,9 @@ def create_system(system_ID='A', flowsheet=None, adjust_MW_to_measured_as=False)
         flowsheet_ID = f're{ID}'
         if hasattr(main_flowsheet.flowsheet, flowsheet_ID): # clear flowsheet
             getattr(main_flowsheet.flowsheet, flowsheet_ID).clear()
-            clear_lca_registries()
-            reload_lca = True
         flowsheet = Flowsheet(flowsheet_ID)
         main_flowsheet.set_flowsheet(flowsheet)
+        reload_lca = True  # LCA items are per-flowsheet; always reload
 
     _load_components(adjust_MW_to_measured_as=adjust_MW_to_measured_as)
     _load_lca_data(reload_lca)

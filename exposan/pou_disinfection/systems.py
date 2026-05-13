@@ -23,7 +23,6 @@ from qsdsan import (
     ImpactItem,
     System, TEA, LCA,
     )
-from qsdsan.utils import clear_lca_registries
 from exposan.pou_disinfection import (
     _load_components,
     _load_lca_data,
@@ -168,10 +167,9 @@ def create_system(system_ID='A', flowsheet=None,
         flowsheet_ID = f'pou{ID}'
         if hasattr(main_flowsheet.flowsheet, flowsheet_ID): # clear flowsheet
             getattr(main_flowsheet.flowsheet, flowsheet_ID).clear()
-            clear_lca_registries()
-            reload_lca = True
         flowsheet = Flowsheet(flowsheet_ID)
         main_flowsheet.set_flowsheet(flowsheet)
+        reload_lca = True  # LCA items are per-flowsheet; always reload
 
     _load_components()
     _load_lca_data(reload_lca)
