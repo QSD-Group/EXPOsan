@@ -158,6 +158,7 @@ def _load_components(reload=False):
 
 from . import _lca_data
 from ._lca_data import *
+_impact_indicator_loaded = False
 _impact_item_loaded = False
 def _load_lca_data(lca_kind='original', reload=False):
     '''
@@ -173,13 +174,13 @@ def _load_lca_data(lca_kind='original', reload=False):
     reload : bool
         Whether to force reload LCA data.
     '''
-    global _impact_item_loaded
-    if _impact_item_loaded != lca_kind or reload:
-        indicator_path = os.path.join(data_path, f'indicators_{lca_kind}.tsv')
-        indel_col = None if lca_kind=='original' else 0
-        ind_df_processed = pd.read_csv(indicator_path, sep='\t', index_col=indel_col)
+    global _impact_indicator_loaded, _impact_item_loaded
+    indicator_path = os.path.join(data_path, f'indicators_{lca_kind}.tsv')
+    if _impact_indicator_loaded != lca_kind or reload:
         qs.ImpactIndicator.load_from_file(indicator_path)
+        _impact_indicator_loaded = lca_kind
 
+    if _impact_item_loaded != lca_kind or reload:
         if lca_kind.lower() in ('original', 'traci'):
             item_path = os.path.join(data_path, 'items_original.xlsx')
             qs.ImpactItem.load_from_file(item_path)
@@ -190,6 +191,7 @@ def _load_lca_data(lca_kind='original', reload=False):
                 else:
                     StreamImpactItem(ID=f'{k}_item', GWP=v)
         elif lca_kind.lower() in ('new', 'recipe'):
+            ind_df_processed = pd.read_csv(indicator_path, sep='\t', index_col=0)
             item_path = os.path.join(data_path, 'cf_dct.pckl')
             f = open(item_path, 'rb')
             cf_dct = pickle.load(f)
