@@ -202,7 +202,6 @@ def _load_components(reload=False, adjust_MW_to_measured_as=False):
         _components_loaded = True
 
 
-_impact_indicator_loaded = False
 _impact_item_loaded = False
 def _load_lca_data(reload=False):
     '''
@@ -213,11 +212,9 @@ def _load_lca_data(reload=False):
     reload : bool
         Whether to force reload LCA data.
     '''
-    global _impact_indicator_loaded, _impact_item_loaded
-    if not _impact_indicator_loaded or reload:
-        indicator_path = os.path.join(data_path, 'impact_indicators.csv')
-        qs.ImpactIndicator.load_from_file(indicator_path)
-        _impact_indicator_loaded = True
+    global _impact_item_loaded
+    indicator_path = os.path.join(data_path, 'impact_indicators.csv')
+    qs.ImpactIndicator.load_from_file(indicator_path)
 
     if not _impact_item_loaded or reload:
         item_path = os.path.join(data_path, 'impact_items.xlsx')

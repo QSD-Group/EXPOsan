@@ -158,7 +158,6 @@ def _load_components(reload=False):
 
 from . import _lca_data
 from ._lca_data import *
-_impact_indicator_loaded = False
 _impact_item_loaded = False
 def _load_lca_data(lca_kind='original', reload=False):
     '''
@@ -174,11 +173,9 @@ def _load_lca_data(lca_kind='original', reload=False):
     reload : bool
         Whether to force reload LCA data.
     '''
-    global _impact_indicator_loaded, _impact_item_loaded
+    global _impact_item_loaded
     indicator_path = os.path.join(data_path, f'indicators_{lca_kind}.tsv')
-    if _impact_indicator_loaded != lca_kind or reload:
-        qs.ImpactIndicator.load_from_file(indicator_path)
-        _impact_indicator_loaded = lca_kind
+    qs.ImpactIndicator.load_from_file(indicator_path)
 
     if _impact_item_loaded != lca_kind or reload:
         if lca_kind.lower() in ('original', 'traci'):
