@@ -190,7 +190,7 @@ def add_shared_parameters(model, unit_dct, country_specific=False):
               baseline=b, distribution=D)
         def set_const_daily_wage(i):
             for u in sys.units:
-                if isinstance(u, qs.sanunits.BiogenicRefineryHousing): break
+                if isinstance(u, qs.unit_operations.BiogenicRefineryHousing): break
                 u.const_daily_wage = i
         
         if br.INCLUDE_RESOURCE_RECOVERY:

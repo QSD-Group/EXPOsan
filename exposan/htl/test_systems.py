@@ -6,14 +6,14 @@ EXPOsan: Exposition of sanitation and resource recovery systems
 This module is developed by:
 
     Jianan Feng <jiananf2@illinois.edu>
-    
+
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
 import qsdsan as qs, biosteam as bst
-from qsdsan import sanunits as qsu
+from qsdsan import unit_operations as qsu
 from qsdsan.utils import auom, clear_lca_registries
 from exposan.htl import _load_components, _sanunits as su, test_sanunits as tsu, create_tea
 

@@ -3,7 +3,7 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
-    
+
     Joy Zhang <joycheung1994@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
@@ -13,7 +13,7 @@ for license details.
 
 import numpy as np, qsdsan as qs
 from chemicals.elements import molecular_weight as get_mw
-from qsdsan import sanunits as su, processes as pc, WasteStream, System
+from qsdsan import unit_operations as su, process_models as pc, WasteStream, System
 from qsdsan.utils import time_printer
 # from exposan.adm import data_path
 
@@ -130,7 +130,7 @@ default_init_conds = {
 # Validation & Verification of ADM1
 # =============================================================================
 
-def create_system(flowsheet=None, inf_kwargs={}, adm_kwargs={}, init_conds={}):
+def create_system(flowsheet=None, inf_kwargs=None, adm_kwargs=None, init_conds=None):
     flowsheet = flowsheet or qs.Flowsheet('adm')
     qs.main_flowsheet.set_flowsheet(flowsheet)
 
@@ -144,7 +144,7 @@ def create_system(flowsheet=None, inf_kwargs={}, adm_kwargs={}, init_conds={}):
     bg = WasteStream('Biogas')
     
     # Process model
-    adm1 = pc.ADM1(**adm_kwargs)
+    adm1 = pc.ADM1(**(adm_kwargs or {}))
     
     # System setup
     AD = su.AnaerobicCSTR('AD', ins=inf, outs=(bg, eff), model=adm1, T=Temp)

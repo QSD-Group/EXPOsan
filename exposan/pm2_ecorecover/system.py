@@ -3,7 +3,9 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
+
     Ga-Yeong Kim <gayeong1225@gmail.com>
+
     Joy Zhang <joycheung1994@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
@@ -12,7 +14,7 @@ for license details.
 '''
 
 import os, numpy as np, qsdsan as qs
-from qsdsan import processes as pc, sanunits as su, WasteStream, System
+from qsdsan import process_models as pc, unit_operations as su, WasteStream, System
 from qsdsan.utils import time_printer, load_data, get_SRT, ExogenousDynamicVariable as EDV
 from exposan.pm2_ecorecover import data_path
 
@@ -96,7 +98,7 @@ def batch_init(sys, path, sheet):
 # Validation & Verification of PM2
 # =============================================================================
 
-def create_system(flowsheet=None, pm2_kwargs={}, init_conds={}):
+def create_system(flowsheet=None, pm2_kwargs=None, init_conds=None):
 
     flowsheet = flowsheet or qs.Flowsheet('pm2_ecorecover')
     qs.main_flowsheet.set_flowsheet(flowsheet)

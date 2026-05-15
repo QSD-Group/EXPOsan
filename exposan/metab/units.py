@@ -3,7 +3,7 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
-    
+
     Joy Zhang <joycheung1994@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
@@ -12,7 +12,7 @@ for license details.
 '''
 from biosteam import Stream, VacuumSystem
 from qsdsan import SanStream, WasteStream, CompiledProcesses, SanUnit, Construction
-from qsdsan.sanunits import AnaerobicCSTR, Pump, HXutility
+from qsdsan.unit_operations import AnaerobicCSTR, Pump, HXutility
 from qsdsan.utils import auom
 from exposan.metab.equipment import Beads
 from exposan.metab.utils import (

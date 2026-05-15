@@ -5,7 +5,7 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
-    
+
     Joy Zhang <joycheung1994@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
@@ -26,8 +26,8 @@ from .system import *
 
 _system_loaded = False
 def load(reload=False, suspended_growth_model='ASM1', reactor_model='CSTR', 
-         inf_kwargs={}, asm_kwargs={}, settler_kwargs={}, 
-         init_conds={}, aeration_processes=()):
+         inf_kwargs=None, asm_kwargs=None, settler_kwargs=None, 
+         init_conds=None, aeration_processes=()):
     global _system_loaded
     if not _system_loaded: reload = True
     if reload:

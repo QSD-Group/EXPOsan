@@ -3,9 +3,9 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
-    
+
     Joy Zhang <joycheung1994@gmail.com>
-    
+
     Yalin Li <mailto.yalin.li@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
@@ -14,7 +14,7 @@ for license details.
 '''
 
 import os, numpy as np, qsdsan as qs
-from qsdsan import processes as pc, sanunits as su, WasteStream, System
+from qsdsan import process_models as pc, unit_operations as su, WasteStream, System
 from qsdsan.utils import time_printer, load_data, get_SRT
 from exposan.bsm1 import data_path
 
@@ -192,9 +192,9 @@ def create_system(
         flowsheet=None, 
         suspended_growth_model='ASM1',
         reactor_model='CSTR',
-        inf_kwargs={},
-        asm_kwargs={},
-        settler_kwargs={},
+        inf_kwargs=None,
+        asm_kwargs=None,
+        settler_kwargs=None,
         init_conds=None,
         aeration_processes=(),
         ):

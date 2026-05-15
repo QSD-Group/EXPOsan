@@ -3,7 +3,9 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
+
     Ga-Yeong Kim <gayeong1225@gmail.com>
+
     Joy Zhang <joycheung1994@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
@@ -24,7 +26,7 @@ from . import system
 from .system import *
 
 _system_loaded = False
-def load(reload=False, pm2_kwargs={}, init_conds={}):
+def load(reload=False, pm2_kwargs=None, init_conds=None):
 
     global _system_loaded
     if not _system_loaded: reload = True

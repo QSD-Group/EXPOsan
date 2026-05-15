@@ -7,16 +7,23 @@ This module is developed by:
 
     Jianan Feng <jiananf2@illinois.edu>
 
-The following units are fully or partially based on the BEAM*2024 model:
-'Storage','Thickening','AerobicDigestion','AnaerobicDigestion','Dewatering',
-'AlkalineStabilization','Composting','HeatDrying','Incineration','Pyrolysis',
-'Landfilling','LandApplication'.
+    The following units are fully or partially based on the BEAM*2024 model:
 
-BEAM*2024 model:
-North East Biosolids and Residuals Association (NEBRA), Northern Tilth LLC, and 
-orthwest Biosolids. Estimating Greenhouse Gas Emissions from Biosolids Management.
-BEAM*2024 Spreadsheet Model and Supporting Information, 2024.
-https://www.BiosolidsGHGs.org (accessed 2025-06-16).
+    'Storage','Thickening','AerobicDigestion','AnaerobicDigestion','Dewatering',
+
+    'AlkalineStabilization','Composting','HeatDrying','Incineration','Pyrolysis',
+
+    'Landfilling','LandApplication'.
+
+    BEAM*2024 model:
+
+    North East Biosolids and Residuals Association (NEBRA), Northern Tilth LLC, and
+
+    orthwest Biosolids. Estimating Greenhouse Gas Emissions from Biosolids Management.
+
+    BEAM*2024 Spreadsheet Model and Supporting Information, 2024.
+
+    https://www.BiosolidsGHGs.org (accessed 2025-06-16).
 
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
@@ -25,7 +32,7 @@ for license details.
 
 import os, qsdsan as qs, biosteam as bst
 from qsdsan import SanUnit
-from qsdsan.sanunits import SludgePump, HXutility, HXprocess, Pump
+from qsdsan.unit_operations import SludgePump, HXutility, HXprocess, Pump
 from qsdsan.utils import auom, calculate_excavation_volume
 from qsdsan.equipments import Blower, GasPiping
 from biosteam import Stream
@@ -2208,7 +2215,7 @@ class HydrothermalLiquefaction(SanUnit):
     
     See Also
     --------
-    :class:`qsdsan.sanunits.HydrothermalLiquefaction`
+    :class:`qsdsan.unit_operations.HydrothermalLiquefaction`
     
     :class:`exposan.saf._units.HydrothermalLiquefaction`
     
@@ -3054,7 +3061,7 @@ class CatalyticHydrothermalGasification(SanUnit):
     
     See Also
     --------
-    :class:`qsdsan.sanunits.CatalyticHydrothermalGasification`
+    :class:`qsdsan.unit_operations.CatalyticHydrothermalGasification`
     
     References
     ----------

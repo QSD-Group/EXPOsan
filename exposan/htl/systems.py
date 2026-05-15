@@ -4,11 +4,11 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
-    
+
     Jianan Feng <jiananf2@illinois.edu>
-    
+
     Yalin Li <mailto.yalin.li@gmail.com>
-    
+
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
@@ -29,9 +29,8 @@ References:
 '''
 
 import os, qsdsan as qs
-from qsdsan import sanunits as qsu
+from qsdsan import unit_operations as qsu
 from biosteam.units import IsenthalpicValve
-from qsdsan.utils import clear_lca_registries
 from exposan.htl import (
     _load_components,
     _load_process_settings,
@@ -73,10 +72,9 @@ def create_system(configuration='baseline', capacity=100,
                          f'not "{configuration}".')
     flowsheet_ID = f'htl_{configuration}'
     
-    # clear flowsheet and registry for reloading
+    # clear flowsheet for reloading
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
-        clear_lca_registries()
     flowsheet = qs.Flowsheet(flowsheet_ID)
     stream = flowsheet.stream
     qs.main_flowsheet.set_flowsheet(flowsheet)

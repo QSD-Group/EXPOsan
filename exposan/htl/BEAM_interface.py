@@ -7,13 +7,17 @@ This module is developed by:
 
     Jianan Feng <jiananf2@illinois.edu>
 
-This is a temporary script to translate BEAM in to QSDsan.
+    This is a temporary script to translate BEAM in to QSDsan.
 
-BEAM*2024 model:
-North East Biosolids and Residuals Association (NEBRA), Northern Tilth LLC, and 
-orthwest Biosolids. Estimating Greenhouse Gas Emissions from Biosolids Management.
-BEAM*2024 Spreadsheet Model and Supporting Information, 2024.
-https://www.BiosolidsGHGs.org (accessed 2025-06-16).
+    BEAM*2024 model:
+
+    North East Biosolids and Residuals Association (NEBRA), Northern Tilth LLC, and
+
+    orthwest Biosolids. Estimating Greenhouse Gas Emissions from Biosolids Management.
+
+    BEAM*2024 Spreadsheet Model and Supporting Information, 2024.
+
+    https://www.BiosolidsGHGs.org (accessed 2025-06-16).
 
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt

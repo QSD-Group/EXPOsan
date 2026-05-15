@@ -3,7 +3,7 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
-        
+
     Joy Zhang <joycheung1994@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
@@ -22,7 +22,7 @@ from exposan.werf import (
     # results_path
     )
 from exposan.werf.utils import cache_state
-from qsdsan import Model, System, sanunits as su
+from qsdsan import Model, System, unit_operations as su
 from qsdsan.utils import get_SRT#, ospath, load_data
 from biosteam.evaluation._utils import var_columns
 

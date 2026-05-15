@@ -5,7 +5,7 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
-    
+
     Yalin Li <mailto.yalin.li@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
@@ -33,7 +33,7 @@ _system_loaded = False
 _loaded_pc_model = None
 _loaded_aerated = None
 def load(reload=False, flowsheet=None, process_model='ASM1', aerated=False,
-         inf_kwargs={}, asm_kwargs={}, init_conds={}):
+         inf_kwargs=None, asm_kwargs=None, init_conds=None):
     global _system_loaded, _loaded_pc_model, _loaded_aerated
     if (process_model!=_loaded_pc_model) or (_loaded_aerated!=aerated): reload = True
     if reload:

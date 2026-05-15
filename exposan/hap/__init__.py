@@ -3,7 +3,7 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
-    
+
     Joy Zhang <joycheung1994@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
@@ -16,9 +16,6 @@ folder = os.path.dirname(__file__)
 data_path = os.path.join(folder, 'data')
 results_path = os.path.join(folder, 'results')
 figures_path = os.path.join(folder, 'figures')
-# To save simulation results and generated figures
-if not os.path.isdir(results_path): os.mkdir(results_path)
-if not os.path.isdir(figures_path): os.mkdir(figures_path)
 
 #%%
 import qsdsan as qs, thermosteam as tmo
@@ -165,4 +162,3 @@ __all__ = (
     *system.__all__,
     *model.__all__,
 	)
-
