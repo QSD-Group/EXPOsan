@@ -80,6 +80,7 @@ dp = Color('dark_purple', (76, 56, 90)).HEX
 # word
 # =============================================================================
 world = gpd.read_file(folder + '/data/World Bank Official Boundaries - Admin 0_all_layers/WB_GAD_ADM0_complete.shp')
+world['geometry'] = world.geometry.simplify(0.05)
 
 # =============================================================================
 # global north / south countries and regions
@@ -486,9 +487,14 @@ MPs_personal_care_products = sample[4]*sample[12]
 MPs_marine_coatings = sample[5]*0
 MPs_total = sample[0] + sample[1] + sample[2] + sample[3] + sample[4] + sample[5]
 
-
 MPs_WWRS_MC = (MPs_textile + MPs_vehicle_tires + MPs_city_dust + MPs_road_markings +\
                MPs_personal_care_products + MPs_marine_coatings)*sample[14]/MPs_total
+
+pd.DataFrame(MPs_WWRS_MC).to_excel(folder + '/results/landscape/MPs_capture.xlsx')
+
+#%% MPs capture - plot
+
+MPs_capture = pd.read_excel(folder + '/results/landscape/MPs_capture.xlsx')
 
 fig, ax = plt.subplots(figsize=(2.5, 5))
 
@@ -523,8 +529,8 @@ ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False
 plt.yticks(np.arange(0, 50, 10), fontname='Arial')
 
 ax.bar(0.5,
-       np.quantile(MPs_WWRS_MC, 0.5)*100,
-       yerr=np.array([[(np.quantile(MPs_WWRS_MC, 0.5) - np.quantile(MPs_WWRS_MC, 0.05))*100], [(np.quantile(MPs_WWRS_MC, 0.95) - np.quantile(MPs_WWRS_MC, 0.5))*100]]),
+       np.quantile(MPs_capture[0], 0.5)*100,
+       yerr=np.array([[(np.quantile(MPs_capture[0], 0.5) - np.quantile(MPs_capture[0], 0.05))*100], [(np.quantile(MPs_capture[0], 0.95) - np.quantile(MPs_capture[0], 0.5))*100]]),
        error_kw=dict(capsize=15, lw=3, capthick=3),
        width=0.7,
        color=dr,
@@ -855,6 +861,12 @@ PhACs_total = unused_PhACs_to_environment + human_use_to_environment + animal_us
 
 PhACs_WWRS_MC = PhACs_WWRS/PhACs_total
 
+pd.DataFrame(PhACs_WWRS_MC).to_excel(folder + '/results/landscape/PhACs_capture.xlsx')
+
+#%% PhACs capture - plot
+
+PhACs_capture = pd.read_excel(folder + '/results/landscape/PhACs_capture.xlsx')
+
 fig, ax = plt.subplots(figsize=(2.5, 5))
 
 plt.rcParams['axes.linewidth'] = 3
@@ -888,8 +900,8 @@ ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False
 plt.yticks(np.arange(0, 50, 10), fontname='Arial')
 
 ax.bar(0.5,
-       np.quantile(PhACs_WWRS_MC, 0.5)*100,
-       yerr=np.array([[(np.quantile(PhACs_WWRS_MC, 0.5) - np.quantile(PhACs_WWRS_MC, 0.05))*100], [(np.quantile(PhACs_WWRS_MC, 0.95) - np.quantile(PhACs_WWRS_MC, 0.5))*100]]),
+       np.quantile(PhACs_capture[0], 0.5)*100,
+       yerr=np.array([[(np.quantile(PhACs_capture[0], 0.5) - np.quantile(PhACs_capture[0], 0.05))*100], [(np.quantile(PhACs_capture[0], 0.95) - np.quantile(PhACs_capture[0], 0.5))*100]]),
        error_kw=dict(capsize=15, lw=3, capthick=3),
        width=0.7,
        color=do,
@@ -1192,6 +1204,12 @@ ARGs_animal_to_environment = (1 - sample[0])*sample[3]
 
 ARGs_WWRS_MC = ARGs_WRRS/(ARGs_human_to_environment + ARGs_animal_to_environment)
 
+pd.DataFrame(ARGs_WWRS_MC).to_excel(folder + '/results/landscape/ARGs_capture.xlsx')
+
+#%% ARGs capture - plot
+
+ARGs_capture = pd.read_excel(folder + '/results/landscape/ARGs_capture.xlsx')
+
 fig, ax = plt.subplots(figsize=(2.5, 5))
 
 plt.rcParams['axes.linewidth'] = 3
@@ -1225,8 +1243,8 @@ ax_right.tick_params(direction='in', length=10, width=3, bottom=False, top=False
 plt.yticks(np.arange(0, 50, 10), fontname='Arial')
 
 ax.bar(0.5,
-       np.quantile(ARGs_WWRS_MC, 0.5)*100,
-       yerr=np.array([[(np.quantile(ARGs_WWRS_MC, 0.5) - np.quantile(ARGs_WWRS_MC, 0.05))*100], [(np.quantile(ARGs_WWRS_MC, 0.95) - np.quantile(ARGs_WWRS_MC, 0.5))*100]]),
+       np.quantile(ARGs_capture[0], 0.5)*100,
+       yerr=np.array([[(np.quantile(ARGs_capture[0], 0.5) - np.quantile(ARGs_capture[0], 0.05))*100], [(np.quantile(ARGs_capture[0], 0.95) - np.quantile(ARGs_capture[0], 0.5))*100]]),
        error_kw=dict(capsize=15, lw=3, capthick=3),
        width=0.7,
        color=dp,
@@ -3041,8 +3059,8 @@ assert len(WRRF_max) == len(world_max[world_max['CNTRY_ISO'].notna()]['ISO_A3'].
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
-plt.rcParams['xtick.labelsize'] = 54.5
-plt.rcParams['ytick.labelsize'] = 54.5
+plt.rcParams['xtick.labelsize'] = 45
+plt.rcParams['ytick.labelsize'] = 45
 plt.rcParams['font.sans-serif'] = 'Arial'
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['ps.fonttype'] = 42
@@ -3061,31 +3079,38 @@ world_mean.plot(column='C_cost_weighted_average', ax=ax, legend=True, legend_kwd
 
 world.plot(ax=ax, color='none', edgecolor='k', linewidth=1)
 
-fig.axes[1].set_ylabel('$\mathbf{Cost}$ [\$·${tonne^{−1}}$]', fontname='Arial', fontsize=54.5)
+fig.axes[1].set_ylabel('$\mathbf{Cost}$ [\$·${tonne^{−1}}$]', fontname='Arial', fontsize=45)
 fig.axes[1].tick_params(length=15, width=3)
 fig.axes[1].set_yticks([-200, 0, 200, 400, 600, 800, 1000])
-fig.axes[1].set_yticklabels(['-200','0','200','400','600','800','1000'], fontname='Arial', fontsize=54.5)
-
-pos1 = fig.axes[1].get_position()
-pos2 = [pos1.x0-0.0575, pos1.y0, pos1.width, pos1.height] 
-fig.axes[1].set_position(pos2)
+fig.axes[1].set_yticklabels(['-200','0','200','400','600','800','1000'], fontname='Arial', fontsize=45)
 
 # comment out the following line if the colorbar is needed
 fig.delaxes(fig.axes[1])
 
 ax.set_aspect(1)
 
-ax.set_axis_off()
+ax.set_xlim([-180, 180])
+ax.set_ylim([-60, 90])
 
-# plt.savefig('/Users/jiananfeng/Desktop/C_cost.png', transparent=True, bbox_inches='tight')
+ax.set_xticks([-180, -120, -60, 0, 60, 120, 180])
+ax.set_yticks([-60, -30, 0, 30, 60, 90])
+
+ax.set_xticklabels(['180°W','120°W','60°W','0°','60°E','120°E','180°E'], fontname='Arial', fontsize=45)
+ax.set_yticklabels(['60°S','30°S','0°','30°N','60°N','90°N'], fontname='Arial', fontsize=45)
+
+ax.tick_params(length=15, width=3)
+
+ax.set_axisbelow(True)
+ax.grid(True, color=la, linestyle='--', linewidth=1)
+
 plt.savefig('/Users/jiananfeng/Desktop/C_cost.pdf', transparent=True, bbox_inches='tight')
 
 #%% world map visualization - T NOAK cost mean
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
-plt.rcParams['xtick.labelsize'] = 54.5
-plt.rcParams['ytick.labelsize'] = 54.5
+plt.rcParams['xtick.labelsize'] = 45
+plt.rcParams['ytick.labelsize'] = 45
 plt.rcParams['font.sans-serif'] = 'Arial'
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['ps.fonttype'] = 42
@@ -3104,31 +3129,38 @@ world_mean.plot(column='T_cost_NOAK_weighted_average', ax=ax, legend=True, legen
 
 world.plot(ax=ax, color='none', edgecolor='k', linewidth=1)
 
-fig.axes[1].set_ylabel('$\mathbf{Cost}$ [\$·${tonne^{−1}}$]', fontname='Arial', fontsize=54.5)
+fig.axes[1].set_ylabel('$\mathbf{Cost}$ [\$·${tonne^{−1}}$]', fontname='Arial', fontsize=45)
 fig.axes[1].tick_params(length=15, width=3)
 fig.axes[1].set_yticks([-200, 0, 200, 400, 600, 800, 1000])
-fig.axes[1].set_yticklabels(['-200','0','200','400','600','800','1000'], fontname='Arial', fontsize=54.5)
-
-pos1 = fig.axes[1].get_position()
-pos2 = [pos1.x0-0.0575, pos1.y0, pos1.width, pos1.height] 
-fig.axes[1].set_position(pos2)
+fig.axes[1].set_yticklabels(['-200','0','200','400','600','800','1000'], fontname='Arial', fontsize=45)
 
 # comment out the following line if the colorbar is needed
 # fig.delaxes(fig.axes[1])
 
 ax.set_aspect(1)
 
-ax.set_axis_off()
+ax.set_xlim([-180, 180])
+ax.set_ylim([-60, 90])
 
-# plt.savefig('/Users/jiananfeng/Desktop/T_NOAK_cost.png', transparent=True, bbox_inches='tight')
+ax.set_xticks([-180, -120, -60, 0, 60, 120, 180])
+ax.set_yticks([-60, -30, 0, 30, 60, 90])
+
+ax.set_xticklabels(['180°W','120°W','60°W','0°','60°E','120°E','180°E'], fontname='Arial', fontsize=45)
+ax.set_yticklabels(['60°S','30°S','0°','30°N','60°N','90°N'], fontname='Arial', fontsize=45)
+
+ax.tick_params(length=15, width=3)
+
+ax.set_axisbelow(True)
+ax.grid(True, color=la, linestyle='--', linewidth=1)
+
 plt.savefig('/Users/jiananfeng/Desktop/T_NOAK_cost.pdf', transparent=True, bbox_inches='tight')
 
 #%% world map visualization - C CI mean
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
-plt.rcParams['xtick.labelsize'] = 54.5
-plt.rcParams['ytick.labelsize'] = 54.5
+plt.rcParams['xtick.labelsize'] = 45
+plt.rcParams['ytick.labelsize'] = 45
 plt.rcParams['font.sans-serif'] = 'Arial'
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['ps.fonttype'] = 42
@@ -3147,31 +3179,38 @@ world_mean.plot(column='C_CI_weighted_average', ax=ax, legend=True, legend_kwds=
 
 world.plot(ax=ax, color='none', edgecolor='k', linewidth=1)
 
-fig.axes[1].set_ylabel('$\mathbf{CI}$ [kg CO${_{2}}$e·${tonne^{−1}}$]', fontname='Arial', fontsize=54.5, labelpad=16)
+fig.axes[1].set_ylabel('$\mathbf{CI}$ [kg CO${_{2}}$e·${tonne^{−1}}$]', fontname='Arial', fontsize=45, labelpad=16)
 fig.axes[1].tick_params(length=15, width=3)
 fig.axes[1].set_yticks([-300, -150, 0, 150, 300, 450, 600, 750, 900])
-fig.axes[1].set_yticklabels(['-300','-150','0','150','300','450','600','750','900'], fontname='Arial', fontsize=54.5)
-
-pos1 = fig.axes[1].get_position()
-pos2 = [pos1.x0-0.0575, pos1.y0, pos1.width, pos1.height] 
-fig.axes[1].set_position(pos2)
+fig.axes[1].set_yticklabels(['-300','-150','0','150','300','450','600','750','900'], fontname='Arial', fontsize=45)
 
 # comment out the following line if the colorbar is needed
 fig.delaxes(fig.axes[1])
 
 ax.set_aspect(1)
 
-ax.set_axis_off()
+ax.set_xlim([-180, 180])
+ax.set_ylim([-60, 90])
 
-# plt.savefig('/Users/jiananfeng/Desktop/C_CI.png', transparent=True, bbox_inches='tight')
+ax.set_xticks([-180, -120, -60, 0, 60, 120, 180])
+ax.set_yticks([-60, -30, 0, 30, 60, 90])
+
+ax.set_xticklabels(['180°W','120°W','60°W','0°','60°E','120°E','180°E'], fontname='Arial', fontsize=45)
+ax.set_yticklabels(['60°S','30°S','0°','30°N','60°N','90°N'], fontname='Arial', fontsize=45)
+
+ax.tick_params(length=15, width=3)
+
+ax.set_axisbelow(True)
+ax.grid(True, color=la, linestyle='--', linewidth=1)
+
 plt.savefig('/Users/jiananfeng/Desktop/C_CI.pdf', transparent=True, bbox_inches='tight')
 
 #%% world map visualization - T NOAK CI mean
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
-plt.rcParams['xtick.labelsize'] = 54.5
-plt.rcParams['ytick.labelsize'] = 54.5
+plt.rcParams['xtick.labelsize'] = 45
+plt.rcParams['ytick.labelsize'] = 45
 plt.rcParams['font.sans-serif'] = 'Arial'
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['ps.fonttype'] = 42
@@ -3190,31 +3229,38 @@ world_mean.plot(column='T_CI_NOAK_weighted_average', ax=ax, legend=True, legend_
 
 world.plot(ax=ax, color='none', edgecolor='k', linewidth=1)
 
-fig.axes[1].set_ylabel('$\mathbf{CI}$ [kg CO${_{2}}$e·${tonne^{−1}}$]', fontname='Arial', fontsize=54.5, labelpad=16)
+fig.axes[1].set_ylabel('$\mathbf{CI}$ [kg CO${_{2}}$e·${tonne^{−1}}$]', fontname='Arial', fontsize=45, labelpad=16)
 fig.axes[1].tick_params(length=15, width=3)
 fig.axes[1].set_yticks([-300, -150, 0, 150, 300, 450, 600, 750, 900])
-fig.axes[1].set_yticklabels(['-300','-150','0','150','300','450','600','750','900'], fontname='Arial', fontsize=54.5)
-
-pos1 = fig.axes[1].get_position()
-pos2 = [pos1.x0-0.0575, pos1.y0, pos1.width, pos1.height] 
-fig.axes[1].set_position(pos2)
+fig.axes[1].set_yticklabels(['-300','-150','0','150','300','450','600','750','900'], fontname='Arial', fontsize=45)
 
 # comment out the following line if the colorbar is needed
 # fig.delaxes(fig.axes[1])
 
 ax.set_aspect(1)
 
-ax.set_axis_off()
+ax.set_xlim([-180, 180])
+ax.set_ylim([-60, 90])
 
-# plt.savefig('/Users/jiananfeng/Desktop/T_NOAK_CI.png', transparent=True, bbox_inches='tight')
+ax.set_xticks([-180, -120, -60, 0, 60, 120, 180])
+ax.set_yticks([-60, -30, 0, 30, 60, 90])
+
+ax.set_xticklabels(['180°W','120°W','60°W','0°','60°E','120°E','180°E'], fontname='Arial', fontsize=45)
+ax.set_yticklabels(['60°S','30°S','0°','30°N','60°N','90°N'], fontname='Arial', fontsize=45)
+
+ax.tick_params(length=15, width=3)
+
+ax.set_axisbelow(True)
+ax.grid(True, color=la, linestyle='--', linewidth=1)
+
 plt.savefig('/Users/jiananfeng/Desktop/T_NOAK_CI.pdf', transparent=True, bbox_inches='tight')
 
 #%% world map visualization - carbon credit needed
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
-plt.rcParams['xtick.labelsize'] = 54.5
-plt.rcParams['ytick.labelsize'] = 54.5
+plt.rcParams['xtick.labelsize'] = 45
+plt.rcParams['ytick.labelsize'] = 45
 plt.rcParams['font.sans-serif'] = 'Arial'
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams['ps.fonttype'] = 42
@@ -3233,20 +3279,27 @@ world_mean.plot(column='carbon_credit_needed', ax=ax, legend=True, legend_kwds={
 
 world.plot(ax=ax, color='none', edgecolor='k', linewidth=1)
 
-fig.axes[1].set_ylabel('$\mathbf{Carbon\ credit}$' + '\n[\$·${tonne\ CO_{2}e^{−1}}$]', fontname='Arial', fontsize=54.5)
+fig.axes[1].set_ylabel('$\mathbf{Carbon\ credit}$' + '\n[\$·${tonne\ CO_{2}e^{−1}}$]', fontname='Arial', fontsize=45, linespacing=0.8)
 fig.axes[1].tick_params(length=15, width=3)
 fig.axes[1].set_yticks([0, 100, 200, 300, 400, 500, 600])
-fig.axes[1].set_yticklabels(['<0','100','200','300','400','500','600'], fontname='Arial', fontsize=54.5)
-
-pos1 = fig.axes[1].get_position()
-pos2 = [pos1.x0-0.0575, pos1.y0, pos1.width, pos1.height] 
-fig.axes[1].set_position(pos2)
+fig.axes[1].set_yticklabels(['<0','100','200','300','400','500','600'], fontname='Arial', fontsize=45)
 
 ax.set_aspect(1)
 
-ax.set_axis_off()
+ax.set_xlim([-180, 180])
+ax.set_ylim([-60, 90])
 
-# plt.savefig('/Users/jiananfeng/Desktop/NOAK_carbon_credit.png', transparent=True, bbox_inches='tight')
+ax.set_xticks([-180, -120, -60, 0, 60, 120, 180])
+ax.set_yticks([-60, -30, 0, 30, 60, 90])
+
+ax.set_xticklabels(['180°W','120°W','60°W','0°','60°E','120°E','180°E'], fontname='Arial', fontsize=45)
+ax.set_yticklabels(['60°S','30°S','0°','30°N','60°N','90°N'], fontname='Arial', fontsize=45)
+
+ax.tick_params(length=15, width=3)
+
+ax.set_axisbelow(True)
+ax.grid(True, color=la, linestyle='--', linewidth=1)
+
 plt.savefig('/Users/jiananfeng/Desktop/NOAK_carbon_credit.pdf', transparent=True, bbox_inches='tight')
 
 #%% country order
@@ -3300,7 +3353,7 @@ plt.rcParams.update({'mathtext.fontset':'custom'})
 plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
-fig, ax = plt.subplots(figsize=(11.5, 50))
+fig, ax = plt.subplots(figsize=(12.5, 50))
 
 ax = plt.gca()
 
@@ -3377,7 +3430,7 @@ plt.rcParams.update({'mathtext.fontset':'custom'})
 plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
-fig, ax = plt.subplots(figsize=(11.5, 50))
+fig, ax = plt.subplots(figsize=(12.5, 50))
 
 ax = plt.gca()
 
@@ -3459,11 +3512,11 @@ plt.rcParams.update({'mathtext.fontset':'custom'})
 plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
-fig, ax = plt.subplots(figsize=(11.5, 50))
+fig, ax = plt.subplots(figsize=(12.5, 50))
 
 ax = plt.gca()
 
-ax.set_xlim([-3, 2.5])
+ax.set_xlim([-3000, 3000])
 ax.set_ylim([0.25, len(country_order) + 0.75])
 
 ax.tick_params(axis='x', direction='inout', length=30, width=3, pad=5)
@@ -3472,22 +3525,22 @@ ax.tick_params(axis='y', direction='inout', length=30, width=3, pad=5)
 index = np.arange(1, len(country_order)+1, 1)
 
 ax.barh(y=index+0.1875,
-        width=(CI_max['C_CI_weighted_average'] - CI_min['C_CI_weighted_average'])/1000,
+        width=CI_max['C_CI_weighted_average'] - CI_min['C_CI_weighted_average'],
         height=0.375,
         color=dg,
         edgecolor='k',
         linewidth=3,
-        left=CI_min['C_CI_weighted_average']/1000)
+        left=CI_min['C_CI_weighted_average'])
 
 ax.barh(y=index-0.1875,
-        width=(CI_max['T_CI_NOAK_weighted_average'] - CI_min['T_CI_NOAK_weighted_average'])/1000,
+        width=CI_max['T_CI_NOAK_weighted_average'] - CI_min['T_CI_NOAK_weighted_average'],
         height=0.375,
         color=lg,
         edgecolor='k',
         linewidth=3,
-        left=CI_min['T_CI_NOAK_weighted_average']/1000)
+        left=CI_min['T_CI_NOAK_weighted_average'])
 
-plt.xticks(np.arange(-3, 4, 1), fontname='Arial')
+plt.xticks(np.arange(-3000, 4500, 1500), fontname='Arial')
 plt.yticks(index, CI_max['CNTRY_ISO'], fontname='Arial')
 
 ax.set_xlabel('$\mathbf{CI}$ [tonne CO${_{2}}$e·${tonne^{-1}}$]',
@@ -3495,11 +3548,11 @@ ax.set_xlabel('$\mathbf{CI}$ [tonne CO${_{2}}$e·${tonne^{-1}}$]',
 
 ax_top = ax.twiny()
 
-ax_top.set_xlim([-3, 2.5])
+ax_top.set_xlim([-3000, 3000])
 
 ax_top.tick_params(axis='x', direction='inout', length=30, width=3, pad=-5)
 
-plt.xticks(np.arange(-3, 4, 1), fontname='Arial')
+plt.xticks(np.arange(-3000, 4500, 1500), fontname='Arial')
 plt.yticks(index, CI_max['CNTRY_ISO'], fontname='Arial')
 
 plt.savefig('/Users/jiananfeng/Desktop/CI_ranges.pdf', transparent=True, bbox_inches='tight')
@@ -3536,7 +3589,7 @@ plt.rcParams.update({'mathtext.fontset':'custom'})
 plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
-fig, ax = plt.subplots(figsize=(11.5, 50))
+fig, ax = plt.subplots(figsize=(12.5, 50))
 
 ax = plt.gca()
 
