@@ -29,7 +29,7 @@ from math import floor
 from matplotlib.mathtext import _mathtext as mathtext
 from matplotlib.patches import Rectangle
 from colorpalette import Color
-from exposan.htl import create_geospatial_system, create_geospatial_model
+from exposan.htl import create_geospatial_system, create_geospatial_model, figures_path
 from exposan.htl._data import get_htl_data_path
 from qsdsan.utils import auom
 from datetime import date
@@ -1131,7 +1131,7 @@ ax_right.scatter(x=2,
                  edgecolor='k',
                  zorder=2)
     
-# fig.savefig('/Users/jiananfeng/Desktop/distance.png', transparent=True, bbox_inches='tight')
+# fig.savefig(os.path.join(figures_path, 'distance.png'), transparent=True, bbox_inches='tight')
 
 #%% biocrude and hydrochar transporation distance box plot (per region)
 
@@ -2194,7 +2194,7 @@ ax_right.scatter(x=2,
 # for flier in bp['fliers']:
 #     flier.set(marker='o', markersize=7, markerfacecolor='k', markeredgewidth=1.5)
     
-# fig.savefig('/Users/jiananfeng/Desktop/distance.png', transparent=True, bbox_inches='tight')
+# fig.savefig(os.path.join(figures_path, 'distance.png'), transparent=True, bbox_inches='tight')
 
 #%% GHG reduction zoom-in boxplot
 
@@ -2247,7 +2247,7 @@ ax_right.scatter(x=1,
 # for flier in bp['fliers']:
 #     flier.set(marker='o', markersize=7, markerfacecolor='k', markeredgewidth=1.5)
     
-# fig.savefig('/Users/jiananfeng/Desktop/distance.png', transparent=True, bbox_inches='tight')
+# fig.savefig(os.path.join(figures_path, 'distance.png'), transparent=True, bbox_inches='tight')
 
 #%% cost vs sludge amount
 
@@ -3941,12 +3941,12 @@ def plot_sensitivity(data_type, figure_label=False):
         # !!! this may need change if rerunning analysis
         if data_type == 'cost_spearman_r':
             if title in ['sludge_dw_ash','sludge_afdw_protein','biocrude_price','IRR']:
-                fig.savefig(f'/Users/jiananfeng/Desktop/{data_type}_{i}.png', transparent=True, bbox_inches='tight')
+                fig.savefig(os.path.join(figures_path, f'{data_type}_{i}.png'), transparent=True, bbox_inches='tight')
         
         # !!! this may need change if rerunning analysis
         if data_type == 'CI_spearman_r':
             if title in ['sludge_dw_ash','sludge_afdw_protein','protein_2_N','catalyst_lifetime','gas_C_2_total_C','natural_gas_global_warming','UAN_global_warming']:
-                fig.savefig(f'/Users/jiananfeng/Desktop/{data_type}_{i}.png', transparent=True, bbox_inches='tight')
+                fig.savefig(os.path.join(figures_path, f'{data_type}_{i}.png'), transparent=True, bbox_inches='tight')
     
     return integrated_data
 
