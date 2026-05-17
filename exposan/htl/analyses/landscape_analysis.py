@@ -27,7 +27,8 @@ from warnings import filterwarnings
 from datetime import date
 from qsdsan.utils import auom
 from exposan.htl._data import get_htl_data_path
-from exposan.htl import (create_C1_system, create_C2_system, create_C3_system,
+from exposan.htl import (figures_path,
+                         create_C1_system, create_C2_system, create_C3_system,
                          create_C4_system, create_C5_system, create_C6_system,
                          create_C7_system, create_C8_system, create_C9_system,
                          create_C10_system, create_C11_system, create_C12_system,
@@ -385,7 +386,7 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='k', linewidth=3)
 
-plt.savefig('/Users/jiananfeng/Desktop/MPs_concentration.pdf', transparent=True, bbox_inches='tight')
+plt.savefig(os.path.join(figures_path, 'MPs_concentration.pdf'), transparent=True, bbox_inches='tight')
 
 #%% MPs concentration (unique values)
 
@@ -445,7 +446,7 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='k', linewidth=3)
 
-plt.savefig('/Users/jiananfeng/Desktop/MPs_concentration_unique.pdf', transparent=True, bbox_inches='tight')
+plt.savefig(os.path.join(figures_path, 'MPs_concentration_unique.pdf'), transparent=True, bbox_inches='tight')
 
 #%% MPs capture
 
@@ -537,7 +538,7 @@ ax.bar(0.5,
        edgecolor='k',
        linewidth=3)
 
-plt.savefig('/Users/jiananfeng/Desktop/MPs_capture.pdf', transparent=True, bbox_inches='tight')
+plt.savefig(os.path.join(figures_path, 'MPs_capture.pdf'), transparent=True, bbox_inches='tight')
 
 #%% MPs removal
 
@@ -620,7 +621,7 @@ for cap in bp['caps']:
 
 ax_box.axis('off')
 
-plt.savefig('/Users/jiananfeng/Desktop/MPs_removal.pdf', transparent=True, bbox_inches='tight')
+plt.savefig(os.path.join(figures_path, 'MPs_removal.pdf'), transparent=True, bbox_inches='tight')
 
 #%% PhACs concentration
 
@@ -762,7 +763,7 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='k', linewidth=3)
 
-plt.savefig('/Users/jiananfeng/Desktop/PhACs_concentration.pdf', transparent=True, bbox_inches='tight')
+plt.savefig(os.path.join(figures_path, 'PhACs_concentration.pdf'), transparent=True, bbox_inches='tight')
 
 #%% PhACs concentration visualization (unique values)
 
@@ -822,7 +823,7 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='k', linewidth=3)
 
-plt.savefig('/Users/jiananfeng/Desktop/PhACs_concentration_unique.pdf', transparent=True, bbox_inches='tight')
+plt.savefig(os.path.join(figures_path, 'PhACs_concentration_unique.pdf'), transparent=True, bbox_inches='tight')
 
 #%% PhACs capture
 
@@ -908,7 +909,7 @@ ax.bar(0.5,
        edgecolor='k',
        linewidth=3)
 
-plt.savefig('/Users/jiananfeng/Desktop/PhACs_capture.pdf', transparent=True, bbox_inches='tight')
+plt.savefig(os.path.join(figures_path, 'PhACs_capture.pdf'), transparent=True, bbox_inches='tight')
 
 #%% PhACs removal
 
@@ -991,7 +992,7 @@ for cap in bp['caps']:
 
 ax_box.axis('off')
 
-plt.savefig('/Users/jiananfeng/Desktop/PhACs_removal.pdf', transparent=True, bbox_inches='tight')
+plt.savefig(os.path.join(figures_path, 'PhACs_removal.pdf'), transparent=True, bbox_inches='tight')
 
 #%% ARGs concentration
 
@@ -1121,7 +1122,7 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='k', linewidth=3)
 
-plt.savefig('/Users/jiananfeng/Desktop/ARGs_concentration.pdf', transparent=True, bbox_inches='tight')
+plt.savefig(os.path.join(figures_path, 'ARGs_concentration.pdf'), transparent=True, bbox_inches='tight')
 
 #%% ARGs concentration visualization (unique values)
 
@@ -1179,7 +1180,7 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='k', linewidth=3)
 
-plt.savefig('/Users/jiananfeng/Desktop/ARGs_concentration_unique.pdf', transparent=True, bbox_inches='tight')
+plt.savefig(os.path.join(figures_path, 'ARGs_concentration_unique.pdf'), transparent=True, bbox_inches='tight')
 
 #%% ARGs capture
 
@@ -1251,7 +1252,7 @@ ax.bar(0.5,
        edgecolor='k',
        linewidth=3)
 
-plt.savefig('/Users/jiananfeng/Desktop/ARGs_capture.pdf', transparent=True, bbox_inches='tight')
+plt.savefig(os.path.join(figures_path, 'ARGs_capture.pdf'), transparent=True, bbox_inches='tight')
 
 #%% ARGs removal
 
@@ -1332,7 +1333,7 @@ for cap in bp['caps']:
 
 ax_box.axis('off')
 
-plt.savefig('/Users/jiananfeng/Desktop/ARGs_removal.pdf', transparent=True, bbox_inches='tight')
+plt.savefig(os.path.join(figures_path, 'ARGs_removal.pdf'), transparent=True, bbox_inches='tight')
 
 #%% PFAS concentration data processing 1 - EU - data cleaning to reduce the file size
 
@@ -1685,7 +1686,7 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='k', linewidth=3)
 
-plt.savefig('/Users/jiananfeng/Desktop/PFOA.pdf', transparent=True, bbox_inches='tight')
+plt.savefig(os.path.join(figures_path, 'PFOA.pdf'), transparent=True, bbox_inches='tight')
 
 #%% PFOA concentrations visualization (unique values)
 
@@ -1745,7 +1746,7 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='k', linewidth=3)
 
-plt.savefig('/Users/jiananfeng/Desktop/PFOA_unique.pdf', transparent=True, bbox_inches='tight')
+plt.savefig(os.path.join(figures_path, 'PFOA_unique.pdf'), transparent=True, bbox_inches='tight')
 
 #%% PFOS concentration
 
@@ -2046,7 +2047,7 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='k', linewidth=3)
 
-plt.savefig('/Users/jiananfeng/Desktop/PFOS.pdf', transparent=True, bbox_inches='tight')
+plt.savefig(os.path.join(figures_path, 'PFOS.pdf'), transparent=True, bbox_inches='tight')
 
 #%% PFOS concentrations visualization (unique values)
 
@@ -2106,7 +2107,7 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='k', linewidth=3)
 
-plt.savefig('/Users/jiananfeng/Desktop/PFOS_unique.pdf', transparent=True, bbox_inches='tight')
+plt.savefig(os.path.join(figures_path, 'PFOS_unique.pdf'), transparent=True, bbox_inches='tight')
 
 #%% PBDEs concentration data
 
@@ -2245,7 +2246,7 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='k', linewidth=3)
 
-plt.savefig('/Users/jiananfeng/Desktop/PBDEs.pdf', transparent=True, bbox_inches='tight')
+plt.savefig(os.path.join(figures_path, 'PBDEs.pdf'), transparent=True, bbox_inches='tight')
 
 #%% PBDEs concentrations visualization (unique values)
 
@@ -2305,7 +2306,7 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='k', linewidth=3)
 
-plt.savefig('/Users/jiananfeng/Desktop/PBDEs_unique.pdf', transparent=True, bbox_inches='tight')
+plt.savefig(os.path.join(figures_path, 'PBDEs_unique.pdf'), transparent=True, bbox_inches='tight')
 
 #%% PCBs concentration data
 
@@ -2444,7 +2445,7 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='k', linewidth=3)
 
-plt.savefig('/Users/jiananfeng/Desktop/PCBs.pdf', transparent=True, bbox_inches='tight')
+plt.savefig(os.path.join(figures_path, 'PCBs.pdf'), transparent=True, bbox_inches='tight')
 
 #%% PCBs concentrations visualization (unique values)
 
@@ -2504,7 +2505,7 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='k', linewidth=3)
 
-plt.savefig('/Users/jiananfeng/Desktop/PCBs_unique.pdf', transparent=True, bbox_inches='tight')
+plt.savefig(os.path.join(figures_path, 'PCBs_unique.pdf'), transparent=True, bbox_inches='tight')
 
 #%% PCDD&Fs concentration data
 
@@ -2646,7 +2647,7 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='k', linewidth=3)
 
-plt.savefig('/Users/jiananfeng/Desktop/PCDD&Fs.pdf', transparent=True, bbox_inches='tight')
+plt.savefig(os.path.join(figures_path, 'PCDD&Fs.pdf'), transparent=True, bbox_inches='tight')
 
 #%% PCDD&Fs concentrations visualization (unique values)
 
@@ -2706,7 +2707,7 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='k', linewidth=3)
 
-plt.savefig('/Users/jiananfeng/Desktop/PCDD&Fs_unique.pdf', transparent=True, bbox_inches='tight')
+plt.savefig(os.path.join(figures_path, 'PCDD&Fs_unique.pdf'), transparent=True, bbox_inches='tight')
 
 #%% country average
 
@@ -3103,7 +3104,7 @@ ax.tick_params(length=15, width=3)
 ax.set_axisbelow(True)
 ax.grid(True, color=la, linestyle='--', linewidth=1)
 
-plt.savefig('/Users/jiananfeng/Desktop/C_cost.pdf', transparent=True, bbox_inches='tight')
+plt.savefig(os.path.join(figures_path, 'C_cost.pdf'), transparent=True, bbox_inches='tight')
 
 #%% world map visualization - T NOAK cost mean
 
@@ -3153,7 +3154,7 @@ ax.tick_params(length=15, width=3)
 ax.set_axisbelow(True)
 ax.grid(True, color=la, linestyle='--', linewidth=1)
 
-plt.savefig('/Users/jiananfeng/Desktop/T_NOAK_cost.pdf', transparent=True, bbox_inches='tight')
+plt.savefig(os.path.join(figures_path, 'T_NOAK_cost.pdf'), transparent=True, bbox_inches='tight')
 
 #%% world map visualization - C CI mean
 
@@ -3203,7 +3204,7 @@ ax.tick_params(length=15, width=3)
 ax.set_axisbelow(True)
 ax.grid(True, color=la, linestyle='--', linewidth=1)
 
-plt.savefig('/Users/jiananfeng/Desktop/C_CI.pdf', transparent=True, bbox_inches='tight')
+plt.savefig(os.path.join(figures_path, 'C_CI.pdf'), transparent=True, bbox_inches='tight')
 
 #%% world map visualization - T NOAK CI mean
 
@@ -3253,7 +3254,7 @@ ax.tick_params(length=15, width=3)
 ax.set_axisbelow(True)
 ax.grid(True, color=la, linestyle='--', linewidth=1)
 
-plt.savefig('/Users/jiananfeng/Desktop/T_NOAK_CI.pdf', transparent=True, bbox_inches='tight')
+plt.savefig(os.path.join(figures_path, 'T_NOAK_CI.pdf'), transparent=True, bbox_inches='tight')
 
 #%% world map visualization - carbon credit needed
 
@@ -3300,7 +3301,7 @@ ax.tick_params(length=15, width=3)
 ax.set_axisbelow(True)
 ax.grid(True, color=la, linestyle='--', linewidth=1)
 
-plt.savefig('/Users/jiananfeng/Desktop/NOAK_carbon_credit.pdf', transparent=True, bbox_inches='tight')
+plt.savefig(os.path.join(figures_path, 'NOAK_carbon_credit.pdf'), transparent=True, bbox_inches='tight')
 
 #%% country order
 
@@ -3396,7 +3397,7 @@ ax_top.tick_params(axis='x', direction='inout', length=30, width=3, pad=-5)
 plt.xticks(np.arange(-300, 1500, 300), fontname='Arial')
 plt.yticks(index, cost_max['CNTRY_ISO'], fontname='Arial')
 
-plt.savefig('/Users/jiananfeng/Desktop/cost_ranges.pdf', transparent=True, bbox_inches='tight')
+plt.savefig(os.path.join(figures_path, 'cost_ranges.pdf'), transparent=True, bbox_inches='tight')
 
 #%% cost changes - data preparation
 
@@ -3469,7 +3470,7 @@ ax_top.tick_params(axis='x', direction='inout', length=30, width=3, pad=-5)
 plt.xticks(np.arange(-100, 400, 100), fontname='Arial')
 plt.yticks(index, cost_change['CNTRY_ISO'], fontname='Arial')
 
-plt.savefig('/Users/jiananfeng/Desktop/cost_changess.pdf', transparent=True, bbox_inches='tight')
+plt.savefig(os.path.join(figures_path, 'cost_changess.pdf'), transparent=True, bbox_inches='tight')
 
 #%% CI ranges for C and T systems
 
@@ -3555,7 +3556,7 @@ ax_top.tick_params(axis='x', direction='inout', length=30, width=3, pad=-5)
 plt.xticks(np.arange(-3000, 4500, 1500), fontname='Arial')
 plt.yticks(index, CI_max['CNTRY_ISO'], fontname='Arial')
 
-plt.savefig('/Users/jiananfeng/Desktop/CI_ranges.pdf', transparent=True, bbox_inches='tight')
+plt.savefig(os.path.join(figures_path, 'CI_ranges.pdf'), transparent=True, bbox_inches='tight')
 
 #%% CI changes - data preparation
 
@@ -3628,7 +3629,7 @@ ax_top.tick_params(axis='x', direction='inout', length=30, width=3, pad=-5)
 plt.xticks(np.arange(-1200, 300, 300), fontname='Arial')
 plt.yticks(index, CI_change['CNTRY_ISO'], fontname='Arial')
 
-plt.savefig('/Users/jiananfeng/Desktop/CI_changes.pdf', transparent=True, bbox_inches='tight')
+plt.savefig(os.path.join(figures_path, 'CI_changes.pdf'), transparent=True, bbox_inches='tight')
 
 #%% unit capital cost equation
 

@@ -14,13 +14,14 @@ for license details.
 
 #%% initialization
 
-import numpy as np, matplotlib.pyplot as plt
+import os, numpy as np, matplotlib.pyplot as plt
 from colorpalette import Color
 from matplotlib.mathtext import _mathtext as mathtext
 from matplotlib.colors import to_hex
 from matplotlib.gridspec import GridSpec
 from warnings import filterwarnings
-from exposan.htl import (create_C1_system, create_C2_system, create_C3_system,
+from exposan.htl import (figures_path,
+                         create_C1_system, create_C2_system, create_C3_system,
                          create_C4_system, create_C5_system, create_C6_system,
                          create_C7_system, create_C8_system, create_C9_system,
                          create_C10_system, create_C11_system, create_C12_system,
@@ -224,7 +225,7 @@ for i in range(25, 40):
 
 # ax_top_boxplot.axis('off')
 
-plt.savefig('/Users/jiananfeng/Desktop/Figure_1A.png', transparent=True, bbox_inches='tight')
+plt.savefig(os.path.join(figures_path, 'Figure_1A.png'), transparent=True, bbox_inches='tight')
 
 #%% deployment opportunity
 
@@ -403,7 +404,7 @@ for i in range(25, 40):
 
 # ax_top_boxplot.axis('off')
 
-plt.savefig('/Users/jiananfeng/Desktop/Figure_1B.png', transparent=True, bbox_inches='tight')
+plt.savefig(os.path.join(figures_path, 'Figure_1B.png'), transparent=True, bbox_inches='tight')
 
 #%% credit opportunity
 
@@ -563,4 +564,4 @@ for i in range(25, 40):
 
 # ax_top_boxplot.axis('off')
 
-plt.savefig('/Users/jiananfeng/Desktop/Figure_1C.png', transparent=True, bbox_inches='tight')
+plt.savefig(os.path.join(figures_path, 'Figure_1C.png'), transparent=True, bbox_inches='tight')
