@@ -14,6 +14,10 @@ EXPOsan: EXPOsition of Sanitation and Resource Recovery Systems
 .. image:: https://img.shields.io/pypi/v/exposan?style=flat&color=blue
    :target: https://pypi.org/project/exposan
 
+.. Zenodo release DOI
+.. image:: https://zenodo.org/badge/doi/10.5281/zenodo.20256578.svg
+   :target: https://doi.org/10.5281/zenodo.20256578
+
 .. GitHub test of the main branch
 .. image:: https://github.com/QSD-Group/EXPOsan/actions/workflows/build-latest.yml/badge.svg?branch=main
    :target: https://github.com/QSD-Group/EXPOsan/actions/workflows/build-latest.yml

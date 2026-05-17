@@ -27,8 +27,7 @@ _impact_item_loaded = False
 def _load_lca_data():
     global _impact_item_loaded
     if _impact_item_loaded:
-        IInd.clear_registry()
-        IItm.clear_registry()
+        IItm.clear_registry()  # items are per-flowsheet; indicators are global
     ind_path = os.path.join(data_path, 'TRACI_indicators.xlsx')
     itm_path = os.path.join(data_path, '_impact_items.xlsx')
     IInd.load_from_file(ind_path, sheet=0)

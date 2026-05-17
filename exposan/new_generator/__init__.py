@@ -203,10 +203,10 @@ def _load_lca_data(reload=False):
         Whether to force reload LCA data.
     '''
     global _impact_item_loaded
-    if not _impact_item_loaded or reload:
-        indicator_path = os.path.join(data_path, 'impact_indicators.csv')
-        qs.ImpactIndicator.load_from_file(indicator_path)
+    indicator_path = os.path.join(data_path, 'impact_indicators.csv')
+    qs.ImpactIndicator.load_from_file(indicator_path)
 
+    if not _impact_item_loaded or reload:
         item_path = os.path.join(data_path, 'impact_items.xlsx')
         qs.ImpactItem.load_from_file(item_path)
         

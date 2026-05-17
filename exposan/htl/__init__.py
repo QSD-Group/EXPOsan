@@ -21,7 +21,9 @@ from datetime import date
 
 htl_path = os.path.dirname(__file__)
 module = os.path.split(htl_path)[-1]
-data_path, results_path = _init_modules(module, include_data_path=True)
+data_path, results_path, figures_path = \
+    _init_modules(module, include_data_path=True, include_figures_path=True,
+                  create=True)
 
 # %%
 
@@ -116,6 +118,7 @@ __all__ = (
     'htl_path',
     'data_path',
     'results_path',
+    'figures_path',
     'simulate_and_save',
     *_components.__all__,
     *_process_settings.__all__,
