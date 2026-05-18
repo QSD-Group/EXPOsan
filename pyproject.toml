@@ -46,9 +46,6 @@ ci = [
     "pytest",
     "pytest-xdist",
 ]
-integration = [
-    "qsdsan @ git+https://github.com/QSD-Group/QSDsan.git",
-]
 dev = [
     "pytest",
     "pytest-xdist",
