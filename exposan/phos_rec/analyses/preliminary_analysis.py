@@ -22,7 +22,7 @@ from datetime import date
 
 folder = os.path.dirname(os.path.dirname(__file__))
 
-#%% Figure 3 - FePO4 perspective, reaction_time = 132, food_sludge_ratio = 1, avoided sludge management cost as credits
+#%% Figure 3 - FePO4 perspective, fermentation_time = 132, food_sludge_ratio = 1, avoided sludge management cost as credits
 
 credit_list = []
 
@@ -32,7 +32,7 @@ FePO4_MSP_95th = []
 FePO4_MSP_mean = []
 
 for credit in range(0, 1100, 100):
-    sys = create_system(temp_ratio=10, food_sludge_ratio=1, reaction_time=132, sludge_credit=credit, perspective='FePO4')
+    sys = create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentation_time=132, sludge_credit=credit, perspective='FePO4')
     model = create_model(sys, perspective='FePO4')
     
     kwargs = {'N':1000,'rule':'L','seed':3221}
@@ -62,7 +62,7 @@ credit_result['FePO4_MSP_mean'] = FePO4_MSP_mean
 
 credit_result.to_excel(os.path.join(folder, f'results/FePO4_result_cost_credit_{date.today()}.xlsx'))
 
-#%% Figure 3 - FePO4 perspective, reaction_time = 132, food_sludge_ratio = 1, avoided sludge management CI as credits
+#%% Figure 3 - FePO4 perspective, fermentation_time = 132, food_sludge_ratio = 1, avoided sludge management CI as credits
 
 credit_list = []
 
@@ -72,7 +72,7 @@ FePO4_GWP_95th = []
 FePO4_GWP_mean = []
 
 for credit in range(-300, 2100, 200):
-    sys = create_system(temp_ratio=10, food_sludge_ratio=1, reaction_time=132, sludge_CI_credit=credit, perspective='FePO4')
+    sys = create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentation_time=132, sludge_CI_credit=credit, perspective='FePO4')
     model = create_model(sys, perspective='FePO4')
     
     kwargs = {'N':1000,'rule':'L','seed':3221}
@@ -102,9 +102,9 @@ credit_result['FePO4_GWP_mean'] = FePO4_GWP_mean
 
 credit_result.to_excel(os.path.join(folder, f'results/FePO4_result_CI_credit_{date.today()}.xlsx'),)
 
-#%% Figure 3 - sludge management perspective, reaction_time = 132, food_sludge = 1, P and Fe recovery
+#%% Figure 3 - sludge management perspective, fermentation_time = 132, food_sludge = 1, P and Fe recovery
 
-sys = create_system(temp_ratio=10, food_sludge_ratio=1, reaction_time=132, sludge_credit=300, perspective='sludge')
+sys = create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentation_time=132, sludge_credit=300, perspective='sludge')
 sys.simulate()
 model = create_model(sys, perspective='sludge')
 kwargs = {'N':1000,'rule':'L','seed':3221}
@@ -140,7 +140,7 @@ sludge_GWP_mean = []
 
 for perspective in ['FePO4','sludge']:
     ratio_list = []
-    reaction_time_list = []
+    fermentation_time_list = []
     for ratio in [0, 1/3, 2/3, 1, 4/3]:
         if ratio == 4/3:
             times = [132,]
@@ -148,9 +148,9 @@ for perspective in ['FePO4','sludge']:
             times = range(0, 144, 12)
 
         for time in times:
-            # TODO: use try, since some ratio and reaction time combinations not working for create_system, need fix
+            # use try, since some ratio and reaction time combinations not feasible
             try:
-                sys = create_system(temp_ratio=10, food_sludge_ratio=ratio, reaction_time=time, perspective=perspective)
+                sys = create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=ratio, fermentation_time=time, perspective=perspective)
             except RuntimeError:
                 continue
             model = create_model(sys, perspective=perspective)
@@ -167,7 +167,7 @@ for perspective in ['FePO4','sludge']:
             results_no_nan = results.dropna()
             
             ratio_list.append(ratio)
-            reaction_time_list.append(time)
+            fermentation_time_list.append(time)
             
             if perspective == 'FePO4':
                 FePO4_MSP_5th.append(results_no_nan[('TEA','Fe po4 MSP [$/kg]')].quantile(0.05))
@@ -194,7 +194,7 @@ for perspective in ['FePO4','sludge']:
     if perspective == 'FePO4':
         FePO4_result = pd.DataFrame()
         FePO4_result['ratio'] = ratio_list
-        FePO4_result['reaction_time'] = reaction_time_list
+        FePO4_result['fermentation_time'] = fermentation_time_list
         FePO4_result['FePO4_MSP_5th'] = FePO4_MSP_5th
         FePO4_result['FePO4_MSP_50th'] = FePO4_MSP_50th
         FePO4_result['FePO4_MSP_95th'] = FePO4_MSP_95th
@@ -207,7 +207,7 @@ for perspective in ['FePO4','sludge']:
     if perspective == 'sludge':
         sludge_result = pd.DataFrame()
         sludge_result['ratio'] = ratio_list
-        sludge_result['reaction_time'] = reaction_time_list
+        sludge_result['fermentation_time'] = fermentation_time_list
         sludge_result['sludge_cost_5th'] = sludge_cost_5th
         sludge_result['sludge_cost_50th'] = sludge_cost_50th
         sludge_result['sludge_cost_95th'] = sludge_cost_95th
@@ -222,7 +222,7 @@ sludge_result.to_excel(os.path.join(folder, f'results/decision_heatmap_sludge_{d
 
 #%% sensitivity analysis, FePO4 perspective
 
-sys = create_system(temp_ratio=10, food_sludge_ratio=1, reaction_time=132, perspective='FePO4')
+sys = create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentation_time=132, perspective='FePO4')
 model = create_model(sys, perspective='FePO4')
 model.parameters
 kwargs = {'N':1000,'rule':'L','seed':3221}
@@ -248,7 +248,7 @@ FePO4_GWP_50th = []
 FePO4_GWP_95th = []
 FePO4_GWP_mean = []
 
-sys = create_system(temp_ratio=10, food_sludge_ratio=1, reaction_time=132, perspective='FePO4')
+sys = create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentation_time=132, perspective='FePO4')
 AF = sys.flowsheet.unit.AF
 stream = sys.flowsheet.stream
 
@@ -261,7 +261,7 @@ residue_price_list = np.linspace(-0.09, -0.03, 11)
 
 for VFA_price in VFA_price_list:
     for residue_price in residue_price_list:
-        sys = create_system(temp_ratio=10, food_sludge_ratio=1, reaction_time=132, perspective='FePO4')
+        sys = create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentation_time=132, perspective='FePO4')
         sys.flowsheet.stream.precipitation_supernatant.price = VFA_price
         sys.flowsheet.stream.residue.price = residue_price
         
@@ -296,7 +296,7 @@ heatmap_result = pd.DataFrame(results_all)
 
 heatmap_result.to_excel(os.path.join(folder, f'results/context_heatmap_{date.today()}.xlsx'))
 
-#%% SI - reaction_time = 132, food_sludge = 1, different sizes
+#%% SI - fermentation_time = 132, food_sludge = 1, different sizes
 
 size_list = []
 
@@ -323,8 +323,8 @@ sludge_GWP_mean = []
 for perspective in ['FePO4','sludge']:
     size_list = []
 
-    for size in [0.05, 0.1, 0.2, 0.4, 0.8, 1.6, 3.2, 6.4, 12.8, 25.6, 51.2, 102.4]:
-        sys = create_system(temp_ratio=size, food_sludge_ratio=1, reaction_time=132, sludge_credit=300, perspective=perspective)
+    for size in [1, 2, 4, 8, 16, 32, 64, 128, 256]:
+        sys = create_system(dry_solids_tonne_per_day=size, food_sludge_ratio=1, fermentation_time=132, sludge_credit=300, perspective=perspective)
         sys.simulate()
         model = create_model(sys, perspective=perspective)
         
@@ -413,7 +413,7 @@ for perspective in ['FePO4','sludge']:
         IRR_range = np.arange(0, 0.06, 0.01)
 
     for IRR in IRR_range:
-        sys = create_system(temp_ratio=10, food_sludge_ratio=1, reaction_time=132, sludge_credit=300, perspective=perspective)
+        sys = create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentation_time=132, sludge_credit=300, perspective=perspective)
         sys.TEA.IRR = IRR
         sys.simulate()
         

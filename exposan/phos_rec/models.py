@@ -199,17 +199,6 @@ def create_model(system=None,
     # =============================================================================
     # TEA
     # =============================================================================
-    food_waste = stream.food_waste
-    dist = shape.Uniform(75.8*0.8,75.8*1.2)
-    @param(name='food_waste_credit',
-           element='TEA',
-           kind='isolated',
-           units='$/kg',
-           baseline=75.8,
-           distribution=dist)
-    def set_food_waste_credit(i):
-        food_waste_dry_kg_hr = food_waste.F_mass - food_waste.imass['Water']
-        food_waste.price = -i*(food_waste_dry_kg_hr/1000)/food_waste.F_mass
     
     H2SO4 = stream.acid
     dist = shape.Uniform(0.08*0.8,0.08*1.2)
@@ -313,7 +302,7 @@ def create_model(system=None,
     
     if not exclude_context:
         precipitation_supernatant = stream.precipitation_supernatant
-        precipitation_supernatant_baseline_price = get_precipitation_supernatant_price(AF.food_sludge_ratio, AF.reaction_time)
+        precipitation_supernatant_baseline_price = get_precipitation_supernatant_price(AF.food_sludge_ratio, AF.fermentation_time)
         dist = shape.Uniform(precipitation_supernatant_baseline_price*0.8,precipitation_supernatant_baseline_price*1.2)
         @param(name='precipitation_supernatant_price',
                element='TEA',

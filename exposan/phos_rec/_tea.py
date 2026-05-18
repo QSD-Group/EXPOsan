@@ -1,48 +1,28 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3 for the CI and Cost heatmap of food_sludge_ratio and HRT
 # -*- coding: utf-8 -*-
 '''
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
 
+    Xuan Wang <easonbiubiu99@gmail.com>
+    
     Jianan Feng <jiananf2@illinois.edu>
-
+    
     Yalin Li <mailto.yalin.li@gmail.com>
     
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
-
-References:
-
-(1) Jones, S. B.; Zhu, Y.; Anderson, D. B.; Hallen, R. T.; Elliott, D. C.; 
-    Schmidt, A. J.; Albrecht, K. O.; Hart, T. R.; Butcher, M. G.; Drennan, C.; 
-    Snowden-Swan, L. J.; Davis, R.; Kinchin, C. 
-    Process Design and Economics for the Conversion of Algal Biomass to
-    Hydrocarbons: Whole Algae Hydrothermal Liquefaction and Upgrading;
-    PNNL--23227, 1126336; 2014; https://doi.org/10.2172/1126336.
-
-(2) Davis, R. E.; Grundl, N. J.; Tao, L.; Biddy, M. J.; Tan, E. C.;
-    Beckham, G. T.; Humbird, D.; Thompson, D. N.; Roni, M. S. Process Design
-    and Economics for the Conversion of Lignocellulosic Biomass to Hydrocarbon
-    Fuels and Coproducts: 2018 Biochemical Design Case Update; Biochemical
-    Deconstruction and Conversion of Biomass to Fuels and Products via
-    Integrated Biorefinery Pathways; NREL/TP--5100-71949, 1483234;
-    2018; p NREL/TP--5100-71949, 1483234. https://doi.org/10.2172/1483234.
-
-(3) Knorr, D.; Lukas, J.; Schoen, P. Production of Advanced Biofuels via
-    Liquefaction - Hydrothermal Liquefaction Reactor Design: April 5, 2013;
-    NREL/SR-5100-60462, 1111191; 2013; p NREL/SR-5100-60462, 1111191.
-    https://doi.org/10.2172/1111191.
 '''
 
 from biosteam import TEA
 import numpy as np, pandas as pd, thermosteam as tmo, biosteam as bst
 
-__all__ = ('HTL_TEA', 'create_tea',)
+__all__ = ('phos_rec_TEA','create_tea',)
 
 class CAPEXTableBuilder:
-    __slots__ = ('index', 'data')
+    __slots__ = ('index','data')
     
     def __init__(self):
         self.index = []
@@ -64,16 +44,16 @@ class CAPEXTableBuilder:
         )
 
 # note add_OPEX and other similar funcions do not work since TEA is from BioSTEAM, but not QSDsan
-class HTL_TEA(TEA):
+class phos_rec_TEA(TEA):
     
-    __slots__ = ('OSBL_units', 'warehouse', 'site_development',
-                 'additional_piping', 'proratable_costs', 'field_expenses',
-                 'construction', 'contingency', 'other_indirect_costs', 
-                 '_labor_cost', 'labor_burden', 'property_insurance',
-                 'maintenance', '_ISBL_DPI_cached', '_FCI_cached',
-                 '_utility_cost_cached', '_steam_power_depreciation',
+    __slots__ = ('OSBL_units','warehouse','site_development',
+                 'additional_piping','proratable_costs','field_expenses',
+                 'construction','contingency','other_indirect_costs', 
+                 '_labor_cost','labor_burden','property_insurance',
+                 'maintenance','_ISBL_DPI_cached','_FCI_cached',
+                 '_utility_cost_cached','_steam_power_depreciation',
                  '_steam_power_depreciation_array',
-                 'boiler_turbogenerator', 'land')
+                 'boiler_turbogenerator','land')
     
     def __init__(self, system, IRR, duration, depreciation, income_tax,
                  operating_days, lang_factor, construction_schedule,
@@ -202,10 +182,10 @@ def create_tea(system, OSBL_units=None, cls=None, **kwargs):
     except:
         BT = None
     
-    if cls is None: cls = HTL_TEA
+    if cls is None: cls = phos_rec_TEA
     
     kwargs_keys = list(kwargs.keys())
-    for i in ('IRR_value', 'income_tax_value', 'finance_interest_value', 'labor_cost_value'):
+    for i in ('IRR_value','income_tax_value','finance_interest_value','labor_cost_value'):
         if i in kwargs_keys: kwargs[i.rstrip('_value')] = kwargs.pop(i)
     default_kwargs = {
         'IRR': 0.03, # use 0%-3%-5% triangular distribution for waste management, and 5%-10%-15% triangular distribution for biofuel production
