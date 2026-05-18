@@ -93,9 +93,9 @@ then navigate into the repository (``cd EXPOsan``) and install the required pack
 
 Authors and Contributing
 ------------------------
-`Yalin Li <https://qsdsan.readthedocs.io/en/latest/authors/Yalin_Li.html>`_) is the currently maintainer of this repository and package. See `commit history <https://github.com/QSD-Group/EXPOsan/graphs/contributors>`_ for contributors who have contributed to the repository. 
+``EXPOsan`` and ``QSDsan`` are developed by the Quantitative Sustainable Design Group and the broader community. `Yalin Li <https://github.com/yalinli2>`_ is the currently maintainer. See `commit history <https://github.com/QSD-Group/EXPOsan/graphs/contributors>`_ for contributors who have contributed to the repository. 
 
-Please refer to the `Contributing to QSDsan <https://qsdsan.readthedocs.io/en/latest/CONTRIBUTING.html>`_ section of the documentation for instructions and guidelines.
+If you want to contribute to ``EXPOsan``, please refer to the `Contributing Guidelines <https://qsdsan.readthedocs.io/en/latest/CONTRIBUTING.html>`_ section of the documentation for instructions and guidelines.
 
 
 License information
