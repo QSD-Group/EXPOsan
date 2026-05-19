@@ -34,7 +34,7 @@ The ``EXPOsan`` package contains systems developed using the `QSDsan <https://gi
 
 Installation
 ------------
-The easiest way is through ``pip``, in your command-line interface (e.g., Anaconda prompt, terminal):
+``EXPOsan`` requires Python 3.12 or newer. The easiest way to install ``EXPOsan`` is through ``pip`` in a command-line interface (e.g., terminal, PowerShell, etc.):
 
 .. code:: bash
 
@@ -52,7 +52,7 @@ or for a specific version (replace X.X.X with the version number):
 
     pip install exposan==X.X.X
 
-If you want to install the latest GitHub version at the `main branch <https://github.com/qsd-group/exposan>`_ (note that you can still use the ``-U`` flag for upgrading):
+If you want to install the latest GitHub version at the `main branch <https://github.com/QSD-Group/EXPOsan>`_ (note that you can still use the ``-U`` flag for upgrading):
 
 .. code::
 
