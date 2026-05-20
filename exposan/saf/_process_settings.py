@@ -154,6 +154,12 @@ tea_kwargs = dict(
     )
 
 def _load_process_settings():
+    # Note: this mutates process-global biosteam state (bst.CE,
+    # bst.HeatUtility.heating_agents / cooling_agents prices, and
+    # bst.PowerUtility.price). Other systems sharing the same Python
+    # process will inherit these prices unless they call
+    # ``bst.HeatUtility.default_agents()`` and set their own values in
+    # their own ``_load_process_settings``.
     bst.CE = tea_indices['CEPCI'][cost_year]
     
     # Utilities, price from Table 17.1 in Seider et al., 2016$
