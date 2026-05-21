@@ -418,8 +418,13 @@ class UASB(AnaerobicCSTR):
         U = 1.2e-3      # kW/m2
         c = 4.186       # kJ/kg/C
         m = self._mixed.F_mass/3600 # kg/s
-        V, h, dia = UASB_sizing(self._mixed.F_vol*24, self.V_liq, self.V_gas,
-                                self.max_depth_to_diameter, 
+        # ``_mixed`` sums every inlet, including recycle loops (e.g. the
+        # degassing-membrane sludge return in UASB+M, which can be ~400x the
+        # external influent). HRT-based reactor sizing must use the external
+        # throughput only -- by convention ``ins[0]`` is the external inflow
+        # for all UASB configurations in this module.
+        V, h, dia = UASB_sizing(self.ins[0].F_vol*24, self.V_liq, self.V_gas,
+                                self.max_depth_to_diameter,
                                 self.design_upflow_velocity)
         S = pi*dia*h + pi*dia**2/2  # m2
         T_in = self._mixed.T
@@ -503,9 +508,11 @@ class UASB(AnaerobicCSTR):
     def _design(self):
         D = self.design_results
         den = self._density
-        Q = self._mixed.F_vol * 24
+        # See note in ``_correct_T``: use external throughput, not ``_mixed``,
+        # to avoid the recycle stream collapsing the apparent HRT.
+        Q = self.ins[0].F_vol * 24
         V, h, dia = UASB_sizing(Q, self.V_liq, self.V_gas,
-                                self.max_depth_to_diameter, 
+                                self.max_depth_to_diameter,
                                 self.design_upflow_velocity)
         D['Volume'] = V
         D['Height'] = h
