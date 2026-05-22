@@ -57,9 +57,9 @@ def create_hap_cmps(set_thermo=True, industrial_yeast_production=True):
     #                                 degradability='Slowly', f_Vmass_Totmass=0.872)
     
     Yeast = _yeast_cmp()
-    NH3 = Component('NH3', particle_size='Dissolved_gas', 
+    NH3 = Component('NH3', particle_size='Dissolved gas',
                     degradability='Undegradable', organic=False)
-    CO2 = Component('CO2', particle_size='Dissolved_gas', 
+    CO2 = Component('CO2', particle_size='Dissolved gas',
                     degradability='Undegradable', organic=False)
     HAP = Component('HAP', search_ID='hydroxyapatite', 
                     particle_size='Particulate', 

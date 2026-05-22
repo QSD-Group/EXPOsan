@@ -34,7 +34,7 @@ def create_components(set_thermo=True):
     SolubleCH4 = Component('SolubleCH4', search_ID='CH4', phase='l', particle_size='Soluble',
                            degradability='Slowly', organic=True)
 
-    SO2 = Component('SO2', phase='g', particle_size='Dissolved',
+    SO2 = Component('SO2', phase='g', particle_size='Dissolved gas',
                     degradability='Undegradable', organic=False)
 
     NaOH = Component('SodiumHydroxide', search_ID='SodiumHydroxide', formula='NaOH',
