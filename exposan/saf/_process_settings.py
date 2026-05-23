@@ -160,7 +160,7 @@ def _load_process_settings():
     # process will inherit these prices unless they call
     # ``bst.HeatUtility.default_agents()`` and set their own values in
     # their own ``_load_process_settings``.
-    bst.CE = tea_indices['CEPCI'][cost_year]
+    qs.CEPCI = tea_indices['CEPCI'][cost_year]
     
     # Utilities, price from Table 17.1 in Seider et al., 2016$
     # Use bst.HeatUtility.cooling_agents/heating_agents to see all the heat utilities

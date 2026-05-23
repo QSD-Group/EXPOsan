@@ -67,7 +67,7 @@ def _load_process_settings():
     # engineering-manual.pdf?iframe=true (accessed 2022-11-16)
     bst.HeatUtility.heating_agents.append(HTF)
 
-    bst.CE = qs.CEPCI_by_year[2020] # use 2020$ to match up with latest PNNL report
+    qs.CEPCI = qs.CEPCI_by_year[2020] # use 2020$ to match up with latest PNNL report
     
 # =============================================================================
 #     set utility prices
