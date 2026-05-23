@@ -38,7 +38,7 @@ __all__ = (
     )
 
 _psi_to_Pa = 6894.76
-CEPCI_by_year = qs.utils.tea_indices['CEPCI']
+CEPCI_by_year = qs.utils.tea_indices['CEPCI_by_year']
 
 BiocrudeSplitter = safu.BiocrudeSplitter
 CentralizedHTL = safu.HydrothermalLiquefaction

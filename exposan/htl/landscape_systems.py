@@ -59,7 +59,7 @@ GDPCTPI = {2005: 81.537,
            2023: 122.272,
            2024: 125.231}	
 
-labor_index = tea_indices['labor']
+labor_index = tea_indices['labor_by_year']
 
 # country-level data
 electricity_price = pd.read_excel(folder + '/data/electricity_price_2025-10-09.xlsx')
