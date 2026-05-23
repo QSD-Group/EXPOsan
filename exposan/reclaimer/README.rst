@@ -174,7 +174,7 @@ TEA and LCA are performed through :class:`TEA` and :class:`LCA` objects and name
 
     >>> # Check the TEA results for `sysA`
     >>> re.teaB.show() # doctest: +SKIP
-    SimpleTEA: sysB
+    TEA: sysB
     NPV  : -58,023 USD at 5.0% discount rate
     >>> # There are also handy functions to allow you quickly see important results
     >>> re.print_summaries(re.sysB) # doctest: +SKIP
