@@ -189,7 +189,7 @@ TEA and LCA are performed through :class:`TEA` and :class:`LCA` objects and name
 
     >>> # Check the TEA results for `sysA`
     >>> ng.teaA.show() # doctest: +SKIP
-    SimpleTEA: sysA
+    TEA: sysA
     NPV  : -169,400 USD at 5.0% discount rate
     >>> # There are also handy functions to allow you quickly see important results
     >>> ng.print_summaries(ng.sysA) # doctest: +SKIP

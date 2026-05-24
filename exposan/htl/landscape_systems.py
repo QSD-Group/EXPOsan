@@ -59,7 +59,7 @@ GDPCTPI = {2005: 81.537,
            2023: 122.272,
            2024: 125.231}	
 
-labor_index = tea_indices['labor']
+labor_index = tea_indices['labor_by_year']
 
 # country-level data
 electricity_price = pd.read_excel(folder + '/data/electricity_price_2025-10-09.xlsx')
@@ -139,7 +139,7 @@ def create_C1_system(country_code='USA', size=10, operation_hours=7884, LF_dista
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -308,7 +308,7 @@ def create_C2_system(country_code='USA', size=10, operation_hours=7884, LF_dista
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -487,7 +487,7 @@ def create_C3_system(country_code='USA', size=10, operation_hours=7884, LA_dista
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -693,7 +693,7 @@ def create_C4_system(country_code='USA', size=10, operation_hours=7884, LA_dista
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -899,7 +899,7 @@ def create_C5_system(country_code='USA', size=10, operation_hours=7884, LF_dista
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -1111,7 +1111,7 @@ def create_C6_system(country_code='USA', size=10, operation_hours=7884, LA_dista
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -1350,7 +1350,7 @@ def create_C7_system(country_code='USA', size=10, operation_hours=7884, FTE=0.4,
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -1536,7 +1536,7 @@ def create_C8_system(country_code='USA', size=10, operation_hours=7884, LF_dista
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -1708,7 +1708,7 @@ def create_C9_system(country_code='USA', size=10, operation_hours=7884, LA_dista
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -1907,7 +1907,7 @@ def create_C10_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -2116,7 +2116,7 @@ def create_C11_system(country_code='USA', size=10, operation_hours=7884, LF_dist
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -2331,7 +2331,7 @@ def create_C12_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -2573,7 +2573,7 @@ def create_C13_system(country_code='USA', size=10, operation_hours=7884, FTE=0.5
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -2762,7 +2762,7 @@ def create_C14_system(country_code='USA', size=10, operation_hours=7884, LF_dist
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -2976,7 +2976,7 @@ def create_C15_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -3217,7 +3217,7 @@ def create_C16_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -3468,7 +3468,7 @@ def create_C17_system(country_code='USA', size=10, operation_hours=7884, LF_dist
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -3688,7 +3688,7 @@ def create_C18_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -3935,7 +3935,7 @@ def create_C19_system(country_code='USA', size=10, operation_hours=7884, FTE=0.5
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -4129,7 +4129,7 @@ def create_C20_system(country_code='USA', size=10, operation_hours=7884, LF_dist
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -4353,7 +4353,7 @@ def create_C21_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -4604,7 +4604,7 @@ def create_C22_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -4865,7 +4865,7 @@ def create_C23_system(country_code='USA', size=10, operation_hours=7884, LF_dist
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -5095,7 +5095,7 @@ def create_C24_system(country_code='USA', size=10, operation_hours=7884, LA_dist
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -5352,7 +5352,7 @@ def create_C25_system(country_code='USA', size=10, operation_hours=7884, FTE=0.7
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -5556,7 +5556,7 @@ def create_T1_system(country_code='USA', size=10, operation_hours=7884, refinery
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -5860,7 +5860,7 @@ def create_T2_system(country_code='USA', size=10, operation_hours=7884, refinery
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -6224,7 +6224,7 @@ def create_T3_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tru
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -6405,7 +6405,7 @@ def create_T4_system(country_code='USA', size=10, operation_hours=7884, refinery
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -6744,7 +6744,7 @@ def create_T5_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tru
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -6985,7 +6985,7 @@ def create_T6_system(country_code='USA', size=10, operation_hours=7884, refinery
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -7291,7 +7291,7 @@ def create_T7_system(country_code='USA', size=10, operation_hours=7884, refinery
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -7657,7 +7657,7 @@ def create_T8_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tru
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -7841,7 +7841,7 @@ def create_T9_system(country_code='USA', size=10, operation_hours=7884, refinery
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -8183,7 +8183,7 @@ def create_T10_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tr
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -8427,7 +8427,7 @@ def create_T11_system(country_code='USA', size=10, operation_hours=7884, refiner
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -8736,7 +8736,7 @@ def create_T12_system(country_code='USA', size=10, operation_hours=7884, refiner
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -9105,7 +9105,7 @@ def create_T13_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tr
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -9343,7 +9343,7 @@ def create_T14_system(country_code='USA', size=10, operation_hours=7884, refiner
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     
@@ -9690,7 +9690,7 @@ def create_T15_system(country_code='USA', size=10, operation_hours=7884, FOAK=Tr
     
     country_PLI = PLI[PLI['country_code'] == country_code]['PLI'].iloc[0]
     
-    bst.CE = qs.CEPCI_by_year[2023]*country_PLI
+    qs.CEPCI = qs.CEPCI_by_year[2023]*country_PLI
     
     bst.PowerUtility.price = electricity_price[electricity_price['country_code'] == country_code]['US_cents_per_kWh'].iloc[0]/100
     

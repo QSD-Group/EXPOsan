@@ -91,7 +91,9 @@ def create_n2_system(flowsheet=None, default_init_conds=True):
         crossflow_air=cfa,
         )
     S1 = su.Splitter('S1', MBR-1, ('', 'WAS'), split=Q_intr/(Q_intr+Q_was))
-    HD1 = su.HydraulicDelay('HD1', ins=S1-0, outs=2-ASR)
+    # `t_delay` larger than the 1e-4 d default to relax integration stiffness;
+    # the steady state is independent of `t_delay`, so metrics are unaffected.
+    HD1 = su.HydraulicDelay('HD1', ins=S1-0, outs=2-ASR, t_delay=1e-4)
         
     MT = su.IdealClarifier(
         'MT', S1-1, outs=['', 'thickened_WAS'],
@@ -112,7 +114,7 @@ def create_n2_system(flowsheet=None, default_init_conds=True):
         solids_removal_efficiency=0.9
         )
     MX = su.Mixer('MX', ins=[MT-0, DW-0])
-    HD2 = su.HydraulicDelay('HD2', ins=MX-0, outs=3-ASR)
+    HD2 = su.HydraulicDelay('HD2', ins=MX-0, outs=3-ASR, t_delay=1e-4)
     
     if default_init_conds:
         ASR.set_init_conc(concentrations=asinit.iloc[:n_zones])

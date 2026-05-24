@@ -36,7 +36,7 @@ def create_components(set_thermo=True):
     NaClO = Component('NaClO', phase='l', particle_size = 'Soluble', 
                       degradability = 'Undegradable', organic=False)
     
-    Ecoli = Component('Ecoli', MW = 1, phase = 's', particle_size = 'Particluate', 
+    Ecoli = Component('Ecoli', MW = 1, phase = 's', particle_size = 'Particulate',
                       degradability = 'Undegradable', organic = False)
     
     add_V_from_rho(Ecoli, 500)

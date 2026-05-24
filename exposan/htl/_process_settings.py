@@ -28,6 +28,13 @@ import biosteam as bst, qsdsan as qs
 __all__ = ('_load_process_settings',)
 
 def _load_process_settings():
+    # Reset biosteam's heating/cooling agents to defaults before applying HTL
+    # settings. Other EXPOsan modules (e.g. saf, biobinder) mutate the
+    # process-global ``HeatUtility`` agents in their own ``_load_process_settings``
+    # and never restore them, which leaks utility prices across systems in the
+    # same Python process and silently changes HTL's TEA results.
+    bst.HeatUtility.default_agents()
+
 # =============================================================================
 #     add a heating agent
 # =============================================================================
@@ -60,7 +67,7 @@ def _load_process_settings():
     # engineering-manual.pdf?iframe=true (accessed 2022-11-16)
     bst.HeatUtility.heating_agents.append(HTF)
 
-    bst.CE = qs.CEPCI_by_year[2020] # use 2020$ to match up with latest PNNL report
+    qs.CEPCI = qs.CEPCI_by_year[2020] # use 2020$ to match up with latest PNNL report
     
 # =============================================================================
 #     set utility prices

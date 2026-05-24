@@ -112,7 +112,7 @@ def create_geospatial_system(test_run=False,
         getattr(qs.main_flowsheet.flowsheet, flowsheet_ID).clear()
         clear_lca_registries()
     
-    bst.CE = qs.CEPCI_by_year[2022]
+    qs.CEPCI = qs.CEPCI_by_year[2022]
     
     folder = os.path.dirname(__file__)
         

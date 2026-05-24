@@ -173,7 +173,7 @@ TEA and LCA are performed through :class:`biosteam.TEA` and :class:`LCA` objects
 
     >>> # Check the TEA results for `sysA`
     >>> bw.teaA.show() # doctest: +SKIP
-    SimpleTEA: sysA
+    TEA: sysA
     NPV  : -42,012,580 USD at 5.0% discount rate
     >>> # There are also handy functions to allow you quickly see important results
     >>> bw.print_summaries(bw.sysA) # doctest: +SKIP
@@ -186,7 +186,7 @@ TEA and LCA are performed through :class:`biosteam.TEA` and :class:`LCA` objects
     Total K recovery is 76.1%, 66.0% in liquid, 10.1% in solid, 0.0% in gas.
 
 
-    SimpleTEA: sysA
+    TEA: sysA
     NPV  : -42,012,580 USD at 5.0% discount rate
 
     Net cost: 14.2 USD/cap/yr.
