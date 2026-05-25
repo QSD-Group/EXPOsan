@@ -19,10 +19,6 @@ def test_biogenic_refinery():
     from numpy.testing import assert_allclose
     from exposan import biogenic_refinery as br
 
-    # Because of different CF settings for ImpactItem with the same ID
-    from qsdsan.utils import clear_lca_registries
-    clear_lca_registries()
-
     rtol = 0.01
 
     # # Without resource recovery

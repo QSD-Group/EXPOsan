@@ -15,7 +15,6 @@ for license details.
 __all__ = ('test_biobinder',)
 
 from numpy.testing import assert_allclose
-from qsdsan.utils import clear_lca_registries
 from exposan.biobinder import create_system
 
 EXPECTED = {
@@ -26,7 +25,6 @@ EXPECTED = {
 }
 
 def run_test(config_name, config_kwargs, rtol=0.15):
-    clear_lca_registries()
     sys = create_system(**config_kwargs)
     # sys.simulate()
 
