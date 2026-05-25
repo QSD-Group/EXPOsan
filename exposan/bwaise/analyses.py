@@ -70,13 +70,12 @@ def plot_minor_ticks_and_grid(ax, nx=None, ny=None,
 # Uncertainty analysis
 # =============================================================================
 
-# Save system, TEA, and LCA reports
-# note that system and TEA reports will be in one Excel file,
-# while LCA report will be in a standalone Excel file.
+# Save the unified system/TEA/LCA report.
+# `save_report` now writes the system, TEA, and LCA results to one Excel file,
+# so a separate LCA report is no longer needed.
 def save_reports(system):
     system.simulate()
     system.save_report(os.path.join(results_path, f'{system.ID}_report.xlsx'))
-    system.LCA.save_report(os.path.join(results_path, f'{system.ID}_lca.xlsx'))
 
 
 # Plot recoveries as 1D-density plots
