@@ -3,7 +3,9 @@
 Created on Fri Nov  4 19:45:06 2022
 
 This module is developed by:
+
     Ga-Yeong Kim <gayeong1225@gmail.com>
+
     Joy Zhang <joycheung1994@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.

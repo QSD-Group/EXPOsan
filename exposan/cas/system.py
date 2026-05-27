@@ -20,7 +20,7 @@ TODO:
 
 import qsdsan as qs
 from flexsolve import IQ_interpolation
-from qsdsan import WasteStream, sanunits as su
+from qsdsan import WasteStream, unit_operations as su
 from exposan.cas import create_components
 
 __all__ = ('create_system')

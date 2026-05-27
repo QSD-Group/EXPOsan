@@ -3,7 +3,7 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
-    
+
     Yalin Li <mailto.yalin.li@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
@@ -32,13 +32,12 @@ References
 
 '''
 
-# !!! Temporarily ignoring warnings
-import warnings
-warnings.filterwarnings('ignore')
+# import warnings
+# warnings.filterwarnings('ignore')
 
 import os, numpy as np, biosteam as bst, qsdsan as qs
 from biosteam import IsenthalpicValve
-from qsdsan import sanunits as qsu
+from qsdsan import unit_operations as qsu
 from qsdsan.utils import clear_lca_registries
 from exposan.htl import create_tea
 from exposan.saf import (
@@ -216,7 +215,7 @@ def create_system(
             try:
                 CrudeHeavyDis._run()
                 ratio = get_ratio()
-                assert(lb<=ratio<=ub)
+                assert(lb<=ratio<=ub) #!!! needs to be added back after fixing the convergence issue
                 CrudeHeavyDis._design()
                 CrudeHeavyDis._cost()
                 assert(all([v>0 for v in CrudeHeavyDis.baseline_purchase_costs.values()]))

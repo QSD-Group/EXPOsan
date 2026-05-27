@@ -3,7 +3,9 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
+
     Yalin Li <mailto.yalin.li@gmail.com>
+
     Joy Zhang <joycheung1994@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
@@ -12,7 +14,7 @@ for license details.
 '''
 
 import os, numpy as np, qsdsan as qs
-from qsdsan import sanunits as su, processes as pc, WasteStream, System
+from qsdsan import unit_operations as su, process_models as pc, WasteStream, System
 from qsdsan.utils import time_printer
 from exposan.asm import data_path, results_path
 
@@ -40,7 +42,7 @@ V_aer = 1333    # aerated zone tank volume [m3]
 # =============================================================================
 
 def create_system(flowsheet=None, process_model='ASM1', aerated=False,
-                  inf_kwargs={}, asm_kwargs={}, init_conds={}):
+                  inf_kwargs=None, asm_kwargs=None, init_conds=None):
     suffix = 'aer' if aerated else 'an'
     flowsheet = flowsheet or qs.Flowsheet(f'{process_model}_{suffix}')
     qs.main_flowsheet.set_flowsheet(flowsheet)

@@ -7,9 +7,9 @@ EXPOsan: Exposition of sanitation and resource recovery systems
 This module is developed by:
 
     Yalin Li <mailto.yalin.li@gmail.com>
-    
+
     Shion Watabe <shionwatabe@gmail.com>
-    
+
     Hannah Lohman <hlohman94@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
@@ -34,7 +34,7 @@ def create_components(set_thermo=True):
     SolubleCH4 = Component('SolubleCH4', search_ID='CH4', phase='l', particle_size='Soluble',
                            degradability='Slowly', organic=True)
 
-    SO2 = Component('SO2', phase='g', particle_size='Dissolved',
+    SO2 = Component('SO2', phase='g', particle_size='Dissolved gas',
                     degradability='Undegradable', organic=False)
 
     NaOH = Component('SodiumHydroxide', search_ID='SodiumHydroxide', formula='NaOH',

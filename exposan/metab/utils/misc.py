@@ -36,6 +36,9 @@ def _F_mass(ws):
 
 def _F_vol(ws):
     cmps = ws.components
-    mol = sum(ws.mass * cmps.i_mass / cmps.MW) * 1e3 # mol/hr
+    # Use chem_MW (formula MW). cmps.MW shifts when qsdsan compiles components
+    # with adjust_MW_to_measured_as=True (default since qsdsan bccb8329,
+    # 2025-01-28), which would double-count i_mass here.
+    mol = sum(ws.mass * cmps.i_mass / cmps.chem_MW) * 1e3 # mol/hr
     Q = mol * 8.314 * ws.T / ws.P  # m3/hr
     return Q

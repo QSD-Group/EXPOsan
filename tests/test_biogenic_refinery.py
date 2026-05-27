@@ -19,10 +19,6 @@ def test_biogenic_refinery():
     from numpy.testing import assert_allclose
     from exposan import biogenic_refinery as br
 
-    # Because of different CF settings for ImpactItem with the same ID
-    from qsdsan.utils import clear_lca_registries
-    clear_lca_registries()
-
     rtol = 0.01
 
     # # Without resource recovery
@@ -69,7 +65,7 @@ def test_biogenic_refinery():
     # Same results with/without resource recovery
     modelD2 = br.create_model('D')
     dfD2 = modelD2.metrics_at_baseline()
-    valuesD2 = [0.0, 0.0, 0.0, 10.017, 74.644, 0.125, 22.774, 0.525]
+    valuesD2 = [0.0, 0.0, 0.0, 10.219, 74.644, 0.125, 22.774, 0.525]
     assert_allclose(dfD2.values, valuesD2, rtol=rtol)
 
 

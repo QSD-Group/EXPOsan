@@ -14,17 +14,17 @@ EXPOsan: EXPOsition of Sanitation and Resource Recovery Systems
 .. image:: https://img.shields.io/pypi/v/exposan?style=flat&color=blue
    :target: https://pypi.org/project/exposan
 
+.. Zenodo release DOI
+.. image:: https://zenodo.org/badge/doi/10.5281/zenodo.20256578.svg
+   :target: https://doi.org/10.5281/zenodo.20256578
+
 .. GitHub test of the main branch
 .. image:: https://github.com/QSD-Group/EXPOsan/actions/workflows/build-latest.yml/badge.svg?branch=main
    :target: https://github.com/QSD-Group/EXPOsan/actions/workflows/build-latest.yml
 
-.. Code of Conduct
-.. image:: https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg
-   :target: https://qsdsan.readthedocs.io/en/latest/CODE_OF_CONDUCT.html
-
-.. AppVeyor test of the stable branch, not in active use
-   image:: https://img.shields.io/appveyor/build/yalinli2/EXPOsan/main?label=build-stable&logo=appveyor
-   :target: https://github.com/QSD-Group/EXPOsan/tree/stable
+.. QSDsan documentation
+.. image:: https://readthedocs.org/projects/qsdsan/badge/?version=latest
+   :target: https://qsdsan.readthedocs.io/en/latest
 
 
 What is ``EXPOsan``?
@@ -34,7 +34,7 @@ The ``EXPOsan`` package contains systems developed using the `QSDsan <https://gi
 
 Installation
 ------------
-The easiest way is through ``pip``, in your command-line interface (e.g., Anaconda prompt, terminal):
+``EXPOsan`` requires Python 3.12 or newer. The easiest way to install ``EXPOsan`` is through ``pip`` in a command-line interface (e.g., terminal, PowerShell, etc.):
 
 .. code:: bash
 
@@ -52,18 +52,11 @@ or for a specific version (replace X.X.X with the version number):
 
     pip install exposan==X.X.X
 
-If you want to install the latest GitHub version at the `main branch <https://github.com/qsd-group/exposan>`_ (note that you can still use the ``-U`` flag for upgrading):
+If you want to install the latest GitHub version at the `main branch <https://github.com/QSD-Group/EXPOsan>`_ (note that you can still use the ``-U`` flag for upgrading):
 
 .. code::
 
     pip install git+https://github.com/QSD-Group/EXPOsan.git
-
-
-.. note::
-
-   If this doesn't give you the newest ``exposan``, try ``pip uninstall exposan`` first.
-
-   Also, you may need to update some ``exposan``'s dependency package (e.g., ' ``qsdsan``, ``biosteam``, ``thermosteam``) versions in order for the new ``exposan`` to run.
 
 
 or other fork and/or branch (replace ``<USERNAME_OF_THE_FORK>`` and ``<BRANCH_NAME>`` with the desired fork and branch names)
@@ -86,7 +79,7 @@ then navigate into the repository (``cd EXPOsan``) and install the required pack
 
 .. code:: bash
 
-    pip install –r requirements.txt
+    pip install -e ".[dev]"
 
 
 .. note::
@@ -100,14 +93,9 @@ then navigate into the repository (``cd EXPOsan``) and install the required pack
 
 Authors and Contributing
 ------------------------
-``EXPOsan`` is developed by the Quantitative Sustainable Design Group led by members of the `Guest Group <http://engineeringforsustainability.com/>`_ and `other developers <https://github.com/QSD-Group/EXPOsan/graphs/contributors>`_ that have contributed to the repository. `Yalin Li <https://qsdsan.readthedocs.io/en/latest/authors/Yalin_Li.html>`_) is the currently maintainer of this repository and package.
+``EXPOsan`` and ``QSDsan`` are developed by the Quantitative Sustainable Design Group and the broader community. `Yalin Li <https://github.com/yalinli2>`_ is the currently maintainer. See `commit history <https://github.com/QSD-Group/EXPOsan/graphs/contributors>`_ for contributors who have contributed to the repository. 
 
-Please refer to the `Contributing to QSDsan <https://qsdsan.readthedocs.io/en/latest/CONTRIBUTING.html>`_ section of the documentation for instructions and guidelines. If you find yourself struggle with the installation/setting up the environment, this extended version of `installation instructions <https://qsdsan.readthedocs.io/en/latest/tutorials/_installation.html>`_ might be helpful to you.
-
-
-Stay Connected
---------------
-If you would like to receive exciting news related to the QSDsan platform, you can subscribe to email updates using `this form <https://groups.webservices.illinois.edu/subscribe/154591>`_ (don't worry, you will be able to unsubscribe :)). Thank you in advance for your interest!
+If you want to contribute to ``EXPOsan``, please refer to the `Contributing Guidelines <https://qsdsan.readthedocs.io/en/latest/CONTRIBUTING.html>`_ section of the documentation for instructions and guidelines.
 
 
 License information

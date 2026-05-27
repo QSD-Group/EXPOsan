@@ -20,7 +20,7 @@ from math import log
 from sklearn.linear_model import LinearRegression as LR
 from chaospy import distributions as shape
 from thermosteam.functional import rho_to_V
-from qsdsan import ImpactItem, sanunits as su
+from qsdsan import ImpactItem, unit_operations as su
 from qsdsan.utils import (
     AttrSetter,
     DictAttrSetter,
@@ -48,7 +48,7 @@ __all__ = (
     )
 
 
-def _init_modules(module_name, include_data_path=False, include_figures_path=False):
+def _init_modules(module_name, include_data_path=False, include_figures_path=False, create=False):
     module_path = os.path.join(es_path, module_name)
     dirnames = ['results']
     if include_data_path: dirnames.insert(0, 'data')
@@ -57,7 +57,7 @@ def _init_modules(module_name, include_data_path=False, include_figures_path=Fal
     for dirname in dirnames:
         p = os.path.join(module_path, dirname)
         paths.append(p)
-        if not os.path.isdir(p): os.mkdir(p)
+        if create and not os.path.isdir(p): os.mkdir(p)
     return paths
 
 
@@ -236,8 +236,9 @@ def get_generic_scaled_capital(tea, percent_CAPEX_to_scale, number_of_units,
     learning_curve_percent : float
         The percent factor of the learning curve.
     '''
-    CAPEX_to_scale = tea.annualized_CAPEX * percent_CAPEX_to_scale
-    CAPEX_not_scaled = tea.annualized_CAPEX - CAPEX_to_scale
+    annualized_capital = tea.annualized_equipment_cost
+    CAPEX_to_scale = annualized_capital * percent_CAPEX_to_scale
+    CAPEX_not_scaled = annualized_capital - CAPEX_to_scale
     scaled_limited = CAPEX_to_scale * percent_limit
     b = log(learning_curve_percent)/log(2)
     scaled_CAPEX_annualized  = (CAPEX_to_scale - scaled_limited)*number_of_units**b + scaled_limited

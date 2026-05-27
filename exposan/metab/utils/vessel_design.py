@@ -3,7 +3,7 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
-    
+
     Joy Zhang <joycheung1994@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
@@ -14,6 +14,7 @@ for license details.
 from qsdsan.utils import auom
 from biosteam.units.design_tools.flash_vessel_design import compute_vessel_weight_and_wall_thickness
 from math import pi
+from warnings import warn
 
 __all__ = ('heat_transfer_U', 'stainless_steel_wall_thickness', 'UASB_sizing')
 
@@ -86,7 +87,7 @@ def stainless_steel_wall_thickness(P, D, h):
     return compute_vessel_weight_and_wall_thickness(P, D, h, _rho_ssteel)[1] * _in2m
 
 # def UASB_sizing(Q, Vliq, Vgas, max_h2d, upflow_velocity, pipe_velocity):
-def UASB_sizing(Q, Vliq, Vgas, max_h2d, upflow_velocity):
+def UASB_sizing(Q, Vliq, Vgas, max_h2d, upflow_velocity, min_h2d=1):
     '''
     Determine aspect ratio of the reactor based on design upflow velocity.
 
@@ -102,6 +103,8 @@ def UASB_sizing(Q, Vliq, Vgas, max_h2d, upflow_velocity):
         Maximum liquid depth to diameter ratio.
     upflow_velocity : float
         Design upflow velocity [m/h].
+    min_h2d : float
+        Minimum liquid depth to diameter ratio.
 
     Returns
     -------
@@ -123,6 +126,12 @@ def UASB_sizing(Q, Vliq, Vgas, max_h2d, upflow_velocity):
         h = hrt * upflow_velocity*24
         dia = (4*Q/pi/(upflow_velocity*24))**(1/2)
         # velocity_head = 0.
+    if h/dia < min_h2d:
+        dia = (4*Vliq/pi/min_h2d)**(1/3)
+        h = dia * min_h2d
+        warn(f'upflow velocity {Q/(pi*dia**2/4):.2f} m/h exceeds design maximum velocity {upflow_velocity} m/h '
+             'at minimum depth-to-diameter ratio')
+        
     H = h*(1+Vgas/Vliq)
     Vtot = Vgas + Vliq
     return Vtot, H, dia
