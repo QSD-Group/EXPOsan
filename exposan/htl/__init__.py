@@ -4,11 +4,11 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
-    
+
     Jianan Feng <jiananf2@illinois.edu>
-    
+
     Yalin Li <mailto.yalin.li@gmail.com>
-    
+
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
@@ -21,7 +21,9 @@ from datetime import date
 
 htl_path = os.path.dirname(__file__)
 module = os.path.split(htl_path)[-1]
-data_path, results_path = _init_modules(module, include_data_path=True)
+data_path, results_path, figures_path = \
+    _init_modules(module, include_data_path=True, include_figures_path=True,
+                  create=True)
 
 # %%
 
@@ -116,6 +118,7 @@ __all__ = (
     'htl_path',
     'data_path',
     'results_path',
+    'figures_path',
     'simulate_and_save',
     *_components.__all__,
     *_process_settings.__all__,

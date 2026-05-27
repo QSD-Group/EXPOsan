@@ -213,10 +213,10 @@ def _load_lca_data(reload=False):
         Whether to force reload LCA data.
     '''
     global _impact_item_loaded
-    if not _impact_item_loaded or reload:
-        indicator_path = os.path.join(data_path, 'impact_indicators.csv')
-        qs.ImpactIndicator.load_from_file(indicator_path)
+    indicator_path = os.path.join(data_path, 'impact_indicators.csv')
+    qs.ImpactIndicator.load_from_file(indicator_path)
 
+    if not _impact_item_loaded or reload:
         item_path = os.path.join(data_path, 'impact_items.xlsx')
         qs.ImpactItem.load_from_file(item_path)
         
@@ -480,7 +480,7 @@ percent_limit = 0.01
 learning_curve_percent = 0.9
 def get_scaled_capital(tea):
     if tea.system.ID[-1] == 'D':
-        new_CAPEX_annualized = tea.annualized_CAPEX
+        new_CAPEX_annualized = tea.annualized_equipment_cost
     else:
         new_CAPEX_annualized = get_generic_scaled_capital(
             tea=tea,

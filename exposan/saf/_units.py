@@ -7,7 +7,7 @@ EXPOsan: Exposition of sanitation and resource recovery systems
 This module is developed by:
 
     Yalin Li <mailto.yalin.li@gmail.com>
-    
+
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
@@ -17,7 +17,7 @@ from biosteam import Facility, ProcessWaterCenter as PWC
 from biosteam.units.decorators import cost
 from biosteam.units.design_tools import CEPCI_by_year
 from qsdsan import SanUnit, Stream, WasteStream
-from qsdsan.sanunits import Reactor, IsothermalCompressor, HXutility, HXprocess, MixTank
+from qsdsan.unit_operations import Reactor, IsothermalCompressor, HXutility, HXprocess, MixTank
 
 __all__ = (
     # To be moved to QSDsan
@@ -58,9 +58,9 @@ class KnockOutDrum(Reactor):
     
     See Also
     --------
-    :class:`qsdsan.sanunits.HydrothermalLiquefaction`
+    :class:`qsdsan.unit_operations.HydrothermalLiquefaction`
     
-    :class:`qsdsan.sanunits.Reactor`
+    :class:`qsdsan.unit_operations.Reactor`
     
     :class:`biosteam.units.design_tools.PressureVessel`
     
@@ -180,9 +180,9 @@ class HydrothermalLiquefaction(Reactor):
 
     See Also
     --------
-    :class:`qsdsan.sanunits.KnockOutDrum`
+    :class:`qsdsan.unit_operations.KnockOutDrum`
     
-    :class:`qsdsan.sanunits.Reactor`
+    :class:`qsdsan.unit_operations.Reactor`
     
     :class:`biosteam.units.design_tools.PressureVessel`
 
@@ -542,7 +542,7 @@ class Hydroprocessing(Reactor):
         
     See Also
     --------    
-    :class:`qsdsan.sanunits.Reactor`
+    :class:`qsdsan.unit_operations.Reactor`
     
     :class:`biosteam.units.design_tools.PressureVessel`
         

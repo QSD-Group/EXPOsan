@@ -6,7 +6,7 @@ EXPOsan: Exposition of sanitation and resource recovery systems
 This module is developed by:
 
     Jianan Feng <jiananf2@illinois.edu>
-    
+
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
@@ -29,7 +29,8 @@ from math import floor
 from matplotlib.mathtext import _mathtext as mathtext
 from matplotlib.patches import Rectangle
 from colorpalette import Color
-from exposan.htl import create_geospatial_system, create_geospatial_model
+from exposan.htl import create_geospatial_system, create_geospatial_model, figures_path
+from exposan.htl._data import get_htl_data_path
 from qsdsan.utils import auom
 from datetime import date
 from warnings import filterwarnings
@@ -72,7 +73,7 @@ _MMgal_to_L = auom('gal').conversion_factor('L')*1000000
 _oil_barrel_to_L = auom('oil_barrel').conversion_factor('L')
 _ton_to_kg = auom('ton').conversion_factor('kg')
 
-WRRF = pd.read_excel(folder + '/data/HTL_geospatial_input_2025-07-14.xlsx')
+WRRF = pd.read_excel(get_htl_data_path('HTL_geospatial_input_2025-07-14.xlsx'))
 
 assert WRRF.duplicated(subset='CWNS_NUM').sum() == 0
 
@@ -145,7 +146,7 @@ refinery = gpd.GeoDataFrame(refinery, crs='EPSG:4269',
                                                         y=refinery.Latitude))
 
 # coal-based power plant
-coal_pp = pd.read_csv(folder + '/data/Power_Plants.csv')
+coal_pp = pd.read_csv(get_htl_data_path('Power_Plants.csv'))
 coal_pp = coal_pp[coal_pp['PrimSource'] == 'coal']
 coal_pp = coal_pp[coal_pp['Coal_MW'] > 0]
 coal_pp = gpd.GeoDataFrame(coal_pp, crs='EPSG:4269',
@@ -237,7 +238,7 @@ US = US.to_crs(crs='EPSG:3857')
 US_county = US_county.to_crs(crs='EPSG:3857')
 NREL_area = NREL_area.to_crs(crs='EPSG:3857')
 
-US_county_labor_cost = gpd.read_file(folder + '/data/county_labor_cost_2022_processed.geojson')
+US_county_labor_cost = gpd.read_file(get_htl_data_path('county_labor_cost_2022_processed.geojson'))
 
 WRRF = WRRF.sjoin_nearest(US_county_labor_cost)
 WRRF = WRRF.drop(['index_right','STATE_right'], axis=1)
@@ -265,8 +266,8 @@ WRRF = WRRF.rename({'FACILITY':'facility',
 refinery = gpd.sjoin(refinery, US)
 refinery = refinery.drop(['index_right'], axis=1)
 
-farm_fertilizer = pd.read_excel(folder + '/data/N-P_from_fertilizer_1950-2017-july23-2020.xlsx','farm')
-nonfarm_fertilizer = pd.read_excel(folder + '/data/N-P_from_fertilizer_1950-2017-july23-2020.xlsx','nonfarm')
+farm_fertilizer = pd.read_excel(get_htl_data_path('N-P_from_fertilizer_1950-2017-july23-2020.xlsx'),'farm')
+nonfarm_fertilizer = pd.read_excel(get_htl_data_path('N-P_from_fertilizer_1950-2017-july23-2020.xlsx'),'nonfarm')
 
 N_farm = farm_fertilizer[['CountyName','State','farmfertN-kg-2017']]
 N_nonfarm = nonfarm_fertilizer[['CountyName','State','nonffertN-kg-2017']]
@@ -289,7 +290,7 @@ elec_GHG.drop_duplicates(inplace=True)
 elec_GHG = elec_GHG.merge(NREL_area, how='right', left_on='balancing_area', right_on='PCA_REG')
 elec_GHG = gpd.GeoDataFrame(elec_GHG)
 
-US_county_labor_cost = gpd.read_file(folder + '/data/county_labor_cost_2022_processed.geojson')
+US_county_labor_cost = gpd.read_file(get_htl_data_path('county_labor_cost_2022_processed.geojson'))
 
 income_tax = pd.read_excel(folder + '/data/state_corporate_income_tax_2022.xlsx', 'tax_2022')
 income_tax = income_tax.merge(US, how='right', left_on='name', right_on='NAME')
@@ -972,7 +973,7 @@ WRRF_input['coal_pp_location'] = list(zip(WRRF_input.Latitude_right, WRRF_input.
 # distance_inventory.to_excel(folder + f'/data/distance_inventory_{date.today()}.xlsx')
 # =============================================================================
 
-distance_inventory = pd.read_excel(folder + '/data/distance_inventory_2025-07-14.xlsx')
+distance_inventory = pd.read_excel(get_htl_data_path('distance_inventory_2025-07-14.xlsx'))
 
 # match using WRRF ID ('CWNS') and oil refinery ID ('Site ID')
 WRRF_input = WRRF_input.merge(distance_inventory, how='left', on=['CWNS','Site ID','Plant_Code'])
@@ -1032,7 +1033,7 @@ else:
 #%% input data refinement
 
 # !!! update the input file if necessary
-WRRF_input = pd.read_excel(folder + '/data/HTL_geospatial_model_input_including_inaccessible_WRRFs_2025-07-14.xlsx')
+WRRF_input = pd.read_excel(get_htl_data_path('HTL_geospatial_model_input_including_inaccessible_WRRFs_2025-07-14.xlsx'))
 
 # WRRFs cannot reach an oil refinery or a coal-based power plant are the same
 assert (WRRF_input['WRRF_refinery_real_distance_km'].isna() != WRRF_input['WRRF_coal_pp_real_distance_km'].isna()).sum() == 0
@@ -1058,7 +1059,7 @@ WRRF_input.to_excel(folder + f'/data/HTL_geospatial_model_input_{date.today()}.x
 #%% biocrude and hydrochar transporation distance box plot
 
 # !!! update the input file if necessary
-WRRF_input = pd.read_excel(folder + '/data/HTL_geospatial_model_input_2025-07-14.xlsx')
+WRRF_input = pd.read_excel(get_htl_data_path('HTL_geospatial_model_input_2025-07-14.xlsx'))
 
 plt.rcParams['axes.linewidth'] = 3
 plt.rcParams['hatch.linewidth'] = 3
@@ -1130,12 +1131,12 @@ ax_right.scatter(x=2,
                  edgecolor='k',
                  zorder=2)
     
-# fig.savefig('/Users/jiananfeng/Desktop/distance.png', transparent=True, bbox_inches='tight')
+# fig.savefig(os.path.join(figures_path, 'distance.png'), transparent=True, bbox_inches='tight')
 
 #%% biocrude and hydrochar transporation distance box plot (per region)
 
 # !!! update the input file if necessary
-WRRF_input = pd.read_excel(folder + '/data/HTL_geospatial_model_input_2025-07-14.xlsx')
+WRRF_input = pd.read_excel(get_htl_data_path('HTL_geospatial_model_input_2025-07-14.xlsx'))
 
 # results grouped by different regions (not by PADD regions, just they are the same as PADD regions)
 WRRF_input.loc[WRRF_input['state'].isin(['CT','DC','DE','FL','GA','MA','MD','ME','NC','NH','NJ','NY','PA','RI','SC','VA','VT','WV']),'WRRF_PADD'] = 1
@@ -1237,7 +1238,7 @@ add_region(4, 'West Coast', y)
 #%% biocrude and hydrochar transporation distance box plot (national + per region)
 
 # !!! update the input file if necessary
-WRRF_input = pd.read_excel(folder + '/data/HTL_geospatial_model_input_2025-07-14.xlsx')
+WRRF_input = pd.read_excel(get_htl_data_path('HTL_geospatial_model_input_2025-07-14.xlsx'))
 
 # results grouped by different regions (not by PADD regions, just they are the same as PADD regions)
 WRRF_input.loc[WRRF_input['state'].isin(['CT','DC','DE','FL','GA','MA','MD','ME','NC','NH','NJ','NY','PA','RI','SC','VA','VT','WV']),'WRRF_PADD'] = 1
@@ -1369,7 +1370,7 @@ add_region(5, 'West Coast', y)
 #%% WRRFs GHG map
 
 # !!! update the input file if necessary
-WRRF_input = pd.read_excel(folder + '/data/HTL_geospatial_model_input_2025-07-14.xlsx')
+WRRF_input = pd.read_excel(get_htl_data_path('HTL_geospatial_model_input_2025-07-14.xlsx'))
 
 WRRF_input = WRRF_input.sort_values(by='total_emission', ascending=False)
 
@@ -1402,7 +1403,7 @@ ax.set_axis_off()
 #%% WRRFs sludge management GHG map
 
 # !!! update the input file if necessary
-WRRF_input = pd.read_excel(folder + '/data/HTL_geospatial_model_input_2025-07-14.xlsx')
+WRRF_input = pd.read_excel(get_htl_data_path('HTL_geospatial_model_input_2025-07-14.xlsx'))
 
 WRRF_input = WRRF_input.sort_values(by='biosolids_emission', ascending=False)
 
@@ -1435,7 +1436,7 @@ ax.set_axis_off()
 #%% cumulative WRRFs capacity vs WRRF and oil refinery distances (data processing)
 
 # !!! update the input file if necessary
-WRRF_input = pd.read_excel(folder + '/data/HTL_geospatial_model_input_2025-07-14.xlsx')
+WRRF_input = pd.read_excel(get_htl_data_path('HTL_geospatial_model_input_2025-07-14.xlsx'))
 
 result = WRRF_input[['Site ID']].drop_duplicates()
 
@@ -1593,7 +1594,7 @@ ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, l
 #%% cumulative WRRFs capacity vs WRRF and coal-based power plant distances (data processing)
 
 # !!! update the input file if necessary
-WRRF_input = pd.read_excel(folder + '/data/HTL_geospatial_model_input_2025-07-14.xlsx')
+WRRF_input = pd.read_excel(get_htl_data_path('HTL_geospatial_model_input_2025-07-14.xlsx'))
 
 result = WRRF_input[['Plant_Code']].drop_duplicates()
 
@@ -1755,7 +1756,7 @@ ax_top.tick_params(direction='in', length=10, width=3, bottom=False, top=True, l
 filterwarnings('ignore')
 
 # !!! update the input file if necessary
-WRRF_input = pd.read_excel(folder + '/data/HTL_geospatial_model_input_2025-07-14.xlsx')
+WRRF_input = pd.read_excel(get_htl_data_path('HTL_geospatial_model_input_2025-07-14.xlsx'))
 
 # if just want to see the two plants in Urbana-Champaign:
 # WRRF_input = WRRF_input[WRRF_input['CWNS'].isin([17000112001, 17000112002])]
@@ -1890,7 +1891,7 @@ else:
 #%% merge the results and the input
 
 # !!! update the input file if necessary
-input_data = pd.read_excel(folder + '/data/HTL_geospatial_model_input_2025-07-14.xlsx')
+input_data = pd.read_excel(get_htl_data_path('HTL_geospatial_model_input_2025-07-14.xlsx'))
 
 # !!! update these files if necessary
 output_result_hydrochar_1 = pd.read_excel(folder + '/results/geospatial/baseline/baseline_hydrochar_2025-07-22_4999.xlsx')
@@ -2193,7 +2194,7 @@ ax_right.scatter(x=2,
 # for flier in bp['fliers']:
 #     flier.set(marker='o', markersize=7, markerfacecolor='k', markeredgewidth=1.5)
     
-# fig.savefig('/Users/jiananfeng/Desktop/distance.png', transparent=True, bbox_inches='tight')
+# fig.savefig(os.path.join(figures_path, 'distance.png'), transparent=True, bbox_inches='tight')
 
 #%% GHG reduction zoom-in boxplot
 
@@ -2246,7 +2247,7 @@ ax_right.scatter(x=1,
 # for flier in bp['fliers']:
 #     flier.set(marker='o', markersize=7, markerfacecolor='k', markeredgewidth=1.5)
     
-# fig.savefig('/Users/jiananfeng/Desktop/distance.png', transparent=True, bbox_inches='tight')
+# fig.savefig(os.path.join(figures_path, 'distance.png'), transparent=True, bbox_inches='tight')
 
 #%% cost vs sludge amount
 
@@ -3249,7 +3250,7 @@ biocrude_transportation.reset_index(names='CWNS', inplace=True)
 biocrude_transportation = biocrude_transportation[['CWNS','5th','50th','95th']]
 
 # do not need to remove 48008015003 since it is accessible but just cannot independently deploy HTL-based systems
-WRRF_all = pd.read_excel(folder + '/data/HTL_geospatial_model_input_2025-07-14.xlsx')
+WRRF_all = pd.read_excel(get_htl_data_path('HTL_geospatial_model_input_2025-07-14.xlsx'))
 
 biocrude_transportation = biocrude_transportation.merge(WRRF_all, how='left', on='CWNS')
 
@@ -3940,12 +3941,12 @@ def plot_sensitivity(data_type, figure_label=False):
         # !!! this may need change if rerunning analysis
         if data_type == 'cost_spearman_r':
             if title in ['sludge_dw_ash','sludge_afdw_protein','biocrude_price','IRR']:
-                fig.savefig(f'/Users/jiananfeng/Desktop/{data_type}_{i}.png', transparent=True, bbox_inches='tight')
+                fig.savefig(os.path.join(figures_path, f'{data_type}_{i}.png'), transparent=True, bbox_inches='tight')
         
         # !!! this may need change if rerunning analysis
         if data_type == 'CI_spearman_r':
             if title in ['sludge_dw_ash','sludge_afdw_protein','protein_2_N','catalyst_lifetime','gas_C_2_total_C','natural_gas_global_warming','UAN_global_warming']:
-                fig.savefig(f'/Users/jiananfeng/Desktop/{data_type}_{i}.png', transparent=True, bbox_inches='tight')
+                fig.savefig(os.path.join(figures_path, f'{data_type}_{i}.png'), transparent=True, bbox_inches='tight')
     
     return integrated_data
 
@@ -4007,7 +4008,7 @@ filterwarnings('ignore')
 
 # !!! update the input file if necessary
 # do not need to remove 48008015003 since it is accessible but just cannot independently deploy HTL-based systems
-WRRF_input = pd.read_excel(folder + '/data/HTL_geospatial_model_input_2025-07-14.xlsx')
+WRRF_input = pd.read_excel(get_htl_data_path('HTL_geospatial_model_input_2025-07-14.xlsx'))
 
 print(len(WRRF_input))
 
@@ -4345,7 +4346,7 @@ filterwarnings('ignore')
 
 # !!! update the input file if necessary
 # do not need to remove 48008015003 since it is accessible but just cannot independently deploy HTL-based systems
-WRRF_input = pd.read_excel(folder + '/data/HTL_geospatial_model_input_2025-07-14.xlsx')
+WRRF_input = pd.read_excel(get_htl_data_path('HTL_geospatial_model_input_2025-07-14.xlsx'))
 
 print(len(WRRF_input))
 
@@ -4582,7 +4583,7 @@ plot_heat_map('UAN', 20.0, 'decarbonization_50th')
 #%% hub coverage (data preparation for coverage visualization)
 
 # do not need to remove 48008015003 since it is accessible but just cannot independently deploy HTL-based systems
-WRRF_all = pd.read_excel(folder + '/data/HTL_geospatial_model_input_2025-07-14.xlsx')
+WRRF_all = pd.read_excel(get_htl_data_path('HTL_geospatial_model_input_2025-07-14.xlsx'))
 
 distance_x = []
 coverage_y = []
@@ -4754,7 +4755,7 @@ print(max(coverage_y))
 #%% hub coverage (data preparation for map visualization)
 
 # do not need to remove 48008015003 since it is accessible but just cannot independently deploy HTL-based systems
-WRRF_all = pd.read_excel(folder + '/data/HTL_geospatial_model_input_2025-07-14.xlsx')
+WRRF_all = pd.read_excel(get_htl_data_path('HTL_geospatial_model_input_2025-07-14.xlsx'))
 
 # !!! update distance_threshold_km if necessary
 # max distance to consider WRRFs as neighbors
@@ -5233,7 +5234,7 @@ qualified_facility_biocrude_max.rename(columns={0:'BPD'}, inplace=True)
 
 # !!! update the input file if necessary
 # do not need to remove 48008015003 since it is accessible but just cannot independently deploy HTL-based systems
-WRRF_input = pd.read_excel(folder + '/data/HTL_geospatial_model_input_2025-07-14.xlsx')
+WRRF_input = pd.read_excel(get_htl_data_path('HTL_geospatial_model_input_2025-07-14.xlsx'))
 WRRF_input = WRRF_input[['CWNS','Site ID','capacity']]
 
 BPD_capacity = qualified_facility_biocrude_max.merge(WRRF_input, how='left', on='CWNS')

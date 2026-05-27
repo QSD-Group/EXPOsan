@@ -3,7 +3,7 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
-    
+
     Joy Zhang <joycheung1994@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
@@ -17,9 +17,6 @@ folder = os.path.dirname(__file__)
 data_path = os.path.join(folder, 'data')
 results_path = os.path.join(folder, 'results')
 figures_path = os.path.join(folder, 'figures')
-# To save simulation results and generated figures
-if not os.path.isdir(results_path): os.mkdir(results_path)
-if not os.path.isdir(figures_path): os.mkdir(figures_path)
 
 # from qsdsan import (
 #     ImpactIndicator as IInd, 
@@ -114,7 +111,7 @@ opt_underflows = dict(
     )
 
 # %%
-from qsdsan.processes import create_masm2d_inf
+from qsdsan.process_models import create_masm2d_inf
 def default_rww(Q=10, T=20):
     rww = create_masm2d_inf(
         'RWW', 10, 'MGD', T=T+273.15, 

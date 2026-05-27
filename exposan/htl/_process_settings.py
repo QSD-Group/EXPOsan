@@ -9,13 +9,15 @@ This module is developed by:
     Jianan Feng <jiananf2@illinois.edu>
 
     Yalin Li <mailto.yalin.li@gmail.com>
-    
-References:
-    
-(1) Lang, C.; Lee, B. Heat Transfer Fluid Life Time Analysis of Diphenyl
+
+    References:
+
+    (1) Lang, C.; Lee, B. Heat Transfer Fluid Life Time Analysis of Diphenyl
+
     Oxide/Biphenyl Grades for Concentrated Solar Power Plants. Energy Procedia
+
     2015, 69, 672–680. https://doi.org/10.1016/j.egypro.2015.03.077.
-    
+
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
@@ -26,6 +28,13 @@ import biosteam as bst, qsdsan as qs
 __all__ = ('_load_process_settings',)
 
 def _load_process_settings():
+    # Reset biosteam's heating/cooling agents to defaults before applying HTL
+    # settings. Other EXPOsan modules (e.g. saf, biobinder) mutate the
+    # process-global ``HeatUtility`` agents in their own ``_load_process_settings``
+    # and never restore them, which leaks utility prices across systems in the
+    # same Python process and silently changes HTL's TEA results.
+    bst.HeatUtility.default_agents()
+
 # =============================================================================
 #     add a heating agent
 # =============================================================================
@@ -58,7 +67,7 @@ def _load_process_settings():
     # engineering-manual.pdf?iframe=true (accessed 2022-11-16)
     bst.HeatUtility.heating_agents.append(HTF)
 
-    bst.CE = qs.CEPCI_by_year[2020] # use 2020$ to match up with latest PNNL report
+    qs.CEPCI = qs.CEPCI_by_year[2020] # use 2020$ to match up with latest PNNL report
     
 # =============================================================================
 #     set utility prices

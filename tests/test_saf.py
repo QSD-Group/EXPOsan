@@ -19,9 +19,6 @@ def test_saf():
     from numpy.testing import assert_allclose
     from exposan import saf
 
-    # Because of different CF settings for ImpactItem with the same ID
-    from qsdsan.utils import clear_lca_registries
-    clear_lca_registries()
     rtol = 0.15
     
     # saf.load(configuration='baseline')

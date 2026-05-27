@@ -9,7 +9,7 @@ This module is developed by:
     Jianan Feng <jiananf2@illinois.edu>
 
     Yalin Li <mailto.yalin.li@gmail.com>
-    
+
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
