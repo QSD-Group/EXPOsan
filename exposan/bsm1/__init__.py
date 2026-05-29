@@ -31,7 +31,7 @@ def load(reload=False, suspended_growth_model='ASM1', reactor_model='CSTR',
     global _system_loaded
     if not _system_loaded: reload = True
     if reload:
-        global cmps, components, asm, sys
+        global cmps, components, sys, PE, SE
         sys = create_system(
             suspended_growth_model=suspended_growth_model,
             reactor_model=reactor_model,
@@ -41,14 +41,14 @@ def load(reload=False, suspended_growth_model='ASM1', reactor_model='CSTR',
             init_conds=init_conds,
             aeration_processes=aeration_processes,
             )
-        O1 = sys.flowsheet.unit.O1
-        cmps = components = O1.components
-        asm = O1.suspended_growth_model
-        # Legacy names
-        global PE, SE#, RE
         stream = sys.flowsheet.stream
         PE = stream.wastewater
         SE = stream.effluent
+        cmps = components = SE.components
+        # Legacy
+        # global asm 
+        # asm = O1.suspended_growth_model
+        # global RE
         # RE = stream.RWW
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
