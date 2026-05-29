@@ -69,7 +69,10 @@ def test_werf():
 
     rtol = 5e-3
     atol = 1e-6
-    sim_kwargs = dict(t_span=(0,300), method='BDF')
+    # BDF defaults (rtol=1e-3, atol=1e-6) sit at the same order as the test
+    # tolerance, so any FP noise in the stiff precipitation network shows up
+    # in the assertions. Tightening the integrator buys ~3 orders of headroom.
+    sim_kwargs = dict(t_span=(0,300), method='BDF', rtol=1e-6, atol=1e-9)
     PowerUtility.price = 0.0782
 
     b1 = load_mdl('B1')
