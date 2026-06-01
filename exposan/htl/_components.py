@@ -117,7 +117,7 @@ def create_components(set_thermo=True):
                            degradability='Undegradable', organic=False)
     
     Struvite = Component('Struvite', search_ID='MagnesiumAmmoniumPhosphate',
-                         formula='NH4MgPO4·H12O6', phase='s',
+                         formula='NH4MgPO4·H12O6', formula_override=True, phase='s',
                          particle_size='Particulate', 
                          degradability='Undegradable',
                          organic=False)

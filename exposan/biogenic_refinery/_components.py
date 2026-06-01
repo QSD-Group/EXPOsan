@@ -31,7 +31,7 @@ def create_components(set_thermo=True, adjust_MW_to_measured_as=False):
                   degradability='Undegradable', organic=False)
 
     FilterBag = Component('FilterBag', search_ID='Poly(hexamethylene adipamide)',
-                          formula='C12H20N2O2', phase='s', particle_size='Particulate',
+                          formula='C12H20N2O2', formula_override=True, phase='s', particle_size='Particulate',
                           degradability='Undegradable', organic=False)
     # 969 kg/m3 is average from:
     # https://www.chembk.com/en/chem/Poly(hexamethylene%20adipamide) (accessed 2022-07-25)
