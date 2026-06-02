@@ -29,34 +29,24 @@ del os
 
 from . import _components
 from ._components import create_components
-_components_loaded = False
-def _load_components(reload=False):
-    global components, _components_loaded
-    if not _components_loaded or reload:
-        components = create_components()
-        qs.set_thermo(components)
-        _components_loaded = True
-
 
 from . import system
 from .system import create_system
-_system_loaded = False
-def _load_system():
-    global sys, _system_loaded
-    sys = create_system()
-    _system_loaded = True
-
-
+_loaded = False
 def load():
-    if not _components_loaded: _load_components()
-    if not _system_loaded: _load_system()
+    # `create_system` creates the components and sets the thermo itself,
+    # so `components` is sourced from the built system to stay consistent.
+    global sys, components, _loaded
+    sys = create_system()
     sys.simulate()
+    components = qs.get_thermo().chemicals
+    _loaded = True
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
 
 
 def __getattr__(name):
-    if not _components_loaded or not _system_loaded:
+    if not _loaded:
         raise AttributeError(
             f'Module {__name__} does not have the attribute "{name}" '
             'and the module has not been loaded, '
