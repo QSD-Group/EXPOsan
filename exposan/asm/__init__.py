@@ -33,7 +33,9 @@ _system_loaded = False
 _loaded_pc_model = None
 _loaded_aerated = None
 def load(reload=False, flowsheet=None, process_model='ASM1', aerated=False,
-         inf_kwargs=None, asm_kwargs=None, init_conds=None):
+         inf_kwargs=None, asm_kwargs=None, init_conds=None, **simulation_kwargs):
+    simulation_kwargs['t_span'] = simulation_kwargs.get('t_span', (0, 10))
+    simulation_kwargs['method'] = simulation_kwargs.get('method', 'BDF')
     global _system_loaded, _loaded_pc_model, _loaded_aerated
     if (process_model!=_loaded_pc_model) or (_loaded_aerated!=aerated): reload = True
     if reload:
@@ -49,6 +51,7 @@ def load(reload=False, flowsheet=None, process_model='ASM1', aerated=False,
         CSTR = sys.flowsheet.unit.CSTR
         cmps = components = CSTR.components
         asm = CSTR.suspended_growth_model
+        sys.simulate(**simulation_kwargs)
         _loaded_pc_model = process_model
         _loaded_aerated = aerated
     dct = globals()
