@@ -48,7 +48,7 @@ _psi_to_Pa = 6894.76
 
 # %%
 
-__all__ = ('create_system',)
+__all__ = ('create_system', 'simulate_and_print',)
 
 def create_system(
         flowsheet=None,

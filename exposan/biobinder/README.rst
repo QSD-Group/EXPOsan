@@ -20,7 +20,15 @@ System Simulation
 -----------------
 .. code-block:: python
 
-    # c-HTL
+    >>> # Quickest path: `load` constructs the default system; pass `simulate=True`
+    >>> # to also run it (off by default -- the distillation columns are numerically
+    >>> # sensitive and can fail in some environments; see Notes below).
+    >>> from exposan import biobinder
+    >>> biobinder.load()                       # or biobinder.load(simulate=True)
+    >>> sys = biobinder.sys
+    >>> # To build a specific configuration instead, call `create_system` directly,
+    >>> # e.g. the c-HTL configuration below:
+    >>> # c-HTL
     >>> config_kwargs={'flowsheet': None,
     >>>  'central_dry_flowrate': None,
     >>>  'pilot_dry_flowrate': None,
@@ -137,7 +145,7 @@ System Simulation
          phase: 'l', T: 298.15 K, P: 101325 Pa
          flow: 0
 
-    >>> # To see results
+    >>> # To see results (simulates the system; equivalently, biobinder.load(simulate=True))
     >>> biobinder.simulate_and_print(sys)
     biobinder
     ---------
@@ -148,6 +156,18 @@ System Simulation
     Global warming potential of the biobinder is -6.2911 kg CO2e/kg.
     
 
+Notes
+-----
+The crude ``ShortcutColumn`` distillation units (``CrudeLightDis``/``CrudeHeavyDis``)
+use the Fenske-Underwood-Gilliland (FUG) shortcut method, whose convergence depends
+on the relative volatility of the light/heavy keys computed from the thermo property
+package. The simulation can therefore converge to different (or no) solutions across
+environments, so ``load`` defaults to constructing the system without simulating it
+(pass ``simulate=True`` to run it); the system test is currently disabled for the
+same reason.
+
+
 References
 ----------
-.. [1] Ahmad, A.; Kawale, H.; Summers, S.; Bogarin Cantero, B. C.; Allen, C. M.; Hajj, R. M.; Davidson, P. C.; Zhang, Y.; Li, Y. Financial Viability and Carbon Intensity of Hydrothermal Waste Valorization Systems for Bio-Based Asphalt Binder. In Review 2025.
+.. [1] Ahmad, A.; Kawale, H. D.; Summers, S.; Bogarin Cantero, B. C.; Allen, C. M.; Hajj, R. M.; Davidson, P. C.; Zhang, Y.; Li, Y. Financial Viability and Carbon Intensity of Hydrothermal Waste Valorization Systems for Bio-Based Asphalt Binder. Chemical Engineering Journal 2026, 528, 172283. https://doi.org/10.1016/j.cej.2025.172283.
+

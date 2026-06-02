@@ -16,9 +16,11 @@ Loading systems
 ---------------
 .. code-block:: python
 
-    >>> # Import and load the system
+    >>> # `load` constructs the system; pass `simulate=True` to also run it.
+    >>> # Simulation is off by default because the crude distillation columns are
+    >>> # numerically sensitive and can fail in some environments (see Notes below).
     >>> from exposan import saf
-    >>> saf.load(configuration='baseline') # 'baseline', 'EC', 'EC-Future', 'no PSA'
+    >>> saf.load(configuration='baseline', simulate=True) # 'baseline', 'EC', 'EC-Future', 'no PSA'
     >>> # Quick look at the systems
     >>> saf.sys.show() # doctest: +ELLIPSIS
     System: sys
@@ -154,6 +156,17 @@ Loading systems
 More settings can be changed in the `systems.py` script, the `/analyses </exposan/saf/analyses>`_ directory includes two sensitivity analyses (with regard to plant size and biocrude yield).
 
 
+Notes
+-----
+The crude ``ShortcutColumn`` distillation units (``CrudeLightDis``/``CrudeHeavyDis``)
+use the Fenske-Underwood-Gilliland (FUG) shortcut method, whose convergence depends
+on the relative volatility of
+the light/heavy keys computed from the thermo property package. The simulation can
+therefore converge to different (or no) solutions across environments, so ``load``
+defaults to constructing the system without simulating it (pass ``simulate=True`` to
+run it); the system test is currently disabled for the same reason.
+
+
 References
 ----------
-.. [1] Si et al., In Prep., 2024.
+.. [1] Si, B.; Wang, Z.; Watson, J.; Summers, S.; Li, Y.; Yu, S.; Yang, H.; Yang, Z.; Heyne, J. S.; Jiang, J.; Ren, Z. J.; Ma, H.; Wang, C.; Wang, P.; Zhang, Y. A Circular Hydrothermal Refinery for Sustainable Aviation Fuel from Food Waste. Nature Sustainability 2026.

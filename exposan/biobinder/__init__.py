@@ -46,12 +46,16 @@ from . import systems
 from .systems import *
 
 _system_loaded = False
-def load():
+def load(simulate=False):
     global sys, tea, lca, flowsheet, _system_loaded
     sys = create_system()
     tea = sys.TEA
     lca = sys.LCA
     flowsheet = sys.flowsheet
+    # Off by default: the distillation columns are fragile (FUG shortcut
+    # convergence is thermo-sensitive and can fail in CI); see README/tests.
+    if simulate:
+        simulate_and_print(sys)
     _system_loaded = True
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
