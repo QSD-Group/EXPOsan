@@ -129,6 +129,40 @@ from .systems import *
 from . import models
 from .models import *
 
+
+# All WERF configurations share the same dynamic-simulation settings; override
+# per call via `load(..., simulate=True, t_span=..., method=...)` if needed.
+default_simulate_kwargs = dict(t_span=(0, 300), method='BDF')
+
+_loaded_config = None
+def load(configuration, reload=False, simulate=False, **simulate_kwargs):
+    '''
+    Construct a WERF configuration by ID and expose its units and streams at the
+    module level (e.g. ``werf.sys``).
+
+    Parameters
+    ----------
+    configuration : str
+        Configuration ID, e.g. 'N1', 'B1', 'I3' (see ``SYSTEM_CREATORS`` for the
+        full list); case-insensitive.
+    reload : bool
+        Rebuild even if this configuration is already loaded.
+    simulate : bool
+        If True, also run the dynamic simulation. Defaults to False (construct
+        only) because the run is long (300 d, BDF); pass simulation kwargs to
+        override ``default_simulate_kwargs``.
+    '''
+    global sys, _loaded_config
+    ID = configuration.upper()
+    if reload or _loaded_config != ID:
+        sys = create_system(ID)
+        _loaded_config = ID
+    if simulate:
+        sys.simulate(**{**default_simulate_kwargs, **simulate_kwargs})
+    globals().update(sys.flowsheet.to_dict())
+    return sys
+
+
 __all__ = (
     'folder',
     'data_path',

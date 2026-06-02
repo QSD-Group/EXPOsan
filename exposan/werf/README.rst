@@ -19,9 +19,12 @@ Load the system
 ---------------
 .. code-block:: python
 
-	>>> from exposan.werf import create_system
-	>>> g1 = create_system('G1')
-	>>> # g1.simulate(method='BDF', t_span=(0, 300))
+	>>> from exposan import werf
+	>>> # `load` constructs the chosen configuration (case-insensitive ID); pass
+	>>> # `simulate=True` to also run the (300-d, BDF) plant-wide dynamic simulation.
+	>>> werf.load('G1')
+	>>> g1 = werf.sys
+	>>> # g1.simulate(method='BDF', t_span=(0, 300))  # or: werf.load('G1', simulate=True)
 	>>> # Check the states of any one or more components
 	>>> # fig, axis = g1.flowsheet.unit.AD.scope.plot_time_series(('S_fa', 'S_bu', 'S_va', 'S_pro', 'S_ac'))
 	>>> # fig
