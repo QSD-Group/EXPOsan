@@ -166,6 +166,19 @@ environments, so ``load`` defaults to constructing the system without simulating
 (pass ``simulate=True`` to run it); the system test is currently disabled for the
 same reason.
 
+``CrudeHeavyDis`` is a harder case than its ``saf`` counterpart: it targets a
+near-even (~53/47) biofuel/biobinder cut that falls across the wide volatility gap
+between ``7MINDOLE`` and ``C16:0FA``, and ~47% of the feed is heavy pseudo-components
+(amides, fatty acids, sterols) whose VLE is effectively singular for the dew/bubble
+and Underwood solves. As a result the FUG split is numerically unstable here and
+**cannot** be salvaged by retrying, by choosing a different light/heavy key pair
+(none converge near the target with a physical cost), or by a multi-column cascade
+(same ill-conditioned VLE per column). Making this configuration simulate robustly
+requires a modeling change -- e.g. pinning the mass split deterministically at the
+design-intent cut while retaining a real reboiler/condenser duty and a cost
+correlation -- rather than a different column specification. Until then, biobinder is
+constructed but not simulated.
+
 
 References
 ----------
