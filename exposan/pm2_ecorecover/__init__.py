@@ -26,7 +26,8 @@ from . import system
 from .system import *
 
 _system_loaded = False
-def load(reload=False, pm2_kwargs=None, init_conds=None):
+def load(reload=False, pm2_kwargs=None, init_conds=None, simulate=False,
+         t_span=(0, 1), method='RK23', **simulate_kwargs):
 
     global _system_loaded
     if not _system_loaded: reload = True
@@ -39,6 +40,8 @@ def load(reload=False, pm2_kwargs=None, init_conds=None):
         MIX = sys.flowsheet.unit.MIX
         cmps = components = MIX.components
         pm2 = MIX.suspended_growth_model
+        if simulate:
+            sys.simulate(t_span=t_span, method=method, **simulate_kwargs)
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     _system_loaded = True
