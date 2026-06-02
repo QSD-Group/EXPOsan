@@ -27,7 +27,9 @@ from .system import *
 _system_loaded = False
 def load(reload=False, suspended_growth_model='ASM1', reactor_model='CSTR', 
          inf_kwargs=None, asm_kwargs=None, settler_kwargs=None, 
-         init_conds=None, aeration_processes=()):
+         init_conds=None, aeration_processes=(), **simulation_kwargs):
+    simulation_kwargs['t_span'] = simulation_kwargs.get('t_span', (0, 10))
+    simulation_kwargs['method'] = simulation_kwargs.get('method', 'BDF')
     global _system_loaded
     if not _system_loaded: reload = True
     if reload:
@@ -41,15 +43,11 @@ def load(reload=False, suspended_growth_model='ASM1', reactor_model='CSTR',
             init_conds=init_conds,
             aeration_processes=aeration_processes,
             )
+        sys.simulate(**simulation_kwargs)
         stream = sys.flowsheet.stream
         PE = stream.wastewater
         SE = stream.effluent
         cmps = components = SE.components
-        # Legacy
-        # global asm 
-        # asm = O1.suspended_growth_model
-        # global RE
-        # RE = stream.RWW
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     _system_loaded = True
