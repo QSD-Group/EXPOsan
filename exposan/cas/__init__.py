@@ -33,13 +33,15 @@ from ._components import create_components
 from . import system
 from .system import create_system
 _loaded = False
-def load():
+def load(reload=False):
     # `create_system` creates the components and sets the thermo itself,
     # so `components` is sourced from the built system to stay consistent.
     global sys, components, _loaded
-    sys = create_system()
-    sys.simulate()
-    components = qs.get_thermo().chemicals
+    if not _loaded: reload = True
+    if reload:
+        sys = create_system()
+        sys.simulate()
+        components = qs.get_thermo().chemicals
     _loaded = True
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
