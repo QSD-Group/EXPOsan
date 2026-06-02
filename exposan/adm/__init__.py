@@ -24,10 +24,9 @@ from . import system
 from .system import *
 
 _system_loaded = False
-def load(reload=False, inf_kwargs=None, adm_kwargs=None, init_conds=None, **simulation_kwargs):
+def load(reload=False, inf_kwargs=None, adm_kwargs=None, init_conds=None,
+         t_span=(0, 10), method='BDF', simulate=False, **simulation_kwargs):
     simulation_kwargs['state_reset_hook'] = simulation_kwargs.get('state_reset_hook', 'reset_cache')
-    simulation_kwargs['t_span'] = simulation_kwargs.get('t_span', (0, 200))
-    simulation_kwargs['method'] = simulation_kwargs.get('method', 'BDF')
     global _system_loaded
     if not _system_loaded: reload = True
     if reload:
@@ -40,7 +39,8 @@ def load(reload=False, inf_kwargs=None, adm_kwargs=None, init_conds=None, **simu
         AD = sys.flowsheet.unit.AD
         cmps = components = AD.components
         adm = AD.model
-        sys.simulate(**simulation_kwargs)
+        if simulate:
+            sys.simulate(t_span=t_span, method=method, **simulation_kwargs)
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     _system_loaded = True

@@ -32,20 +32,21 @@ from . import system
 from .system import *
 _system_loaded = False
 _loaded_kind = None
-def _load_system(kind='bsm2', **simulation_kwargs):
+def _load_system(kind='bsm2', simulate=False, **simulation_kwargs):
     global sys, _system_loaded, _loaded_kind
     sys = create_system(kind=kind)
-    # Default `t_span`/`method` per kind (documented in system.py); any
-    # explicitly passed kwargs take precedence.
-    kwargs = {**system.default_simulate_kwargs.get(kind, {}), **simulation_kwargs}
-    sys.simulate(**kwargs)
+    if simulate:
+        # Default `t_span`/`method` per kind (documented in system.py); any
+        # explicitly passed kwargs take precedence.
+        kwargs = {**system.default_simulate_kwargs.get(kind, {}), **simulation_kwargs}
+        sys.simulate(**kwargs)
     _system_loaded = True
     _loaded_kind = kind
 
 
-def load(kind='bsm2', **simulation_kwargs):
+def load(kind='bsm2', simulate=False, **simulation_kwargs):
     if (not _system_loaded) or (_loaded_kind != kind):
-        _load_system(kind=kind, **simulation_kwargs)
+        _load_system(kind=kind, simulate=simulate, **simulation_kwargs)
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
 
