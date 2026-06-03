@@ -41,7 +41,7 @@ def load(reload=False):
     if reload:
         sys = create_system()
         sys.simulate()
-        components = qs.get_thermo().chemicals
+        components = qs.get_components()
     _loaded = True
     dct = globals()
     dct.update(sys.flowsheet.to_dict())

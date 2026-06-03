@@ -170,7 +170,7 @@ def load(reload=False, simulate=False):
     if not _loaded: reload = True
     if reload:
         sys = create_system()
-        components = qs.get_thermo().chemicals
+        components = qs.get_components()
         if simulate:
             sys.simulate()
     _loaded = True

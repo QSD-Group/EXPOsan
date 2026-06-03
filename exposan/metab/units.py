@@ -321,7 +321,7 @@ class UASB(AnaerobicCSTR):
                  **kwargs):
         
         super().__init__(ID, lifetime=lifetime, T=T, **kwargs)
-        self._f_retain = self.thermo.chemicals.x * fraction_retain
+        self._f_retain = self.components.x * fraction_retain
         self.pH_ctrl = pH_ctrl
         self.max_depth_to_diameter = max_depth_to_diameter
         self.min_depth_to_diameter = min_depth_to_diameter
@@ -918,7 +918,7 @@ class METAB_FluidizedBed(AnaerobicCSTR):
             self._set_diffusivities(**self._diffusivities)
         elif isa(arr, (list, tuple, np.ndarray)):
             arr = np.asarray(arr)
-            if arr.shape == (len(self.thermo.chemicals)):
+            if arr.shape == (len(self.components)):
                 self._diff = arr
             else: raise ValueError(f'diffusivity should be an array of the same length'
                                    f'as the components, not of shape {arr.shape}')
@@ -928,7 +928,7 @@ class METAB_FluidizedBed(AnaerobicCSTR):
             raise TypeError(f'diffusivity must be array-like or a dict, if not None, not {type(arr)}')
         
     def _set_diffusivities(self, **kwargs):
-        cmps = self.thermo.chemicals            
+        cmps = self.components            
         idx = cmps.indices(kwargs.keys())
         if not hasattr(self, '_diff'):
             self._diff = np.zeros(len(cmps))
@@ -981,7 +981,7 @@ class METAB_FluidizedBed(AnaerobicCSTR):
         model = self.model
         self._S_vapor = self.ideal_gas_law(p=self.p_vapor())
         self._n_gas = len(model._biogas_IDs)
-        cmps = self.thermo.chemicals
+        cmps = self.components
         layers = [*range(self.n_dz), 'bulk']
         self._state_keys = [f'{cmp}-{i}' for i in layers for cmp in cmps.IDs] \
             + [ID+'_gas' for ID in self.model._biogas_IDs] \
@@ -1031,7 +1031,7 @@ class METAB_FluidizedBed(AnaerobicCSTR):
     def set_init_conc(self, arr=None, **kwargs):
         '''set the initial concentrations [kg/m3] of components in the fluidized bed, 
         applies uniformly to all layers in beads and bulk liquid unless an array is input.'''
-        cmps = self.thermo.chemicals
+        cmps = self.components
         cmpx = cmps.index
         n_dz = self.n_dz
         if arr is None:
@@ -1485,7 +1485,7 @@ class METAB_PackedBed(METAB_FluidizedBed):
         model = self.model
         self._S_vapor = self.ideal_gas_law(p=self.p_vapor())
         self._n_gas = len(model._biogas_IDs)
-        cmps = self.thermo.chemicals
+        cmps = self.components
         layers = [*range(self.n_dz), 'bulk']
         self._state_keys = [f'{cmp}-R{i}-{j}' for i in range(self.n_cstr) 
                             for j in layers for cmp in cmps.IDs] \
@@ -1499,7 +1499,7 @@ class METAB_PackedBed(METAB_FluidizedBed):
         '''set the initial concentrations [kg/m3] of components in the packed bed, 
         applies uniformly to all layers in beads and bulk liquid and all well-mixed
         compartments unless an array is input.'''
-        cmps = self.thermo.chemicals
+        cmps = self.components
         cmpx = cmps.index
         n_dz = self.n_dz
         n_cstr = self.n_cstr
@@ -1741,7 +1741,7 @@ class METAB_BatchExp(METAB_FluidizedBed):
         pass
 
     def _set_init_Cs(self, arr=None, **kwargs):
-        cmps = self.thermo.chemicals
+        cmps = self.components
         cmpx = cmps.index
         if arr is None:
             Cs = np.zeros(len(cmps))
