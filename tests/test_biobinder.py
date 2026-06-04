@@ -15,7 +15,6 @@ for license details.
 __all__ = ('test_biobinder',)
 
 from numpy.testing import assert_allclose
-from qsdsan.utils import clear_lca_registries
 from exposan.biobinder import create_system
 
 EXPECTED = {
@@ -26,7 +25,6 @@ EXPECTED = {
 }
 
 def run_test(config_name, config_kwargs, rtol=0.15):
-    clear_lca_registries()
     sys = create_system(**config_kwargs)
     # sys.simulate()
 
@@ -70,5 +68,10 @@ def test_biobinder():
     ))
 
 if __name__ == '__main__':
-    # test_biobinder() # temporarily remove test for distillation to be fixed
+    # The simulate()/MSP/GWP assertions in run_test are disabled because
+    # CrudeHeavyDis (FUG shortcut distillation) does not converge robustly for
+    # biobinder's near-even cut over its singular heavy-component VLE. This is not a
+    # column-specification fix (different LHK and cascades were ruled out); it needs a
+    # modeling change to the separation. See biobinder/README.rst "Notes".
+    test_biobinder()  # construction-only smoke test
     from exposan import biobinder

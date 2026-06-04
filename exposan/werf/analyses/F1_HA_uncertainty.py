@@ -24,7 +24,7 @@ from exposan.werf import (
     results_path
     )
 from exposan.werf.utils import cache_state, load_state
-from qsdsan import get_thermo, WasteStream, Model, System, process_models as pc
+from qsdsan import get_components, WasteStream, Model, System, process_models as pc
 from qsdsan.utils import get_SRT, ospath, load_data
 from biosteam.evaluation._utils import var_columns
 
@@ -42,7 +42,7 @@ f_rmv = 0.7 # (0.5, 0.8)
 # %%
 def load_system_with_upstream_uncertainty(ID='F1'):
     sys = create_system(ID)
-    cmps = get_thermo().chemicals
+    cmps = get_components()
     for c in cmps:
         if c.organic:
             if c.i_N: c.i_N *= 0.7

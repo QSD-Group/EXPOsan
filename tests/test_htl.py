@@ -17,11 +17,8 @@ __all__ = ('test_htl',)
 
 def test_htl(): 
     from numpy.testing import assert_allclose
-    from qsdsan.utils import clear_lca_registries
     from exposan import htl
 
-    clear_lca_registries()
-    
     rtol = 5e-2
     kwargs = dict(
         feedstock='sludge',
