@@ -36,6 +36,15 @@ def load_mdl(ID):
 
 
 def simulate_with_cache_reset(system, **kwargs):
+    # Workaround for a spurious FloatingPointError in stiff dynamic solves:
+    # flexsolve sets np.seterr(divide='raise', invalid='raise') process-globally
+    # at import, so a transient invalid that BDF would normally reject and retry
+    # becomes a fatal crash; re-simulating with a cache reset re-seeds the state
+    # and usually gets past it. This is redundant once BioSTEAM runs the
+    # integration under np.errstate(invalid='ignore', divide='ignore') in
+    # System.dynamic_run. REMOVE this helper and
+    # test_simulate_with_cache_reset_retries_floating_point_error once that fix
+    # is in the pinned/released BioSTEAM.
     try:
         system.simulate(**kwargs)
     except FloatingPointError:
