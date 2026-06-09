@@ -53,7 +53,7 @@ def create_components(set_thermo=True, adjust_MW_to_measured_as=False):
                     phase='g', particle_size='Dissolved gas',
                     degradability='Slowly', organic=True)
 
-    Zeolite = Component('Zeolite', search_ID='PubChem=9942228', formula='Na2Al2Si2O8',
+    Zeolite = Component('Zeolite', search_ID='PubChem=9942228', formula='Na2Al2Si2O8', formula_override=True,
                         phase='s', particle_size='Particulate',
                         degradability='Undegradable', organic=False)
     # Assume the same density of water, may or may not be good,

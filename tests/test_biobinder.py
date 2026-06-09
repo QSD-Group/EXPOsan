@@ -68,5 +68,10 @@ def test_biobinder():
     ))
 
 if __name__ == '__main__':
-    # test_biobinder() # temporarily remove test for distillation to be fixed
+    # The simulate()/MSP/GWP assertions in run_test are disabled because
+    # CrudeHeavyDis (FUG shortcut distillation) does not converge robustly for
+    # biobinder's near-even cut over its singular heavy-component VLE. This is not a
+    # column-specification fix (different LHK and cascades were ruled out); it needs a
+    # modeling change to the separation. See biobinder/README.rst "Notes".
+    test_biobinder()  # construction-only smoke test
     from exposan import biobinder

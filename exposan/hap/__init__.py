@@ -150,6 +150,34 @@ from .system import *
 from . import model
 from .model import *
 
+
+_loaded = False
+def load(reload=False, simulate=False):
+    '''
+    Construct the hydroxyapatite (HAP) recovery system and expose its units and
+    streams at the module level (e.g. ``hap.sys``).
+
+    Parameters
+    ----------
+    reload : bool
+        Rebuild the system even if it has already been loaded.
+    simulate : bool
+        If True, also run the steady-state solve. Left off by default because
+        the solve is expensive (~30 s, dominated by the collection/distribution
+        routing optimization), keeping module loading fast.
+    '''
+    global sys, components, _loaded
+    if not _loaded: reload = True
+    if reload:
+        sys = create_system()
+        components = qs.get_components()
+        if simulate:
+            sys.simulate()
+    _loaded = True
+    dct = globals()
+    dct.update(sys.flowsheet.to_dict())
+
+
 __all__ = (
     'folder',
     'data_path',

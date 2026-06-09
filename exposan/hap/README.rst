@@ -15,9 +15,12 @@ Simulate an HAp system with default settings
 --------------------------------------------
 .. code-block:: python
 
-  >>> # Load the system
-  >>> from exposan.hap import create_system
-  >>> sys = create_system()
+  >>> # Load (construct) the system; pass ``simulate=True`` to also run the
+  >>> # ~30 s steady-state solve (which includes the collection/distribution
+  >>> # routing optimization).
+  >>> from exposan import hap
+  >>> hap.load()
+  >>> sys = hap.sys
   >>> sys.simulate() # doctest: +SKIP
   >>> # You can look at individual units or streams
   >>> u = sys.flowsheet.unit
