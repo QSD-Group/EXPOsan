@@ -54,7 +54,7 @@ def create_components(set_thermo=True, adjust_MW_to_measured_as=False):
                     degradability='Slowly', organic=True)
 
     Zeolite = Component('Zeolite', search_ID='PubChem=9942228', formula='Na2Al2Si2O8',
-                        phase='s', particle_size='Particulate',
+                        phase='s', particle_size='Particulate', formula_override=True,
                         degradability='Undegradable', organic=False)
     # Assume the same density of water, may or may not be good,
     # densities can vary from ~0.5->2 kg/m3 depending on the Zeolite type

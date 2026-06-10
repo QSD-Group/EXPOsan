@@ -19,13 +19,13 @@ import biosteam as bst
 from warnings import warn
 from math import ceil, exp, log
 import numpy as np
-from qsdsan.sanunits import (Mixer,
+from qsdsan.unit_operations import (Mixer,
                              IsothermalCompressor,
                              SludgeThickening,
                              Copier,
                              HXutility
                              )
-from qsdsan.processes import Decay
+from qsdsan.process_models import Decay
 from qsdsan import SanUnit,Construction, WasteStream
 from biosteam.units.design_tools import flash_vessel_design
 from qsdsan.utils import ospath, data_path, load_data, price_ratio
