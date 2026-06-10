@@ -581,7 +581,7 @@ def print_summaries(systems):
             print('\n')
             sys.LCA.show()
 
-
+from . import models
 from .models import *
 from . import analysis
 

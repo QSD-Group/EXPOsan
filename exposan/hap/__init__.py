@@ -3,7 +3,7 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
-    
+
     Joy Zhang <joycheung1994@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
@@ -16,9 +16,6 @@ folder = os.path.dirname(__file__)
 data_path = os.path.join(folder, 'data')
 results_path = os.path.join(folder, 'results')
 figures_path = os.path.join(folder, 'figures')
-# To save simulation results and generated figures
-if not os.path.isdir(results_path): os.mkdir(results_path)
-if not os.path.isdir(figures_path): os.mkdir(figures_path)
 
 #%%
 import qsdsan as qs, thermosteam as tmo
@@ -26,14 +23,26 @@ from qsdsan import Component, Components
 # from biorefineries.cane import create_sugarcane_chemicals
 
 def _yeast_cmp():
-    glucose = Component.from_chemical('glucose', phase='l')
+    # glucose = Component.from_chemical('glucose', phase='l')
+    # glucose.N_solutes = 1
+    # yeast = tmo.Chemical('Yeast', phase='s', phase_ref='s', search_db=False, 
+    #                      formula='CH1.61O0.56', rho=1540, Cp=glucose.Cp(298.15),
+    #                      default=True)
+    # Yeast = Component.from_chemical('Yeast', chemical=yeast,
+    #                                 particle_size='Particulate', organic=True,
+    #                                 degradability='Slowly', f_Vmass_Totmass=0.872)
+    glucose = tmo.Chemical('glucose', phase='l')
     glucose.N_solutes = 1
-    yeast = tmo.Chemical('Yeast', phase='s', phase_ref='s', search_db=False, 
-                         formula='CH1.61O0.56', rho=1540, Cp=glucose.Cp(298.15),
-                         default=True)
-    Yeast = Component.from_chemical('Yeast', chemical=yeast,
-                                    particle_size='Particulate', organic=True,
-                                    degradability='Slowly', f_Vmass_Totmass=0.872)
+    Yeast = Component(
+        'Yeast', phase='s', phase_ref='s', search_db=False, 
+        formula='CH1.61O0.56',
+        particle_size='Particulate', organic=True,
+        degradability='Slowly', f_Vmass_Totmass=0.872)
+    qs.utils.add_V_from_rho(Yeast, 1.540, rho_unit='g/mL')
+    # Equivalent to the following
+    # from thermosteam.functional import rho_to_V
+    # Yeast.V.add_model(rho_to_V(1540, Yeast.MW))
+    Yeast.Cn.add_model(glucose.Cn(298.15)/glucose.MW*Yeast.MW, name='Constant')
     Yeast.Hf = glucose.Hf / glucose.MW * Yeast.MW
     V = tmo.functional.rho_to_V(rho=1540, MW=Yeast.MW)
     Yeast.V.add_model(V, top_priority=True)
@@ -48,9 +57,9 @@ def create_hap_cmps(set_thermo=True, industrial_yeast_production=True):
     #                                 degradability='Slowly', f_Vmass_Totmass=0.872)
     
     Yeast = _yeast_cmp()
-    NH3 = Component('NH3', particle_size='Dissolved_gas', 
+    NH3 = Component('NH3', particle_size='Dissolved gas',
                     degradability='Undegradable', organic=False)
-    CO2 = Component('CO2', particle_size='Dissolved_gas', 
+    CO2 = Component('CO2', particle_size='Dissolved gas',
                     degradability='Undegradable', organic=False)
     HAP = Component('HAP', search_ID='hydroxyapatite', 
                     particle_size='Particulate', 
@@ -75,7 +84,7 @@ def create_hap_cmps(set_thermo=True, industrial_yeast_production=True):
     IS = Component('IS', search_ID='SO4-2', measured_as='S', **ig_kwargs)
     IP = Component('IP', search_ID='PO4-3', measured_as='P', **ig_kwargs)
     
-    ash = Component('Ash', phase='s', MW=1., **ig_kwargs)
+    ash = Component('Ashcmp', phase='s', MW=1., **ig_kwargs)
     ash.Cn.add_model(0.09 * 4.184 * ash.MW)
     V = tmo.functional.rho_to_V(rho=1540, MW=ash.MW)
     ash.V.add_model(V, top_priority=True)
@@ -93,6 +102,7 @@ def create_hap_cmps(set_thermo=True, industrial_yeast_production=True):
                        chloride, sodium, potassium, IS, IP, ash, other_SS, 
                        *cmps_boulardii])
     cmps.default_compile(ignore_inaccurate_molar_weight=True)
+    cmps.set_alias('Ashcmp', 'Ash')
     if set_thermo: qs.set_thermo(cmps)
     return cmps
 
@@ -140,6 +150,34 @@ from .system import *
 from . import model
 from .model import *
 
+
+_loaded = False
+def load(reload=False, simulate=False):
+    '''
+    Construct the hydroxyapatite (HAP) recovery system and expose its units and
+    streams at the module level (e.g. ``hap.sys``).
+
+    Parameters
+    ----------
+    reload : bool
+        Rebuild the system even if it has already been loaded.
+    simulate : bool
+        If True, also run the steady-state solve. Left off by default because
+        the solve is expensive (~30 s, dominated by the collection/distribution
+        routing optimization), keeping module loading fast.
+    '''
+    global sys, components, _loaded
+    if not _loaded: reload = True
+    if reload:
+        sys = create_system()
+        components = qs.get_components()
+        if simulate:
+            sys.simulate()
+    _loaded = True
+    dct = globals()
+    dct.update(sys.flowsheet.to_dict())
+
+
 __all__ = (
     'folder',
     'data_path',
@@ -152,4 +190,3 @@ __all__ = (
     *system.__all__,
     *model.__all__,
 	)
-

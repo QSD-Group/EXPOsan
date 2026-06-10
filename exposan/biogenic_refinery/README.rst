@@ -161,7 +161,7 @@ TEA and LCA are performed through :class:`biosteam.TEA` and :class:`LCA` objects
 
     >>> # Check the TEA results for `sysA`
     >>> br.teaA.show() # doctest: +SKIP
-    SimpleTEA: sysA
+    TEA: sysA
     NPV  : -1,792,060 USD at 5.0% discount rate
     >>> # There are also handy functions to allow you quickly see important results
     >>> br.print_summaries(br.sysA) # doctest: +SKIP

@@ -4,11 +4,11 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
-    
+
     Jianan Feng <jiananf2@illinois.edu>
-    
+
     Yalin Li <mailto.yalin.li@gmail.com>
-    
+
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
@@ -21,13 +21,9 @@ from datetime import date
 
 htl_path = os.path.dirname(__file__)
 module = os.path.split(htl_path)[-1]
-data_path, results_path = _init_modules(module, include_data_path=True)
-
-_kg_to_g = auom('kg').conversion_factor('g')
-_m3perh_to_MGD = auom('m3/h').conversion_factor('MGD')
-_MJ_to_MMBTU = auom('MJ').conversion_factor('MMBTU')
-_MMgal_to_L = auom('gal').conversion_factor('L')*1000000
-_oil_barrel_to_L = auom('oil_barrel').conversion_factor('L')
+data_path, results_path, figures_path = \
+    _init_modules(module, include_data_path=True, include_figures_path=True,
+                  create=True)
 
 # %%
 
@@ -57,8 +53,11 @@ from ._tea import *
 from . import systems
 from .systems import *
 
-from . import geospatial_HTL_systems
-from .geospatial_HTL_systems import *
+from . import geospatial_systems
+from .geospatial_systems import *
+
+from . import landscape_systems
+from .landscape_systems import *
 
 _system_loaded = False
 def load(configuration='baseline'):
@@ -119,13 +118,15 @@ __all__ = (
     'htl_path',
     'data_path',
     'results_path',
+    'figures_path',
     'simulate_and_save',
     *_components.__all__,
     *_process_settings.__all__,
     *income_tax.__all__,
     *_tea.__all__,
     *systems.__all__,
-    *geospatial_HTL_systems.__all__,
+    *geospatial_systems.__all__,
+    *landscape_systems.__all__,
     *models.__all__,
     *geospatial_models.__all__,
 )

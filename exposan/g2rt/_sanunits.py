@@ -17,11 +17,11 @@ import biosteam as bst
 from warnings import warn
 from math import ceil
 import numpy as np
-from qsdsan.sanunits._abstract import Mixer
-from qsdsan.sanunits import IsothermalCompressor
-from qsdsan.processes import Decay
+from qsdsan.unit_operations import Mixer
+from qsdsan.unit_operations import IsothermalCompressor
+from qsdsan.process_models import Decay
 from qsdsan import SanUnit,Construction, WasteStream
-from qsdsan.sanunits import SludgeThickening, Copier
+from qsdsan.unit_operations import SludgeThickening, Copier
 from biosteam.units.design_tools import flash_vessel_design
 from qsdsan.utils import ospath, data_path, load_data, price_ratio
 import CoolProp.CoolProp as CP

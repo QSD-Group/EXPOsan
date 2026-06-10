@@ -22,12 +22,11 @@ from exposan.utils import add_V_from_rho
 __all__ = ('create_components', )
 
 def create_components(set_thermo=True):
-    
-    NH3 = Component('NH3', formula='NH3', measured_as='N',
+    NH3 = Component('NH3', measured_as='N',
                     phase='l', particle_size='Soluble',
                     degradability='Undegradable', organic=False)
 
-    NonNH3 = Component('NonNH3', formula='N', measured_as='N',MW=14,
+    NonNH3 = Component('NonNH3', formula='N', measured_as='N',
                        phase='l', particle_size='Soluble',
                        degradability='Undegradable', organic=False,
                        description='Non-NH3 nitrogen')
@@ -48,7 +47,6 @@ def create_components(set_thermo=True):
                     degradability='Undegradable', organic=False)
 
     OtherSS = Component('OtherSS', phase='l', particle_size='Soluble',
-                        MW=18,
                         degradability='Undegradable', organic=False,
                         description='Unspecified soluble solids')
 
@@ -76,14 +74,14 @@ def create_components(set_thermo=True):
     # P4O10 = Component('P4O10', phase='s', particle_size='Particulate',
     #                   degradability='Undegradable', organic=False)
 
-    Tissue = Component('Tissue', MW=180, phase='s', particle_size='Particulate',
+    Tissue = Component('Tissue', MW=1, phase='s', particle_size='Particulate',
                         degradability='Undegradable', organic=False,
                         description='Tissue for toilet paper')
     # 375 kg/m3 is the average of 250-500 for tissue from
     # https://paperonweb.com/density.htm (accessed 2020-11-12)
     add_V_from_rho(Tissue, 375)
 
-    WoodAsh = Component('WoodAsh', MW=180, phase='s', i_Mg=0.0224, i_Ca=0.3034,
+    WoodAsh = Component('WoodAsh', MW=1, phase='s', i_Mg=0.0224, i_Ca=0.3034,
                         particle_size='Particulate', degradability='Undegradable',
                         organic=False, description='Wood ash for desiccant')
     add_V_from_rho(WoodAsh, 760)
@@ -92,7 +90,7 @@ def create_components(set_thermo=True):
         i.copy_models_from(Chemical('Glucose'), ('Cn', 'mu'))
 
     Struvite = Component('Struvite', search_ID='MagnesiumAmmoniumPhosphate',
-                         formula='NH4MgPO4·H12O6',
+                         formula='NH4MgPO4·H12O6', formula_override=True,
                          phase='s', particle_size='Particulate',
                          degradability='Undegradable', organic=False)
     # http://www.chemspider.com/Chemical-Structure.8396003.html (accessed 2020-11-19)

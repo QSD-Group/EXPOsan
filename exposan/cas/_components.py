@@ -3,7 +3,7 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
-    
+
     Yalin Li <mailto.yalin.li@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
@@ -25,7 +25,7 @@ __all__ = ('create_components',)
 
 def create_components(set_thermo=True):
 
-    X = Component('X', phase='s', measured_as='COD', i_COD=0, description='Biomass',
+    X = Component('X', phase='s', measured_as='COD', i_COD=1, description='Biomass',
                   organic=True, particle_size='Particulate', degradability='Readily')
     X_inert = Component('X_inert', phase='s', description='Inert biomass', i_COD=0,
                         organic=True, particle_size='Particulate', degradability='Undegradable')
