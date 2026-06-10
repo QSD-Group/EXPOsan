@@ -3,7 +3,7 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
-    
+
     Joy Zhang <joycheung1994@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
@@ -12,7 +12,7 @@ for license details.
 '''
 from biosteam import Stream, VacuumSystem
 from qsdsan import SanStream, WasteStream, CompiledProcesses, SanUnit, Construction
-from qsdsan.sanunits import AnaerobicCSTR, Pump, HXutility
+from qsdsan.unit_operations import AnaerobicCSTR, Pump, HXutility
 from qsdsan.utils import auom
 from exposan.metab.equipment import Beads
 from exposan.metab.utils import (
@@ -311,6 +311,7 @@ class UASB(AnaerobicCSTR):
     def __init__(self, ID='', lifetime=30, T=295.15,
                  fraction_retain=0.963, pH_ctrl=False,
                  max_depth_to_diameter=4,
+                 min_depth_to_diameter=1,
                  design_upflow_velocity=0.5,        # m/h
                  wall_concrete_unit_cost=1081.73,   # $850/m3 in 2014 USD, converted to 2021 USD with concrete PPI
                  slab_concrete_unit_cost=582.48,    # $458/m3 in 2014 USD 
@@ -320,9 +321,10 @@ class UASB(AnaerobicCSTR):
                  **kwargs):
         
         super().__init__(ID, lifetime=lifetime, T=T, **kwargs)
-        self._f_retain = self.thermo.chemicals.x * fraction_retain
+        self._f_retain = self.components.x * fraction_retain
         self.pH_ctrl = pH_ctrl
         self.max_depth_to_diameter = max_depth_to_diameter
+        self.min_depth_to_diameter = min_depth_to_diameter
         self.design_upflow_velocity = design_upflow_velocity
         self.wall_concrete_unit_cost = wall_concrete_unit_cost
         self.slab_concrete_unit_cost = slab_concrete_unit_cost
@@ -419,8 +421,9 @@ class UASB(AnaerobicCSTR):
         c = 4.186       # kJ/kg/C
         m = self._mixed.F_mass/3600 # kg/s
         V, h, dia = UASB_sizing(self._mixed.F_vol*24, self.V_liq, self.V_gas,
-                                self.max_depth_to_diameter, 
-                                self.design_upflow_velocity)
+                                self.max_depth_to_diameter,
+                                self.design_upflow_velocity,
+                                self.min_depth_to_diameter)
         S = pi*dia*h + pi*dia**2/2  # m2
         T_in = self._mixed.T
         T_ext = self.T_air
@@ -505,8 +508,9 @@ class UASB(AnaerobicCSTR):
         den = self._density
         Q = self._mixed.F_vol * 24
         V, h, dia = UASB_sizing(Q, self.V_liq, self.V_gas,
-                                self.max_depth_to_diameter, 
-                                self.design_upflow_velocity)
+                                self.max_depth_to_diameter,
+                                self.design_upflow_velocity,
+                                self.min_depth_to_diameter)
         D['Volume'] = V
         D['Height'] = h
         r_cone = dia/2*self._gas_separator_r_frac
@@ -914,7 +918,7 @@ class METAB_FluidizedBed(AnaerobicCSTR):
             self._set_diffusivities(**self._diffusivities)
         elif isa(arr, (list, tuple, np.ndarray)):
             arr = np.asarray(arr)
-            if arr.shape == (len(self.thermo.chemicals)):
+            if arr.shape == (len(self.components)):
                 self._diff = arr
             else: raise ValueError(f'diffusivity should be an array of the same length'
                                    f'as the components, not of shape {arr.shape}')
@@ -924,7 +928,7 @@ class METAB_FluidizedBed(AnaerobicCSTR):
             raise TypeError(f'diffusivity must be array-like or a dict, if not None, not {type(arr)}')
         
     def _set_diffusivities(self, **kwargs):
-        cmps = self.thermo.chemicals            
+        cmps = self.components            
         idx = cmps.indices(kwargs.keys())
         if not hasattr(self, '_diff'):
             self._diff = np.zeros(len(cmps))
@@ -977,7 +981,7 @@ class METAB_FluidizedBed(AnaerobicCSTR):
         model = self.model
         self._S_vapor = self.ideal_gas_law(p=self.p_vapor())
         self._n_gas = len(model._biogas_IDs)
-        cmps = self.thermo.chemicals
+        cmps = self.components
         layers = [*range(self.n_dz), 'bulk']
         self._state_keys = [f'{cmp}-{i}' for i in layers for cmp in cmps.IDs] \
             + [ID+'_gas' for ID in self.model._biogas_IDs] \
@@ -1027,7 +1031,7 @@ class METAB_FluidizedBed(AnaerobicCSTR):
     def set_init_conc(self, arr=None, **kwargs):
         '''set the initial concentrations [kg/m3] of components in the fluidized bed, 
         applies uniformly to all layers in beads and bulk liquid unless an array is input.'''
-        cmps = self.thermo.chemicals
+        cmps = self.components
         cmpx = cmps.index
         n_dz = self.n_dz
         if arr is None:
@@ -1481,7 +1485,7 @@ class METAB_PackedBed(METAB_FluidizedBed):
         model = self.model
         self._S_vapor = self.ideal_gas_law(p=self.p_vapor())
         self._n_gas = len(model._biogas_IDs)
-        cmps = self.thermo.chemicals
+        cmps = self.components
         layers = [*range(self.n_dz), 'bulk']
         self._state_keys = [f'{cmp}-R{i}-{j}' for i in range(self.n_cstr) 
                             for j in layers for cmp in cmps.IDs] \
@@ -1495,7 +1499,7 @@ class METAB_PackedBed(METAB_FluidizedBed):
         '''set the initial concentrations [kg/m3] of components in the packed bed, 
         applies uniformly to all layers in beads and bulk liquid and all well-mixed
         compartments unless an array is input.'''
-        cmps = self.thermo.chemicals
+        cmps = self.components
         cmpx = cmps.index
         n_dz = self.n_dz
         n_cstr = self.n_cstr
@@ -1737,7 +1741,7 @@ class METAB_BatchExp(METAB_FluidizedBed):
         pass
 
     def _set_init_Cs(self, arr=None, **kwargs):
-        cmps = self.thermo.chemicals
+        cmps = self.components
         cmpx = cmps.index
         if arr is None:
             Cs = np.zeros(len(cmps))

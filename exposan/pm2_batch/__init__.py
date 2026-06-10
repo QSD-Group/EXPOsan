@@ -3,7 +3,9 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
+
     Ga-Yeong Kim <gayeong1225@gmail.com>
+
     Joy Zhang <joycheung1994@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
@@ -24,7 +26,8 @@ from . import system
 from .system import *
 
 _system_loaded = False
-def load(reload=False, pm2_kwargs={}, init_conds={}):
+def load(reload=False, pm2_kwargs=None, init_conds=None, simulate=False,
+         t_span=(0, 1), method='RK23', **simulate_kwargs):
 
     global _system_loaded
     if not _system_loaded: reload = True
@@ -37,6 +40,8 @@ def load(reload=False, pm2_kwargs={}, init_conds={}):
         PBR = sys.flowsheet.unit.PBR
         cmps = components = PBR.components
         pm2 = PBR.model
+        if simulate:
+            sys.simulate(t_span=t_span, method=method, **simulate_kwargs)
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     _system_loaded = True

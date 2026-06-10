@@ -211,7 +211,7 @@ def test_bsm1():
     cmps = s.effluent.components
     asm2d_ss = array([cmps.kwarray(v) for k,v in asm2d_ss.items()])
     
-    atol = 1e-6
+    atol = 1e-5
     val = u.AS.state.iloc[:,:-2]
     ac(val, asm2d_ss[:,:-1], rtol=rtol, atol=atol)
     

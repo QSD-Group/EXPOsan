@@ -20,15 +20,21 @@ TODO:
 
 import qsdsan as qs
 from flexsolve import IQ_interpolation
-from qsdsan import WasteStream, sanunits as su
+from qsdsan import WasteStream, unit_operations as su
 from exposan.cas import create_components
 
 __all__ = ('create_system')
 
-def create_system_without_cmps(flowsheet=None):
+def create_system(flowsheet=None):
     flowsheet = flowsheet or qs.Flowsheet('cas')
     qs.main_flowsheet.set_flowsheet(flowsheet)
-    
+
+    # (Re)create the components and set them as the active thermo so the system
+    # can be built standalone, regardless of what (if anything) was loaded
+    # before. This is the same self-contained pattern other single-system
+    # modules (e.g. `bsm1`) use.
+    create_components()
+
     # Influent
     inf = WasteStream('inf')
     inf.set_flow_by_concentration(
@@ -69,15 +75,6 @@ def create_system_without_cmps(flowsheet=None):
     
     sys = qs.System('sys', path=(U1, M1, ASP, GBT, AD, CHP))
 
-    return sys
-
-
-def create_system(flowsheet=None):
-    try: sys = create_system_without_cmps(flowsheet=flowsheet)
-    except: # mostly for testing where objs from the previous system will be carried over
-        qs.utils.clear_lca_registries()
-        create_components()
-        sys = create_system_without_cmps(flowsheet=flowsheet)
     return sys
 
 

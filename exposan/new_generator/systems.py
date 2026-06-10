@@ -5,11 +5,11 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
-    
+
     Shion Watabe <shionwatabe@gmail.com>
-    
+
     Hannah Lohman <hlohman94@gmail.com>
-    
+
     Yalin Li <mailto.yalin.li@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
@@ -20,7 +20,7 @@ for license details.
 from qsdsan import (
     Flowsheet, main_flowsheet,
     WasteStream,
-    sanunits as su,
+    unit_operations as su,
     ImpactItem,
     System, TEA, LCA,
     )
@@ -94,7 +94,7 @@ def batch_create_streams(prefix, phases=('liq', 'sol')):
 # =============================================================================
 
 def create_systemA(flowsheet=None, ppl=default_ppl):
-    # TODO: Set flowsheet to avoid stream replacement warnings
+    # Set flowsheet to avoid stream replacement warnings
     flowsheet = flowsheet or main_flowsheet
     streamA = flowsheet.stream
     batch_create_streams('A')

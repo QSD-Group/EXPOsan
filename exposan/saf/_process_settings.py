@@ -7,7 +7,7 @@ EXPOsan: Exposition of sanitation and resource recovery systems
 This module is developed by:
 
     Yalin Li <mailto.yalin.li@gmail.com>
-      
+
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
@@ -65,7 +65,7 @@ HTL_yields = {
 # All in 2020 $/kg unless otherwise noted, needs to do a thorough check to update values
 tea_indices = qs.utils.indices.tea_indices
 cost_year = 2020
-PCE_indices = tea_indices['PCEPI']
+PCE_indices = tea_indices['PCEPI_by_year']
 
 AEO_year = 2022
 AEO_factor = PCE_indices[cost_year]/PCE_indices[AEO_year]
@@ -139,7 +139,7 @@ gwp_dct = {
 gwp_dct['HTcatalyst'] = gwp_dct['HCcatalyst']
 gwp_dct['solids'] = gwp_dct['trans_feedstock'] # only account for transportation
 
-labor_indices = tea_indices['labor']
+labor_indices = tea_indices['labor_by_year']
 size_ratio = tpd/1339
 tea_kwargs = dict(
     IRR=0.1,
@@ -154,7 +154,13 @@ tea_kwargs = dict(
     )
 
 def _load_process_settings():
-    bst.CE = tea_indices['CEPCI'][cost_year]
+    # Note: this mutates process-global biosteam state (bst.CE,
+    # bst.HeatUtility.heating_agents / cooling_agents prices, and
+    # bst.PowerUtility.price). Other systems sharing the same Python
+    # process will inherit these prices unless they call
+    # ``bst.HeatUtility.default_agents()`` and set their own values in
+    # their own ``_load_process_settings``.
+    qs.CEPCI = tea_indices['CEPCI_by_year'][cost_year]
     
     # Utilities, price from Table 17.1 in Seider et al., 2016$
     # Use bst.HeatUtility.cooling_agents/heating_agents to see all the heat utilities

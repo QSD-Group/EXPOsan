@@ -5,7 +5,7 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
-    
+
     Joy Zhang <joycheung1994@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
@@ -26,12 +26,13 @@ from .system import *
 
 _system_loaded = False
 def load(reload=False, suspended_growth_model='ASM1', reactor_model='CSTR', 
-         inf_kwargs={}, asm_kwargs={}, settler_kwargs={}, 
-         init_conds={}, aeration_processes=()):
+         inf_kwargs=None, asm_kwargs=None, settler_kwargs=None, 
+         init_conds=None, aeration_processes=(), t_span=(0, 10), method='BDF',
+         simulate=False, **simulation_kwargs):
     global _system_loaded
     if not _system_loaded: reload = True
     if reload:
-        global cmps, components, asm, sys
+        global cmps, components, sys, PE, SE
         sys = create_system(
             suspended_growth_model=suspended_growth_model,
             reactor_model=reactor_model,
@@ -41,15 +42,12 @@ def load(reload=False, suspended_growth_model='ASM1', reactor_model='CSTR',
             init_conds=init_conds,
             aeration_processes=aeration_processes,
             )
-        # O1 = sys.flowsheet.unit.O1
-        # cmps = components = O1.components
-        # asm = O1.suspended_growth_model
-        # Legacy names
-        global PE, SE#, RE
+        if simulate:
+            sys.simulate(t_span=t_span, method=method, **simulation_kwargs)
         stream = sys.flowsheet.stream
         PE = stream.wastewater
         SE = stream.effluent
-        # RE = stream.RWW
+        cmps = components = SE.components
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     _system_loaded = True

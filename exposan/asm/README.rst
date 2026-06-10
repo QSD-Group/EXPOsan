@@ -4,7 +4,7 @@ asm: Validation of Activated Sludge Models
 
 Summary
 -------
-This module is used to validate the activated sludge models (ASM1 and ASM2d) as in `Henze et al <https://iwaponline.com/ebooks/book/96/Activated-Sludge-Models-ASM1-ASM2-ASM2d-and-ASM3>`_ using a continuous stirred-tank reactor.
+This module is used to validate the activated sludge models (ASM1 and ASM2d) as in Henze et al. [1]_ using a continuous stirred-tank reactor.
 
 The "validation.py" script is used for the validation of the implementation in `WaterTAP <https://github.com/watertap-org/watertap/>`_. The "gps-x" folder contain results from this module and the implementation in `GPS-X <https://www.hydromantis.com/GPSX.html>`_ ("default" for the default setting, "validation" for results from running "validation.py").
 
@@ -31,3 +31,6 @@ Load the system
 .. figure:: ./readme_figures/CSTR_select_states.png
 
     *Select component states from the continuous stirred tank reactor in the asm module*
+
+
+.. [1] Henze, M.; Gujer, W.; Mino, T.; van Loosedrecht, M. Activated Sludge Models ASM1, ASM2, ASM2d and ASM3. Water Intelligence Online 2006, 5 (0), 9781780402369–9781780402369. https://doi.org/10.2166/9781780402369.

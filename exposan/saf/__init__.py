@@ -4,9 +4,9 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
-    
+
     Yalin Li <mailto.yalin.li@gmail.com>
-    
+
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
@@ -50,9 +50,9 @@ from . import systems
 from .systems import *
 
 _system_loaded = False
-def load(configuration='baseline',):
+def load(configuration='baseline', simulate=False):
     global sys, tea, lca, flowsheet, _system_loaded
-    configuration = configuration.lower()   
+    configuration = configuration.lower()
     if configuration == 'baseline':
         kwargs = config_baseline
     elif configuration == 'ec':
@@ -72,7 +72,10 @@ def load(configuration='baseline',):
     _system_loaded = True
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
-    simulate_and_print(sys)
+    # Off by default: the distillation columns are fragile (FUG shortcut
+    # convergence is thermo-sensitive and can fail in CI); see README/tests.
+    if simulate:
+        simulate_and_print(sys)
 
 def __getattr__(name):
     if not _components_loaded or not _system_loaded:

@@ -5,9 +5,9 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
-    
+
     Bright Elijah <be05055@georgiasouthern.edu & brightcarlelijah@gmail.com>
-    
+
     Yalin Li <mailto.yalin.li@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
@@ -36,7 +36,7 @@ def create_components(set_thermo=True):
     NaClO = Component('NaClO', phase='l', particle_size = 'Soluble', 
                       degradability = 'Undegradable', organic=False)
     
-    Ecoli = Component('Ecoli', MW = 1, phase = 's', particle_size = 'Particluate', 
+    Ecoli = Component('Ecoli', MW = 1, phase = 's', particle_size = 'Particulate',
                       degradability = 'Undegradable', organic = False)
     
     add_V_from_rho(Ecoli, 500)
