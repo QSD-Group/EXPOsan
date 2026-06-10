@@ -13,11 +13,16 @@ for license details.
 """
 import os, numpy as np
 from qsdsan import SanUnit, Construction, WasteStream, System, unit_operations as su
+from qsdsan.unit_operations import WWTpump
+from qsdsan.unit_operations.bst._pumping import Pump
 from qsdsan import processes as pc
+from qsdsan.utils import auom, select_pipe, format_str
 from biosteam.units.design_tools import CEPCI_by_year
 from biosteam.units.decorators import cost
-import math
+from warnings import warn
 
+import math
+from math import pi, ceil
 __all__ = ('Photobioreactor'
            )
 #%%
@@ -25,6 +30,7 @@ CSTR = su.CSTR
 lb_to_kg = 0.453592
 acre_to_sq_m = 4046.86
 sq_feet_to_sq_m = 10.7639
+m_to_feet = 3.28084
 CEPCI_by_year.update({
     2022: 816.0,
     2023: 797.9,
@@ -73,6 +79,8 @@ class Photobioreactor(CSTR):
         The designed maximum flow velocity [m/s] in the tube. The default is 0.4 m/s. Note this flow is the combined flow from influent and recycled flow.
     rr: float
         The designed recirculation rate proportional to the influent flow rate. The default is 1.
+    rho: float
+        The density of the mixed liquor [kg/m3]. The default is 1000.
     light_intensity: int
         The designed light intensity [umol/(m2·s)] over the illuminated area. The default is 100.
     annual_heating_days: int
@@ -128,6 +136,7 @@ class Photobioreactor(CSTR):
                 light_intensity = 100,
                 annual_heating_days = 150,
                 heater_up_time_ratio = 0.15,
+                rho = 1000,
                 include_construction= True,
                 **kwargs):
         CSTR.__init__(self,ID=ID,ins=ins,outs=outs,split=None,V_max=V_max, W_tank = W_tank, D_tank = D_tank,
@@ -149,6 +158,7 @@ class Photobioreactor(CSTR):
         self.light_intensity = light_intensity
         self.annual_heating_days = annual_heating_days
         self.heater_up_time_ratio = heater_up_time_ratio
+        self.rho = rho
     
     def _init_lca(self):#TODO
         self.include_construction = True
@@ -181,6 +191,7 @@ class Photobioreactor(CSTR):
                          item='Fan',
                          quantity_unit='kg'),
             ]
+        
     def _design(self):
         self.design_results['Total flow'] = self.ins[0].F_vol #m3/hr
         ###Glass tube
@@ -255,12 +266,349 @@ class Photobioreactor(CSTR):
         self.construction[1].quantity += self.design_results['PIG assemblies PVC']
         self.design_results['PIG assemblies stainless steel'] =1934/6720*self.design_results['Aerial footage']*lb_to_kg #kg of stainless steel
         self.construction[3].quantity += self.design_results['PIG assemblies stainless steel']
-        
-        ###Pumps
-        #TODO
-        
-        
+
         self._init_lca()
         inf, RAA=self.ins
         eff, = self.outs
+
+#%%
+class Ecorecoverypump(WWTpump):
+    '''
+    Pump subclass for Ecorecovery systems.
+
+    Adds a feed_PBR pump type for the hydraulic design of fence-type tubular photobioreactors.
+
+    Additional inputs for pump_type='feed_PBR'
+    ------------------------------------------------
+    InD : float
+        Inner diameter of the PBR tube, [ft].
+        Default is 0.1 m converted to ft.
+
+    OD : float
+        Outer diameter, or vertical spacing basis, of the PBR tube, [ft].
+
+    hrt : float
+        Hydraulic retention time based on influent flow, [hr].
+        Default is 4 hr.
+
+    length : float
+        Maximum length of each PBR row, [ft].
+        Default is 80 m converted to ft.
+
+    v : float
+        Designed flow velocity inside the PBR tube, [ft/s].
+        This should represent the combined influent plus recirculation flow.
+        Default is 0.4 m/s converted to ft/s.
+
+    rr : float
+        Recirculation ratio relative to influent flow, dimensionless.
+        Default is 1.
+
+    H_p : float
+        Pressure head, [ft].
+        Default is 0.
+
+    L_s : float
+        Suction pipe length, [ft].
+        Default is 10 m converted to ft.
+
+    N_ubends : int or None
+        Number of U-bends per PBR set. If None, it is estimated as
+        number of rows per set minus 1.
+    '''
+    _valid_pump_types = WWTpump._valid_pump_types + ('feed_PBR',)
+    _ft_to_m = auom('ft').conversion_factor('m')
+    _m_to_ft = 1 / _ft_to_m
+    _g = 32.174  # gravitational acceleration, [ft/s2]
+    F_BM_pump = 1.18*(1+0.007/100)
+    _lb_to_kg = auom('lb').conversion_factor('kg')
+    default_F_BM = {
+            'Pump': F_BM_pump,
+            'Pump building': F_BM_pump,
+            }
+    default_equipment_lifetime = {
+        'Pump': 15,
+        'Pump pipe stainless steel': 15,
+        'Pump stainless steel': 15,
+        'Pump chemical storage HDPE': 30,
+        }
+    _feed_PBR_input_order = (
+        'InD',      # [ft]
+        'OD',       # [ft]
+        'hrt',      # [hr]
+        'length',   # [ft]
+        'v',        # [ft/s]
+        'rr',       # dimensionless
+        'H_p',      # [ft]
+        'L_s',      # [ft]
+        'N_ubends', # dimensionless, optional
+    )
+
+    def __init__(self, ID='', ins=None, outs=(), thermo=None,
+                 init_with='WasteStream',
+                 prefix='', pump_type='', Q_mgd=None, add_inputs=(),
+                 InD=None, OD=None, hrt=4.,
+                 length=None, v=None, rr=1.,
+                 H_p=0., L_s=None, N_ubends=None,
+                 capacity_factor=1.,
+                 include_pump_cost=True, include_building_cost=False,
+                 include_OM_cost=False,
+                 F_BM=default_F_BM,
+                 lifetime=default_equipment_lifetime,
+                 **kwargs):
+
+        super().__init__(
+            ID=ID, ins=ins, outs=outs, thermo=thermo,
+            init_with=init_with,
+            prefix=prefix,
+            pump_type=pump_type,
+            Q_mgd=Q_mgd,
+            add_inputs=add_inputs,
+            capacity_factor=capacity_factor,
+            include_pump_cost=include_pump_cost,
+            include_building_cost=include_building_cost,
+            include_OM_cost=include_OM_cost,
+            F_BM=F_BM,
+            lifetime=lifetime,
+            **kwargs
+        )
+
+        # Store feed_PBR specific values separately so other WWTpump types
+        # can still use WWTpump's default v, H_p, etc.
+        self.feed_PBR_InD = 0.1 * self._m_to_ft if InD is None else InD
+        self.feed_PBR_OD = 0.105 * self._m_to_ft if OD is None else OD
+        self.feed_PBR_hrt = hrt
+        self.feed_PBR_length = 80 * self._m_to_ft if length is None else length
+        self.feed_PBR_v = 0.4 * self._m_to_ft if v is None else v
+        self.feed_PBR_rr = rr
+        self.feed_PBR_H_p = H_p
+        self.feed_PBR_L_s = 10 * self._m_to_ft if L_s is None else L_s
+        self.feed_PBR_N_ubends = N_ubends
+
+    @property
+    def pump_type(self):
+        return self._pump_type
+
+    @pump_type.setter
+    def pump_type(self, i):
+        i = i or ''
+        i_lower = i.lower()
+        i_lower = i_lower.replace('cstr', 'CSTR')
+        i_lower = i_lower.replace('af', 'AF')
+        i_lower = i_lower.replace('pbr', 'PBR')
+
+        if i_lower not in self.valid_pump_types:
+            raise ValueError(
+                f'The given `pump_type` "{i}" is not valid, '
+                'check `valid_pump_types` for acceptable pump types.'
+            )
+
+        if i_lower == 'feed_PBR':
+            warn(
+                "`pump_type='feed_PBR'` requires PBR-specific inputs. "
+                "Pass them as keyword arguments or through `add_inputs` in this order: "
+                "InD [ft], OD [ft], hrt [hr], length [ft], v [ft/s], "
+                "rr [-], H_p [ft], L_s [ft], N_ubends [-]. ",
+                RuntimeWarning,
+                stacklevel=3,
+            )
+
+        self._pump_type = i_lower
+
+    def _get_feed_PBR_inputs(self, InD=None, OD=None, hrt=None,
+                             length=None, v=None, rr=None,
+                             H_p=None, L_s=None, N_ubends=None):
+        values = {
+            'InD': self.feed_PBR_InD,
+            'OD': self.feed_PBR_OD,
+            'hrt': self.feed_PBR_hrt,
+            'length': self.feed_PBR_length,
+            'v': self.feed_PBR_v,
+            'rr': self.feed_PBR_rr,
+            'H_p': self.feed_PBR_H_p,
+            'L_s': self.feed_PBR_L_s,
+            'N_ubends': self.feed_PBR_N_ubends,
+        }
+
+        # Allow add_inputs to follow the WWTpump style.
+        for name, value in zip(self._feed_PBR_input_order, self.add_inputs):
+            if value is not None:
+                values[name] = value
+
+        explicit_values = {
+            'InD': InD,
+            'OD': OD,
+            'hrt': hrt,
+            'length': length,
+            'v': v,
+            'rr': rr,
+            'H_p': H_p,
+            'L_s': L_s,
+            'N_ubends': N_ubends,
+        }
+
+        for name, value in explicit_values.items():
+            if value is not None:
+                values[name] = value
+
+        missing = [
+            name for name in ('InD', 'OD', 'hrt', 'length', 'v', 'rr', 'H_p', 'L_s')
+            if values[name] is None
+        ]
+        if missing:
+            raise ValueError(
+                "`pump_type='feed_PBR'` is missing required input(s): "
+                f"{', '.join(missing)}."
+            )
+
+        if values['InD'] <= 0:
+            raise ValueError('`InD` must be positive, [ft].')
+        if values['OD'] <= 0:
+            raise ValueError('`OD` must be positive, [ft].')
+        if values['hrt'] <= 0:
+            raise ValueError('`hrt` must be positive, [hr].')
+        if values['length'] <= 0:
+            raise ValueError('`length` must be positive, [ft].')
+        if values['v'] <= 0:
+            raise ValueError('`v` must be positive, [ft/s].')
+        if values['rr'] < 0:
+            raise ValueError('`rr` must be non-negative.')
+        if values['L_s'] < 0:
+            raise ValueError('`L_s` must be non-negative, [ft].')
+
+        return values
+
+    def design_feed_PBR(self, Q_mgd=None, InD=None, OD=None, hrt=None,
+                        length=None, v=None, rr=None,
+                        H_p=None, L_s=None, N_ubends=None,
+                        **kwargs):
+        '''
+        Design the feed pump for a fence-type tubular PBR.
+
+        This method intentionally does not call WWTpump._design_generic().
+        It follows the PBRpump hydraulic design structure, but all length,
+        volume, and velocity calculations are in US units.
+        '''
+
+        # Allow additional overrides through kwargs.
+        if kwargs:
+            for k, val in kwargs.items():
+                if k in self._feed_PBR_input_order:
+                    locals()[k] = val
+                else:
+                    setattr(self, k, val)
+
+        if Q_mgd is None:
+            Q_mgd = self.Q_mgd
+        self.Q_mgd = Q_mgd
+
+        vals = self._get_feed_PBR_inputs(
+            InD=InD, OD=OD, hrt=hrt, length=length,
+            v=v, rr=rr, H_p=H_p, L_s=L_s, N_ubends=N_ubends,
+        )
+
+        InD = vals['InD']          # [ft]
+        OD = vals['OD']            # [ft]
+        hrt = vals['hrt']          # [hr]
+        length = vals['length']    # [ft]
+        v = vals['v']              # [ft/s]
+        rr = vals['rr']            # [-]
+        H_p = vals['H_p']          # [ft]
+        L_s = vals['L_s']          # [ft]
+        N_ubends = vals['N_ubends']
+
+        D = self.design_results
+
+        # Flow and PBR sizing, all in US units.
+        Q_cfs = self.Q_cfs                         # [ft3/s], influent flow
+        Q_cfh = Q_cfs * 3600                       # [ft3/hr]
+        tube_area = pi / 4 * InD**2                # [ft2]
+
+        if Q_cfs <= 0:
+            self.N_pump = 0
+            self._H_ts = self._H_sf = self._H_df = self._H_p = 0.
+            D['Total flow'] = 0.
+            D['Working volume'] = 0.
+            D['Total length'] = 0.
+            D['sets of PBR blocks'] = 0
+            D['number of rows per set'] = 0
+            D['U-bends'] = 0
+            return 0., 0., 0.
+
+
+        # Working volume = influent flow * HRT
+        # Total length = working volume / tube cross sectional area
+        working_volume = Q_cfh * hrt               # [ft3]
+        total_length = working_volume / tube_area  # [ft]
+
+        # Number of PBR sets, equivalent to N_pump in WWTpump logic.
+        # Uses combined influent plus recirculation flow.
+        N_pump = ceil(Q_cfs * (1 + rr) / tube_area / v)
+        N_pump = max(N_pump, 1)
+        self.N_pump = N_pump
+
+        rows_per_set = ceil(total_length / N_pump / length)
+        rows_per_set = max(rows_per_set, 1)
+
+        if N_ubends is None:
+            N_ubends = max(rows_per_set, 0) * 2
+        else:
+            N_ubends = ceil(N_ubends)
+
+        D['Total flow'] = Q_cfh                         # [ft3/hr]
+        D['Working volume'] = working_volume            # [ft3]
+        D['Total length'] = total_length                # [ft]
+        D['sets of PBR blocks'] = N_pump                # [-]
+        D['number of rows per set'] = rows_per_set      # [-]
+        D['U-bends'] = N_ubends                         # [-]
+
+        # Store units for the additional feed_PBR design results.
+        self._units['Total flow'] = 'ft3/hr'
+        self._units['Working volume'] = 'ft3'
+        self._units['Total length'] = 'ft'
+        self._units['sets of PBR blocks'] = ''
+        self._units['number of rows per set'] = ''
+        self._units['U-bends'] = ''
+
+        self._v = v
+        C = self.C
+
+        # Suction side pipe sizing.
+        OD_s, t_s, ID_s = select_pipe(Q_cfs / N_pump, v)  # [in]
+
+        # Static head.
+        # Height simplifies to PBR vertical height
+
+        self._H_ts = rows_per_set * OD  # [ft]
+
+        # Suction friction head, Hazen-Williams form.
+        self._H_sf = (
+            3.02 * L_s * v**1.85 * C**(-1.85) * InD**(-1.17)
+        )
+        self._H_sf *= self.headloss_multiplication_factor
+
+        # Discharge friction head along one PBR set.
+        length_per_set = total_length / N_pump  # [ft]
+
+        # Minor loss from U-bends.
+        #https://www.engineeringtoolbox.com/minor-loss-coefficients-pipes-d_626.html
+        H_bends = N_ubends * 0.2 * v**2 / (2 * self._g)  # [ft]
+
+        self._H_df = (
+            3.02 * length_per_set * v**1.85 * C**(-1.85) * InD**(-1.17)
+            + H_bends
+        )
+        self._H_df *= self.headloss_multiplication_factor
+
+        self._H_p = H_p
+
+        # Stainless steel pipe mass.
+        # only counts suction-side pipe SS.
+        V_s = N_pump * pi / 4 * (OD_s**2 - ID_s**2) * (L_s * 12)  # [in3]
+        M_SS_pipe = 0.29 * V_s * _lb_to_kg          # [kg]
+
+        # Stainless steel pump mass follows WWTpump's N_pump handling.
+        M_SS_pump = N_pump * self.SS_per_pump                       # [kg]
+
+        return M_SS_pipe, M_SS_pump, 0.
         

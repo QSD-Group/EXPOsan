@@ -94,7 +94,6 @@ SE = su.DynamicInfluent('SE', outs=[DYINF],
 
 MIX = su.CSTR('MIX', ins=[DYINF, RAA], outs=[PHO], V_max=V_mix,
               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T_mix, I_mix))
-
 PBR1 = su.CSTR('PBR1', ins=MIX-0, V_max=V_pbr/20,
               aeration=None, suspended_growth_model=pm2, exogenous_vars=(T, I))
 PBR2 = su.CSTR('PBR2', ins=PBR1-0, V_max=V_pbr/20,
