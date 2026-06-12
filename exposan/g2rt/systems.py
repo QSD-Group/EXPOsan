@@ -752,7 +752,9 @@ def create_system(system_ID='A', flowsheet=None, ppl=None,
         if hasattr(main_flowsheet.flowsheet, flowsheet_ID): # clear flowsheet
             getattr(main_flowsheet.flowsheet, flowsheet_ID).clear()
             clear_lca_registries()
-            reload_lca = True
+        # Always reload LCA data: ImpactItem registry is flowsheet-scoped, so
+        # switching to a new flowsheet context requires re-registering items.
+        reload_lca = True
         flowsheet = Flowsheet(flowsheet_ID)
         main_flowsheet.set_flowsheet(flowsheet)
 
