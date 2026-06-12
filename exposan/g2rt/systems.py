@@ -771,11 +771,3 @@ def create_system(system_ID='A', flowsheet=None, ppl=None,
         system = f(flowsheet, ppl=ppl, lifetime = lifetime, **kwargs)
 
     return system
-
-
-
-
-    
-    
-    
-
