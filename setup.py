@@ -48,6 +48,8 @@ setup(
             'cas/*',
             'eco_san/*',
             'eco_san/data/*',
+            'g2rt/*',
+            'g2rt/data/*',
             'htl/*',
             'htl/data/*',
             'metab/*',
