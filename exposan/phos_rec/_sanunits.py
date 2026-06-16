@@ -170,13 +170,13 @@ class AcidogenicFermenter(ElementFlowMixin, SanUnit):
     )
     
     _units = {
-        'Reactor volume': 'm3',
-        'Cycle time': 'hr',
-        'Batch time': 'hr',
-        'Loading time': 'hr',
-        'Total dead time': 'hr',
-        'Reactor duty': 'kJ/hr',
-        'Recirculation flow rate': 'm3/hr'
+        'Reactor volume':'m3',
+        'Cycle time':'hr',
+        'Batch time':'hr',
+        'Loading time':'hr',
+        'Total dead time':'hr',
+        'Reactor duty':'kJ/hr',
+        'Recirculation flow rate':'m3/hr'
     }
     
     # cleaning and unloading, [hr]

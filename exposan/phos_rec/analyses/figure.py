@@ -1,4 +1,4 @@
-#!/usr/bin/env python3 for the CI and Cost heatmap of food_sludge_ratio and HRT
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 '''
 EXPOsan: Exposition of sanitation and resource recovery systems
@@ -14,10 +14,14 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-import numpy as np, pandas as pd, matplotlib.pyplot as plt, matplotlib.colors as colors
+import os, numpy as np, pandas as pd, matplotlib.pyplot as plt, matplotlib.colors as colors
+from qsdsan.utils import auom
 from matplotlib.mathtext import _mathtext as mathtext
 from colorpalette import Color
 from matplotlib.colors import to_hex
+from matplotlib.patches import Rectangle
+
+_ton_to_tonne = auom('ton').conversion_factor('tonne')
 
 mathtext.FontConstantsBase.sup1 = 0.35
 
@@ -46,33 +50,36 @@ dy = Color('dark_yellow', (171, 137, 55)).HEX
 da = Color('dark_gray', (78, 78, 78)).HEX
 dp = Color('dark_purple', (76, 56, 90)).HEX
 
-Figure_2_file = r'D:\1_20250901-20260730\UIUC\writing_paper\EST-phosphorus_recovery_to_FePO4\Figure_2_data.xlsx'
-Figure_2A_data = pd.read_excel(Figure_2_file, 'VFA')
-Figure_2B_data = pd.read_excel(Figure_2_file, 'pH')
-Figure_2C_data = pd.read_excel(Figure_2_file, 'PO43-')
-Figure_2D_data = pd.read_excel(Figure_2_file, 'Fe2+')
-Figure_2E_data = pd.read_excel(Figure_2_file, 'FePmolar')
+folder = os.path.dirname(os.path.dirname(__file__))
 
-# TODO: separate data from Figure_2_file to Figure_3_data, or change the name of the current file to something like Figure_file
-Figure_3B_P_recovery_data = pd.read_excel(Figure_2_file, 'Precovery')
-Figure_3B_Fe_recovery_data = pd.read_excel(Figure_2_file, 'Ferecovery')
-Figure_3B_sludge_management_cost_data = pd.read_excel(Figure_2_file, 'SludgeManagementCost')
-Figure_3B_sludge_management_CI_data = pd.read_excel(Figure_2_file, 'SludgeManagementCI')
-Figure_3C_avoid_waste_sludge_management_cost_data = pd.read_excel(Figure_2_file, 'AvoidWMC_MSPFePO4')
-Figure_3D_avoid_waste_sludge_management_CI_data = pd.read_excel(Figure_2_file, 'AvoidWMCI_CIFePO4')
+Fig_1_path = os.path.join(folder, 'data/Fig_1_data.xlsx')
+Fig_1a_data = pd.read_excel(Fig_1_path, 'VFA')
+Fig_1b_data = pd.read_excel(Fig_1_path, 'pH')
+Fig_1c_data = pd.read_excel(Fig_1_path, 'PO43-')
+Fig_1d_data = pd.read_excel(Fig_1_path, 'Fe2+')
+Fig_1e_data = pd.read_excel(Fig_1_path, 'FePmolar')
 
-# TODO: separate data from Figure_2_file to Figure_4_data, or change the name of the current file to something like Figure_file
-Figure_4AB_data = pd.read_excel(Figure_2_file, 'FePO4CostCI')
-Figure_4CD_data = pd.read_excel(Figure_2_file, 'sludgeCostCI')
-Figure_4EF_data = pd.read_excel(Figure_2_file, 'VFA_residue_FePO4MSPCI')
+# TODO: this is the old Fig 2c data; need update
+Fig_2c_P = pd.read_excel('/Users/jiananfeng/Desktop/UIUC/PhD_CEE/phosphorus_recovery/P_benchmarking/Figure_2_data.xlsx','Precovery')
+Fig_2c_Fe = pd.read_excel('/Users/jiananfeng/Desktop/UIUC/PhD_CEE/phosphorus_recovery/P_benchmarking/Figure_2_data.xlsx','Ferecovery')
+
+Fig_3ab_data = pd.read_excel(os.path.join(folder, 'results/sludge_management_cost_CI_basline_2026-06-04.xlsx'), header=[0, 1])
+Fig_3c_data = pd.read_excel(os.path.join(folder, 'results/FePO4_result_cost_credit_2026-06-04.xlsx'))
+Fig_3d_data = pd.read_excel(os.path.join(folder, 'results/FePO4_result_CI_credit_2026-06-09.xlsx'))
+
+Fig_4ab_data = pd.read_excel(os.path.join(folder, 'results/decision_heatmap_FePO4_2026-06-09.xlsx'))
+Fig_4ab_data = Fig_4ab_data[Fig_4ab_data['ratio']<=1]
+
+Fig_5a_data = pd.read_excel(os.path.join(folder, 'results/context_heatmap_2026-06-09.xlsx'))
 
 # SI
-# TODO: separate data from Figure_2_file to Figure_SI_data, or change the name of the current file to something like Figure_file
-Figure_S1_NH4_release_data = pd.read_excel(Figure_2_file, 'SI_NH4+')
+# TODO: add this file
+Fig_S1_path = os.path.join(folder, 'data/Fig_S1_data.xlsx')
+Fig_S1_NH4_release_data = pd.read_excel(Fig_S1_path, 'SI_NH4+')
 
-#%% Figure 2A
+#%% Fig. 1a
 
-fig, ax = plt.subplots(figsize=(14, 12))
+fig, ax = plt.subplots(figsize=(10, 10))
 
 plt.rcParams['axes.linewidth'] = 5
 plt.rcParams['hatch.linewidth'] = 5
@@ -86,16 +93,15 @@ plt.rcParams.update({'mathtext.fontset':'custom'})
 plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
-ax.set_xlim(0, 132)
+ax.set_xlim(0, 144)
 ax.set_ylim(0, 5000)
-plt.subplots_adjust(left=0.20, bottom=0.13)
 
-ax.set_xlabel(r'$\mathbf{Time}$ [hr]',
+ax.set_xlabel(r'$\mathbf{Fermentation\ time}$ [h]',
               fontname='Arial',
               fontsize=45,
               labelpad=0)
 
-ax.set_ylabel(r'$\mathbf{VFAs}$ [mg COD·L$^{-1}$]',
+ax.set_ylabel(r'$\mathbf{VFA}$ [mg COD·L$^{-1}$]',
               fontname='Arial',
               fontsize=45,
               labelpad=5)
@@ -124,49 +130,52 @@ ax_right.tick_params(direction='in', length=15, width=5,
 
 plt.yticks(np.arange(0, 6000, 1000), fontname='Arial')
 
-plt.errorbar(Figure_2A_data['Time/h'],
-            Figure_2A_data['FW:sludge 0:3'],
-            yerr=Figure_2A_data['std'],
-            lw=5, color=da, linestyle='dotted',
-            capsize=12, capthick=5, zorder=0)
+plt.errorbar(Fig_1a_data['Time/h'],
+             Fig_1a_data['FW:sludge 0:3'],
+             yerr=Fig_1a_data['std'],
+             lw=5, color=da, linestyle='dotted',
+             capsize=12, capthick=5, zorder=0)
 
-plt.errorbar(Figure_2A_data['Time/h'],
-            Figure_2A_data['FW:sludge 1:3'],
-            yerr=Figure_2A_data['std'],
-            lw=5, color=da, linestyle='dashdot',
-            capsize=12, capthick=5, zorder=0)
+plt.errorbar(Fig_1a_data['Time/h'],
+             Fig_1a_data['FW:sludge 1:3'],
+             yerr=Fig_1a_data['std'],
+             lw=5, color=da, linestyle='dashdot',
+             capsize=12, capthick=5, zorder=0)
 
-plt.errorbar(Figure_2A_data['Time/h'],
-            Figure_2A_data['FW:sludge 2:3'],
-            yerr=Figure_2A_data['std'],
-            lw=5, color=da, linestyle='dashed',
-            capsize=12, capthick=5, zorder=0)
+plt.errorbar(Fig_1a_data['Time/h'],
+             Fig_1a_data['FW:sludge 2:3'],
+             yerr=Fig_1a_data['std'],
+             lw=5, color=da, linestyle='dashed',
+             capsize=12, capthick=5, zorder=0)
 
-plt.errorbar(Figure_2A_data['Time/h'],
-            Figure_2A_data['FW:sludge 3:3'],
-            yerr=Figure_2A_data['std'],
-            lw=5, color=da, linestyle='solid',
-            capsize=12, capthick=5, zorder=0)
+plt.errorbar(Fig_1a_data['Time/h'],
+             Fig_1a_data['FW:sludge 3:3'],
+             yerr=Fig_1a_data['std'],
+             lw=5, color=da, linestyle='solid',
+             capsize=12, capthick=5, zorder=0)
 
-plt.scatter(Figure_2A_data['Time/h'],
-            Figure_2A_data['FW:sludge 0:3'],
+plt.scatter(Fig_1a_data['Time/h'],
+            Fig_1a_data['FW:sludge 0:3'],
             s=500, color=a, lw=5, edgecolor=da, marker='o', zorder=1)
 
-plt.scatter(Figure_2A_data['Time/h'],
-            Figure_2A_data['FW:sludge 1:3'],
+plt.scatter(Fig_1a_data['Time/h'],
+            Fig_1a_data['FW:sludge 1:3'],
             s=500, color=a, lw=5, edgecolor=da,marker='s', zorder=1)
 
-plt.scatter(Figure_2A_data['Time/h'],
-            Figure_2A_data['FW:sludge 2:3'],
+plt.scatter(Fig_1a_data['Time/h'],
+            Fig_1a_data['FW:sludge 2:3'],
             s=500, color=a, lw=5, edgecolor=da,marker='^', zorder=1)
 
-plt.scatter(Figure_2A_data['Time/h'],
-            Figure_2A_data['FW:sludge 3:3'],
+plt.scatter(Fig_1a_data['Time/h'],
+            Fig_1a_data['FW:sludge 3:3'],
             s=500, color=a, lw=5, edgecolor=da,marker='D', zorder=1)
 
-#%% Figure 2B
+# TODO: update path
+plt.savefig('/Users/jiananfeng/Desktop/Fig_1a.pdf', transparent=True, bbox_inches='tight')
 
-fig, ax = plt.subplots(figsize=(13, 12))
+#%% Fig 1b
+
+fig, ax = plt.subplots(figsize=(10, 10))
 
 plt.rcParams['axes.linewidth'] = 5
 plt.rcParams['hatch.linewidth'] = 5
@@ -180,11 +189,10 @@ plt.rcParams.update({'mathtext.fontset':'custom'})
 plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
-ax.set_xlim(0, 132)
+ax.set_xlim(0, 144)
 ax.set_ylim(4, 7)
-plt.subplots_adjust(left=0.15, bottom=0.13)
 
-ax.set_xlabel(r'$\mathbf{Time}$ [hr]',
+ax.set_xlabel(r'$\mathbf{Fermentation\ time}$ [h]',
               fontname='Arial',
               fontsize=45,
               labelpad=0)
@@ -218,49 +226,52 @@ ax_right.tick_params(direction='in', length=15, width=5,
 
 plt.yticks(np.arange(4, 7.5, 0.5), fontname='Arial')
 
-plt.errorbar(Figure_2B_data['Time/h'],
-            Figure_2B_data['FW:sludge 0:3'],
-            yerr=Figure_2B_data['std'],
-            lw=5, color=dg, linestyle='dotted',
-            capsize=12, capthick=5, zorder=0)
+plt.errorbar(Fig_1b_data['Time/h'],
+             Fig_1b_data['FW:sludge 0:3'],
+             yerr=Fig_1b_data['std'],
+             lw=5, color=dg, linestyle='dotted',
+             capsize=12, capthick=5, zorder=0)
 
-plt.errorbar(Figure_2B_data['Time/h'],
-            Figure_2B_data['FW:sludge 1:3'],
-            yerr=Figure_2B_data['std'],
-            lw=5, color=dg, linestyle='dashdot',
-            capsize=12, capthick=5, zorder=0)
+plt.errorbar(Fig_1b_data['Time/h'],
+             Fig_1b_data['FW:sludge 1:3'],
+             yerr=Fig_1b_data['std'],
+             lw=5, color=dg, linestyle='dashdot',
+             capsize=12, capthick=5, zorder=0)
 
-plt.errorbar(Figure_2B_data['Time/h'],
-            Figure_2B_data['FW:sludge 2:3'],
-            yerr=Figure_2B_data['std'],
-            lw=5, color=dg, linestyle='dashed',
-            capsize=12, capthick=5, zorder=0)
+plt.errorbar(Fig_1b_data['Time/h'],
+             Fig_1b_data['FW:sludge 2:3'],
+             yerr=Fig_1b_data['std'],
+             lw=5, color=dg, linestyle='dashed',
+             capsize=12, capthick=5, zorder=0)
 
-plt.errorbar(Figure_2B_data['Time/h'],
-            Figure_2B_data['FW:sludge 3:3'],
-            yerr=Figure_2B_data['std'],
-            lw=5, color=dg, linestyle='solid',
-            capsize=12, capthick=5, zorder=0)
+plt.errorbar(Fig_1b_data['Time/h'],
+             Fig_1b_data['FW:sludge 3:3'],
+             yerr=Fig_1b_data['std'],
+             lw=5, color=dg, linestyle='solid',
+             capsize=12, capthick=5, zorder=0)
 
-plt.scatter(Figure_2B_data['Time/h'],
-            Figure_2B_data['FW:sludge 0:3'],
+plt.scatter(Fig_1b_data['Time/h'],
+            Fig_1b_data['FW:sludge 0:3'],
             s=500, color=g, lw=5, edgecolor=dg, marker='o', zorder=1)
 
-plt.scatter(Figure_2B_data['Time/h'],
-            Figure_2B_data['FW:sludge 1:3'],
+plt.scatter(Fig_1b_data['Time/h'],
+            Fig_1b_data['FW:sludge 1:3'],
             s=500, color=g, lw=5, edgecolor=dg,marker='s', zorder=1)
 
-plt.scatter(Figure_2B_data['Time/h'],
-            Figure_2B_data['FW:sludge 2:3'],
+plt.scatter(Fig_1b_data['Time/h'],
+            Fig_1b_data['FW:sludge 2:3'],
             s=500, color=g, lw=5, edgecolor=dg,marker='^', zorder=1)
 
-plt.scatter(Figure_2B_data['Time/h'],
-            Figure_2B_data['FW:sludge 3:3'],
+plt.scatter(Fig_1b_data['Time/h'],
+            Fig_1b_data['FW:sludge 3:3'],
             s=500, color=g, lw=5, edgecolor=dg,marker='D', zorder=1)
 
-#%% Figure 2C
+# TODO: update path
+plt.savefig('/Users/jiananfeng/Desktop/Fig_1b.pdf', transparent=True, bbox_inches='tight')
 
-fig, ax = plt.subplots(figsize=(14, 12))
+#%% Fig 1c
+
+fig, ax = plt.subplots(figsize=(10, 10))
 
 plt.rcParams['axes.linewidth'] = 5
 plt.rcParams['hatch.linewidth'] = 5
@@ -274,11 +285,10 @@ plt.rcParams.update({'mathtext.fontset':'custom'})
 plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
-ax.set_xlim(0, 132)
+ax.set_xlim(0, 144)
 ax.set_ylim(0, 160)
-plt.subplots_adjust(left=0.17, bottom=0.13)
 
-ax.set_xlabel(r'$\mathbf{Time}$ [hr]',
+ax.set_xlabel(r'$\mathbf{Fermentation\ time}$ [h]',
               fontname='Arial',
               fontsize=45,
               labelpad=0)
@@ -312,49 +322,52 @@ ax_right.tick_params(direction='in', length=15, width=5,
 
 plt.yticks(np.arange(0, 200, 40), fontname='Arial')
 
-plt.errorbar(Figure_2C_data['Time/h'],
-            Figure_2C_data['FW:sludge 0:3'],
-            yerr=Figure_2C_data['std'],
-            lw=5, color=db, linestyle='dotted',
-            capsize=12, capthick=5, zorder=0)
+plt.errorbar(Fig_1c_data['Time/h'],
+             Fig_1c_data['FW:sludge 0:3'],
+             yerr=Fig_1c_data['std'],
+             lw=5, color=db, linestyle='dotted',
+             capsize=12, capthick=5, zorder=0)
 
-plt.errorbar(Figure_2C_data['Time/h'],
-            Figure_2C_data['FW:sludge 1:3'],
-            yerr=Figure_2C_data['std'],
-            lw=5, color=db, linestyle='dashdot',
-            capsize=12, capthick=5, zorder=0)
+plt.errorbar(Fig_1c_data['Time/h'],
+             Fig_1c_data['FW:sludge 1:3'],
+             yerr=Fig_1c_data['std'],
+             lw=5, color=db, linestyle='dashdot',
+             capsize=12, capthick=5, zorder=0)
 
-plt.errorbar(Figure_2C_data['Time/h'],
-            Figure_2C_data['FW:sludge 2:3'],
-            yerr=Figure_2C_data['std'],
-            lw=5, color=db, linestyle='dashed',
-            capsize=12, capthick=5, zorder=0)
+plt.errorbar(Fig_1c_data['Time/h'],
+             Fig_1c_data['FW:sludge 2:3'],
+             yerr=Fig_1c_data['std'],
+             lw=5, color=db, linestyle='dashed',
+             capsize=12, capthick=5, zorder=0)
 
-plt.errorbar(Figure_2C_data['Time/h'],
-            Figure_2C_data['FW:sludge 3:3'],
-            yerr=Figure_2C_data['std'],
-            lw=5, color=db, linestyle='solid',
-            capsize=12, capthick=5, zorder=0)
+plt.errorbar(Fig_1c_data['Time/h'],
+             Fig_1c_data['FW:sludge 3:3'],
+             yerr=Fig_1c_data['std'],
+             lw=5, color=db, linestyle='solid',
+             capsize=12, capthick=5, zorder=0)
 
-plt.scatter(Figure_2C_data['Time/h'],
-            Figure_2C_data['FW:sludge 0:3'],
+plt.scatter(Fig_1c_data['Time/h'],
+            Fig_1c_data['FW:sludge 0:3'],
             s=500, color=b, lw=5, edgecolor=db, marker='o', zorder=1)
 
-plt.scatter(Figure_2C_data['Time/h'],
-            Figure_2C_data['FW:sludge 1:3'],
+plt.scatter(Fig_1c_data['Time/h'],
+            Fig_1c_data['FW:sludge 1:3'],
             s=500, color=b, lw=5, edgecolor=db,marker='s', zorder=1)
 
-plt.scatter(Figure_2C_data['Time/h'],
-            Figure_2C_data['FW:sludge 2:3'],
+plt.scatter(Fig_1c_data['Time/h'],
+            Fig_1c_data['FW:sludge 2:3'],
             s=500, color=b, lw=5, edgecolor=db,marker='^', zorder=1)
 
-plt.scatter(Figure_2C_data['Time/h'],
-            Figure_2C_data['FW:sludge 3:3'],
+plt.scatter(Fig_1c_data['Time/h'],
+            Fig_1c_data['FW:sludge 3:3'],
             s=500, color=b, lw=5, edgecolor=db,marker='D', zorder=1)
 
-#%% Figure 2D
+# TODO: update path
+plt.savefig('/Users/jiananfeng/Desktop/Fig_1c.pdf', transparent=True, bbox_inches='tight')
 
-fig, ax = plt.subplots(figsize=(14, 12))
+#%% Fig 1d
+
+fig, ax = plt.subplots(figsize=(10, 10))
 
 plt.rcParams['axes.linewidth'] = 5
 plt.rcParams['hatch.linewidth'] = 5
@@ -368,12 +381,10 @@ plt.rcParams.update({'mathtext.fontset':'custom'})
 plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
-ax.set_xlim(0, 132)
+ax.set_xlim(0, 144)
 ax.set_ylim(0, 300)
-# TODO: add bottom to others, if necessary
-plt.subplots_adjust(bottom=0.122, left=0.15)
 
-ax.set_xlabel(r'$\mathbf{Time}$ [hr]',
+ax.set_xlabel(r'$\mathbf{Fermentation\ time}$ [h]',
               fontname='Arial',
               fontsize=45,
               labelpad=0)
@@ -407,49 +418,52 @@ ax_right.tick_params(direction='in', length=15, width=5,
 
 plt.yticks(np.arange(0, 350, 50), fontname='Arial')
 
-plt.errorbar(Figure_2D_data['Time/h'],
-            Figure_2D_data['FW:sludge 0:3'],
-            yerr=Figure_2D_data['std'],
-            lw=5, color=dr, linestyle='dotted',
-            capsize=12, capthick=5, zorder=0)
+plt.errorbar(Fig_1d_data['Time/h'],
+             Fig_1d_data['FW:sludge 0:3'],
+             yerr=Fig_1d_data['std'],
+             lw=5, color=dr, linestyle='dotted',
+             capsize=12, capthick=5, zorder=0)
 
-plt.errorbar(Figure_2D_data['Time/h'],
-            Figure_2D_data['FW:sludge 1:3'],
-            yerr=Figure_2D_data['std'],
-            lw=5, color=dr, linestyle='dashdot',
-            capsize=12, capthick=5, zorder=0)
+plt.errorbar(Fig_1d_data['Time/h'],
+             Fig_1d_data['FW:sludge 1:3'],
+             yerr=Fig_1d_data['std'],
+             lw=5, color=dr, linestyle='dashdot',
+             capsize=12, capthick=5, zorder=0)
 
-plt.errorbar(Figure_2D_data['Time/h'],
-            Figure_2D_data['FW:sludge 2:3'],
-            yerr=Figure_2D_data['std'],
-            lw=5, color=dr, linestyle='dashed',
-            capsize=12, capthick=5, zorder=0)
+plt.errorbar(Fig_1d_data['Time/h'],
+             Fig_1d_data['FW:sludge 2:3'],
+             yerr=Fig_1d_data['std'],
+             lw=5, color=dr, linestyle='dashed',
+             capsize=12, capthick=5, zorder=0)
 
-plt.errorbar(Figure_2D_data['Time/h'],
-            Figure_2D_data['FW:sludge 3:3'],
-            yerr=Figure_2D_data['std'],
-            lw=5, color=dr, linestyle='solid',
-            capsize=12, capthick=5, zorder=0)
+plt.errorbar(Fig_1d_data['Time/h'],
+             Fig_1d_data['FW:sludge 3:3'],
+             yerr=Fig_1d_data['std'],
+             lw=5, color=dr, linestyle='solid',
+             capsize=12, capthick=5, zorder=0)
 
-plt.scatter(Figure_2D_data['Time/h'],
-            Figure_2D_data['FW:sludge 0:3'],
+plt.scatter(Fig_1d_data['Time/h'],
+            Fig_1d_data['FW:sludge 0:3'],
             s=500, color=r, lw=5, edgecolor=dr, marker='o', zorder=1)
 
-plt.scatter(Figure_2D_data['Time/h'],
-            Figure_2D_data['FW:sludge 1:3'],
+plt.scatter(Fig_1d_data['Time/h'],
+            Fig_1d_data['FW:sludge 1:3'],
             s=500, color=r, lw=5, edgecolor=dr,marker='s', zorder=1)
 
-plt.scatter(Figure_2D_data['Time/h'],
-            Figure_2D_data['FW:sludge 2:3'],
+plt.scatter(Fig_1d_data['Time/h'],
+            Fig_1d_data['FW:sludge 2:3'],
             s=500, color=r, lw=5, edgecolor=dr,marker='^', zorder=1)
 
-plt.scatter(Figure_2D_data['Time/h'],
-            Figure_2D_data['FW:sludge 3:3'],
+plt.scatter(Fig_1d_data['Time/h'],
+            Fig_1d_data['FW:sludge 3:3'],
             s=500, color=r, lw=5, edgecolor=dr,marker='D', zorder=1)
 
-#%% Figure 2E
+# TODO: update path
+plt.savefig('/Users/jiananfeng/Desktop/Fig_1d.pdf', transparent=True, bbox_inches='tight')
 
-fig, ax = plt.subplots(figsize=(13, 12))
+#%% Fig 1e
+
+fig, ax = plt.subplots(figsize=(10, 10))
 
 plt.rcParams['axes.linewidth'] = 5
 plt.rcParams['hatch.linewidth'] = 5
@@ -463,16 +477,15 @@ plt.rcParams.update({'mathtext.fontset':'custom'})
 plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
-ax.set_xlim(0, 132)
+ax.set_xlim(0, 144)
 ax.set_ylim(0, 1.2)
-plt.subplots_adjust(left=0.15, bottom=0.13)
 
-ax.set_xlabel(r'$\mathbf{Time}$ [hr]',
+ax.set_xlabel(r'$\mathbf{Fermentation\ time}$ [h]',
               fontname='Arial',
               fontsize=45,
               labelpad=0)
 
-ax.set_ylabel(r'$\mathbf{Fe:P\ Molar\ Ratio}$',
+ax.set_ylabel(r'$\mathbf{Fe:P\ molar\ ratio}$',
               fontname='Arial',
               fontsize=45,
               labelpad=5)
@@ -501,105 +514,54 @@ ax_right.tick_params(direction='in', length=15, width=5,
 
 plt.yticks(np.arange(0, 1.4, 0.2), fontname='Arial')
 
-plt.errorbar(Figure_2E_data['Time/h'],
-            Figure_2E_data['FW:sludge 0:3'],
-            yerr=Figure_2E_data['std'],
-            lw=5, color=dp, linestyle='dotted',
-            capsize=12, capthick=5, zorder=0)
+plt.errorbar(Fig_1e_data['Time/h'],
+             Fig_1e_data['FW:sludge 0:3'],
+             yerr=Fig_1e_data['std'],
+             lw=5, color=dp, linestyle='dotted',
+             capsize=12, capthick=5, zorder=0)
 
-plt.errorbar(Figure_2E_data['Time/h'],
-            Figure_2E_data['FW:sludge 1:3'],
-            yerr=Figure_2E_data['std'],
-            lw=5, color=dp, linestyle='dashdot',
-            capsize=12, capthick=5, zorder=0)
+plt.errorbar(Fig_1e_data['Time/h'],
+             Fig_1e_data['FW:sludge 1:3'],
+             yerr=Fig_1e_data['std'],
+             lw=5, color=dp, linestyle='dashdot',
+             capsize=12, capthick=5, zorder=0)
 
-plt.errorbar(Figure_2E_data['Time/h'],
-            Figure_2E_data['FW:sludge 2:3'],
-            yerr=Figure_2E_data['std'],
-            lw=5, color=dp, linestyle='dashed',
-            capsize=12, capthick=5, zorder=0)
+plt.errorbar(Fig_1e_data['Time/h'],
+             Fig_1e_data['FW:sludge 2:3'],
+             yerr=Fig_1e_data['std'],
+             lw=5, color=dp, linestyle='dashed',
+             capsize=12, capthick=5, zorder=0)
 
-plt.errorbar(Figure_2E_data['Time/h'],
-            Figure_2E_data['FW:sludge 3:3'],
-            yerr=Figure_2E_data['std'],
-            lw=5, color=dp, linestyle='solid',
-            capsize=12, capthick=5, zorder=0)
+plt.errorbar(Fig_1e_data['Time/h'],
+             Fig_1e_data['FW:sludge 3:3'],
+             yerr=Fig_1e_data['std'],
+             lw=5, color=dp, linestyle='solid',
+             capsize=12, capthick=5, zorder=0)
 
-plt.scatter(Figure_2E_data['Time/h'],
-            Figure_2E_data['FW:sludge 0:3'],
+plt.scatter(Fig_1e_data['Time/h'],
+            Fig_1e_data['FW:sludge 0:3'],
             s=500, color=p, lw=5, edgecolor=dp, marker='o', zorder=1)
 
-plt.scatter(Figure_2E_data['Time/h'],
-            Figure_2E_data['FW:sludge 1:3'],
+plt.scatter(Fig_1e_data['Time/h'],
+            Fig_1e_data['FW:sludge 1:3'],
             s=500, color=p, lw=5, edgecolor=dp,marker='s', zorder=1)
 
-plt.scatter(Figure_2E_data['Time/h'],
-            Figure_2E_data['FW:sludge 2:3'],
+plt.scatter(Fig_1e_data['Time/h'],
+            Fig_1e_data['FW:sludge 2:3'],
             s=500, color=p, lw=5, edgecolor=dp,marker='^', zorder=1)
 
-plt.scatter(Figure_2E_data['Time/h'],
-            Figure_2E_data['FW:sludge 3:3'],
+plt.scatter(Fig_1e_data['Time/h'],
+            Fig_1e_data['FW:sludge 3:3'],
             s=500, color=p, lw=5, edgecolor=dp,marker='D', zorder=1)
 
-#%% Figure 3B P recovery
+# TODO: update path
+plt.savefig('/Users/jiananfeng/Desktop/Fig_1e.pdf', transparent=True, bbox_inches='tight')
 
-# TODO: for all figure requireing gray background, add background to the lowest layer (z=0; adjust other z values if needed)
+#%% Fig 2c Fe and P recovery
 
-fig, ax = plt.subplots(figsize=(5, 12))
+# TODO: for all figures requireing gray background, add background to the lowest layer (z=0; adjust other z values if needed)
 
-plt.rcParams['axes.linewidth'] = 5
-plt.rcParams['hatch.linewidth'] = 5
-plt.rcParams['xtick.labelsize'] = 45
-plt.rcParams['ytick.labelsize'] = 45
-plt.rcParams['font.sans-serif'] = 'Arial'
-plt.rcParams['pdf.fonttype'] = 42
-plt.rcParams['ps.fonttype'] = 42
-
-plt.rcParams.update({'mathtext.fontset':'custom'})
-plt.rcParams.update({'mathtext.default':'regular'})
-plt.rcParams.update({'mathtext.bf':'Arial: bold'})
-
-ax.set_ylim(0, 100)
-plt.subplots_adjust(left=0.45)
-
-ax.set_ylabel(r'$\mathbf{P\ Recovery}$ [%]',
-              fontname='Arial',
-              fontsize=45,
-              labelpad=5)
-
-ax.tick_params(direction='inout', length=30, width=5,
-               bottom=False, top=False, left=True, right=False,
-               labelbottom=False)
-
-plt.yticks(np.arange(0, 120, 20), fontname='Arial')
-
-ax_right = ax.twinx()
-ax_right.set_ylim(ax.get_ylim())
-
-ax_right.tick_params(direction='in', length=15, width=5,
-                     bottom=False, top=False, left=False, right=True,
-                     labelright=False)
-
-plt.yticks(np.arange(0, 120, 20), fontname='Arial')
-
-bp = plt.boxplot(Figure_3B_P_recovery_data['P recovery'].dropna()*100,
-                 whis=[5, 95], showfliers=False, widths=0.6, patch_artist=True)
-
-for box in bp['boxes']:
-    box.set(color='k', facecolor=b, linewidth=5)
-
-for whisker in bp['whiskers']:
-    whisker.set(color='k', linewidth=5)
-
-for median in bp['medians']:
-    median.set(color='k', linewidth=5)
-    
-for cap in bp['caps']:
-    cap.set(color='k', linewidth=5)
-
-#%% Figure 3B Fe recovery
-
-fig, ax = plt.subplots(figsize=(5, 12))
+fig, ax = plt.subplots(figsize=(4, 8))
 
 plt.rcParams['axes.linewidth'] = 5
 plt.rcParams['hatch.linewidth'] = 5
@@ -614,16 +576,14 @@ plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 ax.set_ylim(0, 100)
-plt.subplots_adjust(left=0.45)
 
-ax.set_ylabel(r'$\mathbf{Fe\ Recovery}$ [%]',
+ax.set_ylabel(r'$\mathbf{Recovery}$ [%]',
               fontname='Arial',
               fontsize=45,
               labelpad=5)
 
 ax.tick_params(direction='inout', length=30, width=5,
-               bottom=False, top=False, left=True, right=False,
-               labelbottom=False)
+               bottom=False, top=False, left=True, right=False)
 
 plt.yticks(np.arange(0, 120, 20), fontname='Arial')
 
@@ -636,11 +596,16 @@ ax_right.tick_params(direction='in', length=15, width=5,
 
 plt.yticks(np.arange(0, 120, 20), fontname='Arial')
 
-bp = plt.boxplot(Figure_3B_Fe_recovery_data['Fe recovery'].dropna()*100,
+# TODO: plot the release ratio after fermentation or the total recovery rate in the end?
+# TODO: why uncertainty range is so small?
+bp = plt.boxplot([Fig_2c_Fe['Fe recovery'].dropna()*100,
+                  Fig_2c_P['P recovery'].dropna()*100],
                  whis=[5, 95], showfliers=False, widths=0.6, patch_artist=True)
 
-for box in bp['boxes']:
-    box.set(color='k', facecolor=r, linewidth=5)
+plt.xticks([1, 2], ('Fe','P'), fontname='Arial')
+
+bp['boxes'][0].set(color='k', facecolor=r, linewidth=5)
+bp['boxes'][1].set(color='k', facecolor=b, linewidth=5)
 
 for whisker in bp['whiskers']:
     whisker.set(color='k', linewidth=5)
@@ -651,9 +616,15 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='k', linewidth=5)
 
-#%% Figure 3B sludge management cost
+ax.plot((1.5, 1.5), (0, 100), color='k', linewidth=5, linestyle='--')
 
-fig, ax = plt.subplots(figsize=(6, 12))
+rectangle_fill = Rectangle((1.5, 73.1859), 1, 99.3-73.1859,
+                           fc=a, alpha=0.5, zorder=0)
+ax.add_patch(rectangle_fill)
+
+#%% Fig 3a sludge management cost
+
+fig, ax = plt.subplots(figsize=(2.5, 10))
 
 plt.rcParams['axes.linewidth'] = 5
 plt.rcParams['hatch.linewidth'] = 5
@@ -667,10 +638,10 @@ plt.rcParams.update({'mathtext.fontset':'custom'})
 plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
-ax.set_ylim(200, 400)
-plt.subplots_adjust(left=0.5)
+ax.set_xlim(0.5, 1.5)
+ax.set_ylim(0, 1000)
 
-ax.set_ylabel(r'$\mathbf{Sludge\ management\ cost}$'+'\n'+r'[$\$\cdot tonne^{-1}$]',
+ax.set_ylabel(r'$\mathbf{Sludge\ management\ cost}$'+'\n'+r'[$\$·tonne^{-1}$]',
               fontname='Arial',
               fontsize=45,
               labelpad=5)
@@ -679,7 +650,7 @@ ax.tick_params(direction='inout', length=30, width=5,
                bottom=False, top=False, left=True, right=False,
                labelbottom=False)
 
-plt.yticks(np.arange(200, 440, 40), fontname='Arial')
+plt.yticks(np.arange(0, 1200, 200), fontname='Arial')
 
 ax_right = ax.twinx()
 ax_right.set_ylim(ax.get_ylim())
@@ -688,9 +659,9 @@ ax_right.tick_params(direction='in', length=15, width=5,
                      bottom=False, top=False, left=False, right=True,
                      labelright=False)
 
-plt.yticks(np.arange(200, 440, 40), fontname='Arial')
+plt.yticks(np.arange(0, 1200, 200), fontname='Arial')
 
-bp = plt.boxplot(Figure_3B_sludge_management_cost_data['Sludge management cost'].dropna(),
+bp = plt.boxplot(Fig_3ab_data[('TEA','Sludge management cost [$/tonne]')].dropna(),
                  whis=[5, 95], showfliers=False, widths=0.6, patch_artist=True)
 
 for box in bp['boxes']:
@@ -705,9 +676,17 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='k', linewidth=5)
 
-#%% Figure 3B CI of sludge management
+# conventional sludge management: 100 to 800 $·ton-1
+# Peccia, J. & Westerhoff, P. We Should Expect More out of Our Sewage Sludge. Environ. Sci. Technol. 49, 8271–8276 (2015).
+rectangle_fill = Rectangle((0.5, 100/_ton_to_tonne), 1.5, (800-100)/_ton_to_tonne,
+                           fc=a, alpha=0.5, zorder=0)
+ax.add_patch(rectangle_fill)
 
-fig, ax = plt.subplots(figsize=(6, 12))
+#%% Fig 3b CI of sludge management
+
+# TODO: add background
+
+fig, ax = plt.subplots(figsize=(2.5, 10))
 
 plt.rcParams['axes.linewidth'] = 5
 plt.rcParams['hatch.linewidth'] = 5
@@ -721,10 +700,10 @@ plt.rcParams.update({'mathtext.fontset':'custom'})
 plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
-ax.set_ylim(1000, 1400)
-plt.subplots_adjust(left=0.55)
+ax.set_xlim(0.5, 1.5)
+ax.set_ylim(0, 4000)
 
-ax.set_ylabel(r'$\mathbf{CI\ of\ Sludge\ management}$'+'\n'+r'[$kg\ CO_2\ eq\cdot tonne^{-1}$]',
+ax.set_ylabel(r'$\mathbf{Sludge\ management\ CI}$'+'\n'+r'[$kg\ CO_2e·tonne^{-1}$]',
               fontname='Arial',
               fontsize=45,
               labelpad=5)
@@ -733,7 +712,7 @@ ax.tick_params(direction='inout', length=30, width=5,
                bottom=False, top=False, left=True, right=False,
                labelbottom=False)
 
-plt.yticks(np.arange(1000, 1500, 100), fontname='Arial')
+plt.yticks(np.arange(0, 4500, 500), fontname='Arial')
 
 ax_right = ax.twinx()
 ax_right.set_ylim(ax.get_ylim())
@@ -742,9 +721,10 @@ ax_right.tick_params(direction='in', length=15, width=5,
                      bottom=False, top=False, left=False, right=True,
                      labelright=False)
 
-plt.yticks(np.arange(1000, 1500, 100), fontname='Arial')
+plt.yticks(np.arange(0, 4500, 500), fontname='Arial')
 
-bp = plt.boxplot(Figure_3B_sludge_management_CI_data['Sludge management GWP'].dropna(),
+# TODO: so CI is higher than conventional practices?
+bp = plt.boxplot(Fig_3ab_data[('LCA','Sludge management GWP [kg_CO2_eq/tonne]')].dropna(),
                  whis=[5, 95], showfliers=False, widths=0.6, patch_artist=True)
 
 for box in bp['boxes']:
@@ -759,9 +739,13 @@ for median in bp['medians']:
 for cap in bp['caps']:
     cap.set(color='k', linewidth=5)
 
-#%% Figure 3C
+rectangle_fill = Rectangle((0.5, 414), 1.5, 3618-414,
+                           fc=a, alpha=0.5, zorder=0)
+ax.add_patch(rectangle_fill)
 
-fig, ax = plt.subplots(figsize=(16, 12))
+#%% Fig 3c
+
+fig, ax = plt.subplots(figsize=(10, 10))
 
 plt.rcParams['axes.linewidth'] = 5
 plt.rcParams['hatch.linewidth'] = 5
@@ -776,15 +760,14 @@ plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 ax.set_xlim(0, 1000)
-ax.set_ylim(-10, 30)
-plt.subplots_adjust(left=0.25, bottom=0.20)
+ax.set_ylim(-15, 15)
 
-ax.set_xlabel(r'$\mathbf{Avoid\ waste\ management\ cost}$'+'\n'r'[$\$\cdot tonne^{-1}$]',
+ax.set_xlabel(r'$\mathbf{Avoided\ management\ cost}$'+'\n'r'[$\$·tonne^{-1}$]',
               fontname='Arial',
               fontsize=45,
               labelpad=0)
 
-ax.set_ylabel(r'$\mathbf{MSP\ of\ recovered\ FePO_4}$'+'\n'r'[$\$\cdot kg^{-1}$]',
+ax.set_ylabel(r'$\mathbf{FePO_4\ MSP}$ [$\$·kg^{-1}$]',
               fontname='Arial',
               fontsize=45,
               labelpad=5)
@@ -793,7 +776,7 @@ ax.tick_params(direction='inout', length=30, width=5,
                bottom=True, top=False, left=True, right=False)
 
 plt.xticks(np.arange(0, 1200, 200), fontname='Arial')
-plt.yticks(np.arange(-10, 35, 5), fontname='Arial')
+plt.yticks(np.arange(-15, 20, 5), fontname='Arial')
 
 ax_top = ax.twiny()
 ax_top.set_xlim(ax.get_xlim())
@@ -802,6 +785,8 @@ ax_top.tick_params(direction='in', length=15, width=5,
                    bottom=False, top=True, left=False, right=False,
                    labeltop=False)
 
+plt.xticks(np.arange(0, 1200, 200), fontname='Arial')
+
 ax_right = ax.twinx()
 ax_right.set_ylim(ax.get_ylim())
 
@@ -809,21 +794,36 @@ ax_right.tick_params(direction='in', length=15, width=5,
                      bottom=False, top=False, left=False, right=True,
                      labelright=False)
 
-x = Figure_3C_avoid_waste_sludge_management_cost_data['credit']
-low = Figure_3C_avoid_waste_sludge_management_cost_data['FePO4_MSP_5th']
-mid = Figure_3C_avoid_waste_sludge_management_cost_data['FePO4_MSP_50th']
-high = Figure_3C_avoid_waste_sludge_management_cost_data['FePO4_MSP_95th']
+plt.yticks(np.arange(-15, 20, 5), fontname='Arial')
 
-ax.fill_between(x, low, high, color=p, alpha=0.85)
+x = Fig_3c_data['credit']
+low = Fig_3c_data['FePO4_MSP_5th']
+mid = Fig_3c_data['FePO4_MSP_50th']
+high = Fig_3c_data['FePO4_MSP_95th']
 
-ax.plot(x, low, color=r,linestyle='--',linewidth=3)
-ax.plot(x, high, color=r,linestyle='--',linewidth=3)
+ax.fill_between(x, low, high, color=p, alpha=0.5)
 
-ax.plot(x, mid, color=r, linewidth=4)
+ax.plot(x, low, color=dp, linestyle='--', linewidth=5)
+ax.plot(x, high, color=dp, linestyle='--', linewidth=5)
+ax.plot(x, mid, color=dp, linewidth=5)
 
-#%% Figure 3D
+# conventional sludge management: 100 to 800 $·ton-1
+# Peccia, J. & Westerhoff, P. We Should Expect More out of Our Sewage Sludge. Environ. Sci. Technol. 49, 8271–8276 (2015).
+rectangle_fill = Rectangle((100/_ton_to_tonne, -15), (800-100)/_ton_to_tonne, 35, 
+                           fc=a, alpha=0.5, zorder=0)
+ax.add_patch(rectangle_fill)
 
-fig, ax = plt.subplots(figsize=(16, 12))
+rectangle_fill = Rectangle((0, 1.327), 1000, 3.89-1.327, 
+                           fc=g, alpha=0.5, zorder=0)
+ax.add_patch(rectangle_fill)
+
+rectangle_fill = Rectangle((0, 4.55), 1000, 6.97-4.55, 
+                           fc=dg, alpha=0.8, zorder=0)
+ax.add_patch(rectangle_fill)
+
+#%% Fig 3d
+
+fig, ax = plt.subplots(figsize=(10, 10))
 
 plt.rcParams['axes.linewidth'] = 5
 plt.rcParams['hatch.linewidth'] = 5
@@ -837,16 +837,17 @@ plt.rcParams.update({'mathtext.fontset':'custom'})
 plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
-ax.set_xlim(-300, 1900)
-ax.set_ylim(-1200, 600)
-plt.subplots_adjust(left=0.25, bottom=0.20)
+# TODO: adjust the x-axis limit based on the background range in Fig 3e
+ax.set_xlim(0, 4000)
+# TODO: adjust the y-axis limit based on the conventional FePO4 CI
+ax.set_ylim(-50, 50)
 
-ax.set_xlabel(r'$\mathbf{Avoid\ waste\ management\ CI}$'+'\n' r' [$kg\ CO_2\ eq\cdot tonne^{-1}$]',
+ax.set_xlabel(r'$\mathbf{Avoided\ management\ CI}$'+'\n' r' [$kg\ CO_2e·tonne^{-1}$]',
               fontname='Arial',
               fontsize=45,
               labelpad=0)
 
-ax.set_ylabel(r'$\mathbf{CI\ of\ recovered\ FePO_4}$'+'\n'+r'[$kg\ CO_2\ eq\cdot tonne^{-1}$]',
+ax.set_ylabel(r'$\mathbf{FePO_4\ CI}$ [$kg·kg^{-1}$]',
               fontname='Arial',
               fontsize=45,
               labelpad=5)
@@ -854,8 +855,8 @@ ax.set_ylabel(r'$\mathbf{CI\ of\ recovered\ FePO_4}$'+'\n'+r'[$kg\ CO_2\ eq\cdot
 ax.tick_params(direction='inout', length=30, width=5,
                bottom=True, top=False, left=True, right=False)
 
-plt.xticks(np.arange(-300, 2100, 300), fontname='Arial')
-plt.yticks(np.arange(-1200, 800, 200), fontname='Arial')
+plt.xticks(np.arange(0, 5000, 1000), fontname='Arial')
+plt.yticks(np.arange(-50, 75, 25), fontname='Arial')
 
 ax_top = ax.twiny()
 ax_top.set_xlim(ax.get_xlim())
@@ -864,6 +865,8 @@ ax_top.tick_params(direction='in', length=15, width=5,
                    bottom=False, top=True, left=False, right=False,
                    labeltop=False)
 
+plt.xticks(np.arange(0, 5000, 1000), fontname='Arial')
+
 ax_right = ax.twinx()
 ax_right.set_ylim(ax.get_ylim())
 
@@ -871,21 +874,30 @@ ax_right.tick_params(direction='in', length=15, width=5,
                      bottom=False, top=False, left=False, right=True,
                      labelright=False)
 
-x = Figure_3D_avoid_waste_sludge_management_CI_data['credit']
-low = Figure_3D_avoid_waste_sludge_management_CI_data['FePO4_GWP_5th']
-mid = Figure_3D_avoid_waste_sludge_management_CI_data['FePO4_GWP_50th']
-high = Figure_3D_avoid_waste_sludge_management_CI_data['FePO4_GWP_95th']
+plt.yticks(np.arange(-50, 75, 25), fontname='Arial')
 
-ax.fill_between(x, low, high, color=p, alpha=0.85)
+x = Fig_3d_data['credit']
+low = Fig_3d_data['FePO4_GWP_5th']
+mid = Fig_3d_data['FePO4_GWP_50th']
+high = Fig_3d_data['FePO4_GWP_95th']
 
-ax.plot(x, low, color=r,linestyle='--',linewidth=3)
-ax.plot(x, high, color=r,linestyle='--',linewidth=3)
+ax.fill_between(x, low, high, color=p, alpha=0.5)
 
-ax.plot(x, mid, color=r, linewidth=4)
+ax.plot(x, low, color=dp, linestyle='--', linewidth=5)
+ax.plot(x, high, color=dp, linestyle='--', linewidth=5)
+ax.plot(x, mid, color=dp, linewidth=5)
 
-#%% Figure 4A
+rectangle_fill = Rectangle((414, -50), 3618-414, 100,
+                           fc=a, alpha=0.5, zorder=0)
+ax.add_patch(rectangle_fill)
 
-fig, ax = plt.subplots(figsize=(16, 12))
+ax.plot((0, 4000), (16.6, 16.6), color=g, alpha=0.5, linewidth=5)
+
+ax.plot((0, 4000), (22.7, 22.7), color=dg, alpha=0.8, linewidth=5)
+
+#%% Fig 4a
+
+fig, ax = plt.subplots(figsize=(12.5, 10))
 
 plt.rcParams['axes.linewidth'] = 5
 plt.rcParams['hatch.linewidth'] = 5
@@ -901,14 +913,13 @@ plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 ax.set_xlim(1, 3)
 ax.set_ylim(12, 132)
-plt.subplots_adjust(bottom=0.15, left=0.15)
 
-ax.set_xlabel(r'$\mathbf{Food\ waste:Sludge\ ratio}$',
+ax.set_xlabel(r'$\mathbf{Food\ waste:sludge\ ratio}$',
               fontname='Arial',
               fontsize=45,
               labelpad=5)
 
-ax.set_ylabel(r'$\mathbf{Fermentation\ time}$ [hr]',
+ax.set_ylabel(r'$\mathbf{Fermentation\ time}$ [h]',
               fontname='Arial',
               fontsize=45,
               labelpad=5)
@@ -937,16 +948,15 @@ ax_right.tick_params(direction='in', length=15, width=5,
 
 plt.yticks(np.arange(12, 144, 24), fontname='Arial')
 
-color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', [dp, p, lp, 'w'][::-1])
+color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', [dp, p, 'w'][::-1])
 
+X = np.array(Fig_4ab_data['ratio'].map({1/3: 1,
+                                        2/3: 2,
+                                        1: 3}))
+Y = np.array(Fig_4ab_data['fermentation_time'])
+Z = np.array(Fig_4ab_data['FePO4_MSP_50th'])
 
-X = np.array(Figure_4AB_data['FWsludgeratio'].map({'FW:sludge 1:3': 1,
-                                                   'FW:sludge 2:3': 2,
-                                                   'FW:sludge 3:3': 3}))
-Y = np.array(Figure_4AB_data['HRT/h'])
-Z = np.array(Figure_4AB_data['FePO4_MSP_50th'])
-
-fills = ax.tricontourf(X, Y, Z, levels=10000, cmap=color_map_Guest)
+fills = ax.tricontourf(X, Y, Z, levels=np.linspace(-6, 40, 10000), cmap=color_map_Guest)
 
 fig.colorbar(fills, ax=ax)
 
@@ -956,9 +966,17 @@ lines = ax.tricontour(X, Y, Z, levels=7, linewidths=5, linestyles='solid', color
 
 ax.clabel(lines, lines.levels, inline=True, fontsize=45)
 
-#%% Figure 4B
+plt.rcParams['hatch.color'] = g
 
-fig, ax = plt.subplots(figsize=(16, 12))
+ax.tricontourf(X, Y, Z, levels=[1.327, 3.89], colors=g, alpha=0.5)
+
+plt.rcParams['hatch.color'] = dg
+
+ax.tricontourf(X, Y, Z, levels=[4.55, 6.97], colors=dg, alpha=0.8)
+
+#%% Fig 4b
+
+fig, ax = plt.subplots(figsize=(12.5, 10))
 
 plt.rcParams['axes.linewidth'] = 5
 plt.rcParams['hatch.linewidth'] = 5
@@ -974,14 +992,13 @@ plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 ax.set_xlim(1, 3)
 ax.set_ylim(12, 132)
-plt.subplots_adjust(bottom=0.15, left=0.15)
 
-ax.set_xlabel(r'$\mathbf{Food\ waste:Sludge\ ratio}$',
+ax.set_xlabel(r'$\mathbf{Food\ waste:sludge\ ratio}$',
               fontname='Arial',
               fontsize=45,
               labelpad=5)
 
-ax.set_ylabel(r'$\mathbf{Fermentation\ time}$ [hr]',
+ax.set_ylabel(r'$\mathbf{Fermentation\ time}$ [h]',
               fontname='Arial',
               fontsize=45,
               labelpad=5)
@@ -1010,14 +1027,14 @@ ax_right.tick_params(direction='in', length=15, width=5,
 
 plt.yticks(np.arange(12, 144, 24), fontname='Arial')
 
-color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', [dp, p, lp, 'w'][::-1])
+color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', [dp, p, 'w'][::-1])
 
 
-X = np.array(Figure_4AB_data['FWsludgeratio'].map({'FW:sludge 1:3': 1,
-                                                   'FW:sludge 2:3': 2,
-                                                   'FW:sludge 3:3': 3}))
-Y = np.array(Figure_4AB_data['HRT/h'])
-Z = np.array(Figure_4AB_data['FePO4_GWP_50th'])
+X = np.array(Fig_4ab_data['ratio'].map({1/3: 1,
+                                        2/3: 2,
+                                        1: 3}))
+Y = np.array(Fig_4ab_data['fermentation_time'])
+Z = np.array(Fig_4ab_data['FePO4_GWP_50th'])
 
 fills = ax.tricontourf(X, Y, Z, levels=10000, cmap=color_map_Guest)
 
@@ -1029,9 +1046,13 @@ lines = ax.tricontour(X, Y, Z, levels=7, linewidths=5, linestyles='solid', color
 
 ax.clabel(lines, lines.levels, inline=True, fontsize=45)
 
-#%% Figure 4C
+ax.tricontour(X, Y, Z, levels=[16.6, 22.7], colors=[g, dg], linewidths=5)
 
-fig, ax = plt.subplots(figsize=(16, 12))
+#%% Fig 5a
+
+# TODO: increase VFA price range to [0, 3], increase disposal cost to [0, 120]
+
+fig, ax = plt.subplots(figsize=(12.5, 10))
 
 plt.rcParams['axes.linewidth'] = 5
 plt.rcParams['hatch.linewidth'] = 5
@@ -1045,16 +1066,16 @@ plt.rcParams.update({'mathtext.fontset':'custom'})
 plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
-ax.set_xlim(1, 3)
-ax.set_ylim(12, 132)
-plt.subplots_adjust(bottom=0.15, left=0.15)
+ax.set_xlim(0, 120)
+ax.set_ylim(0, 3)
 
-ax.set_xlabel(r'$\mathbf{Food\ waste:Sludge\ ratio}$',
+ax.set_xlabel(r'$\mathbf{Disposal\ cost}$ [$\$·tonne^{-1}$]',
               fontname='Arial',
               fontsize=45,
               labelpad=5)
 
-ax.set_ylabel(r'$\mathbf{Fermentation\ time}$ [hr]',
+# TODO: check unit
+ax.set_ylabel(r'$\mathbf{VFA\ price}$ [$\$·m^{-3}$]',
               fontname='Arial',
               fontsize=45,
               labelpad=5)
@@ -1062,8 +1083,8 @@ ax.set_ylabel(r'$\mathbf{Fermentation\ time}$ [hr]',
 ax.tick_params(direction='inout', length=30, width=5,
                bottom=True, top=False, left=True, right=False)
 
-plt.xticks(np.arange(1, 4, 1), ('1:3','2:3','3:3'), fontname='Arial')
-plt.yticks(np.arange(12, 144, 24), fontname='Arial')
+plt.xticks(np.arange(0, 140, 20),  fontname='Arial')
+plt.yticks(np.arange(0, 3.5, 0.5), fontname='Arial')
 
 ax_top = ax.twiny()
 ax_top.set_xlim(ax.get_xlim())
@@ -1072,7 +1093,7 @@ ax_top.tick_params(direction='in', length=15, width=5,
                    bottom=False, top=True, left=False, right=False,
                    labeltop=False)
 
-plt.xticks(np.arange(1, 4, 1), ('1:3','2:3','3:3'), fontname='Arial')
+plt.xticks(np.arange(0, 140, 20),  fontname='Arial')
 
 ax_right = ax.twinx()
 ax_right.set_ylim(ax.get_ylim())
@@ -1081,244 +1102,35 @@ ax_right.tick_params(direction='in', length=15, width=5,
                      bottom=False, top=False, left=False, right=True,
                      labelright=False)
 
-plt.yticks(np.arange(12, 144, 24), fontname='Arial')
+plt.yticks(np.arange(0, 3.5, 0.5), fontname='Arial')
 
-color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', [do, o, lo, 'w'][::-1])
+color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', [dp, p, 'w'][::-1])
 
+X = np.array(Fig_5a_data['residue_cost']*1000)
+Y = np.array(Fig_5a_data['VFA_price']*1000)
+Z = np.array(Fig_5a_data['FePO4_MSP_50th'])
 
-X = np.array(Figure_4CD_data['FWsludgeratio'].map({'FW:sludge 1:3': 1,
-                                                   'FW:sludge 2:3': 2,
-                                                   'FW:sludge 3:3': 3}))
-Y = np.array(Figure_4CD_data['HRT/h'])
-Z = np.array(Figure_4CD_data['sludge_cost_50th'])
-
-fills = ax.tricontourf(X, Y, Z, levels=10000, cmap=color_map_Guest)
+fills = ax.tricontourf(X, Y, Z, levels=np.linspace(-6, 40, 10000), cmap=color_map_Guest)
 
 fig.colorbar(fills, ax=ax)
 
 fig.delaxes(fig.axes[3])
 
-lines = ax.tricontour(X, Y, Z, levels=7, linewidths=5, linestyles='solid', colors='k')
+lines = ax.tricontour(X, Y, Z, levels=6, linewidths=5, linestyles='solid', colors='k')
 
 ax.clabel(lines, lines.levels, inline=True, fontsize=45)
 
-#%% Figure 4D
+plt.rcParams['hatch.color'] = g
 
-fig, ax = plt.subplots(figsize=(16, 12))
+ax.tricontourf(X, Y, Z, levels=[1.327, 3.89], colors=g, alpha=0.5)
 
-plt.rcParams['axes.linewidth'] = 5
-plt.rcParams['hatch.linewidth'] = 5
-plt.rcParams['xtick.labelsize'] = 45
-plt.rcParams['ytick.labelsize'] = 45
-plt.rcParams['font.sans-serif'] = 'Arial'
-plt.rcParams['pdf.fonttype'] = 42
-plt.rcParams['ps.fonttype'] = 42
+plt.rcParams['hatch.color'] = dg
 
-plt.rcParams.update({'mathtext.fontset':'custom'})
-plt.rcParams.update({'mathtext.default':'regular'})
-plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+ax.tricontourf(X, Y, Z, levels=[4.55, 6.97], colors=dg, alpha=0.8)
 
-ax.set_xlim(1, 3)
-ax.set_ylim(12, 132)
-plt.subplots_adjust(bottom=0.15, left=0.15)
-
-ax.set_xlabel(r'$\mathbf{Food\ waste:Sludge\ ratio}$',
-              fontname='Arial',
-              fontsize=45,
-              labelpad=5)
-
-ax.set_ylabel(r'$\mathbf{Fermentation\ time}$ [hr]',
-              fontname='Arial',
-              fontsize=45,
-              labelpad=5)
-
-ax.tick_params(direction='inout', length=30, width=5,
-               bottom=True, top=False, left=True, right=False)
-
-plt.xticks(np.arange(1, 4, 1), ('1:3','2:3','3:3'), fontname='Arial')
-plt.yticks(np.arange(12, 144, 24), fontname='Arial')
-
-ax_top = ax.twiny()
-ax_top.set_xlim(ax.get_xlim())
-
-ax_top.tick_params(direction='in', length=15, width=5,
-                   bottom=False, top=True, left=False, right=False,
-                   labeltop=False)
-
-plt.xticks(np.arange(1, 4, 1), ('1:3','2:3','3:3'), fontname='Arial')
-
-ax_right = ax.twinx()
-ax_right.set_ylim(ax.get_ylim())
-
-ax_right.tick_params(direction='in', length=15, width=5,
-                     bottom=False, top=False, left=False, right=True,
-                     labelright=False)
-
-plt.yticks(np.arange(12, 144, 24), fontname='Arial')
-
-color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', [do, o, lo, 'w'][::-1])
-
-
-X = np.array(Figure_4CD_data['FWsludgeratio'].map({'FW:sludge 1:3': 1,
-                                                   'FW:sludge 2:3': 2,
-                                                   'FW:sludge 3:3': 3}))
-Y = np.array(Figure_4CD_data['HRT/h'])
-Z = np.array(Figure_4CD_data['sludge_GWP_50th'])
-
-fills = ax.tricontourf(X, Y, Z, levels=10000, cmap=color_map_Guest)
-
-fig.colorbar(fills, ax=ax)
-
-fig.delaxes(fig.axes[3])
-
-lines = ax.tricontour(X, Y, Z, levels=7, linewidths=5, linestyles='solid', colors='k')
-
-ax.clabel(lines, lines.levels, inline=True, fontsize=45)
-
-#%% Figure 4E
-
-fig, ax = plt.subplots(figsize=(18, 12))
-
-plt.rcParams['axes.linewidth'] = 5
-plt.rcParams['hatch.linewidth'] = 5
-plt.rcParams['xtick.labelsize'] = 45
-plt.rcParams['ytick.labelsize'] = 45
-plt.rcParams['font.sans-serif'] = 'Arial'
-plt.rcParams['pdf.fonttype'] = 42
-plt.rcParams['ps.fonttype'] = 42
-
-plt.rcParams.update({'mathtext.fontset':'custom'})
-plt.rcParams.update({'mathtext.default':'regular'})
-plt.rcParams.update({'mathtext.bf':'Arial: bold'})
-
-ax.set_xlim(0.03, 0.09)
-ax.set_ylim(0.001, 0.003)
-plt.subplots_adjust(bottom=0.14, left=0.25)
-
-ax.set_xlabel(r'$\mathbf{Landfill\ Credit}$ [$\$$ ·kg$^{-1}$]',
-              fontname='Arial',
-              fontsize=45,
-              labelpad=5)
-
-ax.set_ylabel(r'$\mathbf{VFA\!-\!rich\ fermentation\ supernatant}$'
-              '\n[$\\$$·L$^{-1}$]',
-              fontname='Arial',
-              fontsize=45,
-              labelpad=5)
-
-ax.tick_params(direction='inout', length=30, width=5,
-               bottom=True, top=False, left=True, right=False)
-
-plt.xticks(np.arange(0.03, 0.11, 0.02),  fontname='Arial')
-plt.yticks(np.arange(0.001, 0.0035, 0.0005), fontname='Arial')
-
-ax_top = ax.twiny()
-ax_top.set_xlim(ax.get_xlim())
-
-ax_top.tick_params(direction='in', length=15, width=5,
-                   bottom=False, top=True, left=False, right=False,
-                   labeltop=False)
-
-plt.xticks(np.arange(0.03, 0.09, 0.02), fontname='Arial')
-
-ax_right = ax.twinx()
-ax_right.set_ylim(ax.get_ylim())
-
-ax_right.tick_params(direction='in', length=15, width=5,
-                     bottom=False, top=False, left=False, right=True,
-                     labelright=False)
-
-plt.yticks(np.arange(0.001, 0.003, 0.0005), fontname='Arial')
-
-color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', [do, o, lo, 'w'][::-1])
-
-
-X = np.array(Figure_4EF_data['residue_price'])
-Y = np.array(Figure_4EF_data['VFA_price'])
-Z = np.array(Figure_4EF_data['FePO4_MSP_50th'])
-
-fills = ax.tricontourf(X, Y, Z, levels=10000, cmap=color_map_Guest)
-
-fig.colorbar(fills, ax=ax)
-
-fig.delaxes(fig.axes[3])
-
-lines = ax.tricontour(X, Y, Z, levels=7, linewidths=5, linestyles='solid', colors='k')
-
-ax.clabel(lines, lines.levels, inline=True, fontsize=45)
-
-#%% Figure 4F
-
-fig, ax = plt.subplots(figsize=(18, 12))
-
-plt.rcParams['axes.linewidth'] = 5
-plt.rcParams['hatch.linewidth'] = 5
-plt.rcParams['xtick.labelsize'] = 45
-plt.rcParams['ytick.labelsize'] = 45
-plt.rcParams['font.sans-serif'] = 'Arial'
-plt.rcParams['pdf.fonttype'] = 42
-plt.rcParams['ps.fonttype'] = 42
-
-plt.rcParams.update({'mathtext.fontset':'custom'})
-plt.rcParams.update({'mathtext.default':'regular'})
-plt.rcParams.update({'mathtext.bf':'Arial: bold'})
-
-ax.set_xlim(0.03, 0.09)
-ax.set_ylim(0.001, 0.003)
-plt.subplots_adjust(bottom=0.14, left=0.25)
-
-ax.set_xlabel(r'$\mathbf{Landfill\ Credit}$ [$\$$ ·kg$^{-1}$]',
-              fontname='Arial',
-              fontsize=45,
-              labelpad=5)
-
-ax.set_ylabel(r'$\mathbf{VFA\!-\!rich\ fermentation\ supernatant}$'
-              '\n[$\\$$·L$^{-1}$]',
-              fontname='Arial',
-              fontsize=45,
-              labelpad=5)
-
-ax.tick_params(direction='inout', length=30, width=5,
-               bottom=True, top=False, left=True, right=False)
-
-plt.xticks(np.arange(0.03, 0.11, 0.02),  fontname='Arial')
-plt.yticks(np.arange(0.001, 0.0035, 0.0005), fontname='Arial')
-
-ax_top = ax.twiny()
-ax_top.set_xlim(ax.get_xlim())
-
-ax_top.tick_params(direction='in', length=15, width=5,
-                   bottom=False, top=True, left=False, right=False,
-                   labeltop=False)
-
-plt.xticks(np.arange(0.03, 0.09, 0.02), fontname='Arial')
-
-ax_right = ax.twinx()
-ax_right.set_ylim(ax.get_ylim())
-
-ax_right.tick_params(direction='in', length=15, width=5,
-                     bottom=False, top=False, left=False, right=True,
-                     labelright=False)
-
-plt.yticks(np.arange(0.001, 0.003, 0.0005), fontname='Arial')
-
-color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', [do, o, lo, 'w'][::-1])
-
-
-X = np.array(Figure_4EF_data['residue_price'])
-Y = np.array(Figure_4EF_data['VFA_price'])
-Z = np.array(Figure_4EF_data['FePO4_GWP_50th'])
-
-fills = ax.tricontourf(X, Y, Z, levels=10000, cmap=color_map_Guest)
-
-fig.colorbar(fills, ax=ax)
-
-fig.delaxes(fig.axes[3])
-
-lines = ax.tricontour(X, Y, Z, levels=2, linewidths=5, linestyles='solid', colors='k')
-
-ax.clabel(lines, lines.levels, inline=True, fontsize=45)
 #%% SI- NH4+
+
+# TODO: update later
 
 fig, ax = plt.subplots(figsize=(14, 12))
 
@@ -1334,11 +1146,10 @@ plt.rcParams.update({'mathtext.fontset':'custom'})
 plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
-ax.set_xlim(0, 132)
+ax.set_xlim(0, 144)
 ax.set_ylim(0, 100)
-plt.subplots_adjust(left=0.20, bottom=0.13)
 
-ax.set_xlabel(r'$\mathbf{Time}$ [hr]',
+ax.set_xlabel(r'$\mathbf{Time}$ [h]',
               fontname='Arial',
               fontsize=45,
               labelpad=0)
@@ -1372,44 +1183,44 @@ ax_right.tick_params(direction='in', length=15, width=5,
 
 plt.yticks(np.arange(0, 120, 20), fontname='Arial')
 
-plt.errorbar(Figure_S1_NH4_release_data['Time/h'],
-            Figure_S1_NH4_release_data['FW:sludge 0:3'],
-            yerr=Figure_S1_NH4_release_data['std'],
+plt.errorbar(Fig_S1_NH4_release_data['Time/h'],
+            Fig_S1_NH4_release_data['FW:sludge 0:3'],
+            yerr=Fig_S1_NH4_release_data['std'],
             lw=5, color=dy, linestyle='dotted',
             capsize=12, capthick=5, zorder=0)
 
-plt.errorbar(Figure_S1_NH4_release_data['Time/h'],
-            Figure_S1_NH4_release_data['FW:sludge 1:3'],
-            yerr=Figure_S1_NH4_release_data['std'],
+plt.errorbar(Fig_S1_NH4_release_data['Time/h'],
+            Fig_S1_NH4_release_data['FW:sludge 1:3'],
+            yerr=Fig_S1_NH4_release_data['std'],
             lw=5, color=dy, linestyle='dashdot',
             capsize=12, capthick=5, zorder=0)
 
-plt.errorbar(Figure_S1_NH4_release_data['Time/h'],
-            Figure_S1_NH4_release_data['FW:sludge 2:3'],
-            yerr=Figure_S1_NH4_release_data['std'],
+plt.errorbar(Fig_S1_NH4_release_data['Time/h'],
+            Fig_S1_NH4_release_data['FW:sludge 2:3'],
+            yerr=Fig_S1_NH4_release_data['std'],
             lw=5, color=dy, linestyle='dashed',
             capsize=12, capthick=5, zorder=0)
 
-plt.errorbar(Figure_S1_NH4_release_data['Time/h'],
-            Figure_S1_NH4_release_data['FW:sludge 3:3'],
-            yerr=Figure_S1_NH4_release_data['std'],
+plt.errorbar(Fig_S1_NH4_release_data['Time/h'],
+            Fig_S1_NH4_release_data['FW:sludge 3:3'],
+            yerr=Fig_S1_NH4_release_data['std'],
             lw=5, color=dy, linestyle='solid',
             capsize=12, capthick=5, zorder=0)
 
-plt.scatter(Figure_S1_NH4_release_data['Time/h'],
-            Figure_S1_NH4_release_data['FW:sludge 0:3'],
+plt.scatter(Fig_S1_NH4_release_data['Time/h'],
+            Fig_S1_NH4_release_data['FW:sludge 0:3'],
             s=500, color=y, lw=5, edgecolor=dy, marker='o', zorder=1)
 
-plt.scatter(Figure_S1_NH4_release_data['Time/h'],
-            Figure_S1_NH4_release_data['FW:sludge 1:3'],
+plt.scatter(Fig_S1_NH4_release_data['Time/h'],
+            Fig_S1_NH4_release_data['FW:sludge 1:3'],
             s=500, color=y, lw=5, edgecolor=dy,marker='s', zorder=1)
 
-plt.scatter(Figure_S1_NH4_release_data['Time/h'],
-            Figure_S1_NH4_release_data['FW:sludge 2:3'],
+plt.scatter(Fig_S1_NH4_release_data['Time/h'],
+            Fig_S1_NH4_release_data['FW:sludge 2:3'],
             s=500, color=y, lw=5, edgecolor=dy,marker='^', zorder=1)
 
-plt.scatter(Figure_S1_NH4_release_data['Time/h'],
-            Figure_S1_NH4_release_data['FW:sludge 3:3'],
+plt.scatter(Fig_S1_NH4_release_data['Time/h'],
+            Fig_S1_NH4_release_data['FW:sludge 3:3'],
             s=500, color=y, lw=5, edgecolor=dy,marker='D', zorder=1)
 
 leg = ax.legend(loc='upper left',
@@ -1425,6 +1236,8 @@ for text in leg.get_texts():
 
 #%% SI-IRR-A
 
+# TODO: update later
+
 fig, ax = plt.subplots(figsize=(16, 12))
 
 plt.rcParams['axes.linewidth'] = 5
@@ -1441,14 +1254,13 @@ plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 ax.set_xlim(-300, 1900)
 ax.set_ylim(-1200, 600)
-plt.subplots_adjust(left=0.25, bottom=0.20)
 
-ax.set_xlabel(r'$\mathbf{Avoid\ waste\ management\ CI}$'+'\n' r' [$kg\ CO_2\ eq\cdot tonne^{-1}$]',
+ax.set_xlabel(r'$\mathbf{Avoid\ waste\ management\ CI}$'+'\n' r' [$kg\ CO_2\ eq·tonne^{-1}$]',
               fontname='Arial',
               fontsize=45,
               labelpad=0)
 
-ax.set_ylabel(r'$\mathbf{CI\ of\ recovered\ FePO_4}$'+'\n'+r'[$kg\ CO_2\ eq\cdot tonne^{-1}$]',
+ax.set_ylabel(r'$\mathbf{CI\ of\ recovered\ FePO_4}$'+'\n'+r'[$kg\ CO_2\ eq·tonne^{-1}$]',
               fontname='Arial',
               fontsize=45,
               labelpad=5)
@@ -1473,10 +1285,10 @@ ax_right.tick_params(direction='in', length=15, width=5,
                      bottom=False, top=False, left=False, right=True,
                      labelright=False)
 
-x = Figure_3D_avoid_waste_sludge_management_CI_data['credit']
-low = Figure_3D_avoid_waste_sludge_management_CI_data['FePO4_GWP_5th']
-mid = Figure_3D_avoid_waste_sludge_management_CI_data['FePO4_GWP_50th']
-high = Figure_3D_avoid_waste_sludge_management_CI_data['FePO4_GWP_95th']
+x = Fig_3g_FePO4_CI['credit']
+low = Fig_3g_FePO4_CI['FePO4_GWP_5th']
+mid = Fig_3g_FePO4_CI['FePO4_GWP_50th']
+high = Fig_3g_FePO4_CI['FePO4_GWP_95th']
 
 ax.fill_between(x, low, high, color=p, alpha=0.85)
 
@@ -1487,6 +1299,8 @@ ax.plot(x, mid, color=r, linewidth=4)
 
 #%% SI-IRR-B
 
+# TODO: update later
+
 fig, ax = plt.subplots(figsize=(16, 12))
 
 plt.rcParams['axes.linewidth'] = 5
@@ -1503,14 +1317,13 @@ plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 ax.set_xlim(-300, 1900)
 ax.set_ylim(-1200, 600)
-plt.subplots_adjust(left=0.25, bottom=0.20)
 
-ax.set_xlabel(r'$\mathbf{Avoid\ waste\ management\ CI}$'+'\n' r' [$kg\ CO_2\ eq\cdot tonne^{-1}$]',
+ax.set_xlabel(r'$\mathbf{Avoid\ waste\ management\ CI}$'+'\n' r' [$kg\ CO_2\ eq·tonne^{-1}$]',
               fontname='Arial',
               fontsize=45,
               labelpad=0)
 
-ax.set_ylabel(r'$\mathbf{CI\ of\ recovered\ FePO_4}$'+'\n'+r'[$kg\ CO_2\ eq\cdot tonne^{-1}$]',
+ax.set_ylabel(r'$\mathbf{CI\ of\ recovered\ FePO_4}$'+'\n'+r'[$kg\ CO_2\ eq·tonne^{-1}$]',
               fontname='Arial',
               fontsize=45,
               labelpad=5)
@@ -1535,10 +1348,10 @@ ax_right.tick_params(direction='in', length=15, width=5,
                      bottom=False, top=False, left=False, right=True,
                      labelright=False)
 
-x = Figure_3D_avoid_waste_sludge_management_CI_data['credit']
-low = Figure_3D_avoid_waste_sludge_management_CI_data['FePO4_GWP_5th']
-mid = Figure_3D_avoid_waste_sludge_management_CI_data['FePO4_GWP_50th']
-high = Figure_3D_avoid_waste_sludge_management_CI_data['FePO4_GWP_95th']
+x = Fig_3g_FePO4_CI['credit']
+low = Fig_3g_FePO4_CI['FePO4_GWP_5th']
+mid = Fig_3g_FePO4_CI['FePO4_GWP_50th']
+high = Fig_3g_FePO4_CI['FePO4_GWP_95th']
 
 ax.fill_between(x, low, high, color=p, alpha=0.85)
 
@@ -1547,65 +1360,152 @@ ax.plot(x, high, color=r,linestyle='--',linewidth=3)
 
 ax.plot(x, mid, color=r, linewidth=4)
 
-#%% legend
+#%% Fig SXXX
 
-fig, ax = plt.subplots(figsize=(8,4))
-ax.axis('off')
+# TODO: update later
 
-ax.text(0,1.05, 'Food Waste (FW): Sludge ratio',
-        transform=ax.transAxes,
-        fontsize=30,
-        fontweight='bold',
-        va='bottom',
-        ha='left')
-handles = [
+fig, ax = plt.subplots(figsize=(16, 12))
 
-    plt.Line2D([0],[0],
-               color='k',
-               lw=6,
-               linestyle='dotted',
-               marker='o',
-               markersize=24,
-               label='0:3'),
+plt.rcParams['axes.linewidth'] = 5
+plt.rcParams['hatch.linewidth'] = 5
+plt.rcParams['xtick.labelsize'] = 45
+plt.rcParams['ytick.labelsize'] = 45
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
 
-    plt.Line2D([0],[0],
-               color='k',
-               lw=6,
-               linestyle='dashdot',
-               marker='s',
-               markersize=24,
-               label='1:3'),
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
-    plt.Line2D([0],[0],
-               color='k',
-               lw=6,
-               linestyle='dashed',
-               dashes=(8,6),
-               marker='^',
-               markersize=24,
-               label='2:3'),
+ax.set_xlim(1, 3)
+ax.set_ylim(12, 132)
 
-    plt.Line2D([0],[0],
-               color='k',
-               lw=6,
-               linestyle='solid',
-               marker='D',
-               markersize=24,
-               label='3:3'),
-]
+ax.set_xlabel(r'$\mathbf{Food\ wast:sludge\ ratio}$',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=5)
 
-leg = ax.legend(handles=handles,
-                loc='center',
-                bbox_to_anchor=(0.52, 0.40),
-                frameon=False,
-                fontsize=28,
-                handlelength=10,
-                labelspacing=1.2)
+ax.set_ylabel(r'$\mathbf{Fermentation\ time}$ [h]',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=5)
 
-for t in leg.get_texts():
-    t.set_fontname('Arial')
-    t.set_fontweight('bold')
-    t.set_fontsize(36)
+ax.tick_params(direction='inout', length=30, width=5,
+               bottom=True, top=False, left=True, right=False)
 
-plt.tight_layout()
-plt.show()
+plt.xticks(np.arange(1, 4, 1), ('1:3','2:3','3:3'), fontname='Arial')
+plt.yticks(np.arange(12, 144, 24), fontname='Arial')
+
+ax_top = ax.twiny()
+ax_top.set_xlim(ax.get_xlim())
+
+ax_top.tick_params(direction='in', length=15, width=5,
+                   bottom=False, top=True, left=False, right=False,
+                   labeltop=False)
+
+plt.xticks(np.arange(1, 4, 1), ('1:3','2:3','3:3'), fontname='Arial')
+
+ax_right = ax.twinx()
+ax_right.set_ylim(ax.get_ylim())
+
+ax_right.tick_params(direction='in', length=15, width=5,
+                     bottom=False, top=False, left=False, right=True,
+                     labelright=False)
+
+plt.yticks(np.arange(12, 144, 24), fontname='Arial')
+
+color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', [do, o, 'w'][::-1])
+
+
+X = np.array(Fig_4CD_data['FWsludgeratio'].map({'FW:sludge 1:3': 1,
+                                                'FW:sludge 2:3': 2,
+                                                'FW:sludge 3:3': 3}))
+# TODO: should be no 'HRT', use 'fermentation time'
+Y = np.array(Fig_4CD_data['HRT/h'])
+Z = np.array(Fig_4CD_data['sludge_cost_50th'])
+
+fills = ax.tricontourf(X, Y, Z, levels=10000, cmap=color_map_Guest)
+
+fig.colorbar(fills, ax=ax)
+
+fig.delaxes(fig.axes[3])
+
+lines = ax.tricontour(X, Y, Z, levels=7, linewidths=5, linestyles='solid', colors='k')
+
+ax.clabel(lines, lines.levels, inline=True, fontsize=45)
+
+#%% Fig SXXX
+
+# TODO: update later
+
+fig, ax = plt.subplots(figsize=(16, 12))
+
+plt.rcParams['axes.linewidth'] = 5
+plt.rcParams['hatch.linewidth'] = 5
+plt.rcParams['xtick.labelsize'] = 45
+plt.rcParams['ytick.labelsize'] = 45
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+
+ax.set_xlim(1, 3)
+ax.set_ylim(12, 132)
+
+ax.set_xlabel(r'$\mathbf{Food\ waste:sludge\ ratio}$',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=5)
+
+ax.set_ylabel(r'$\mathbf{Fermentation\ time}$ [h]',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=5)
+
+ax.tick_params(direction='inout', length=30, width=5,
+               bottom=True, top=False, left=True, right=False)
+
+plt.xticks(np.arange(1, 4, 1), ('1:3','2:3','3:3'), fontname='Arial')
+plt.yticks(np.arange(12, 144, 24), fontname='Arial')
+
+ax_top = ax.twiny()
+ax_top.set_xlim(ax.get_xlim())
+
+ax_top.tick_params(direction='in', length=15, width=5,
+                   bottom=False, top=True, left=False, right=False,
+                   labeltop=False)
+
+plt.xticks(np.arange(1, 4, 1), ('1:3','2:3','3:3'), fontname='Arial')
+
+ax_right = ax.twinx()
+ax_right.set_ylim(ax.get_ylim())
+
+ax_right.tick_params(direction='in', length=15, width=5,
+                     bottom=False, top=False, left=False, right=True,
+                     labelright=False)
+
+plt.yticks(np.arange(12, 144, 24), fontname='Arial')
+
+color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', [do, o, 'w'][::-1])
+
+
+X = np.array(Fig_4CD_data['FWsludgeratio'].map({'FW:sludge 1:3': 1,
+                                                'FW:sludge 2:3': 2,
+                                                'FW:sludge 3:3': 3}))
+# TODO: should be no 'HRT', use 'fermentation time'
+Y = np.array(Fig_4CD_data['HRT/h'])
+Z = np.array(Fig_4CD_data['sludge_GWP_50th'])
+
+fills = ax.tricontourf(X, Y, Z, levels=10000, cmap=color_map_Guest)
+
+fig.colorbar(fills, ax=ax)
+
+fig.delaxes(fig.axes[3])
+
+lines = ax.tricontour(X, Y, Z, levels=7, linewidths=5, linestyles='solid', colors='k')
+
+ax.clabel(lines, lines.levels, inline=True, fontsize=45)

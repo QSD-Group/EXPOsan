@@ -109,7 +109,7 @@ def create_components(set_thermo=True):
         ID='Org',
         search_ID='50-99-7',
         particle_size='Soluble',
-        degradability='Biodegradable',
+        degradability='Readily',
         organic=True
     )
 

@@ -36,70 +36,70 @@ operation_hours = 365*24
 
 __all__ = (
     'get_precipitation_supernatant_price',
-    'create_system',
+    'create_system'
 )
 
 def get_precipitation_supernatant_price(food_sludge_ratio, fermentation_time):
     VFA_conc_dict = {
-        (0, 0):229.836,    #mg/L
-        (0, 12):229.836,
-        (0, 24):229.836,
-        (0, 36):229.836,
-        (0, 48):229.836,
-        (0, 60):229.836,
-        (0, 72):229.836,
-        (0, 84):315.014,
-        (0, 96):324.748,
-        (0, 108):474.744,
-        (0, 120):503.468,
-        (0, 132):574.002,
-        (1/3, 0):229.836,    #mg/L
-        (1/3, 12):318.997,
-        (1/3, 24):891.924,
-        (1/3, 36):930.369,
-        (1/3, 48):942.929,
-        (1/3, 60):1019.904,
-        (1/3, 72):1030.104,
-        (1/3, 84):1058.436,
-        (1/3, 96):1065.347,
-        (1/3, 108):1235.25,
-        (1/3, 120):1295.057,
-        (1/3, 132):1486.757,
-        (2/3, 0):229.836,
-        (2/3, 12):619.055,
-        (2/3, 24):1342.854,
-        (2/3, 36):1975.393,
-        (2/3, 48):2195.785,
-        (2/3, 60):2540.621,
-        (2/3, 72):2677.336,
-        (2/3, 84):2740.366,
-        (2/3, 96):2754.408,
-        (2/3, 108):2835.845,
-        (2/3, 120):2882.61,
-        (2/3, 132):3123.319,
-        (3/3, 0):229.836,    #mg/L
-        (3/3, 12):755.134,
-        (3/3, 24):1534.219,
-        (3/3, 36):2006.594,
-        (3/3, 48):2624.859,
-        (3/3, 60):3049.32,
-        (3/3, 72):3413.96,
-        (3/3, 84):3716.996,
-        (3/3, 96):3763.005,
-        (3/3, 108):3953.696,
-        (3/3, 120):4114.03,
-        (3/3, 132):4500,
-        (4/3, 132):4650
+        (0, 0): 229.836,
+        (0, 12): 229.836,
+        (0, 24): 229.836,
+        (0, 36): 229.836,
+        (0, 48): 229.836,
+        (0, 60): 229.836,
+        (0, 72): 229.836,
+        (0, 84): 315.014,
+        (0, 96): 324.748,
+        (0, 108): 474.744,
+        (0, 120): 503.468,
+        (0, 132): 574.002,
+        (1/3, 0): 229.836,
+        (1/3, 12): 318.997,
+        (1/3, 24): 891.924,
+        (1/3, 36): 930.369,
+        (1/3, 48): 942.929,
+        (1/3, 60): 1019.904,
+        (1/3, 72): 1030.104,
+        (1/3, 84): 1058.436,
+        (1/3, 96): 1065.347,
+        (1/3, 108): 1235.25,
+        (1/3, 120): 1295.057,
+        (1/3, 132): 1486.757,
+        (2/3, 0): 229.836,
+        (2/3, 12): 619.055,
+        (2/3, 24): 1342.854,
+        (2/3, 36): 1975.393,
+        (2/3, 48): 2195.785,
+        (2/3, 60): 2540.621,
+        (2/3, 72): 2677.336,
+        (2/3, 84): 2740.366,
+        (2/3, 96): 2754.408,
+        (2/3, 108): 2835.845,
+        (2/3, 120): 2882.61,
+        (2/3, 132): 3123.319,
+        (3/3, 0): 229.836,
+        (3/3, 12): 755.134,
+        (3/3, 24): 1534.219,
+        (3/3, 36): 2006.594,
+        (3/3, 48): 2624.859,
+        (3/3, 60): 3049.32,
+        (3/3, 72): 3413.96,
+        (3/3, 84): 3716.996,
+        (3/3, 96): 3763.005,
+        (3/3, 108): 3953.696,
+        (3/3, 120): 4114.03,
+        (3/3, 132): 4500,
+        (4/3, 132): 4650
       }
         
-    vfa_conc = VFA_conc_dict[(food_sludge_ratio), fermentation_time]  # mg/L
+    vfa_conc = VFA_conc_dict[(food_sludge_ratio), fermentation_time]
     price = 0.002*(vfa_conc/4500)
     
     return price
 
 # TODO: add in the manuscript: except when X-axis is size, the system input is assumed to be 100 dry tonne solids·day-1
-# sludge_credit: $/tonne dry solids (https://pubs.acs.org/doi/10.1021/es505329q)
-def create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentation_time=132, sludge_credit=300, sludge_CI_credit=300, perspective='FePO4'):
+# sludge_cost_credit: $/tonne dry solids (https://pubs.acs.org/doi/10.1021/es505329q)
+def create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentation_time=132, sludge_cost_credit=300, sludge_CI_credit=1300, perspective='FePO4'):
     
     if perspective not in ['FePO4','sludge']:
         raise KeyError('perspective can only be FePO4 or sludge')
@@ -162,7 +162,7 @@ def create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentatio
     sys.simulate()
     
     sludge_dry_kg_hr = fe_sludge.F_mass - fe_sludge.imass['Water']
-    fe_sludge.price = -sludge_credit*(sludge_dry_kg_hr/1000)/fe_sludge.F_mass
+    fe_sludge.price = -sludge_cost_credit*(sludge_dry_kg_hr/1000)/fe_sludge.F_mass
     
     # 0.08 $/kg, from Everbatt2023
     SP.ins[1].price = 0.08 * stream.acid.imass['H2SO4']/stream.acid.F_mass

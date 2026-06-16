@@ -22,7 +22,21 @@ from datetime import date
 
 folder = os.path.dirname(os.path.dirname(__file__))
 
-#%% Figure 3 - FePO4 perspective, fermentation_time = 132, food_sludge_ratio = 1, avoided sludge management cost as credits
+#%% Fig. 3 - sludge management perspective, fermentation_time = 132, food_sludge = 1
+
+sys = create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentation_time=132, perspective='sludge')
+sys.simulate()
+model = create_model(sys, perspective='sludge')
+kwargs = {'N':1000,'rule':'L','seed':3221}
+samples = model.sample(**kwargs)
+model.load_samples(samples)
+model.evaluate()
+idx = len(model.parameters)
+parameters = model.table.iloc[:, :idx]
+results = model.table.iloc[:, idx:]
+results.to_excel(os.path.join(folder, f'results/sludge_management_cost_CI_basline_{date.today()}.xlsx'))
+
+#%% Fig. 3 - FePO4 perspective, fermentation_time = 132, food_sludge_ratio = 1, avoided sludge management cost as credits
 
 credit_list = []
 
@@ -31,8 +45,9 @@ FePO4_MSP_50th = []
 FePO4_MSP_95th = []
 FePO4_MSP_mean = []
 
+# TODO: use 120 h or 132 h?
 for credit in range(0, 1100, 100):
-    sys = create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentation_time=132, sludge_credit=credit, perspective='FePO4')
+    sys = create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentation_time=132, sludge_cost_credit=credit, perspective='FePO4')
     model = create_model(sys, perspective='FePO4')
     
     kwargs = {'N':1000,'rule':'L','seed':3221}
@@ -62,7 +77,7 @@ credit_result['FePO4_MSP_mean'] = FePO4_MSP_mean
 
 credit_result.to_excel(os.path.join(folder, f'results/FePO4_result_cost_credit_{date.today()}.xlsx'))
 
-#%% Figure 3 - FePO4 perspective, fermentation_time = 132, food_sludge_ratio = 1, avoided sludge management CI as credits
+#%% Fig. 3 - FePO4 perspective, fermentation_time = 132, food_sludge_ratio = 1, avoided sludge management CI as credits
 
 credit_list = []
 
@@ -71,7 +86,7 @@ FePO4_GWP_50th = []
 FePO4_GWP_95th = []
 FePO4_GWP_mean = []
 
-for credit in range(-300, 2100, 200):
+for credit in range(0, 4500, 500):
     sys = create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentation_time=132, sludge_CI_credit=credit, perspective='FePO4')
     model = create_model(sys, perspective='FePO4')
     
@@ -102,21 +117,7 @@ credit_result['FePO4_GWP_mean'] = FePO4_GWP_mean
 
 credit_result.to_excel(os.path.join(folder, f'results/FePO4_result_CI_credit_{date.today()}.xlsx'),)
 
-#%% Figure 3 - sludge management perspective, fermentation_time = 132, food_sludge = 1, P and Fe recovery
-
-sys = create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentation_time=132, sludge_credit=300, perspective='sludge')
-sys.simulate()
-model = create_model(sys, perspective='sludge')
-kwargs = {'N':1000,'rule':'L','seed':3221}
-samples = model.sample(**kwargs)
-model.load_samples(samples)
-model.evaluate()
-idx = len(model.parameters)
-parameters = model.table.iloc[:, :idx]
-results = model.table.iloc[:, idx:]
-results.to_excel(os.path.join(folder, f'results/sludge_management_cost_CI_basline_{date.today()}.xlsx'))
-
-#%% Figure 4 - heatmaps - ratio and reaction time
+#%% Fig. 4 - heatmaps - food waste:sludge ratio and fermentation time
 
 FePO4_MSP_5th = []
 FePO4_MSP_50th = []
@@ -236,34 +237,21 @@ r_df, p_df = qs.stats.get_correlations(model, kind='Spearman', **spearman_kwargs
 r_df.to_excel(os.path.join(folder, f'results/r_df_{date.today()}.xlsx'))
 p_df.to_excel(os.path.join(folder, f'results/p_df_{date.today()}.xlsx'))
 
-#%% Figure 5 - heatmaps - VFA price and residual price
+#%% Fig. 5 - heatmaps - VFA price and residual disposal cost
 
 FePO4_MSP_5th = []
 FePO4_MSP_50th = []
 FePO4_MSP_95th = []
 FePO4_MSP_mean = []
 
-FePO4_GWP_5th = []
-FePO4_GWP_50th = []
-FePO4_GWP_95th = []
-FePO4_GWP_mean = []
+VFA_price_list = []
+residue_cost_list = []
 
-sys = create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentation_time=132, perspective='FePO4')
-AF = sys.flowsheet.unit.AF
-stream = sys.flowsheet.stream
-
-precipitation_supernatant_baseline_price = stream.precipitation_supernatant.price
-residue_baseline_price = -62.8/1000
-
-VFA_price_list = np.linspace(precipitation_supernatant_baseline_price*0.5,precipitation_supernatant_baseline_price*1.5, 11)
-results_all=[]
-residue_price_list = np.linspace(-0.09, -0.03, 11)
-
-for VFA_price in VFA_price_list:
-    for residue_price in residue_price_list:
+for VFA_price in np.linspace(0, 3/1000, 10):
+    for residue_cost in np.linspace(0, 120/1000, 10):
         sys = create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentation_time=132, perspective='FePO4')
         sys.flowsheet.stream.precipitation_supernatant.price = VFA_price
-        sys.flowsheet.stream.residue.price = residue_price
+        sys.flowsheet.stream.residue.price = -residue_cost
         
         model = create_model(sys, perspective='FePO4', exclude_context=True)
         
@@ -274,25 +262,22 @@ for VFA_price in VFA_price_list:
         
         idx = len(model.parameters)
         results = model.table.iloc[:, idx:].dropna()
+                   
+        VFA_price_list.append(VFA_price)
+        residue_cost_list.append(residue_cost)
         
-        row = {
-            'VFA_price':VFA_price,
-            'residue_price':residue_price
-            }
-                    
-        row['FePO4_MSP_5th'] = results[('TEA','Fe po4 MSP [$/kg]')].quantile(0.05)
-        row['FePO4_MSP_50th'] = results[('TEA','Fe po4 MSP [$/kg]')].quantile(0.5)
-        row['FePO4_MSP_95th'] = results[('TEA','Fe po4 MSP [$/kg]')].quantile(0.95)
-        row['FePO4_MSP_mean'] = results[('TEA','Fe po4 MSP [$/kg]')].mean()
+        FePO4_MSP_5th.append(results[('TEA','Fe po4 MSP [$/kg]')].quantile(0.05))
+        FePO4_MSP_50th.append(results[('TEA','Fe po4 MSP [$/kg]')].quantile(0.5))
+        FePO4_MSP_95th.append(results[('TEA','Fe po4 MSP [$/kg]')].quantile(0.95))
+        FePO4_MSP_mean.append(results[('TEA','Fe po4 MSP [$/kg]')].mean())
         
-        row['FePO4_GWP_5th'] = results[('LCA','Fe po4 GWP [kg_CO2_eq/kg]')].quantile(0.05)
-        row['FePO4_GWP_50th'] = results[('LCA','Fe po4 GWP [kg_CO2_eq/kg]')].quantile(0.5)
-        row['FePO4_GWP_95th'] = results[('LCA','Fe po4 GWP [kg_CO2_eq/kg]')].quantile(0.95)
-        row['FePO4_GWP_mean'] = results[('LCA','Fe po4 GWP [kg_CO2_eq/kg]')].mean()
-        
-        results_all.append(row)
-
-heatmap_result = pd.DataFrame(results_all) 
+heatmap_result = pd.DataFrame()
+heatmap_result['VFA_price'] = VFA_price_list
+heatmap_result['residue_cost'] = residue_cost_list
+heatmap_result['FePO4_MSP_5th'] = FePO4_MSP_5th
+heatmap_result['FePO4_MSP_50th'] = FePO4_MSP_50th
+heatmap_result['FePO4_MSP_95th'] = FePO4_MSP_95th
+heatmap_result['FePO4_MSP_mean'] = FePO4_MSP_mean
 
 heatmap_result.to_excel(os.path.join(folder, f'results/context_heatmap_{date.today()}.xlsx'))
 
@@ -324,7 +309,7 @@ for perspective in ['FePO4','sludge']:
     size_list = []
 
     for size in [1, 2, 4, 8, 16, 32, 64, 128, 256]:
-        sys = create_system(dry_solids_tonne_per_day=size, food_sludge_ratio=1, fermentation_time=132, sludge_credit=300, perspective=perspective)
+        sys = create_system(dry_solids_tonne_per_day=size, food_sludge_ratio=1, fermentation_time=132, perspective=perspective)
         sys.simulate()
         model = create_model(sys, perspective=perspective)
         
@@ -413,7 +398,7 @@ for perspective in ['FePO4','sludge']:
         IRR_range = np.arange(0, 0.06, 0.01)
 
     for IRR in IRR_range:
-        sys = create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentation_time=132, sludge_credit=300, perspective=perspective)
+        sys = create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentation_time=132, perspective=perspective)
         sys.TEA.IRR = IRR
         sys.simulate()
         
