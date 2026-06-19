@@ -14,6 +14,10 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
+# TODO: rerun all analyses and remake all figures
+
+# TODO: add cost and CI breakdowns
+
 #%% initialization
 
 import os, pandas as pd, qsdsan as qs, numpy as np

@@ -97,7 +97,6 @@ def get_precipitation_supernatant_price(food_sludge_ratio, fermentation_time):
     
     return price
 
-# TODO: add in the manuscript: except when X-axis is size, the system input is assumed to be 100 dry tonne solids·day-1
 # sludge_cost_credit: $/tonne dry solids (https://pubs.acs.org/doi/10.1021/es505329q)
 def create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentation_time=132, sludge_cost_credit=300, sludge_CI_credit=1300, perspective='FePO4'):
     
@@ -133,7 +132,6 @@ def create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentatio
     
     P2 = qsu.SludgePump(ID='P2', ins=ST-0, outs='sludge_to_AF')
     
-    # TODO: include this assumption in the manuscript or the SI
     # assume food waste is neutral, e.g., it has no cost, CI or related credits
     AF = su.AcidogenicFermenter(ID='AF', ins=(P2-0, 'food_waste'), outs=('fermentate', 'fermentation_gas'),
                                 food_sludge_ratio=food_sludge_ratio, fermentation_time=fermentation_time)
