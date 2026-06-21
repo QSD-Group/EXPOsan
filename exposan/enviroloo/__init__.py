@@ -21,6 +21,17 @@ from exposan.utils import (
 ## Default settings of resource recovery in the EL system
 INCLUDED_RESOURCE_RECOVERY = False
 
+## Toggle for urine diversion + struvite reactor + SRD integration.
+## True  = system includes M_MgCl2 -> SR -> SRD -> CT (upstream P removal)
+## False = baseline system, CT receives toilet waste directly (no UD/SR/SRD)
+INCLUDE_STRUVITE = False
+
+## Toggle for PV-only vs. PV+grid hybrid energy configuration (EL_WindSolar).
+## True  = 100% wind/solar, 0% grid -- no grid electricity cost in OPEX
+## False = PV+grid hybrid, 80% wind/solar / 20% grid (Overstrand Municipality
+##         tariffs) -- grid electricity cost added to OPEX
+PV_ONLY = False
+
 el_path = os.path.dirname(__file__)
 #el_data_path = os.path.join(el_path, 'data')
 #results_path = os.path.join(el_path, 'results')
@@ -37,8 +48,8 @@ household_size = 5  # refer to EXPOsan/exposan/pou_disinfection/__init__.py wher
 household_per_toilet = 20
 get_toilet_users = lambda: household_size * household_per_toilet
 
-ppl = 3000 # the number of people served by the EL system. #TOCHANGE
-baseline_ppl = 3000 # the number of people served by the EL system. #TOCHANGE
+ppl = 448 # the number of people served by the EL system. #TOCHANGE
+baseline_ppl = 448 # the number of people served by the EL system. #TOCHANGE
 scale_factor = ppl / 448 #scale_factor for flow and dosing rates
 dosing_flow = 1 #L/h base scenario
 
@@ -95,6 +106,7 @@ def update_resource_recovery_settings():
         'HDPE': 0.5 * price_ratio, # $/kg, used for 200M ozone connection
         'PAC': 0 / 0.2886 * price_ratio, #$/kg, kg AlOH/kg PAC conversion
         'Glucose': 0 / 1.067 * price_ratio, # $/kg, used in anoxic tank, kg COD/kg glucose conversion
+        'MgCl2': 0.50 * price_ratio, # $/kg, used in struvite reactor for upstream P removal; South Africa-specific range $0.19-$1.50/kg, see _EL_SR.tsv
         'air': 0,
         }
     
@@ -113,6 +125,7 @@ def update_resource_recovery_settings():
         'O3': 0.39586718,
         'PAC': 0.394959 / 0.2886, #kg AlOH/kg PAC
         'Glucose': 0.033883 / 1.067, #kg COD/kg glucose conversion
+        'MgCl2': 0.023, # kg CO2-eq/kg MgCl2, Sena et al., 2021; uncertainty range +/-20%
         'air': 0,
         }
     
@@ -131,6 +144,7 @@ def update_resource_recovery_settings():
         'O3':0.21786132,
         'PAC': 0.1938478 / 0.2886, #kg AlOH/kg PAC
         'Glucose': 0.035664 / 1.067, #kg COD/kg glucose conversion
+        'MgCl2': 0, # points/kg MgCl2, not yet characterized -- only GWP available from Sena et al. 2021
         'air': 0,
         }
     
@@ -149,6 +163,7 @@ def update_resource_recovery_settings():
         'O3': 0.51710284,
         'PAC': 0.0173485 / 0.2886, #kg AlOH/kg PAC
         'Glucose': 0.011324 / 1.067, #kg COD/kg glucose conversion
+        'MgCl2': 0, # points/kg MgCl2, not yet characterized -- only GWP available from Sena et al. 2021
         'air': 0,
         }
     
@@ -167,6 +182,7 @@ def update_resource_recovery_settings():
         'O3': 0.39586718,
         'PAC': 0.28485795 / 0.2886, #kg AlOH/kg PAC
         'Glucose': 0.02425 / 1.067, #kg COD/kg glucose conversion
+        'MgCl2': 0, # points/kg MgCl2, not yet characterized -- only GWP available from Sena et al. 2021
         'air': 0,
         }
     
@@ -226,6 +242,7 @@ def _load_lca_data(reload=False):
         create_stream_impact_item(item_ID='O3_item')
         create_stream_impact_item(item_ID='PAC_item')
         create_stream_impact_item(item_ID='Glucose_item')
+        create_stream_impact_item(item_ID='MgCl2_item') # used in struvite reactor; GWP from Sena et al. 2021, see _EL_SR.tsv for price
         create_stream_impact_item(item_ID='air_item')
         ImpactItem(ID = 'e_item', functional_unit = 'kWh', 
                    GWP = GWP_dct['Electricity'],

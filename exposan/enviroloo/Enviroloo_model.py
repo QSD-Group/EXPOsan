@@ -193,6 +193,7 @@ ClearWaterTank_data = load_el_su_data('_EL_CWT.tsv')
 system_data = load_el_su_data('_EL_system.tsv')
 photovoltaic_wind_data = load_el_su_data('_EL_photovoltaic_wind.tsv')
 housing_data = load_el_su_data('_EL_housing.tsv')
+SR_data = load_el_su_data('_EL_SR.tsv')  # struvite reactor (upstream P removal)
 
 ############################################## define parameters of interest for EL system ################################################################
 def add_parameters(model, unit_dct, country_specific=False):
@@ -338,6 +339,15 @@ def add_parameters(model, unit_dct, country_specific=False):
     # EL housing
     ELH_unit = unit_dct['Housing']
     batch_setting_unit_params(housing_data, model, ELH_unit)
+
+    # Struvite Reactor (upstream P removal from source-separated urine)
+    # Only present when el.INCLUDE_STRUVITE = True. Registers all 14
+    # _EL_SR.tsv parameters for Monte Carlo sampling, including
+    # eff_PO4_mgL (Triangular 1.31/6.55/27.50) and precip_yield
+    # (Triangular 0.55/0.70/0.85) -- see _EL_SR.tsv for full citations.
+    if el.INCLUDE_STRUVITE and 'StruviteReactor' in unit_dct:
+        SR_unit = unit_dct['StruviteReactor']
+        batch_setting_unit_params(SR_data, model, SR_unit)
 
 
     ################################################ Universal degradation parameters ##########################################################
@@ -755,8 +765,10 @@ def create_modelEL(country_specific=False, **model_kwargs):
         'MembraneTank': unitEL.B1,
         'ClearWaterTank': unitEL.CWT,
         'PhotovoltaicWind': unitEL.PV,
-        'Housing': unitEL.ELH
+        'Housing': unitEL.ELH,
         }
+    if el.INCLUDE_STRUVITE:
+        unit_dctEL['StruviteReactor'] = unitEL.SR
     add_parameters(modelEL, unit_dctEL, country_specific)
     
     return modelEL
