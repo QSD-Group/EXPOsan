@@ -13,7 +13,7 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-__all__ = ('test_htl',)
+__all__ = ('test_htl', 'test_geospatial_cooling_tower_inlets')
 
 
 def _assert_allclose_any(actual, options, rtol):
@@ -76,6 +76,17 @@ def test_htl():
     _assert_allclose_any(m3.metrics_at_baseline().values,
                          [[2.058, -66.152, 46.083, 289.873],
                           [2.027, -68.043, 46.295, 291.694]], rtol)
+
+
+def test_geospatial_cooling_tower_inlets():
+    from exposan.htl.geospatial_systems import _create_cooling_tower
+
+    _, makeup_water, chemicals = _create_cooling_tower()
+
+    assert makeup_water.ID == 'cooling_tower_makeup_water'
+    assert chemicals.ID == 'cooling_tower_chemicals'
+    assert makeup_water.price > 0
+    assert chemicals.price > makeup_water.price
 
 
 if __name__ == '__main__':
