@@ -32,7 +32,8 @@ folder = os.path.dirname(__file__)
 def create_model(system=None,
                  perspective='FePO4',
                  exclude_context=False,
-                 exclude_IRR=False):
+                 exclude_IRR=False,
+                 exclude_breakdown=False):
     
     if perspective not in ['FePO4','sludge']:
         raise KeyError('perspective can only be FePO4 or sludge')
@@ -150,7 +151,7 @@ def create_model(system=None,
     # =============================================================================
     # HeatDrying
     # =============================================================================
-    HD=unit.HD
+    HD = unit.HD
     
     dist = shape.Uniform(4.5*0.8,4.5*1.2)
     @param(name='unit_heat',
@@ -162,39 +163,49 @@ def create_model(system=None,
     def set_unit_heat(i):
         HD.unit_heat=i
     
-    dist = shape.Uniform(214*0.8,214*1.2)
-    @param(name='unit_HD_electricity',
-           element='HD',
-           kind='coupled',
-           units='kWh/t',  
-           baseline=214,
-           distribution=dist)
-    def set_HD_unit_electricity(i):
-        HD.unit_electricity=i
-
-    # =============================================================================
-    # Sintering
-    # =============================================================================
-    SI=unit.SI
     dist = shape.Uniform(0.8*0.8,0.8*1.2)
-    @param(name='combustion_eff',
+    @param(name='combustion_eff_HD',
            element='SI',
            kind='coupled',
            units='-',
            baseline=0.8,
            distribution=dist)
-    def set_combustion_eff(i):
-        SI.combustion_eff=i
+    def set_combustion_eff_HD(i):
+        SI.combustion_eff_HD=i
+    
+    dist = shape.Uniform(214*0.8,214*1.2)
+    @param(name='unit_electricity_HD',
+           element='HD',
+           kind='coupled',
+           units='kWh/t',  
+           baseline=214,
+           distribution=dist)
+    def set_unit_electricity_HD(i):
+        HD.unit_electricity_HD=i
+
+    # =============================================================================
+    # Sintering
+    # =============================================================================
+    SI = unit.SI
+    dist = shape.Uniform(0.8*0.8,0.8*1.2)
+    @param(name='combustion_eff_SI',
+           element='SI',
+           kind='coupled',
+           units='-',
+           baseline=0.8,
+           distribution=dist)
+    def set_combustion_eff_SI(i):
+        SI.combustion_eff_SI=i
     
     dist = shape.Uniform(30*0.8,30*1.2)
-    @param(name='unit_SI_electricity',
+    @param(name='unit_electricity_SI',
            element='SI',
            kind='coupled',
            units='kWh/t',
            baseline=30,
            distribution=dist)
-    def set_SI_unit_electricity(i):
-        SI.unit_electricity=i       
+    def set_unit_electricity_SI(i):
+        SI.unit_electricity_SI=i       
     
     # =============================================================================
     # TEA
@@ -402,5 +413,187 @@ def create_model(system=None,
             return lca.get_total_impacts(operation_only=True,
                                          exclude=(fe_sludge,),
                                          annual=True)['GlobalWarming']/(fe_sludge.F_mass - fe_sludge.imass['H2O'])/system.operating_hours*_tonne_to_kg
+    
+    if not exclude_breakdown:
+        # CAPEX metrics (as total installed cost, TIC)
+        @metric(name='TIC',units='$',element='TEA')
+        def get_TIC():
+            return system.installed_equipment_cost
+        
+        P1 = unit.P1
+        FC = unit.FC
+        PC = unit.PC
+        
+        @metric(name='AF_TIC',units='$',element='TEA')
+        def get_AF_TIC():
+            return AF.installed_cost
+        
+        @metric(name='SP_TIC',units='$',element='TEA')
+        def get_SP_TIC():
+            return SP.installed_cost
+        
+        @metric(name='thermal_treatment_TIC',units='$',element='TEA')
+        def get_thermal_treatment_TIC():
+            return HD.installed_cost+SI.installed_cost
+        
+        @metric(name='others_TIC',units='$',element='TEA')
+        def get_others_TIC():
+            return sum(i.installed_cost for i in [P1, FC, PC])
+        
+        @metric(name='AOC',units='$/yr',element='TEA')
+        def get_AOC():
+            return tea.AOC
+        
+        @metric(name='FOC',units='$/yr',element='TEA')
+        def get_FOC():
+            return tea.FOC
+        
+        @metric(name='VOC',units='$/yr',element='TEA')
+        def get_VOC():
+            return tea.VOC
+        
+        @metric(name='material_VOC',units='$/yr',element='TEA')
+        def get_material_VOC():
+            return system.material_cost-(HD_NG.cost+SI_NG.cost)*system.operating_hours
+        
+        @metric(name='fe_sludge_VOC',units='$/yr',element='TEA')
+        def get_fe_sludge_VOC():
+            return fe_sludge.cost*system.operating_hours
+        
+        @metric(name='residue_VOC',units='$/yr',element='TEA')
+        def get_residue_VOC():
+            return -residue.cost*system.operating_hours
+        
+        @metric(name='H2SO4_VOC',units='$/yr',element='TEA')
+        def get_H2SO4_VOC():
+            return H2SO4.cost*system.operating_hours
+        
+        @metric(name='H2O2_VOC',units='$/yr',element='TEA')
+        def get_H2O2_VOC():
+            return H2O2.cost*system.operating_hours
+        
+        @metric(name='precipitation_supernatant_VOC',units='$/yr',element='TEA')
+        def get_precipitation_supernatant_VOC():
+            return -precipitation_supernatant.cost*system.operating_hours
+        
+        @metric(name='product_VOC',units='$/yr',element='TEA')
+        def get_product_VOC():
+            return -product.cost*system.operating_hours
+        
+        @metric(name='utility_VOC',units='$/yr',element='TEA')
+        def get_utility_VOC():
+            return system.utility_cost+(HD_NG.cost+SI_NG.cost)*system.operating_hours
+        
+        @metric(name='AF_utility_VOC',units='$/yr',element='TEA')
+        def get_AF_utility_VOC():
+            return AF.utility_cost*system.operating_hours
+        
+        @metric(name='SP_utility_VOC',units='$/yr',element='TEA')
+        def get_SP_utility_VOC():
+            return SP.utility_cost*system.operating_hours
+        
+        @metric(name='thermal_treatment_utility_VOC',units='$/yr',element='TEA')
+        def get_thermal_treatment_utility_VOC():
+            return HD.utility_cost*system.operating_hours+\
+                   HD_NG.cost*system.operating_hours+\
+                   SI.utility_cost*system.operating_hours+\
+                   SI_NG.cost*system.operating_hours
+        
+        @metric(name='others_utility_VOC',units='$/yr',element='TEA')
+        def get_others_utility_VOC():
+            return sum(i.utility_cost for i in [P1, FC, PC])*system.operating_hours
+
+        @metric(name='stream_GWP',units='kg CO2 eq',element='LCA')
+        def get_stream_GWP():
+            table_stream = lca.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
+            return lca.get_stream_impacts()['GlobalWarming']-\
+                   table_stream['heat_drying_natural_gas']-\
+                   table_stream['sintering_natural_gas']
+        
+        @metric(name='fe_sludge_GWP',units='kg CO2 eq',element='LCA')
+        def get_fe_sludge_GWP():
+            table_stream = lca.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
+            return table_stream['fe_sludge']
+        
+        @metric(name='residue_GWP',units='kg CO2 eq',element='LCA')
+        def get_residue_GWP():
+            table_stream = lca.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
+            return table_stream['residue']
+        
+        @metric(name='H2SO4_GWP',units='kg CO2 eq',element='LCA')
+        def get_H2SO4_GWP():
+            table_stream = lca.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
+            return table_stream['acid']
+        
+        @metric(name='H2O2_GWP',units='kg CO2 eq',element='LCA')
+        def get_H2O2_GWP():
+            table_stream = lca.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
+            return table_stream['oxidant']
+        
+        @metric(name='precipitation_supernatant_GWP',units='kg CO2 eq',element='LCA')
+        def get_precipitation_supernatant_GWP():
+            table_stream = lca.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
+            return table_stream['precipitation_supernatant']
+        
+        @metric(name='product_GWP',units='kg CO2 eq',element='LCA')
+        def get_product_GWP():
+            table_stream = lca.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
+            return table_stream['product']
+        
+        @metric(name='utility_GWP',units='kg CO2 eq',element='LCA')
+        def get_utility_GWP():
+            table_stream = lca.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
+            return lca.get_other_impacts()['GlobalWarming']+\
+                   table_stream['heat_drying_natural_gas']+\
+                   table_stream['sintering_natural_gas']
+    
+        @metric(name='electricity_GWP',units='kg CO2 eq',element='LCA')
+        def get_electricity_GWP():
+            table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
+            return table_other['Electricity']
+        
+        @metric(name='steam_GWP',units='kg CO2 eq',element='LCA')
+        def get_steam_GWP():
+            table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
+            return table_other['Steam']
+        
+        @metric(name='natural_gas_GWP',units='kg CO2 eq',element='LCA')
+        def get_natural_gas_GWP():
+            table_stream = lca.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
+            return table_stream['heat_drying_natural_gas'] + table_stream['sintering_natural_gas']
+    
+        @metric(name='AF_utility_GWP',units='kg CO2 eq',element='LCA')
+        def get_AF_utility_GWP():
+            table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
+            duty_per_year = sum(i.duty for i in AF.heat_utilities if i.duty>0)*system.operating_hours
+            return table_other['Steam']/system.get_heating_duty()*duty_per_year+\
+                   table_other['Electricity']/(system.get_electricity_consumption()-system.get_electricity_production())*\
+                   AF.power_utility.consumption*system.operating_hours
+        
+        @metric(name='SP_utility_GWP',units='kg CO2 eq',element='LCA')
+        def get_SP_utility_GWP():
+            table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
+            duty_per_year = sum(i.duty for i in SP.heat_utilities if i.duty>0)*system.operating_hours
+            return table_other['Steam']/system.get_heating_duty()*duty_per_year+\
+                   table_other['Electricity']/(system.get_electricity_consumption()-system.get_electricity_production())*\
+                   SP.power_utility.consumption*system.operating_hours
+        
+        @metric(name='thermal_treatment_utility_GWP',units='kg CO2 eq',element='LCA')
+        def get_thermal_treatment_utility_GWP():
+            table_stream = lca.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
+            table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
+            duty_per_year = sum(i.duty for j in [HD, SI] for i in j.heat_utilities if i.duty>0)*system.operating_hours
+            return table_other['Steam']/system.get_heating_duty()*duty_per_year+\
+                   table_other['Electricity']/(system.get_electricity_consumption()-system.get_electricity_production())*\
+                   HD.power_utility.consumption*system.operating_hours+\
+                   table_stream['heat_drying_natural_gas']+table_stream['sintering_natural_gas']
+        
+        @metric(name='others_utility_GWP',units='kg CO2 eq',element='LCA')
+        def get_others_utility_GWP():
+            table_other = lca.get_impact_table('Other')['GlobalWarming [kg CO2-eq]']
+            duty_per_year = sum(i.duty for j in [P1, FC, PC] for i in j.heat_utilities if i.duty>0)*system.operating_hours
+            return table_other['Steam']/system.get_heating_duty()*duty_per_year+\
+                   table_other['Electricity']/(system.get_electricity_consumption()-system.get_electricity_production())*\
+                   sum(i.power_utility.consumption for i in [P1, FC, PC])*system.operating_hours
     
     return model

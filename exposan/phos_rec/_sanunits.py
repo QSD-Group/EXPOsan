@@ -208,7 +208,7 @@ class AcidogenicFermenter(ElementFlowMixin, SanUnit):
                  metal_release_ratio_0_84 = 0.0077053,
                  metal_release_ratio_0_96 = 0.006668,
                  metal_release_ratio_0_108 = 0.004837,
-                 metal_release_ratio_0_120 = 0.00397,              
+                 metal_release_ratio_0_120 = 0.00397,
                  metal_release_ratio_0_132 = 0.02124263,
                  metal_release_ratio_1_3_0 = 0.00739,
                  metal_release_ratio_1_3_12 = 0.105381,
@@ -663,7 +663,7 @@ class SelectivePrecipitation(ElementFlowMixin, SanUnit):
         # assume the volumetic ratio between H2SO4 and H2O is 1:1
         acid.ivol['H2O'] = acid.ivol['H2SO4']
         
-        # H2O2 comsumption (H2O2 + 2Fe2+ -> 2Fe3+ + 2OH-)
+        # H2O2 comsumption (H2O2 + 2Fe2+ + 2H+ -> 2Fe3+ + 2H2O)
         # double H2O2 to ensure complete oxidation
         oxidant.imass['H2O2'] = supernatant.imass['Fe2'] / 56 / 2 * 34 * self.oxidant_excess
         # assume the volumetic ratio between H2O2 and H2O is 3:7
@@ -718,9 +718,9 @@ class SelectivePrecipitation(ElementFlowMixin, SanUnit):
 
 # n: 0.7, assumed
 # BM: 3.17, from biosteam/units/heat_exchange.py
-@cost(ID='Dryer 1', basis='Half dry solids flow', units='tonne/day',
+@cost(ID='Dryer 1', basis='Dry solids flow', units='tonne/day',
       cost=220000*80/2/3.17, S=80, CE=qs.CEPCI_by_year[2018], n=0.7, BM=3.17)
-@cost(ID='Dryer 2', basis='Half dry solids flow', units='tonne/day',
+@cost(ID='Dryer 2', basis='Dry solids flow', units='tonne/day',
       cost=220000*80/2/3.17, S=80, CE=qs.CEPCI_by_year[2018], n=0.7, BM=3.17)
 class HeatDrying(ElementFlowMixin, SanUnit):
     '''
@@ -739,10 +739,12 @@ class HeatDrying(ElementFlowMixin, SanUnit):
         Heat drying temperature, [K].
     unit_heat : float
         Energy for removing unit water from solids, [GJ/tonne water].
+    combustion_eff_HD : float
+        Combustion efficiency to convert the energy embedded in feed to heat.
     natural_gas_HHV : float
         Higher heating value of natural gas, [MJ/m3].
-    unit_electricity : float
-        Electricity for heat drying, [kWh/dry tonne solids].
+    unit_electricity_HD : float
+        Electricity for heat drying, [kWh/tonne dried solids].
     
     See Also
     --------
@@ -758,15 +760,18 @@ class HeatDrying(ElementFlowMixin, SanUnit):
     _N_ins = 2
     _N_outs = 2
     
-    _units = {'Half dry solids flow': 'tonne/day'}
+    _units = {'Dry solids flow': 'tonne/day'}
+    
+    N = 2
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='WasteStream', T=105 + _C_to_K, unit_heat=4.5,
-                 natural_gas_HHV=39, unit_electricity=214):
+                 combustion_eff_HD=0.8, natural_gas_HHV=39, unit_electricity_HD=214):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.T = T
         self.unit_heat = unit_heat
-        self.unit_electricity = unit_electricity
+        self.combustion_eff_HD = combustion_eff_HD
+        self.unit_electricity_HD = unit_electricity_HD
         self.natural_gas_HHV = natural_gas_HHV
     
     def _run(self):
@@ -786,15 +791,15 @@ class HeatDrying(ElementFlowMixin, SanUnit):
             dried_solids.imass[cmp] = 0
         
         # use natural gas for heat drying base on the BEAM*2024 model
-        natural_gas.ivol['CH4'] = vapor.F_mass/1000*self.unit_heat*1000/self.natural_gas_HHV
+        natural_gas.ivol['CH4'] = vapor.F_mass/1000*self.unit_heat*1000/self.combustion_eff_HD/self.natural_gas_HHV
         
         dried_solids.T = vapor.T = self.T
     
     def _design(self):
-        self.design_results['Half dry solids flow'] = self.outs[0].F_mass/1000*24/2
+        self.design_results['Dry solids flow'] = self.outs[0].F_mass/1000*24/self.N
         
         # kW
-        self.add_power_utility(self.outs[0].F_mass/1000*self.unit_electricity)
+        self.add_power_utility(self.outs[0].F_mass/1000*self.unit_electricity_HD)
 
 # =============================================================================
 # Sintering
@@ -817,11 +822,11 @@ class Sintering(ElementFlowMixin, SanUnit):
         product, gas.
     T : float
         Sintering precipitation, [K].
-    combustion_eff : float
+    combustion_eff_SI : float
         Combustion efficiency to convert the energy embedded in feed to heat.
     natural_gas_HHV : float
         Higher heating value of natural gas, [MJ/m3].
-    unit_electricity : float
+    unit_electricity_SI : float
         Electricity for sintering, [kWh/tonne feed].
     '''
     _N_ins = 3
@@ -830,14 +835,14 @@ class Sintering(ElementFlowMixin, SanUnit):
     _units = {'Product dry mass flow': 'tonne/day'}
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, init_with='WasteStream',
-                 T=700 + _C_to_K, combustion_eff=0.8, natural_gas_HHV=39,
+                 T=700 + _C_to_K, combustion_eff_SI=0.8, natural_gas_HHV=39,
                  # 15-40 kWh/tonne feed, https://zhuanlan.zhihu.com/p/30646376322 (accessed 2025-12-23)
-                 unit_electricity=30):
+                 unit_electricity_SI=30):
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
         self.T = T
-        self.combustion_eff = combustion_eff
+        self.combustion_eff_SI = combustion_eff_SI
         self.natural_gas_HHV = natural_gas_HHV
-        self.unit_electricity = unit_electricity
+        self.unit_electricity_SI = unit_electricity_SI
         # references for recovery calculation (assigned in systems.py)
         self.feedstock = None
     
@@ -879,7 +884,7 @@ class Sintering(ElementFlowMixin, SanUnit):
         
         vapor.imass['H2O'] += feed.imass['FePO4_2H2O']/187*36 
         
-        product.copy_flow(vapor, IDs=('Fe3', 'PO4', 'Ca2', 'Mg2', 'FePO4'), remove=True)
+        product.copy_flow(vapor, IDs=('Fe3','PO4','Ca2','Mg2','FePO4'), remove=True)
         
         if vapor.imass['O2'] < 0:
             air.imass['O2'] = -vapor.imass['O2']
@@ -895,7 +900,7 @@ class Sintering(ElementFlowMixin, SanUnit):
         # kJ/hr
         required_heat = product.H + product.HHV + vapor.H + 90/18*1000*feed.imass['FePO4_2H2O']/187*36
         provided_heat = feed_copy.H + feed_copy.HHV + air.H + low_T_water_vapor.H
-        natural_gas_heat = (required_heat - provided_heat)/self.combustion_eff
+        natural_gas_heat = (required_heat - provided_heat)/self.combustion_eff_SI
         
         # 50-120 m3/tonne feed, https://zhuanlan.zhihu.com/p/30646376322 (accessed 2025-12-23)
         # the current calculation is around 56 m3/tonne
@@ -905,7 +910,7 @@ class Sintering(ElementFlowMixin, SanUnit):
         self.design_results['Product dry mass flow'] = self.outs[0].F_mass/1000*24
         
         # kW
-        self.add_power_utility(self.ins[0].F_mass/1000*self.unit_electricity)
+        self.add_power_utility(self.ins[0].F_mass/1000*self.unit_electricity_SI)
         
     @property
     def Fe_recovery(self):

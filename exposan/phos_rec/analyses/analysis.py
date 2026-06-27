@@ -16,8 +16,6 @@ for license details.
 
 # TODO: rerun all analyses and remake all figures
 
-# TODO: add cost and CI breakdowns
-
 #%% initialization
 
 import os, pandas as pd, qsdsan as qs, numpy as np
@@ -26,7 +24,7 @@ from datetime import date
 
 folder = os.path.dirname(os.path.dirname(__file__))
 
-#%% Fig. 3 - sludge management perspective, fermentation_time = 132, food_sludge = 1
+#%% Fig. 3 - sludge management perspective, fermentation_time = 132, food_sludge = 1 (also, cost and CI breakdown data)
 
 sys = create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentation_time=132, perspective='sludge')
 sys.simulate()
@@ -38,7 +36,10 @@ model.evaluate()
 idx = len(model.parameters)
 parameters = model.table.iloc[:, :idx]
 results = model.table.iloc[:, idx:]
-results.to_excel(os.path.join(folder, f'results/sludge_management_cost_CI_basline_{date.today()}.xlsx'))
+percentiles = results.quantile([0, 0.05, 0.25, 0.5, 0.75, 0.95, 1])
+
+results.to_excel(os.path.join(folder, f'results/sludge_management_cost_CI_baseline_{date.today()}.xlsx'))
+percentiles.to_excel(os.path.join(folder, f'results/cost_CI_breakdown_{date.today()}.xlsx'))
 
 #%% Fig. 3 - FePO4 perspective, fermentation_time = 132, food_sludge_ratio = 1, avoided sludge management cost as credits
 

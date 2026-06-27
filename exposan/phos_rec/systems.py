@@ -39,60 +39,61 @@ __all__ = (
     'create_system'
 )
 
+# mg/L
+VFA_conc_dict = {
+    (0, 0): 229.836,
+    (0, 12): 229.836,
+    (0, 24): 229.836,
+    (0, 36): 229.836,
+    (0, 48): 229.836,
+    (0, 60): 229.836,
+    (0, 72): 229.836,
+    (0, 84): 315.014,
+    (0, 96): 324.748,
+    (0, 108): 474.744,
+    (0, 120): 503.468,
+    (0, 132): 574.002,
+    (1/3, 0): 229.836,
+    (1/3, 12): 318.997,
+    (1/3, 24): 891.924,
+    (1/3, 36): 930.369,
+    (1/3, 48): 942.929,
+    (1/3, 60): 1019.904,
+    (1/3, 72): 1030.104,
+    (1/3, 84): 1058.436,
+    (1/3, 96): 1065.347,
+    (1/3, 108): 1235.25,
+    (1/3, 120): 1295.057,
+    (1/3, 132): 1486.757,
+    (2/3, 0): 229.836,
+    (2/3, 12): 619.055,
+    (2/3, 24): 1342.854,
+    (2/3, 36): 1975.393,
+    (2/3, 48): 2195.785,
+    (2/3, 60): 2540.621,
+    (2/3, 72): 2677.336,
+    (2/3, 84): 2740.366,
+    (2/3, 96): 2754.408,
+    (2/3, 108): 2835.845,
+    (2/3, 120): 2882.61,
+    (2/3, 132): 3123.319,
+    (3/3, 0): 229.836,
+    (3/3, 12): 755.134,
+    (3/3, 24): 1534.219,
+    (3/3, 36): 2006.594,
+    (3/3, 48): 2624.859,
+    (3/3, 60): 3049.32,
+    (3/3, 72): 3413.96,
+    (3/3, 84): 3716.996,
+    (3/3, 96): 3763.005,
+    (3/3, 108): 3953.696,
+    (3/3, 120): 4114.03,
+    (3/3, 132): 4500,
+    (4/3, 132): 4650
+  }
+
 def get_precipitation_supernatant_price(food_sludge_ratio, fermentation_time):
-    VFA_conc_dict = {
-        (0, 0): 229.836,
-        (0, 12): 229.836,
-        (0, 24): 229.836,
-        (0, 36): 229.836,
-        (0, 48): 229.836,
-        (0, 60): 229.836,
-        (0, 72): 229.836,
-        (0, 84): 315.014,
-        (0, 96): 324.748,
-        (0, 108): 474.744,
-        (0, 120): 503.468,
-        (0, 132): 574.002,
-        (1/3, 0): 229.836,
-        (1/3, 12): 318.997,
-        (1/3, 24): 891.924,
-        (1/3, 36): 930.369,
-        (1/3, 48): 942.929,
-        (1/3, 60): 1019.904,
-        (1/3, 72): 1030.104,
-        (1/3, 84): 1058.436,
-        (1/3, 96): 1065.347,
-        (1/3, 108): 1235.25,
-        (1/3, 120): 1295.057,
-        (1/3, 132): 1486.757,
-        (2/3, 0): 229.836,
-        (2/3, 12): 619.055,
-        (2/3, 24): 1342.854,
-        (2/3, 36): 1975.393,
-        (2/3, 48): 2195.785,
-        (2/3, 60): 2540.621,
-        (2/3, 72): 2677.336,
-        (2/3, 84): 2740.366,
-        (2/3, 96): 2754.408,
-        (2/3, 108): 2835.845,
-        (2/3, 120): 2882.61,
-        (2/3, 132): 3123.319,
-        (3/3, 0): 229.836,
-        (3/3, 12): 755.134,
-        (3/3, 24): 1534.219,
-        (3/3, 36): 2006.594,
-        (3/3, 48): 2624.859,
-        (3/3, 60): 3049.32,
-        (3/3, 72): 3413.96,
-        (3/3, 84): 3716.996,
-        (3/3, 96): 3763.005,
-        (3/3, 108): 3953.696,
-        (3/3, 120): 4114.03,
-        (3/3, 132): 4500,
-        (4/3, 132): 4650
-      }
-        
-    vfa_conc = VFA_conc_dict[(food_sludge_ratio), fermentation_time]
+    vfa_conc = VFA_conc_dict[(food_sludge_ratio, fermentation_time)]
     price = 0.002*(vfa_conc/4500)
     
     return price
@@ -125,33 +126,28 @@ def create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentatio
                                PO4=300*conversion_factor, Water=1000000*conversion_factor, Ca2=150*conversion_factor,
                                Mg2=100*conversion_factor, Inert=1000*conversion_factor, units='tonne/d')
     
-    P1 = qsu.SludgePump(ID='P1', ins=fe_sludge, outs='sludge_to_ST')
-    
-    # the same as AF: 5 days of reaction + 3 hr for cleaning and unloading
-    ST = qsu.StorageTank(ID='ST', ins=P1-0, outs='sludge_to_P2', tau=5*24+3)
-    
-    P2 = qsu.SludgePump(ID='P2', ins=ST-0, outs='sludge_to_AF')
+    P1 = qsu.SludgePump(ID='P1', ins=fe_sludge, outs='sludge_to_AF')
     
     # assume food waste is neutral, e.g., it has no cost, CI or related credits
-    AF = su.AcidogenicFermenter(ID='AF', ins=(P2-0, 'food_waste'), outs=('fermentate', 'fermentation_gas'),
+    AF = su.AcidogenicFermenter(ID='AF', ins=(P1-0, 'food_waste'), outs=('fermentate','fermentation_gas'),
                                 food_sludge_ratio=food_sludge_ratio, fermentation_time=fermentation_time)
     
-    FC = su.SludgeCentrifugeWithElementFlow(ID='FC', ins=AF-0, outs=('fermentation_supernatant', 'residue'),
+    FC = su.SludgeCentrifugeWithElementFlow(ID='FC', ins=AF-0, outs=('fermentation_supernatant','residue'),
                                             sludge_moisture=0.85, solids=('Inert','Residue'))
     
     SP = su.SelectivePrecipitation(ID='SP', ins=(FC-0, 'acid', 'oxidant'), outs='slurry')
     
-    PC = su.SludgeCentrifugeWithElementFlow(ID='PC', ins=SP-0, outs=('precipitation_supernatant', 'precipitate'),
+    PC = su.SludgeCentrifugeWithElementFlow(ID='PC', ins=SP-0, outs=('precipitation_supernatant','precipitate'),
                                             sludge_moisture=0.935, solids=('FePO4_2H2O',))
     
-    HD = su.HeatDrying(ID='HD', ins=(PC-1, 'heat_drying_natural_gas'), outs=('dried_precipitate', 'heat_drying_vapor'),
+    HD = su.HeatDrying(ID='HD', ins=(PC-1, 'heat_drying_natural_gas'), outs=('dried_precipitate','heat_drying_vapor'),
                        T=105+_C_to_K)
     
     # feed and product are solids, therefore, no internal heat exchangers for SI
     # vapor is 700 °C, but its heat is not recovered to supply AF or SP, which
     # operate at much lower temperatures (37 °C and 40 °C, respectively)
     # when ΔT is large, there can be problems such as scale mismatch and operational complexity
-    SI = su.Sintering(ID='SI', ins=(HD-0, 'sintering_natural_gas', 'air'), outs=('product', 'sintering_vapor'))
+    SI = su.Sintering(ID='SI', ins=(HD-0, 'sintering_natural_gas', 'air'), outs=('product','sintering_vapor'))
     # for recovery calculation in SI @property
     SI.feedstock = fe_sludge
     
@@ -162,25 +158,25 @@ def create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentatio
     sludge_dry_kg_hr = fe_sludge.F_mass - fe_sludge.imass['Water']
     fe_sludge.price = -sludge_cost_credit*(sludge_dry_kg_hr/1000)/fe_sludge.F_mass
     
+    # 62.28 $/ton, https://www.wasteoptima.com/blog/eref-2024-landfill-tipping-fees?utm_source
+    FC.outs[1].price = -62.28/_ton_to_kg
+    
     # 0.08 $/kg, from Everbatt2023
     SP.ins[1].price = 0.08 * stream.acid.imass['H2SO4']/stream.acid.F_mass
     
     # 1.46 $/kg, from Everbatt2023
     SP.ins[2].price = 1.46 * stream.oxidant.imass['H2O2']/stream.oxidant.F_mass
     
+    PC.outs[0].price = get_precipitation_supernatant_price(AF.food_sludge_ratio, AF.fermentation_time)
+    
     # 3.49672 $/kmol, from BioSTEAM
     HD.ins[1].price = 3.49672/MW_CH4
     
-    # TODO: any reference?
+    # https://pubs.rsc.org/en/content/articlelanding/2021/ew/d0ew00853b
     # 15000 rmb/ton -> 2.14 $/kg
     SI.outs[0].price = 2.14
     
     SI.ins[1].price = 3.49672/MW_CH4
-    
-    # 62.28 $/ton, https://www.wasteoptima.com/blog/eref-2024-landfill-tipping-fees?utm_source
-    FC.outs[1].price = - 62.28/_ton_to_kg
-    
-    PC.outs[0].price = get_precipitation_supernatant_price(AF.food_sludge_ratio, AF.fermentation_time)
     
     GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
                                        method='IPCC',
@@ -195,22 +191,6 @@ def create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentatio
     # market for heat, from steam, in chemical industry, Europe (RER)
     Steam = qs.ImpactItem('Steam', functional_unit='MJ')
     Steam.add_indicator(GlobalWarming, 0.110608480188443)
-    
-    # market for sulfuric acid, Europe (RER):0.122270486489691
-    # water is igonred
-    qs.StreamImpactItem(
-        ID='H2SO4_item',
-        linked_stream=stream.acid,
-        GlobalWarming=0.122270486489691*stream.acid.imass['H2SO4']/stream.acid.F_mass
-    )
-    
-    # market for hydrogen peroxide, without water, in 50% solution state, Europe (RER): 1.7460300053961
-    # water is igonred
-    qs.StreamImpactItem(
-        ID='H2O2_item',
-        linked_stream=stream.oxidant,
-        GlobalWarming=1.7460300053961*stream.oxidant.imass['H2O2']/stream.oxidant.F_mass
-    )
     
     qs.StreamImpactItem(
         ID='fe_sludge',
@@ -232,6 +212,38 @@ def create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentatio
         GlobalWarming=0
     )
     
+    # market for sulfuric acid, Europe (RER):0.122270486489691
+    # water is igonred
+    qs.StreamImpactItem(
+        ID='H2SO4_item',
+        linked_stream=stream.acid,
+        GlobalWarming=0.122270486489691*stream.acid.imass['H2SO4']/stream.acid.F_mass
+    )
+    
+    # market for hydrogen peroxide, without water, in 50% solution state, Europe (RER): 1.7460300053961
+    # water is igonred
+    qs.StreamImpactItem(
+        ID='H2O2_item',
+        linked_stream=stream.oxidant,
+        GlobalWarming=1.7460300053961*stream.oxidant.imass['H2O2']/stream.oxidant.F_mass
+    )
+    
+    # based on this ratio: 'Ac': 0.5, 'Pr': 0.24, 'Bu': 0.23, 'Va': 0.02, 'Lac': 0.01
+    # market for acetic acid, GLO: 2.6002044723612983 kg CO2e/kg
+    # market for propionic acid, GLO: 2.0035623620794065 kg CO2e/kg
+    # market for butyric acid, GLO: 8.507518287727951 kg CO2e/kg
+    # valeric acid (pentanoic acid): missing
+    # market for lactic acid, GLO: 4.854208260681293 kg CO2e/kg
+    # 1 kg VFA: 0.5/0.98*2.6002044723612983 + 0.24/0.98*2.0035623620794065 +\
+    # 0.23/0.98*8.507518287727951 + 0.01/0.98*4.854208260681293 = 3.863498461085662 kg CO2e/kg
+    # when concentration = 4500 mg/L (mg/kg), CI = 3.863498461085662*4500/1000000 = 0.01738574307488548 kg CO2e/kg   
+    # -0.01738574307488548 for AF.food_sludge_ratio = 1 and AF.fermentation_time = 132
+    qs.StreamImpactItem(
+    ID='VFA_credit',
+    linked_stream=stream.precipitation_supernatant,
+    GlobalWarming=-0.01738574307488548/4500*VFA_conc_dict[(AF.food_sludge_ratio, AF.fermentation_time)]
+    )
+    
     # market for natural gas, low pressure, United States of America (US)
     qs.StreamImpactItem(
         ID='heat_drying_natural_gas',
@@ -248,21 +260,11 @@ def create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentatio
     
     # the CI of FePO4: https://www.sciencedirect.com/science/article/pii/S1383586624004258#s0085  2-6 kg CO2-eq/kg FePO4
     qs.StreamImpactItem(
-    ID='FePO4_credit',
-    linked_stream=stream.product,
-    GlobalWarming=-4
+        ID='FePO4_credit',
+        linked_stream=stream.product,
+        GlobalWarming=-4
     )
     
-    # TODO: any reference?
-    # TODO: confirm -0.002 is for for AF.food_sludge_ratio = 1 not 4/3
-    # -0.002 for AF.food_sludge_ratio = 1 and AF.fermentation_time = 132
-    qs.StreamImpactItem(
-    ID='VFA_credit',
-    linked_stream=stream.precipitation_supernatant,
-    GlobalWarming=-0.002/4500*get_precipitation_supernatant_price(AF.food_sludge_ratio, AF.fermentation_time)
-    )
-    
-    # TODO: include this assumption in the manuscript or the SI
     # assume no additional labor cost
     if perspective == 'FePO4':
         create_tea(sys,

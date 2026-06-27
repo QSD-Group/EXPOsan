@@ -67,7 +67,7 @@ Fig_1e_data = pd.read_excel(Fig_1_path, 'FePmolar')
 Fig_2c_P = pd.read_excel('/Users/jiananfeng/Desktop/UIUC/PhD_CEE/phosphorus_recovery/P_benchmarking/Figure_2_data.xlsx','Precovery')
 Fig_2c_Fe = pd.read_excel('/Users/jiananfeng/Desktop/UIUC/PhD_CEE/phosphorus_recovery/P_benchmarking/Figure_2_data.xlsx','Ferecovery')
 
-Fig_3ab_data = pd.read_excel(os.path.join(folder, 'results/sludge_management_cost_CI_basline_2026-06-04.xlsx'), header=[0, 1])
+Fig_3ab_data = pd.read_excel(os.path.join(folder, 'results/sludge_management_cost_CI_baseline_2026-06-04.xlsx'), 'Results', header=[0, 1])
 Fig_3c_data = pd.read_excel(os.path.join(folder, 'results/FePO4_result_cost_credit_2026-06-04.xlsx'))
 Fig_3d_data = pd.read_excel(os.path.join(folder, 'results/FePO4_result_CI_credit_2026-06-09.xlsx'))
 
@@ -77,7 +77,6 @@ Fig_4ab_data = Fig_4ab_data[Fig_4ab_data['ratio']<=1]
 Fig_5a_data = pd.read_excel(os.path.join(folder, 'results/context_heatmap_2026-06-09.xlsx'))
 
 # SI
-# TODO: update variable names if necessary
 sludge_heatmap = pd.read_excel(os.path.join(folder, 'results/decision_heatmap_sludge_2026-06-09.xlsx'))
 sludge_heatmap = sludge_heatmap[sludge_heatmap['ratio']<=1]
 
@@ -570,8 +569,6 @@ plt.savefig('/Users/jiananfeng/Desktop/Fig_1e.pdf', transparent=True, bbox_inche
 
 #%% Fig 2c Fe and P recovery
 
-# TODO: for all figures requireing gray background, add background to the lowest layer (z=0; adjust other z values if needed)
-
 fig, ax = plt.subplots(figsize=(4, 8))
 
 plt.rcParams['axes.linewidth'] = 5
@@ -736,7 +733,6 @@ ax_right.tick_params(direction='in', length=15, width=5,
 
 plt.yticks(np.arange(0, 4500, 500), fontname='Arial')
 
-# TODO: so CI is higher than conventional practices?
 bp = plt.boxplot(Fig_3ab_data[('LCA','Sludge management GWP [kg_CO2_eq/tonne]')].dropna(),
                  whis=[5, 95], showfliers=False, widths=0.6, patch_artist=True)
 
