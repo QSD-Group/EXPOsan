@@ -14,8 +14,6 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-# TODO: rerun all analyses and remake all figures
-
 import os, numpy as np, pandas as pd, matplotlib.pyplot as plt, matplotlib.colors as colors
 from qsdsan.utils import auom
 from matplotlib.mathtext import _mathtext as mathtext
@@ -61,11 +59,7 @@ Fig_1c_data = pd.read_excel(Fig_1_path, 'PO43-')
 Fig_1d_data = pd.read_excel(Fig_1_path, 'Fe2+')
 Fig_1e_data = pd.read_excel(Fig_1_path, 'FePmolar')
 
-# TODO: this is the old Fig 2c data; need update
-Fig_2c_P = pd.read_excel('/Users/jiananfeng/Desktop/UIUC/PhD_CEE/phosphorus_recovery/P_benchmarking/Figure_2_data.xlsx','Precovery')
-Fig_2c_Fe = pd.read_excel('/Users/jiananfeng/Desktop/UIUC/PhD_CEE/phosphorus_recovery/P_benchmarking/Figure_2_data.xlsx','Ferecovery')
-
-Fig_3ab_data = pd.read_excel(os.path.join(folder, 'results/sludge_management_cost_CI_baseline_2026-06-04.xlsx'), 'Results', header=[0, 1])
+Fig_2c_3ab_data = pd.read_excel(os.path.join(folder, 'results/sludge_management_cost_CI_baseline_2026-06-04.xlsx'), 'Results', header=[0, 1])
 Fig_3c_data = pd.read_excel(os.path.join(folder, 'results/FePO4_result_cost_credit_2026-06-04.xlsx'))
 Fig_3d_data = pd.read_excel(os.path.join(folder, 'results/FePO4_result_CI_credit_2026-06-09.xlsx'))
 
@@ -598,10 +592,8 @@ ax_right.tick_params(direction='in', length=15, width=5,
 
 plt.yticks(np.arange(0, 120, 20), fontname='Arial')
 
-# TODO: plot the release ratio after fermentation or the total recovery rate in the end?
-# TODO: why uncertainty range is so small?
-bp = plt.boxplot([Fig_2c_Fe['Fe recovery'].dropna()*100,
-                  Fig_2c_P['P recovery'].dropna()*100],
+bp = plt.boxplot([Fig_2c_3ab_data['Fe recovery'].dropna()*100,
+                  Fig_2c_3ab_data['P recovery'].dropna()*100],
                  whis=[5, 95], showfliers=False, widths=0.6, patch_artist=True)
 
 plt.xticks([1, 2], ('Fe','P'), fontname='Arial')
@@ -666,7 +658,7 @@ ax_right.tick_params(direction='in', length=15, width=5,
 
 plt.yticks(np.arange(0, 1200, 200), fontname='Arial')
 
-bp = plt.boxplot(Fig_3ab_data[('TEA','Sludge management cost [$/tonne]')].dropna(),
+bp = plt.boxplot(Fig_2c_3ab_data[('TEA','Sludge management cost [$/tonne]')].dropna(),
                  whis=[5, 95], showfliers=False, widths=0.6, patch_artist=True)
 
 for box in bp['boxes']:
@@ -729,7 +721,7 @@ ax_right.tick_params(direction='in', length=15, width=5,
 
 plt.yticks(np.arange(0, 4500, 500), fontname='Arial')
 
-bp = plt.boxplot(Fig_3ab_data[('LCA','Sludge management GWP [kg_CO2_eq/tonne]')].dropna(),
+bp = plt.boxplot(Fig_2c_3ab_data[('LCA','Sludge management GWP [kg_CO2_eq/tonne]')].dropna(),
                  whis=[5, 95], showfliers=False, widths=0.6, patch_artist=True)
 
 for box in bp['boxes']:
