@@ -119,7 +119,7 @@ credit_result['FePO4_GWP_mean'] = FePO4_GWP_mean
 
 credit_result.to_excel(os.path.join(folder, f'results/FePO4_result_CI_credit_{date.today()}.xlsx'),)
 
-#%% Fig. 4 - heatmaps - food waste:sludge ratio and fermentation time
+#%% Figs. 4 & S3 - heatmaps - food waste:sludge ratio and fermentation time
 
 FePO4_MSP_5th = []
 FePO4_MSP_50th = []
@@ -283,7 +283,80 @@ heatmap_result['FePO4_MSP_mean'] = FePO4_MSP_mean
 
 heatmap_result.to_excel(os.path.join(folder, f'results/context_heatmap_{date.today()}.xlsx'))
 
-#%% SI - fermentation_time = 132, food_sludge = 1, different sizes
+#%% Fig. S4 - cost vs. IRR
+
+IRR_list = []
+
+FePO4_MSP_5th = []
+FePO4_MSP_50th = []
+FePO4_MSP_95th = []
+FePO4_MSP_mean = []
+
+sludge_cost_5th = []
+sludge_cost_50th = []
+sludge_cost_95th = []
+sludge_cost_mean = []
+
+for perspective in ['FePO4','sludge']:
+    IRR_list = []
+    
+    if perspective == 'FePO4':
+        IRR_range = np.arange(0.05, 0.2, 0.05)
+    else:
+        IRR_range = np.arange(0, 0.06, 0.01)
+
+    for IRR in IRR_range:
+        sys = create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentation_time=132, perspective=perspective)
+        sys.TEA.IRR = IRR
+        sys.simulate()
+        
+        model = create_model(sys, perspective=perspective, exclude_IRR=True)
+        
+        kwargs = {'N':1000,'rule':'L','seed':3221}
+        samples = model.sample(**kwargs)
+        model.load_samples(samples)
+        model.evaluate()
+        
+        idx = len(model.parameters)
+        parameters = model.table.iloc[:, :idx]
+        results = model.table.iloc[:, idx:]
+        
+        results_no_nan = results.dropna()
+        
+        IRR_list.append(IRR)
+        
+        if perspective == 'FePO4':
+            FePO4_MSP_5th.append(results_no_nan[('TEA','Fe po4 MSP [$/kg]')].quantile(0.05))
+            FePO4_MSP_50th.append(results_no_nan[('TEA','Fe po4 MSP [$/kg]')].quantile(0.5))
+            FePO4_MSP_95th.append(results_no_nan[('TEA','Fe po4 MSP [$/kg]')].quantile(0.95))
+            FePO4_MSP_mean.append(results_no_nan[('TEA','Fe po4 MSP [$/kg]')].mean())
+        
+        if perspective == 'sludge':
+            sludge_cost_5th.append(results_no_nan[('TEA','Sludge management cost [$/tonne]')].quantile(0.05))
+            sludge_cost_50th.append(results_no_nan[('TEA','Sludge management cost [$/tonne]')].quantile(0.5))
+            sludge_cost_95th.append(results_no_nan[('TEA','Sludge management cost [$/tonne]')].quantile(0.95))
+            sludge_cost_mean.append(results_no_nan[('TEA','Sludge management cost [$/tonne]')].mean())
+
+    if perspective == 'FePO4':
+        FePO4_result = pd.DataFrame()
+        FePO4_result['IRR'] = IRR_list
+        FePO4_result['FePO4_MSP_5th'] = FePO4_MSP_5th
+        FePO4_result['FePO4_MSP_50th'] = FePO4_MSP_50th
+        FePO4_result['FePO4_MSP_95th'] = FePO4_MSP_95th
+        FePO4_result['FePO4_MSP_mean'] = FePO4_MSP_mean
+
+    if perspective == 'sludge':
+        sludge_result = pd.DataFrame()
+        sludge_result['IRR'] = IRR_list
+        sludge_result['sludge_cost_5th'] = sludge_cost_5th
+        sludge_result['sludge_cost_50th'] = sludge_cost_50th
+        sludge_result['sludge_cost_95th'] = sludge_cost_95th
+        sludge_result['sludge_cost_mean'] = sludge_cost_mean
+
+FePO4_result.to_excel(os.path.join(folder, f'results/FePO4_cost_IRR_{date.today()}.xlsx'))
+sludge_result.to_excel(os.path.join(folder, f'results/sludge_cost_IRR_{date.today()}.xlsx'))
+
+#%% Figs. S5 & S6 - cost and CI vs. size
 
 size_list = []
 
@@ -376,77 +449,3 @@ for perspective in ['FePO4','sludge']:
 
 FePO4_result.to_excel(os.path.join(folder, f'results/FePO4_result_size_{date.today()}.xlsx'))
 sludge_result.to_excel(os.path.join(folder, f'results/sludge_result_size_{date.today()}.xlsx'))
-
-#%% SI - different IRRs
-
-IRR_list = []
-
-FePO4_MSP_5th = []
-FePO4_MSP_50th = []
-FePO4_MSP_95th = []
-FePO4_MSP_mean = []
-
-sludge_cost_5th = []
-sludge_cost_50th = []
-sludge_cost_95th = []
-sludge_cost_mean = []
-
-for perspective in ['FePO4','sludge']:
-    IRR_list = []
-    
-    if perspective == 'FePO4':
-        IRR_range = np.arange(0.05, 0.2, 0.05)
-    else:
-        IRR_range = np.arange(0, 0.06, 0.01)
-
-    for IRR in IRR_range:
-        sys = create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentation_time=132, perspective=perspective)
-        sys.TEA.IRR = IRR
-        sys.simulate()
-        
-        model = create_model(sys, perspective=perspective, exclude_IRR=True)
-        
-        kwargs = {'N':1000,'rule':'L','seed':3221}
-        samples = model.sample(**kwargs)
-        model.load_samples(samples)
-        model.evaluate()
-        
-        idx = len(model.parameters)
-        parameters = model.table.iloc[:, :idx]
-        results = model.table.iloc[:, idx:]
-        
-        results_no_nan = results.dropna()
-        
-        IRR_list.append(IRR)
-        
-        if perspective == 'FePO4':
-            FePO4_MSP_5th.append(results_no_nan[('TEA','Fe po4 MSP [$/kg]')].quantile(0.05))
-            FePO4_MSP_50th.append(results_no_nan[('TEA','Fe po4 MSP [$/kg]')].quantile(0.5))
-            FePO4_MSP_95th.append(results_no_nan[('TEA','Fe po4 MSP [$/kg]')].quantile(0.95))
-            FePO4_MSP_mean.append(results_no_nan[('TEA','Fe po4 MSP [$/kg]')].mean())
-        
-        if perspective == 'sludge':
-            sludge_cost_5th.append(results_no_nan[('TEA','Sludge management cost [$/tonne]')].quantile(0.05))
-            sludge_cost_50th.append(results_no_nan[('TEA','Sludge management cost [$/tonne]')].quantile(0.5))
-            sludge_cost_95th.append(results_no_nan[('TEA','Sludge management cost [$/tonne]')].quantile(0.95))
-            sludge_cost_mean.append(results_no_nan[('TEA','Sludge management cost [$/tonne]')].mean())
-
-    if perspective == 'FePO4':
-        FePO4_result = pd.DataFrame()
-        FePO4_result['IRR'] = IRR_list
-        FePO4_result['FePO4_MSP_5th'] = FePO4_MSP_5th
-        FePO4_result['FePO4_MSP_50th'] = FePO4_MSP_50th
-        FePO4_result['FePO4_MSP_95th'] = FePO4_MSP_95th
-        FePO4_result['FePO4_MSP_mean'] = FePO4_MSP_mean
-
-    if perspective == 'sludge':
-        sludge_result = pd.DataFrame()
-        sludge_result['IRR'] = IRR_list
-        sludge_result['sludge_cost_5th'] = sludge_cost_5th
-        sludge_result['sludge_cost_50th'] = sludge_cost_50th
-        sludge_result['sludge_cost_95th'] = sludge_cost_95th
-        sludge_result['sludge_cost_mean'] = sludge_cost_mean
-
-
-FePO4_result.to_excel(os.path.join(folder, f'results/FePO4_cost_IRR_{date.today()}.xlsx'))
-sludge_result.to_excel(os.path.join(folder, f'results/sludge_cost_IRR_{date.today()}.xlsx'))

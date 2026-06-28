@@ -59,26 +59,26 @@ Fig_1c_data = pd.read_excel(Fig_1_path, 'PO43-')
 Fig_1d_data = pd.read_excel(Fig_1_path, 'Fe2+')
 Fig_1e_data = pd.read_excel(Fig_1_path, 'FePmolar')
 
-Fig_2c_3ab_data = pd.read_excel(os.path.join(folder, 'results/sludge_management_cost_CI_baseline_2026-06-04.xlsx'), 'Results', header=[0, 1])
-Fig_3c_data = pd.read_excel(os.path.join(folder, 'results/FePO4_result_cost_credit_2026-06-04.xlsx'))
-Fig_3d_data = pd.read_excel(os.path.join(folder, 'results/FePO4_result_CI_credit_2026-06-09.xlsx'))
+Fig_2c_3ab_data = pd.read_excel(os.path.join(folder, 'results/sludge_management_cost_CI_baseline_2026-06-28.xlsx'), 'Results', header=[0, 1])
+Fig_3c_data = pd.read_excel(os.path.join(folder, 'results/FePO4_result_cost_credit_2026-06-28.xlsx'))
+Fig_3d_data = pd.read_excel(os.path.join(folder, 'results/FePO4_result_CI_credit_2026-06-28.xlsx'))
 
-Fig_4ab_data = pd.read_excel(os.path.join(folder, 'results/decision_heatmap_FePO4_2026-06-09.xlsx'))
+Fig_4ab_data = pd.read_excel(os.path.join(folder, 'results/decision_heatmap_FePO4_2026-06-28.xlsx'))
 Fig_4ab_data = Fig_4ab_data[Fig_4ab_data['ratio']<=1]
 
-Fig_5a_data = pd.read_excel(os.path.join(folder, 'results/context_heatmap_2026-06-09.xlsx'))
+Fig_5a_data = pd.read_excel(os.path.join(folder, 'results/context_heatmap_2026-06-28.xlsx'))
 
 Fig_S2_data = pd.read_excel(os.path.join(folder, 'data/SI_NH4_data.xlsx'))
 
-Fig_S3_data = pd.read_excel(os.path.join(folder, 'results/decision_heatmap_sludge_2026-06-09.xlsx'))
+Fig_S3_data = pd.read_excel(os.path.join(folder, 'results/decision_heatmap_sludge_2026-06-28.xlsx'))
 Fig_S3_data = Fig_S3_data[Fig_S3_data['ratio']<=1]
 
-Fig_S4a_data = pd.read_excel(os.path.join(folder, 'results/sludge_cost_IRR_2026-06-04.xlsx'))
-Fig_S4b_data = pd.read_excel(os.path.join(folder, 'results/FePO4_cost_IRR_2026-06-04.xlsx'))
+Fig_S4a_data = pd.read_excel(os.path.join(folder, 'results/sludge_cost_IRR_2026-06-28.xlsx'))
+Fig_S4b_data = pd.read_excel(os.path.join(folder, 'results/FePO4_cost_IRR_2026-06-28.xlsx'))
 
-Fig_S5_data = pd.read_excel(os.path.join(folder, 'results/sludge_result_size_2026-06-04.xlsx'))
+Fig_S5_data = pd.read_excel(os.path.join(folder, 'results/sludge_result_size_2026-06-28.xlsx'))
 
-Fig_S6_data = pd.read_excel(os.path.join(folder, 'results/FePO4_result_size_2026-06-04.xlsx'))
+Fig_S6_data = pd.read_excel(os.path.join(folder, 'results/FePO4_result_size_2026-06-28.xlsx'))
 
 #%% Fig. 1a
 
