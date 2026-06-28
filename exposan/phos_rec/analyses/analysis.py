@@ -14,8 +14,6 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-# TODO: rerun all analyses and remake all figures
-
 #%% initialization
 
 import os, pandas as pd, qsdsan as qs, numpy as np
@@ -50,7 +48,6 @@ FePO4_MSP_50th = []
 FePO4_MSP_95th = []
 FePO4_MSP_mean = []
 
-# TODO: use 120 h or 132 h?
 for credit in range(0, 1100, 100):
     sys = create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentation_time=132, sludge_cost_credit=credit, perspective='FePO4')
     model = create_model(sys, perspective='FePO4')

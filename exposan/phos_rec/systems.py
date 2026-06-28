@@ -35,7 +35,7 @@ lifetime = 30
 operation_hours = 365*24
 
 __all__ = (
-    'get_precipitation_supernatant_price',
+    'VFA_conc_dict',
     'create_system'
 )
 
@@ -91,12 +91,6 @@ VFA_conc_dict = {
     (3/3, 132): 4500,
     (4/3, 132): 4650
   }
-
-def get_precipitation_supernatant_price(food_sludge_ratio, fermentation_time):
-    vfa_conc = VFA_conc_dict[(food_sludge_ratio, fermentation_time)]
-    price = 0.002*(vfa_conc/4500)
-    
-    return price
 
 # sludge_cost_credit: $/tonne dry solids (https://pubs.acs.org/doi/10.1021/es505329q)
 def create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentation_time=132, sludge_cost_credit=300, sludge_CI_credit=1300, perspective='FePO4'):
@@ -162,12 +156,15 @@ def create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentatio
     FC.outs[1].price = -62.28/_ton_to_kg
     
     # 0.08 $/kg, from Everbatt2023
-    SP.ins[1].price = 0.08 * stream.acid.imass['H2SO4']/stream.acid.F_mass
+    SP.ins[1].price = 0.08*stream.acid.imass['H2SO4']/stream.acid.F_mass
     
     # 1.46 $/kg, from Everbatt2023
-    SP.ins[2].price = 1.46 * stream.oxidant.imass['H2O2']/stream.oxidant.F_mass
+    SP.ins[2].price = 1.46*stream.oxidant.imass['H2O2']/stream.oxidant.F_mass
     
-    PC.outs[0].price = get_precipitation_supernatant_price(AF.food_sludge_ratio, AF.fermentation_time)
+    # https://doi.org/10.1039/D0EW00853B
+    # when AF.food_sludge_ratio = 1 and AF.fermentation_time = 132, concentration = 4500 mg/L (mg/kg)
+    # price = 1.265*4500/1000000 = 0.0056925 $/kg
+    PC.outs[0].price = 0.0056925/4500*VFA_conc_dict[(food_sludge_ratio, fermentation_time)]
     
     # 3.49672 $/kmol, from BioSTEAM
     HD.ins[1].price = 3.49672/MW_CH4
@@ -236,8 +233,8 @@ def create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentatio
     # market for lactic acid, GLO: 4.854208260681293 kg CO2e/kg
     # 1 kg VFA: 0.5/0.98*2.6002044723612983 + 0.24/0.98*2.0035623620794065 +\
     # 0.23/0.98*8.507518287727951 + 0.01/0.98*4.854208260681293 = 3.863498461085662 kg CO2e/kg
-    # when concentration = 4500 mg/L (mg/kg), CI = 3.863498461085662*4500/1000000 = 0.01738574307488548 kg CO2e/kg   
-    # -0.01738574307488548 for AF.food_sludge_ratio = 1 and AF.fermentation_time = 132
+    # when AF.food_sludge_ratio = 1 and AF.fermentation_time = 132, concentration = 4500 mg/L (mg/kg)
+    # CI = 3.863498461085662*4500/1000000 = 0.01738574307488548 kg CO2e/kg
     qs.StreamImpactItem(
     ID='VFA_credit',
     linked_stream=stream.precipitation_supernatant,

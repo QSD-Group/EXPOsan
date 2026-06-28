@@ -17,7 +17,7 @@ for license details.
 import os, qsdsan as qs, biosteam as bst, pandas as pd
 from chaospy import distributions as shape
 from qsdsan.utils import auom, DictAttrSetter
-from exposan.phos_rec import get_precipitation_supernatant_price
+from exposan.phos_rec import VFA_conc_dict
 
 __all__ = ('create_model',)
 
@@ -47,21 +47,27 @@ def create_model(system=None,
     # =============================================================================
     # AcidogenicFermenter
     # =============================================================================
-    AF = unit.AF 
+    AF = unit.AF
     
     df = pd.read_excel(os.path.join(folder, 'data/ratio_reaction_time.xlsx'))
-    for _, row in df.iterrows():        
-        dist = shape.Uniform(row['baseline']*0.8, row['baseline']*1.2)
-        @param(name=row['name'],
-               element='AF',
-               kind='coupled',
-               units='-',
-               baseline=row['baseline'],
-               distribution=dist)
-        def set_param(i, name=row['name']):
-            setattr(AF, row['name'], i)     
     
-    dist = shape.Uniform(0.68,0.8)
+    for _, row in df.iterrows():
+        name = row['name']
+        baseline = row['baseline']
+        
+        dist = shape.Uniform(baseline*0.8, min(1, baseline*1.2))
+        @param(
+            name=name,
+            element='AF',
+            kind='coupled',
+            units='-',
+            baseline=baseline,
+            distribution=dist
+        )
+        def set_param(i, name=name):
+            setattr(AF, name, i)
+    
+    dist = shape.Uniform(0.74*0.8,0.74*1.2)
     @param(name='food_waste_moisture',
            element='AF',
            kind='coupled',
@@ -71,27 +77,37 @@ def create_model(system=None,
     def set_sludge_moisture(i):
         AF.food_waste_moisture=i
     
-    dist = shape.Uniform(0.018,0.022)
+    dist = shape.Uniform(0.03*0.8,0.03*1.2)
+    @param(name='org_unconverted',
+           element='AF',
+           kind='coupled',
+           units='-',
+           baseline=0.03,
+           distribution=dist)
+    def set_org_unconverted(i):
+        AF.org_unconverted=i
+    
+    dist = shape.Uniform(0.05*0.8,0.05*1.2)
     @param(name='org_to_gas',
            element='AF',
            kind='coupled',
            units='-',
-           baseline=0.02,
+           baseline=0.05,
            distribution=dist)
     def set_org_to_gas(i):
         AF.org_to_gas=i
         
-    dist = shape.Uniform(0.54,0.66)
+    dist = shape.Uniform(0.65*0.8,0.65*1.2)
     @param(name='org_to_vfa',
            element='AF',
            kind='coupled',
            units='-',
-           baseline=0.60,
+           baseline=0.65,
            distribution=dist)
     def set_org_to_vfa(i):
         AF.org_to_vfa=i
     
-    dist = shape.Uniform(0.018,0.022)
+    dist = shape.Uniform(0.02*0.8,0.02*1.2)
     @param(name='org_to_ethanol',
            element='AF',
            kind='coupled',
@@ -101,18 +117,15 @@ def create_model(system=None,
     def set_org_to_ethanol(i):
         AF.org_to_ethanol=i
     
-    dist = shape.Uniform(0.36,0.44)
+    dist = shape.Uniform(0.25*0.8,0.25*1.2)
     @param(name='org_to_residue',
            element='AF',
            kind='coupled',
            units='-',
-           baseline=0.40,
+           baseline=0.25,
            distribution=dist)
     def set_org_to_residue(i):
-        if AF.org_to_gas + AF.org_to_vfa + AF.org_to_ethanol + i > 1:
-            AF.org_to_residue = max(0, 1 - AF.org_to_gas - AF.org_to_vfa - AF.org_to_ethanol)
-        else:
-            AF.org_to_residue=i
+        AF.org_to_residue=i
     
     dist = shape.Triangle(0.95,0.98,1)
     @param(name='Fe_reduction',
@@ -128,7 +141,7 @@ def create_model(system=None,
     # SelectivePrecipitation    
     # =============================================================================
     SP = unit.SP
-    dist = shape.Uniform(0.0027,0.0033)
+    dist = shape.Uniform(0.003*0.8,0.003*1.2)
     @param(name='acid_dose',
            element='SP',
            kind='coupled',
@@ -138,7 +151,7 @@ def create_model(system=None,
     def set_acid_dose(i):
         SP.acid_dose=i
     
-    dist = shape.Triangle(1,2,2.2)
+    dist = shape.Uniform(2*0.8,2*1.2)
     @param(name='oxidant_excess',
            element='SP',
            kind='coupled',
@@ -211,6 +224,18 @@ def create_model(system=None,
     # TEA
     # =============================================================================
     
+    if not exclude_context:
+        residue = stream.residue
+        dist = shape.Uniform(-62.28/_ton_to_kg*1.2,-62.28/_ton_to_kg*0.8)
+        @param(name='residue_price',
+               element='TEA',
+               kind='isolated',
+               units='$/kg',
+               baseline=-62.28/_ton_to_kg,
+               distribution=dist)
+        def set_landfill_price(i):
+            residue.price=i
+    
     H2SO4 = stream.acid
     dist = shape.Uniform(0.08*0.8,0.08*1.2)
     @param(name='H2SO4_price',
@@ -233,6 +258,22 @@ def create_model(system=None,
     def set_H2O2_price(i):
         H2O2.price=i
     
+    if not exclude_context:
+        precipitation_supernatant = stream.precipitation_supernatant
+        # https://doi.org/10.1039/D0EW00853B
+        # when AF.food_sludge_ratio = 1 and AF.fermentation_time = 132, concentration = 4500 mg/L (mg/kg)
+        # price = 1.265*4500/1000000 = 0.0056925 $/kg
+        precipitation_supernatant_baseline_price = 0.0056925/4500*VFA_conc_dict[(AF.food_sludge_ratio, AF.fermentation_time)]
+        dist = shape.Uniform(precipitation_supernatant_baseline_price*0.8,precipitation_supernatant_baseline_price*1.2)
+        @param(name='precipitation_supernatant_price',
+               element='TEA',
+               kind='isolated',
+               units='$/kg',
+               baseline=precipitation_supernatant_baseline_price,
+               distribution=dist)
+        def set_precipitation_supernatant_price(i):
+            precipitation_supernatant.price = i
+    
     FePO4 = stream.product
     dist = shape.Uniform(2.14*0.8,2.14*1.2)
     @param(name='FePO4_price',
@@ -243,18 +284,6 @@ def create_model(system=None,
            distribution=dist)
     def set_FePO4_price(i):
         FePO4.price=i
-    
-    HD_NG = stream.heat_drying_natural_gas
-    SI_NG = stream.sintering_natural_gas
-    dist = shape.Uniform(3.49672/MW_CH4*0.9,3.49672/MW_CH4*1.1)
-    @param(name='NG_price',
-           element='TEA',
-           kind='isolated',
-           units='$/kg',
-           baseline=3.49672/MW_CH4,
-           distribution=dist)
-    def set_NG_price(i):
-        HD_NG.price=SI_NG.price=i
     
     dist = shape.Uniform(0.0782*0.8,0.0782*1.2)
     @param(name='electricity_price',
@@ -311,29 +340,17 @@ def create_model(system=None,
             def set_natural_gas_utility_price_price(i):
                 heating_agent.regeneration_price = i
     
-    if not exclude_context:
-        precipitation_supernatant = stream.precipitation_supernatant
-        precipitation_supernatant_baseline_price = get_precipitation_supernatant_price(AF.food_sludge_ratio, AF.fermentation_time)
-        dist = shape.Uniform(precipitation_supernatant_baseline_price*0.8,precipitation_supernatant_baseline_price*1.2)
-        @param(name='precipitation_supernatant_price',
-               element='TEA',
-               kind='isolated',
-               units='$/kg',
-               baseline=precipitation_supernatant_baseline_price,
-               distribution=dist)
-        def set_precipitation_supernatant_price(i):
-            precipitation_supernatant.price = i
-        
-        residue = stream.residue
-        dist = shape.Uniform(-62.28/_ton_to_kg*1.2,-62.28/_ton_to_kg*0.8)
-        @param(name='residue_price',
-               element='TEA',
-               kind='isolated',
-               units='$/kg',
-               baseline=-62.28/_ton_to_kg,
-               distribution=dist)
-        def set_landfill_price(i):
-            residue.price=i
+    HD_NG = stream.heat_drying_natural_gas
+    SI_NG = stream.sintering_natural_gas
+    dist = shape.Uniform(3.49672/MW_CH4*0.8,3.49672/MW_CH4*1.2)
+    @param(name='NG_price',
+           element='TEA',
+           kind='isolated',
+           units='$/kg',
+           baseline=3.49672/MW_CH4,
+           distribution=dist)
+    def set_NG_price(i):
+        HD_NG.price=SI_NG.price=i
     
     if not exclude_IRR:
         if perspective == 'FePO4':
@@ -362,8 +379,8 @@ def create_model(system=None,
     # =========================================================================
     for item in qs.ImpactItem.get_all_items().keys():
         if qs.ImpactItem.get_item(item).CFs and qs.ImpactItem.get_item(item).CFs['GlobalWarming'] != 0:
-            abs_small = 0.9*qs.ImpactItem.get_item(item).CFs['GlobalWarming']
-            abs_large = 1.1*qs.ImpactItem.get_item(item).CFs['GlobalWarming']
+            abs_small = qs.ImpactItem.get_item(item).CFs['GlobalWarming']*0.9
+            abs_large = qs.ImpactItem.get_item(item).CFs['GlobalWarming']*1.1
             dist = shape.Uniform(min(abs_small,abs_large),max(abs_small,abs_large))
             @param(name=f'{item}_GlobalWarming',
                    setter=DictAttrSetter(qs.ImpactItem.get_item(item), 'CFs', 'GlobalWarming'),

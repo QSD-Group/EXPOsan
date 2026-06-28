@@ -139,6 +139,8 @@ class AcidogenicFermenter(ElementFlowMixin, SanUnit):
         Mass ratio of organics bewteen food waste and sludge, [-].
     food_waste_moisture : float
         Mositure content of food waste, [-].
+    org_unconverted : float
+        Mass ratio of total organics remained as organics (excluding VFAs and ethanol) after fermentation, [-].
     org_to_gas : float
         Mass ratio of total organics converted to gas, [-].
     org_to_vfa : float
@@ -192,6 +194,7 @@ class AcidogenicFermenter(ElementFlowMixin, SanUnit):
                  fermentation_time=132,
                  food_sludge_ratio=1,
                  food_waste_moisture=0.74,
+                 org_unconverted=0.03,
                  org_to_gas=0.05,
                  org_to_vfa=0.65,
                  org_to_ethanol=0.02,
@@ -301,6 +304,7 @@ class AcidogenicFermenter(ElementFlowMixin, SanUnit):
         self.fermentation_time = fermentation_time
         self.food_sludge_ratio = food_sludge_ratio
         self.food_waste_moisture = food_waste_moisture
+        self.org_unconverted = org_unconverted
         self.org_to_gas = org_to_gas
         self.org_to_vfa = org_to_vfa
         self.org_to_ethanol = org_to_ethanol
@@ -431,11 +435,15 @@ class AcidogenicFermenter(ElementFlowMixin, SanUnit):
         
         org_total = fermentate.imass['Org']
         
+        org_input_sum = self.org_unconverted + self.org_to_gas + self.org_to_vfa + self.org_to_ethanol + self.org_to_residue
+        
+        fermentate.imass['Org'] = org_total*self.org_unconverted/org_input_sum
+        
         # gas production
-        gas.imass['CO2'] = org_total*self.org_to_gas
+        gas.imass['CO2'] = org_total*self.org_to_gas/org_input_sum
         
         # VFAs and inorganics in fermentate
-        vfa_mass = org_total * self.org_to_vfa
+        vfa_mass = org_total*self.org_to_vfa/org_input_sum
         
         fermentate.imass['Acetic_acid'] = vfa_mass * self.VFA_ratio['Ac']
         fermentate.imass['Propionic_acid'] = vfa_mass * self.VFA_ratio['Pr']
@@ -443,14 +451,9 @@ class AcidogenicFermenter(ElementFlowMixin, SanUnit):
         fermentate.imass['Valeric_acid'] = vfa_mass * self.VFA_ratio['Va']
         fermentate.imass['Lactic_acid'] = vfa_mass * self.VFA_ratio['Lac']
         
-        fermentate.imass['Ethanol'] = org_total*self.org_to_ethanol
+        fermentate.imass['Ethanol'] = org_total*self.org_to_ethanol/org_input_sum
         
-        fermentate.imass['Residue'] = org_total*self.org_to_residue
-        
-        if self.org_to_gas + self.org_to_vfa + self.org_to_ethanol + self.org_to_residue > 1:
-            raise RuntimeError('org cannot be balanced')
-        
-        fermentate.imass['Org'] *= (1 - self.org_to_gas - self.org_to_vfa - self.org_to_ethanol - self.org_to_residue)
+        fermentate.imass['Residue'] = org_total*self.org_to_residue/org_input_sum
 
         fermentate.imass['Fe2'] = fermentate.imass['Fe3'] * self.Fe_reduction
         fermentate.imass['Fe3'] -= fermentate.imass['Fe2']
