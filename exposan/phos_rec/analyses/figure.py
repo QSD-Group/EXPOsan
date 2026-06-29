@@ -59,26 +59,29 @@ Fig_1c_data = pd.read_excel(Fig_1_path, 'PO43-')
 Fig_1d_data = pd.read_excel(Fig_1_path, 'Fe2+')
 Fig_1e_data = pd.read_excel(Fig_1_path, 'FePmolar')
 
-Fig_2c_3ab_data = pd.read_excel(os.path.join(folder, 'results/sludge_management_cost_CI_baseline_2026-06-28.xlsx'), 'Results', header=[0, 1])
-Fig_3c_data = pd.read_excel(os.path.join(folder, 'results/FePO4_result_cost_credit_2026-06-28.xlsx'))
-Fig_3d_data = pd.read_excel(os.path.join(folder, 'results/FePO4_result_CI_credit_2026-06-28.xlsx'))
+Fig_2c_3ab_data = pd.read_excel(os.path.join(folder, 'results/sludge_management_cost_CI_baseline_2026-06-29.xlsx'), header=[1])
+Fig_2c_3ab_data = Fig_2c_3ab_data.drop(0)
+Fig_3c_data = pd.read_excel(os.path.join(folder, 'results/FePO4_result_cost_credit_2026-06-29.xlsx'))
+Fig_3d_data = pd.read_excel(os.path.join(folder, 'results/FePO4_result_CI_credit_2026-06-29.xlsx'))
 
-Fig_4ab_data = pd.read_excel(os.path.join(folder, 'results/decision_heatmap_FePO4_2026-06-28.xlsx'))
+Fig_4ab_data = pd.read_excel(os.path.join(folder, 'results/decision_heatmap_FePO4_2026-06-29.xlsx'))
 Fig_4ab_data = Fig_4ab_data[Fig_4ab_data['ratio']<=1]
 
-Fig_5a_data = pd.read_excel(os.path.join(folder, 'results/context_heatmap_2026-06-28.xlsx'))
+Fig_5a_data = pd.read_excel(os.path.join(folder, 'results/context_heatmap_2026-06-29.xlsx'))
 
 Fig_S2_data = pd.read_excel(os.path.join(folder, 'data/SI_NH4_data.xlsx'))
 
-Fig_S3_data = pd.read_excel(os.path.join(folder, 'results/decision_heatmap_sludge_2026-06-28.xlsx'))
+Fig_S3_data = pd.read_excel(os.path.join(folder, 'results/decision_heatmap_sludge_2026-06-29.xlsx'))
 Fig_S3_data = Fig_S3_data[Fig_S3_data['ratio']<=1]
 
-Fig_S4a_data = pd.read_excel(os.path.join(folder, 'results/sludge_cost_IRR_2026-06-28.xlsx'))
-Fig_S4b_data = pd.read_excel(os.path.join(folder, 'results/FePO4_cost_IRR_2026-06-28.xlsx'))
+Fig_S4a_data = pd.read_excel(os.path.join(folder, 'results/sludge_cost_IRR_2026-06-29.xlsx'))
+Fig_S4b_data = pd.read_excel(os.path.join(folder, 'results/FePO4_cost_IRR_2026-06-29.xlsx'))
 
-Fig_S5_data = pd.read_excel(os.path.join(folder, 'results/sludge_result_size_2026-06-28.xlsx'))
+Fig_S5_data = pd.read_excel(os.path.join(folder, 'results/sludge_result_size_2026-06-29.xlsx'))
 
-Fig_S6_data = pd.read_excel(os.path.join(folder, 'results/FePO4_result_size_2026-06-28.xlsx'))
+Fig_S6_data = pd.read_excel(os.path.join(folder, 'results/FePO4_result_size_2026-06-29.xlsx'))
+
+Fig_S7_data = pd.read_excel(os.path.join(folder, 'results/FePO4_VFA_CI_2026-06-29.xlsx'))
 
 #%% Fig. 1a
 
@@ -175,7 +178,7 @@ plt.scatter(Fig_1a_data['Time/h'],
 
 plt.savefig(os.path.join(folder, 'figures/Fig_1a.pdf'), transparent=True, bbox_inches='tight')
 
-#%% Fig 1b
+#%% Fig. 1b
 
 fig, ax = plt.subplots(figsize=(10, 10))
 
@@ -270,7 +273,7 @@ plt.scatter(Fig_1b_data['Time/h'],
 
 plt.savefig(os.path.join(folder, 'figures/Fig_1b.pdf'), transparent=True, bbox_inches='tight')
 
-#%% Fig 1c
+#%% Fig. 1c
 
 fig, ax = plt.subplots(figsize=(10, 10))
 
@@ -365,7 +368,7 @@ plt.scatter(Fig_1c_data['Time/h'],
 
 plt.savefig(os.path.join(folder, 'figures/Fig_1c.pdf'), transparent=True, bbox_inches='tight')
 
-#%% Fig 1d
+#%% Fig. 1d
 
 fig, ax = plt.subplots(figsize=(10, 10))
 
@@ -460,7 +463,7 @@ plt.scatter(Fig_1d_data['Time/h'],
 
 plt.savefig(os.path.join(folder, 'figures/Fig_1d.pdf'), transparent=True, bbox_inches='tight')
 
-#%% Fig 1e
+#%% Fig. 1e
 
 fig, ax = plt.subplots(figsize=(10, 10))
 
@@ -555,7 +558,7 @@ plt.scatter(Fig_1e_data['Time/h'],
 
 plt.savefig(os.path.join(folder, 'figures/Fig_1e.pdf'), transparent=True, bbox_inches='tight')
 
-#%% Fig 2c Fe and P recovery
+#%% Fig. 2c Fe and P recovery
 
 fig, ax = plt.subplots(figsize=(4, 8))
 
@@ -592,8 +595,8 @@ ax_right.tick_params(direction='in', length=15, width=5,
 
 plt.yticks(np.arange(0, 120, 20), fontname='Arial')
 
-bp = plt.boxplot([Fig_2c_3ab_data['Fe recovery'].dropna()*100,
-                  Fig_2c_3ab_data['P recovery'].dropna()*100],
+bp = plt.boxplot([Fig_2c_3ab_data['Fe recovery [-]'].dropna()*100,
+                  Fig_2c_3ab_data['P recovery [-]'].dropna()*100],
                  whis=[5, 95], showfliers=False, widths=0.6, patch_artist=True)
 
 plt.xticks([1, 2], ('Fe','P'), fontname='Arial')
@@ -618,7 +621,7 @@ ax.add_patch(rectangle_fill)
 
 plt.savefig(os.path.join(folder, 'figures/Fig_2c.pdf'), transparent=True, bbox_inches='tight')
 
-#%% Fig 3a sludge management cost
+#%% Fig. 3a sludge management cost
 
 fig, ax = plt.subplots(figsize=(2.5, 10))
 
@@ -658,7 +661,7 @@ ax_right.tick_params(direction='in', length=15, width=5,
 
 plt.yticks(np.arange(0, 1200, 200), fontname='Arial')
 
-bp = plt.boxplot(Fig_2c_3ab_data[('TEA','Sludge management cost [$/tonne]')].dropna(),
+bp = plt.boxplot(Fig_2c_3ab_data['Sludge management cost [$/tonne]'].dropna(),
                  whis=[5, 95], showfliers=False, widths=0.6, patch_artist=True)
 
 for box in bp['boxes']:
@@ -681,7 +684,7 @@ ax.add_patch(rectangle_fill)
 
 plt.savefig(os.path.join(folder, 'figures/Fig_3a.pdf'), transparent=True, bbox_inches='tight')
 
-#%% Fig 3b sludge management CI
+#%% Fig. 3b sludge management CI
 
 fig, ax = plt.subplots(figsize=(2.5, 10))
 
@@ -721,7 +724,7 @@ ax_right.tick_params(direction='in', length=15, width=5,
 
 plt.yticks(np.arange(0, 4500, 500), fontname='Arial')
 
-bp = plt.boxplot(Fig_2c_3ab_data[('LCA','Sludge management GWP [kg_CO2_eq/tonne]')].dropna(),
+bp = plt.boxplot(Fig_2c_3ab_data['Sludge management GWP [kg_CO2_eq/tonne]'].dropna(),
                  whis=[5, 95], showfliers=False, widths=0.6, patch_artist=True)
 
 for box in bp['boxes']:
@@ -742,7 +745,7 @@ ax.add_patch(rectangle_fill)
 
 plt.savefig(os.path.join(folder, 'figures/Fig_3b.pdf'), transparent=True, bbox_inches='tight')
 
-#%% Fig 3c FePO4 MSP
+#%% Fig. 3c FePO4 MSP
 
 fig, ax = plt.subplots(figsize=(10, 10))
 
@@ -823,7 +826,7 @@ ax.add_patch(rectangle_fill)
 
 plt.savefig(os.path.join(folder, 'figures/Fig_3c.pdf'), transparent=True, bbox_inches='tight')
 
-#%% Fig 3d FePO4 CI
+#%% Fig. 3d FePO4 CI
 
 fig, ax = plt.subplots(figsize=(10, 10))
 
@@ -898,7 +901,7 @@ ax.plot((0, 4000), (22.7, 22.7), color=dg, alpha=0.8, linewidth=5)
 
 plt.savefig(os.path.join(folder, 'figures/Fig_3d.pdf'), transparent=True, bbox_inches='tight')
 
-#%% Fig 4a
+#%% Fig. 4a FePO4 MSP technological heatmap
 
 fig, ax = plt.subplots(figsize=(12.5, 10))
 
@@ -979,7 +982,7 @@ ax.tricontourf(X, Y, Z, levels=[4.55, 6.97], colors=dg, alpha=0.8)
 
 plt.savefig(os.path.join(folder, 'figures/Fig_4a.pdf'), transparent=True, bbox_inches='tight')
 
-#%% Fig 4b
+#%% Fig. 4b FePO4 CI technological heatmap
 
 fig, ax = plt.subplots(figsize=(12.5, 10))
 
@@ -1055,7 +1058,7 @@ ax.tricontour(X, Y, Z, levels=[16.6, 22.7], colors=[g, dg], linewidths=5)
 
 plt.savefig(os.path.join(folder, 'figures/Fig_4b.pdf'), transparent=True, bbox_inches='tight')
 
-#%% Fig 5a
+#%% Fig. 5a FePO4 MSP contextual heatmap
 
 fig, ax = plt.subplots(figsize=(12.5, 10))
 
@@ -1134,7 +1137,7 @@ ax.tricontourf(X, Y, Z, levels=[4.55, 6.97], colors=dg, alpha=0.8)
 
 plt.savefig(os.path.join(folder, 'figures/Fig_5a.pdf'), transparent=True, bbox_inches='tight')
 
-#%% SI NH4+ (food waste:sludge and fermentation time)
+#%% Fig. S2 NH4+
 
 fig, ax = plt.subplots(figsize=(10, 10))
 
@@ -1229,7 +1232,7 @@ plt.scatter(Fig_S2_data['Time/h'],
 
 plt.savefig(os.path.join(folder, 'figures/Fig_S2.pdf'), transparent=True, bbox_inches='tight')
 
-#%% SI sludge cost heatmap (food waste:sludge and fermentation time)
+#%% Fig. S3a sludge cost technological heatmap
 
 fig, ax = plt.subplots(figsize=(12.5, 10))
 
@@ -1302,7 +1305,7 @@ ax.clabel(lines, lines.levels, inline=True, fontsize=45)
 
 plt.savefig(os.path.join(folder, 'figures/Fig_S3a.pdf'), transparent=True, bbox_inches='tight')
 
-#%% SI sludge CI heatmap (food waste:sludge and fermentation time)
+#%% Fig. S3b sludge CI technological heatmap
 
 fig, ax = plt.subplots(figsize=(12.5, 10))
 
@@ -1375,7 +1378,7 @@ ax.clabel(lines, lines.levels, inline=True, fontsize=45)
 
 plt.savefig(os.path.join(folder, 'figures/Fig_S3b.pdf'), transparent=True, bbox_inches='tight')
 
-#%% SI sludge IRR
+#%% Fig. S4a sludge cost IRR
 
 fig, ax = plt.subplots(figsize=(2.5, 10))
 
@@ -1448,7 +1451,7 @@ ax.add_patch(rectangle_fill)
 
 plt.savefig(os.path.join(folder, 'figures/Fig_S4a.pdf'), transparent=True, bbox_inches='tight')
 
-#%% SI FePO4 IRR
+#%% Fig. S4a FePO4 MSP IRR
 
 fig, ax = plt.subplots(figsize=(7.5, 10))
 
@@ -1465,7 +1468,7 @@ plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 ax.set_xlim(0.05, 0.2)
-ax.set_ylim(0, 7)
+ax.set_ylim(1, 7)
 
 ax.set_xlabel(r'$\mathbf{IRR}$',
               fontname='Arial',
@@ -1481,7 +1484,7 @@ ax.tick_params(direction='inout', length=30, width=5,
                bottom=True, top=False, left=True, right=False)
 
 plt.xticks(np.arange(0.05, 0.25, 0.05), fontname='Arial')
-plt.yticks(np.arange(0, 8, 1), fontname='Arial')
+plt.yticks(np.arange(1, 8, 1), fontname='Arial')
 
 ax_top = ax.twiny()
 ax_top.set_xlim(ax.get_xlim())
@@ -1499,7 +1502,7 @@ ax_right.tick_params(direction='in', length=15, width=5,
                      bottom=False, top=False, left=False, right=True,
                      labelright=False)
 
-plt.yticks(np.arange(0, 8, 1), fontname='Arial')
+plt.yticks(np.arange(1, 8, 1), fontname='Arial')
 
 x = Fig_S4b_data['IRR']
 low = Fig_S4b_data['FePO4_MSP_5th']
@@ -1522,7 +1525,7 @@ ax.add_patch(rectangle_fill)
 
 plt.savefig(os.path.join(folder, 'figures/Fig_S4b.pdf'), transparent=True, bbox_inches='tight')
 
-#%% SI sludge size-cost
+#%% Fig. S5a sludge cost size
 
 fig, ax = plt.subplots(figsize=(10, 10))
 
@@ -1598,7 +1601,7 @@ ax.add_patch(rectangle_fill)
 
 plt.savefig(os.path.join(folder, 'figures/Fig_S5a.pdf'), transparent=True, bbox_inches='tight')
 
-#%% SI sludge size-CI
+#%% Fig. S5b sludge CI size
 
 fig, ax = plt.subplots(figsize=(10, 10))
 
@@ -1672,7 +1675,7 @@ ax.add_patch(rectangle_fill)
 
 plt.savefig(os.path.join(folder, 'figures/Fig_S5b.pdf'), transparent=True, bbox_inches='tight')
 
-#%% SI FePO4 size-MSP
+#%% Fig. S6a FePO4 MSP size
 
 fig, ax = plt.subplots(figsize=(10, 10))
 
@@ -1749,7 +1752,7 @@ ax.add_patch(rectangle_fill)
 
 plt.savefig(os.path.join(folder, 'figures/Fig_S6a.pdf'), transparent=True, bbox_inches='tight')
 
-#%% SI FePO4 size-CI
+#%% Fig. S6b FePO4 CI size
 
 fig, ax = plt.subplots(figsize=(10, 10))
 
@@ -1766,7 +1769,7 @@ plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 ax.set_xlim(1, 256)
-ax.set_ylim(15, 40)
+ax.set_ylim(5, 25)
 
 ax.set_xlabel(r'$\mathbf{Sludge\ throughput}$'+'\n'+r'[$dry\ tonne·day^{-1}$]',
               fontname='Arial',
@@ -1783,7 +1786,7 @@ ax.tick_params(direction='inout', length=30, width=5,
                bottom=True, top=False, left=True, right=False)
 
 plt.xticks(fontname='Arial')
-plt.yticks(np.arange(15, 45, 5), fontname='Arial')
+plt.yticks(np.arange(5, 30, 5), fontname='Arial')
 
 plt.xscale('log')
 
@@ -1803,7 +1806,7 @@ ax_right.tick_params(direction='in', length=15, width=5,
                      bottom=False, top=False, left=False, right=True,
                      labelright=False)
 
-plt.yticks(np.arange(25, 45, 5), fontname='Arial')
+plt.yticks(np.arange(5, 30, 5), fontname='Arial')
 
 x = Fig_S6_data['size']
 low = Fig_S6_data['FePO4_GWP_5th']
@@ -1821,3 +1824,76 @@ ax.plot((1, 256), (16.6, 16.6), color=g, alpha=0.5, linewidth=5)
 ax.plot((1, 256), (22.7, 22.7), color=dg, alpha=0.8, linewidth=5)
 
 plt.savefig(os.path.join(folder, 'figures/Fig_S6b.pdf'), transparent=True, bbox_inches='tight')
+
+#%% Fig. S7 FePO4 CI VFA
+
+fig, ax = plt.subplots(figsize=(10, 10))
+
+plt.rcParams['axes.linewidth'] = 5
+plt.rcParams['hatch.linewidth'] = 5
+plt.rcParams['xtick.labelsize'] = 45
+plt.rcParams['ytick.labelsize'] = 45
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
+
+plt.rcParams.update({'mathtext.fontset':'custom'})
+plt.rcParams.update({'mathtext.default':'regular'})
+plt.rcParams.update({'mathtext.bf':'Arial: bold'})
+
+ax.set_xlim(1, 256)
+ax.set_ylim(5, 25)
+
+ax.set_xlabel(r'$\mathbf{VFA\ CI}$'+'\n'+r'[$kg\ CO_2e·m^{-3}$]',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=0,
+              linespacing=0.8)
+
+ax.set_ylabel(r'$\mathbf{FePO_4\ CI}$ [$kg\ CO_2e·kg^{-1}$]',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=5)
+
+ax.tick_params(direction='inout', length=30, width=5,
+               bottom=True, top=False, left=True, right=False)
+
+plt.xticks(fontname='Arial')
+plt.yticks(np.arange(5, 30, 5), fontname='Arial')
+
+plt.xscale('log')
+
+ax_top = ax.twiny()
+ax_top.set_xlim(ax.get_xlim())
+
+ax_top.tick_params(direction='in', length=15, width=5,
+                   bottom=False, top=True, left=False, right=False,
+                   labeltop=False)
+
+plt.xticks(fontname='Arial')
+
+ax_right = ax.twinx()
+ax_right.set_ylim(ax.get_ylim())
+
+ax_right.tick_params(direction='in', length=15, width=5,
+                     bottom=False, top=False, left=False, right=True,
+                     labelright=False)
+
+plt.yticks(np.arange(5, 30, 5), fontname='Arial')
+
+x = Fig_S7_data['VFA_GWP']
+low = Fig_S7_data['FePO4_GWP_5th']
+mid = Fig_S7_data['FePO4_GWP_50th']
+high = Fig_S7_data['FePO4_GWP_95th']
+
+ax.fill_between(x, low, high, color=p, alpha=0.5)
+
+ax.plot(x, low, color=dp, linestyle='--', linewidth=5)
+ax.plot(x, high, color=dp, linestyle='--', linewidth=5)
+ax.plot(x, mid, color=dp, linewidth=5)
+
+ax.plot((1, 256), (16.6, 16.6), color=g, alpha=0.5, linewidth=5)
+
+ax.plot((1, 256), (22.7, 22.7), color=dg, alpha=0.8, linewidth=5)
+
+plt.savefig(os.path.join(folder, 'figures/Fig_S7.pdf'), transparent=True, bbox_inches='tight')

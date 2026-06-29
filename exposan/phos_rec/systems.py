@@ -92,8 +92,9 @@ VFA_conc_dict = {
     (4/3, 132): 4650
   }
 
+# TODO: baseline sludge_CI_credit changed from 1300 to 1000
 # sludge_cost_credit: $/tonne dry solids (https://pubs.acs.org/doi/10.1021/es505329q)
-def create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentation_time=132, sludge_cost_credit=300, sludge_CI_credit=1300, perspective='FePO4'):
+def create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentation_time=132, sludge_cost_credit=300, sludge_CI_credit=1000, perspective='FePO4'):
     
     if perspective not in ['FePO4','sludge']:
         raise KeyError('perspective can only be FePO4 or sludge')
@@ -161,10 +162,11 @@ def create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentatio
     # 1.46 $/kg, from Everbatt2023
     SP.ins[2].price = 1.46*stream.oxidant.imass['H2O2']/stream.oxidant.F_mass
     
-    # https://doi.org/10.1039/D0EW00853B
+    # for pure VFAs, https://doi.org/10.1039/D0EW00853B
     # when AF.food_sludge_ratio = 1 and AF.fermentation_time = 132, concentration = 4500 mg/L (mg/kg)
     # price = 1.265*4500/1000000 = 0.0056925 $/kg
-    PC.outs[0].price = 0.0056925/4500*VFA_conc_dict[(food_sludge_ratio, fermentation_time)]
+    # but this is just VFA-rich supernatant, so assume 0 in the baseline scenario
+    PC.outs[0].price = 0
     
     # 3.49672 $/kmol, from BioSTEAM
     HD.ins[1].price = 3.49672/MW_CH4
@@ -225,6 +227,7 @@ def create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentatio
         GlobalWarming=1.7460300053961*stream.oxidant.imass['H2O2']/stream.oxidant.F_mass
     )
     
+    # for pure VFAs:
     # based on this ratio: 'Ac': 0.5, 'Pr': 0.24, 'Bu': 0.23, 'Va': 0.02, 'Lac': 0.01
     # market for acetic acid, GLO: 2.6002044723612983 kg CO2e/kg
     # market for propionic acid, GLO: 2.0035623620794065 kg CO2e/kg
@@ -235,10 +238,11 @@ def create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentatio
     # 0.23/0.98*8.507518287727951 + 0.01/0.98*4.854208260681293 = 3.863498461085662 kg CO2e/kg
     # when AF.food_sludge_ratio = 1 and AF.fermentation_time = 132, concentration = 4500 mg/L (mg/kg)
     # CI = 3.863498461085662*4500/1000000 = 0.01738574307488548 kg CO2e/kg
+    # but this is just VFA-rich supernatant, so assume 0 in the baseline scenario
     qs.StreamImpactItem(
-    ID='VFA_credit',
-    linked_stream=stream.precipitation_supernatant,
-    GlobalWarming=-0.01738574307488548/4500*VFA_conc_dict[(AF.food_sludge_ratio, AF.fermentation_time)]
+        ID='VFA_credit',
+        linked_stream=stream.precipitation_supernatant,
+        GlobalWarming=0
     )
     
     # market for natural gas, low pressure, United States of America (US)

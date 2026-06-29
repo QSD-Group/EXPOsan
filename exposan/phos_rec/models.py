@@ -31,7 +31,7 @@ folder = os.path.dirname(__file__)
 
 def create_model(system=None,
                  perspective='FePO4',
-                 exclude_context=False,
+                 exclude_disposal=False,
                  exclude_IRR=False,
                  exclude_breakdown=False):
     
@@ -224,8 +224,8 @@ def create_model(system=None,
     # TEA
     # =============================================================================
     
-    if not exclude_context:
-        residue = stream.residue
+    residue = stream.residue
+    if not exclude_disposal:
         dist = shape.Uniform(-62.28/_ton_to_kg*1.2,-62.28/_ton_to_kg*0.8)
         @param(name='residue_price',
                element='TEA',
@@ -257,22 +257,6 @@ def create_model(system=None,
            distribution=dist)
     def set_H2O2_price(i):
         H2O2.price=i
-    
-    if not exclude_context:
-        precipitation_supernatant = stream.precipitation_supernatant
-        # https://doi.org/10.1039/D0EW00853B
-        # when AF.food_sludge_ratio = 1 and AF.fermentation_time = 132, concentration = 4500 mg/L (mg/kg)
-        # price = 1.265*4500/1000000 = 0.0056925 $/kg
-        precipitation_supernatant_baseline_price = 0.0056925/4500*VFA_conc_dict[(AF.food_sludge_ratio, AF.fermentation_time)]
-        dist = shape.Uniform(precipitation_supernatant_baseline_price*0.8,precipitation_supernatant_baseline_price*1.2)
-        @param(name='precipitation_supernatant_price',
-               element='TEA',
-               kind='isolated',
-               units='$/kg',
-               baseline=precipitation_supernatant_baseline_price,
-               distribution=dist)
-        def set_precipitation_supernatant_price(i):
-            precipitation_supernatant.price = i
     
     FePO4 = stream.product
     dist = shape.Uniform(2.14*0.8,2.14*1.2)
@@ -378,19 +362,20 @@ def create_model(system=None,
     # LCA (unifrom ± 10%)
     # =========================================================================
     for item in qs.ImpactItem.get_all_items().keys():
-        if qs.ImpactItem.get_item(item).CFs and qs.ImpactItem.get_item(item).CFs['GlobalWarming'] != 0:
-            abs_small = qs.ImpactItem.get_item(item).CFs['GlobalWarming']*0.9
-            abs_large = qs.ImpactItem.get_item(item).CFs['GlobalWarming']*1.1
-            dist = shape.Uniform(min(abs_small,abs_large),max(abs_small,abs_large))
-            @param(name=f'{item}_GlobalWarming',
-                   setter=DictAttrSetter(qs.ImpactItem.get_item(item), 'CFs', 'GlobalWarming'),
-                   element='LCA',
-                   kind='isolated',
-                   units=qs.ImpactIndicator.get_indicator('GlobalWarming').unit,
-                   baseline=qs.ImpactItem.get_item(item).CFs['GlobalWarming'],
-                   distribution=dist)
-            def set_LCA(i):
-                qs.ImpactItem.get_item(item).CFs['GlobalWarming']=i
+        if item != 'VFA_credit':
+            if qs.ImpactItem.get_item(item).CFs and qs.ImpactItem.get_item(item).CFs['GlobalWarming'] != 0:
+                abs_small = qs.ImpactItem.get_item(item).CFs['GlobalWarming']*0.9
+                abs_large = qs.ImpactItem.get_item(item).CFs['GlobalWarming']*1.1
+                dist = shape.Uniform(min(abs_small,abs_large),max(abs_small,abs_large))
+                @param(name=f'{item}_GlobalWarming',
+                       setter=DictAttrSetter(qs.ImpactItem.get_item(item), 'CFs', 'GlobalWarming'),
+                       element='LCA',
+                       kind='isolated',
+                       units=qs.ImpactIndicator.get_indicator('GlobalWarming').unit,
+                       baseline=qs.ImpactItem.get_item(item).CFs['GlobalWarming'],
+                       distribution=dist)
+                def set_LCA(i):
+                    qs.ImpactItem.get_item(item).CFs['GlobalWarming']=i
     
     # =========================================================================
     # metrics
@@ -489,10 +474,6 @@ def create_model(system=None,
         def get_H2O2_VOC():
             return H2O2.cost*system.operating_hours
         
-        @metric(name='precipitation_supernatant_VOC',units='$/yr',element='TEA')
-        def get_precipitation_supernatant_VOC():
-            return -precipitation_supernatant.cost*system.operating_hours
-        
         @metric(name='product_VOC',units='$/yr',element='TEA')
         def get_product_VOC():
             return -product.cost*system.operating_hours
@@ -546,11 +527,6 @@ def create_model(system=None,
         def get_H2O2_GWP():
             table_stream = lca.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
             return table_stream['oxidant']
-        
-        @metric(name='precipitation_supernatant_GWP',units='kg CO2 eq',element='LCA')
-        def get_precipitation_supernatant_GWP():
-            table_stream = lca.get_impact_table('Stream')['GlobalWarming [kg CO2-eq]']
-            return table_stream['precipitation_supernatant']
         
         @metric(name='product_GWP',units='kg CO2 eq',element='LCA')
         def get_product_GWP():

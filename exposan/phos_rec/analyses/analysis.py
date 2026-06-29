@@ -255,7 +255,7 @@ for VFA_price in np.linspace(0, 3/1000, 10):
         sys.flowsheet.stream.precipitation_supernatant.price = VFA_price
         sys.flowsheet.stream.residue.price = -residue_cost
         
-        model = create_model(sys, perspective='FePO4', exclude_context=True)
+        model = create_model(sys, perspective='FePO4', exclude_disposal=True)
         
         kwargs = {'N':1000,'rule':'L','seed':3221}
         samples = model.sample(**kwargs)
@@ -449,3 +449,54 @@ for perspective in ['FePO4','sludge']:
 
 FePO4_result.to_excel(os.path.join(folder, f'results/FePO4_result_size_{date.today()}.xlsx'))
 sludge_result.to_excel(os.path.join(folder, f'results/sludge_result_size_{date.today()}.xlsx'))
+
+#%% Fig. S7 - VFA CI
+
+FePO4_GWP_5th = []
+FePO4_GWP_50th = []
+FePO4_GWP_95th = []
+FePO4_GWP_mean = []
+
+VFA_GWP_list = []
+
+GlobalWarming = qs.ImpactIndicator(ID='GlobalWarming',
+                                   method='IPCC',
+                                   category='environmental impact',
+                                   unit='kg CO2-eq',
+                                   description='Global Warming Potential')
+
+for VFA_GWP in np.linspace(0, 10/1000, 10):
+    sys = create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentation_time=132, perspective='FePO4')
+    AF = sys.flowsheet.unit.AF
+    precipitation_supernatant = sys.flowsheet.stream.precipitation_supernatant
+    qs.StreamImpactItem(
+        ID='VFA_credit',
+        linked_stream=precipitation_supernatant,
+        GlobalWarming=-VFA_GWP
+    )
+    
+    model = create_model(sys, perspective='FePO4')
+    
+    kwargs = {'N':1000,'rule':'L','seed':3221}
+    samples = model.sample(**kwargs)
+    model.load_samples(samples)
+    model.evaluate()
+    
+    idx = len(model.parameters)
+    results = model.table.iloc[:, idx:].dropna()
+               
+    VFA_GWP_list.append(VFA_GWP)
+    
+    FePO4_GWP_5th.append(results[('LCA','Fe po4 GWP [kg_CO2_eq/kg]')].quantile(0.05))
+    FePO4_GWP_50th.append(results[('LCA','Fe po4 GWP [kg_CO2_eq/kg]')].quantile(0.5))
+    FePO4_GWP_95th.append(results[('LCA','Fe po4 GWP [kg_CO2_eq/kg]')].quantile(0.95))
+    FePO4_GWP_mean.append(results[('LCA','Fe po4 GWP [kg_CO2_eq/kg]')].mean())
+        
+FePO4_VFA_GWP_result = pd.DataFrame()
+FePO4_VFA_GWP_result['VFA_GWP'] = VFA_GWP_list
+FePO4_VFA_GWP_result['FePO4_GWP_5th'] = FePO4_GWP_5th
+FePO4_VFA_GWP_result['FePO4_GWP_50th'] = FePO4_GWP_50th
+FePO4_VFA_GWP_result['FePO4_GWP_95th'] = FePO4_GWP_95th
+FePO4_VFA_GWP_result['FePO4_GWP_mean'] = FePO4_GWP_mean
+
+FePO4_VFA_GWP_result.to_excel(os.path.join(folder, f'results/FePO4_VFA_CI_{date.today()}.xlsx'))
