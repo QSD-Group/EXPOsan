@@ -35,7 +35,7 @@ lifetime = 30
 operation_hours = 365*24
 
 __all__ = (
-    'create_system'
+    'create_system',
 )
 
 # sludge_cost_credit: $/tonne dry solids (https://pubs.acs.org/doi/10.1021/es505329q)

@@ -14,6 +14,8 @@ Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
+#%% initialization
+
 import os, numpy as np, pandas as pd, matplotlib.pyplot as plt, matplotlib.colors as colors
 from qsdsan.utils import auom
 from matplotlib.mathtext import _mathtext as mathtext
@@ -595,14 +597,14 @@ ax_right.tick_params(direction='in', length=15, width=5,
 
 plt.yticks(np.arange(0, 120, 20), fontname='Arial')
 
-bp = plt.boxplot([Fig_2c_3ab_data['Fe recovery [-]'].dropna()*100,
-                  Fig_2c_3ab_data['P recovery [-]'].dropna()*100],
+bp = plt.boxplot([Fig_2c_3ab_data['P recovery [-]'].dropna()*100,
+                  Fig_2c_3ab_data['Fe recovery [-]'].dropna()*100],
                  whis=[5, 95], showfliers=False, widths=0.6, patch_artist=True)
 
-plt.xticks([1, 2], ('Fe','P'), fontname='Arial')
+plt.xticks([1, 2], ('P','Fe'), fontname='Arial')
 
-bp['boxes'][0].set(color='k', facecolor=r, linewidth=5)
-bp['boxes'][1].set(color='k', facecolor=b, linewidth=5)
+bp['boxes'][0].set(color='k', facecolor=b, linewidth=5)
+bp['boxes'][1].set(color='k', facecolor=r, linewidth=5)
 
 for whisker in bp['whiskers']:
     whisker.set(color='k', linewidth=5)
@@ -615,7 +617,7 @@ for cap in bp['caps']:
 
 ax.plot((1.5, 1.5), (0, 100), color='k', linewidth=5, linestyle='--')
 
-rectangle_fill = Rectangle((1.5, 73.1859), 1, 99.3-73.1859,
+rectangle_fill = Rectangle((0.5, 73.1859), 1, 99.3-73.1859,
                            fc=a, alpha=0.5, zorder=0)
 ax.add_patch(rectangle_fill)
 
@@ -713,7 +715,7 @@ ax.tick_params(direction='inout', length=30, width=5,
                bottom=False, top=False, left=True, right=False,
                labelbottom=False)
 
-plt.yticks(np.arange(0, 4500, 500), fontname='Arial')
+plt.yticks(np.arange(0, 5000, 1000), fontname='Arial')
 
 ax_right = ax.twinx()
 ax_right.set_ylim(ax.get_ylim())
@@ -722,7 +724,7 @@ ax_right.tick_params(direction='in', length=15, width=5,
                      bottom=False, top=False, left=False, right=True,
                      labelright=False)
 
-plt.yticks(np.arange(0, 4500, 500), fontname='Arial')
+plt.yticks(np.arange(0, 5000, 1000), fontname='Arial')
 
 bp = plt.boxplot(Fig_2c_3ab_data['Sludge management GWP [kg_CO2_eq/tonne]'].dropna(),
                  whis=[5, 95], showfliers=False, widths=0.6, patch_artist=True)
@@ -962,7 +964,7 @@ X = np.array(Fig_4ab_data['ratio'].map({1/3: 1,
 Y = np.array(Fig_4ab_data['fermentation_time'])
 Z = np.array(Fig_4ab_data['FePO4_MSP_50th'])
 
-fills = ax.tricontourf(X, Y, Z, levels=np.linspace(-6, 40, 10000), cmap=color_map_Guest)
+fills = ax.tricontourf(X, Y, Z, levels=10000, cmap=color_map_Guest)
 
 fig.colorbar(fills, ax=ax)
 
@@ -1082,10 +1084,11 @@ ax.set_xlabel(r'$\mathbf{Disposal\ cost}$ [$\$·tonne^{-1}$]',
               fontsize=45,
               labelpad=5)
 
-ax.set_ylabel(r'$\mathbf{VFA\ price}$ [$\$·m^{-3}$]',
+ax.set_ylabel(r'$\mathbf{VFA-rich\ stream\ price}$'+'\n'+r'[$\$·m^{-3}$]',
               fontname='Arial',
               fontsize=45,
-              labelpad=5)
+              labelpad=5,
+              linespacing=0.8)
 
 ax.tick_params(direction='inout', length=30, width=5,
                bottom=True, top=False, left=True, right=False)
@@ -1117,7 +1120,7 @@ X = np.array(Fig_5a_data['residue_cost']*1000)
 Y = np.array(Fig_5a_data['VFA_price']*1000)
 Z = np.array(Fig_5a_data['FePO4_MSP_50th'])
 
-fills = ax.tricontourf(X, Y, Z, levels=np.linspace(-6, 40, 10000), cmap=color_map_Guest)
+fills = ax.tricontourf(X, Y, Z, levels=10000, cmap=color_map_Guest)
 
 fig.colorbar(fills, ax=ax)
 
@@ -1288,8 +1291,8 @@ plt.yticks(np.arange(12, 144, 24), fontname='Arial')
 color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', [do, o, 'w'][::-1])
 
 X = np.array(Fig_S3_data['ratio'].map({1/3: 1,
-                                          2/3: 2,
-                                          1: 3}))
+                                       2/3: 2,
+                                       1: 3}))
 Y = np.array(Fig_S3_data['fermentation_time'])
 Z = np.array(Fig_S3_data['sludge_cost_50th'])
 
@@ -1361,8 +1364,8 @@ plt.yticks(np.arange(12, 144, 24), fontname='Arial')
 color_map_Guest = colors.LinearSegmentedColormap.from_list('color_map_Guest', [do, o, 'w'][::-1])
 
 X = np.array(Fig_S3_data['ratio'].map({1/3: 1,
-                                          2/3: 2,
-                                          1: 3}))
+                                       2/3: 2,
+                                       1: 3}))
 Y = np.array(Fig_S3_data['fermentation_time'])
 Z = np.array(Fig_S3_data['sludge_GWP_50th'])
 
@@ -1636,7 +1639,7 @@ ax.tick_params(direction='inout', length=30, width=5,
                bottom=True, top=False, left=True, right=False)
 
 plt.xticks(fontname='Arial')
-plt.yticks(np.arange(0, 4500, 500), fontname='Arial')
+plt.yticks(np.arange(0, 5000, 1000), fontname='Arial')
 
 plt.xscale('log')
 
@@ -1656,7 +1659,7 @@ ax_right.tick_params(direction='in', length=15, width=5,
                      bottom=False, top=False, left=False, right=True,
                      labelright=False)
 
-plt.yticks(np.arange(0, 4500, 500), fontname='Arial')
+plt.yticks(np.arange(0, 5000, 1000), fontname='Arial')
 
 x = Fig_S5_data['size']
 low = Fig_S5_data['sludge_GWP_5th']
@@ -1742,7 +1745,7 @@ ax.plot(x, low, color=dp, linestyle='--', linewidth=5)
 ax.plot(x, high, color=dp, linestyle='--', linewidth=5)
 ax.plot(x, mid, color=dp, linewidth=5)
 
-rectangle_fill = Rectangle((1, 1.327), 255, 3.89-1.327, 
+rectangle_fill = Rectangle((1, 1.327), 255, 3.89-1.327,
                            fc=g, alpha=0.5, zorder=0)
 ax.add_patch(rectangle_fill)
 
@@ -1769,7 +1772,7 @@ plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 ax.set_xlim(1, 256)
-ax.set_ylim(5, 25)
+ax.set_ylim(13, 25)
 
 ax.set_xlabel(r'$\mathbf{Sludge\ throughput}$'+'\n'+r'[$dry\ tonne·day^{-1}$]',
               fontname='Arial',
@@ -1786,7 +1789,7 @@ ax.tick_params(direction='inout', length=30, width=5,
                bottom=True, top=False, left=True, right=False)
 
 plt.xticks(fontname='Arial')
-plt.yticks(np.arange(5, 30, 5), fontname='Arial')
+plt.yticks(np.arange(13, 28, 3), fontname='Arial')
 
 plt.xscale('log')
 
@@ -1806,7 +1809,7 @@ ax_right.tick_params(direction='in', length=15, width=5,
                      bottom=False, top=False, left=False, right=True,
                      labelright=False)
 
-plt.yticks(np.arange(5, 30, 5), fontname='Arial')
+plt.yticks(np.arange(13, 28, 3), fontname='Arial')
 
 x = Fig_S6_data['size']
 low = Fig_S6_data['FePO4_GWP_5th']
@@ -1825,7 +1828,7 @@ ax.plot((1, 256), (22.7, 22.7), color=dg, alpha=0.8, linewidth=5)
 
 plt.savefig(os.path.join(folder, 'figures/Fig_S6b.pdf'), transparent=True, bbox_inches='tight')
 
-#%% Fig. S7 FePO4 CI VFA
+#%% optional FePO4 CI VFA
 
 fig, ax = plt.subplots(figsize=(10, 10))
 
@@ -1841,10 +1844,10 @@ plt.rcParams.update({'mathtext.fontset':'custom'})
 plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
-ax.set_xlim(1, 256)
-ax.set_ylim(5, 25)
+ax.set_xlim(0, 10)
+ax.set_ylim(-20, 30)
 
-ax.set_xlabel(r'$\mathbf{VFA\ CI}$'+'\n'+r'[$kg\ CO_2e·m^{-3}$]',
+ax.set_xlabel(r'$\mathbf{VFA\ CI}$ [$kg\ CO_2e·m^{-3}$]',
               fontname='Arial',
               fontsize=45,
               labelpad=0,
@@ -1859,9 +1862,7 @@ ax.tick_params(direction='inout', length=30, width=5,
                bottom=True, top=False, left=True, right=False)
 
 plt.xticks(fontname='Arial')
-plt.yticks(np.arange(5, 30, 5), fontname='Arial')
-
-plt.xscale('log')
+plt.yticks(np.arange(-20, 40, 10), fontname='Arial')
 
 ax_top = ax.twiny()
 ax_top.set_xlim(ax.get_xlim())
@@ -1879,9 +1880,9 @@ ax_right.tick_params(direction='in', length=15, width=5,
                      bottom=False, top=False, left=False, right=True,
                      labelright=False)
 
-plt.yticks(np.arange(5, 30, 5), fontname='Arial')
+plt.yticks(np.arange(-20, 40, 10), fontname='Arial')
 
-x = Fig_S7_data['VFA_GWP']
+x = Fig_S7_data['VFA_GWP']*1000
 low = Fig_S7_data['FePO4_GWP_5th']
 mid = Fig_S7_data['FePO4_GWP_50th']
 high = Fig_S7_data['FePO4_GWP_95th']
@@ -1892,8 +1893,6 @@ ax.plot(x, low, color=dp, linestyle='--', linewidth=5)
 ax.plot(x, high, color=dp, linestyle='--', linewidth=5)
 ax.plot(x, mid, color=dp, linewidth=5)
 
-ax.plot((1, 256), (16.6, 16.6), color=g, alpha=0.5, linewidth=5)
+ax.plot((0, 256), (16.6, 16.6), color=g, alpha=0.5, linewidth=5)
 
-ax.plot((1, 256), (22.7, 22.7), color=dg, alpha=0.8, linewidth=5)
-
-plt.savefig(os.path.join(folder, 'figures/Fig_S7.pdf'), transparent=True, bbox_inches='tight')
+ax.plot((0, 256), (22.7, 22.7), color=dg, alpha=0.8, linewidth=5)
