@@ -254,7 +254,9 @@ def batch_init(sys, path, sheet):
 def create_components(set_thermo=True):
     masm2d_cmps = pc.create_masm2d_cmps(set_thermo=False)
     cmps = Components([*masm2d_cmps])
-    cmps.compile(ignore_inaccurate_molar_weight=True)
+    # cmps.compile(ignore_inaccurate_molar_weight=True)
+    cmps.compile(skip_checks=True)
+    
     if set_thermo:
         qs.set_thermo(cmps)
     return cmps
@@ -485,7 +487,7 @@ def run(t, method=None, **kwargs):
 
 
 if __name__ == '__main__':
-    t = 40
+    t = 100
     method = 'RK23'
     msg = f'Method {method}'
     print(f'\n{msg}\n{"-"*len(msg)}')

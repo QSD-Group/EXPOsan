@@ -40,11 +40,12 @@ def create_components(set_thermo = True
     #         if getattr(i, attr) is None: setattr(i, attr, 0)
 
     #cmps.compile()    
-    cmps.compile(ignore_inaccurate_molar_weight=True) #override for runtime error where N2_S molecular weight was not found
+    # cmps.compile(ignore_inaccurate_molar_weight=True) #override for runtime error where N2_S molecular weight was not found
 
     # cmps.set_alias('H2O', 'Water')
     # #cmps.set_alias('CO2', 'Carbon Dioxide')
     # cmps.set_alias('CH4', 'Methane')
+    cmps.compile(skip_checks=True)
     if set_thermo: qs_set_thermo(cmps)
 
     return cmps

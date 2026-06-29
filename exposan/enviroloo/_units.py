@@ -22,7 +22,6 @@ from qsdsan.sanunits import IdealClarifier, Mixer, dydt_cstr, _non_reactive, Cop
 from biosteam.units import Mixer as BSTMixer
 from qsdsan.sanunits._tank import StorageTank
 from qsdsan.processes._decay import Decay
-#from qsdsan.utils import ospath, load_data, data_path, price_ratio
 from qsdsan.utils import load_data, price_ratio
 import os
 from exposan.utils import _init_modules
@@ -30,6 +29,10 @@ from qsdsan.sanunits._toilet import Toilet, MURT
 from qsdsan.sanunits._excretion import ExcretionmASM2d
 from qsdsan.sanunits._suspended_growth_bioreactor import CSTR
 from qsdsan.sanunits._membrane_bioreactor import CompletelyMixedMBR, dydt_mbr
+# from qsdsan.sanunits._toilet import Toilet, MURT
+# from qsdsan.sanunits._excretion import ExcretionmASM2d
+# from qsdsan.sanunits._suspended_growth_bioreactor import CSTR
+# from qsdsan.sanunits._membrane_bioreactor import CompletelyMixedMBR, dydt_mbr
 from qsdsan import Processes, CompiledProcesses
 from qsdsan.utils import auom
 
