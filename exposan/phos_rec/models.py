@@ -17,7 +17,6 @@ for license details.
 import os, qsdsan as qs, biosteam as bst, pandas as pd
 from chaospy import distributions as shape
 from qsdsan.utils import auom, DictAttrSetter
-from exposan.phos_rec import VFA_conc_dict
 
 __all__ = ('create_model',)
 
