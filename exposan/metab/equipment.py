@@ -66,12 +66,21 @@ class Beads(Equipment):
         )
 
     _price = {
+<<<<<<< Updated upstream
         'PEGDMA_1000': 21,            # 20-22 USD/kg; https://www.echemi.com/produce/pr2210112485-polyethyleneglycoldimethacrylate-99-colourless-liquid-c8h4na2o4-pharmacy-grade-senwayer.html
         'BIS': 10,                    # 5-15 USD/kg; https://www.alibaba.com/product-detail/Best-price-N-N-Methylenebisacrylamide-CAS_1600724924581.html?spm=a2700.galleryofferlist.normal_offer.d_title.58d341d0GVNAh1
         'TEMED': 16*0.775,            # 3-30 USD/kg, 0.775 kg/L; https://www.alibaba.com/product-detail/TMEDA-N-N-N-N-tetramethylethylenediamine_1600669191140.html?spm=a2700.galleryofferlist.normal_offer.d_title.78635f0fXo3DvL
         'APS': 2.8,                   # 1.6-4.0 USD/kg; https://www.alibaba.com/product-detail/Persulfate-Ammonium-Molecular-formula-NH4-2S2O8_1600618995452.html?spm=a2700.galleryofferlist.normal_offer.d_title.17b42c417WytQh    
         'PAC': 1.5,                   # 1.38-1.60 USD/kg; https://www.alibaba.com/product-detail/Best-Sale-325mesh-Wood-Based-Powder_1600694829290.html?spm=a2700.galleryofferlist.normal_offer.d_title.62c1efdbTj3aHI&s=p
         }
+=======
+    'PEGDMA_1000': 30,       # $/kg
+    'BIS': 294.0,            # $/kg
+    'TEMED': 1510.0,         # $/L
+    'APS': 7.86,             # $/kg
+    'PAC': 0,                # Assume no PAC
+    }
+>>>>>>> Stashed changes
     
     _bead_density = 1420    # kg/m3
     _manufacturing_unit_input = {
