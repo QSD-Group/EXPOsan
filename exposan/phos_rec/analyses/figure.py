@@ -1079,16 +1079,19 @@ plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 ax.set_xlim(0, 120)
 ax.set_ylim(0, 3)
 
-ax.set_xlabel(r'$\mathbf{Disposal\ cost}$ [$\$·tonne^{-1}$]',
-              fontname='Arial',
-              fontsize=45,
-              labelpad=5)
-
-ax.set_ylabel(r'$\mathbf{VFA-rich\ stream\ price}$'+'\n'+r'[$\$·m^{-3}$]',
+ax.set_xlabel(r'$\mathbf{Landfill\ disposal\ cost}$'+'\n'+r'[$\$·tonne^{-1}$]',
               fontname='Arial',
               fontsize=45,
               labelpad=5,
               linespacing=0.8)
+
+ax.set_ylabel(r'$\mathbf{VFA-rich\ supernatant\ value}$'+'\n'+r'[$\$·m^{-3}$]',
+              fontname='Arial',
+              fontsize=45,
+              labelpad=5,
+              linespacing=0.8)
+
+ax.yaxis.set_label_coords(-0.155, 0.48)
 
 ax.tick_params(direction='inout', length=30, width=5,
                bottom=True, top=False, left=True, right=False)

@@ -76,7 +76,7 @@ class ElementFlowMixin:
         '''Total elemental inflow to the unit [kg/hr].'''
         return {
             'Fe': sum(Fe_mass(s) for s in self.ins),
-            'P':  sum(P_mass(s)  for s in self.ins)
+            'P':  sum(P_mass(s) for s in self.ins)
         }
 
     @property
@@ -84,7 +84,7 @@ class ElementFlowMixin:
         '''Total elemental outflow from the unit (kg/hr).'''
         return {
             'Fe': sum(Fe_mass(s) for s in self.outs),
-            'P':  sum(P_mass(s)  for s in self.outs)
+            'P':  sum(P_mass(s) for s in self.outs)
         }
 
     @property
@@ -99,8 +99,8 @@ class ElementFlowMixin:
         for s in self.outs:
             dist.append({
                 'stream': s.ID,
-                'Fe': Fe_mass(s) / total_in['Fe'] if total_in['Fe'] > 0 else 0,
-                'P':  P_mass(s)  / total_in['P']  if total_in['P']  > 0 else 0
+                'Fe': Fe_mass(s)/total_in['Fe'] if total_in['Fe']> 0 else 0,
+                'P':  P_mass(s)/total_in['P']  if total_in['P'] > 0 else 0
             })
         return dist
 

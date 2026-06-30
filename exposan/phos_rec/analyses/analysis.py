@@ -22,6 +22,43 @@ from datetime import date
 
 folder = os.path.dirname(os.path.dirname(__file__))
 
+#%% Monte Carlo number
+
+sludge_MC = pd.DataFrame()
+
+for N in [100, 200, 500, 1000, 2000]:
+    sys = create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentation_time=132, perspective='sludge')
+    sys.simulate()
+    model = create_model(sys, perspective='sludge')
+    kwargs = {'N':N,'rule':'L','seed':3221}
+    samples = model.sample(**kwargs)
+    model.load_samples(samples)
+    model.evaluate()
+    idx = len(model.parameters)
+    results = model.table.iloc[:, idx:]
+    percentiles = results.quantile([0, 0.05, 0.25, 0.5, 0.75, 0.95, 1])
+    sludge_MC['cost_'+str(N)] = percentiles[('TEA','Sludge management cost [$/tonne]')]
+    sludge_MC['GWP_'+str(N)] = percentiles[('LCA','Sludge management GWP [kg_CO2_eq/tonne]')]
+
+FePO4_MC = pd.DataFrame()
+
+for N in [100, 200, 500, 1000, 2000]:
+    sys = create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentation_time=132, perspective='FePO4')
+    sys.simulate()
+    model = create_model(sys, perspective='FePO4')
+    kwargs = {'N':N,'rule':'L','seed':3221}
+    samples = model.sample(**kwargs)
+    model.load_samples(samples)
+    model.evaluate()
+    idx = len(model.parameters)
+    results = model.table.iloc[:, idx:]
+    percentiles = results.quantile([0, 0.05, 0.25, 0.5, 0.75, 0.95, 1])
+    FePO4_MC['MSP_'+str(N)] = percentiles[('TEA','Fe po4 MSP [$/kg]')]
+    FePO4_MC['GWP_'+str(N)] = percentiles[('LCA','Fe po4 GWP [kg_CO2_eq/kg]')]
+
+sludge_MC.to_excel(os.path.join(folder, f'results/sludge_Monte_Carlo_number_{date.today()}.xlsx'))
+FePO4_MC.to_excel(os.path.join(folder, f'results/FePO4_Monte_Carlo_number_{date.today()}.xlsx'))
+
 #%% Fig. 3 - sludge management perspective, fermentation_time = 132, food_sludge = 1 (also, cost and CI breakdown data)
 
 sys = create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentation_time=132, perspective='sludge')
