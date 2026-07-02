@@ -80,6 +80,8 @@ exposan = [
     "cas/*",
     "eco_san/*",
     "eco_san/data/*",
+    "g2rt/*",
+    "g2rt/data/*",
     "hap/*",
     "htl/*",
     "htl/data/crude_oil_price_2022.xlsx",
