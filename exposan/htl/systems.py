@@ -63,7 +63,8 @@ GDPCTPI = {2008: 87.977,
 def create_system(configuration='baseline', capacity=100,
                   sludge_moisture_content=0.8, sludge_dw_ash_content=0.257, 
                   sludge_afdw_lipid_content=0.204, sludge_afdw_protein_content=0.463,
-                  N_2_P_value=0.3927, waste_cost=0, waste_GWP=0, high_IRR=False):
+                  N_2_P_value=0.3927, waste_cost=0, waste_GWP=0, high_IRR=False,
+                  simulate=True):
     configuration = configuration or 'baseline'
     if configuration not in ('baseline','no_P','PSA'):
         raise ValueError('`configuration` can only be "baseline", '
@@ -674,6 +675,6 @@ def create_system(configuration='baseline', capacity=100,
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30,
            Cooling=lambda:sys.get_cooling_duty()/1000*30)
     
-    sys.simulate()
+    if simulate: sys.simulate()
     
     return sys
