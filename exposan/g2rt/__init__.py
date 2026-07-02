@@ -500,12 +500,45 @@ def get_unit_stream_GW_impact(unit, ppl=None):
                                  kind='all', annual=True)['GlobalWarming']/get_dynamic_ppl()
 # convert to per capita per year
 
+def _get_other_unit_impacts(lca, units=None, annual=False):
+    '''
+    Return the share of the system's total "other" impacts (e.g., electricity)
+    attributable to the given units, prorated by their share of the
+    system's total power draw.
+
+    This is g2rt-specific (relies on `power_kW`, a property only defined on
+    g2rt's own unit classes) rather than a general :class:`~.LCA` method.
+
+    Parameters
+    ----------
+    lca : :class:`~.LCA`
+        The system's LCA object.
+    units : Iterable(obj)
+        Unit operations considered for impacts
+        (will default to all unit operations in the system).
+    annual : bool
+        If True, will return the annual impacts considering `uptime_ratio`
+        instead of across the system lifetime.
+    '''
+    system = lca.system
+    units = system.units if units is None else units
+    if not isinstance(units, Iterable) or isinstance(units, str):
+        units = (units,)
+    units = [u for u in units if hasattr(u, 'power_kW')]
+
+    total_power = system.power_utility.rate
+    if not total_power:
+        return dict.fromkeys((i.ID for i in lca.indicators), 0.)
+    ratio = sum(u.power_kW for u in units)/total_power
+
+    return {k: v*ratio for k, v in lca.get_other_impacts(annual=annual).items()}
+
 def get_unit_electricity_GW_impact(unit, ppl=None, time =None, time_unit ='day'):
     system = unit.system
     lca = system.LCA
     if ppl is None:
         ppl = get_dynamic_ppl()
-    return lambda: lca.get_other_unit_impacts(unit, annual=True)['GlobalWarming']/get_dynamic_ppl()
+    return lambda: _get_other_unit_impacts(lca, unit, annual=True)['GlobalWarming']/get_dynamic_ppl()
 
 # ['GlobalWarming']
 def get_unit_total_impact(unit,ppl=None, annual=True):
@@ -517,7 +550,7 @@ def get_unit_total_impact(unit,ppl=None, annual=True):
     return lambda: (lca.get_stream_impacts(stream_items=stream_items, exclude=None,
                                  kind='all', annual=True)['GlobalWarming']/get_dynamic_ppl()+
                     lca.get_construction_impacts(unit, annual=True)['GlobalWarming']/get_dynamic_ppl()+
-                    lca.get_other_unit_impacts(unit, annual=True)['GlobalWarming']/get_dynamic_ppl())
+                    _get_other_unit_impacts(lca, unit, annual=True)['GlobalWarming']/get_dynamic_ppl())
 
 def get_LCA_metrics(system, 
                     ppl=None, 
