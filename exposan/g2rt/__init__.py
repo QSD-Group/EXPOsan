@@ -206,16 +206,13 @@ _system_loaded = False
 def _load_system():
     qs.currency = 'USD'
     qs.PowerUtility.price = price_dct['Electricity']
-    global sysA, sysB, sysC, teaA, teaB,teaC, lcaA, lcaB,lcaC, _system_loaded
+    global sysA, sysB, teaA, teaB, lcaA, lcaB, _system_loaded
     sysA = create_system('A')
     teaA = sysA.TEA
     lcaA = sysA.LCA
     sysB = create_system('B')
     teaB = sysB.TEA
     lcaB = sysB.LCA
-    sysC = create_system('C')
-    teaC = sysC.TEA
-    lcaC = sysC.LCA
     _system_loaded = True
 
 
@@ -483,7 +480,7 @@ def compute_unit_total_cost(u, ppl=None):
                     u.OPEX/get_dynamic_ppl()+
                     u.labor_expense/get_dynamic_ppl())
 
-def get_unit_contruction_GW_impact(unit, ppl=None, time =None, time_unit ='day'):
+def get_unit_construction_GW_impact(unit, ppl=None, time =None, time_unit ='day'):
     system = unit.system
     lca = system.LCA
     if ppl is None:
@@ -503,7 +500,7 @@ def get_unit_stream_GW_impact(unit, ppl=None):
                                  kind='all', annual=True)['GlobalWarming']/get_dynamic_ppl()
 # convert to per capita per year
 
-def get_unit_electrcitiy_GW_impact(unit, ppl=None, time =None, time_unit ='day'):
+def get_unit_electricity_GW_impact(unit, ppl=None, time =None, time_unit ='day'):
     system = unit.system
     lca = system.LCA
     if ppl is None:
