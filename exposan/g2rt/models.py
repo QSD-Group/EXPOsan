@@ -47,9 +47,9 @@ from exposan.g2rt import (
     results_path,
     update_resource_recovery_settings,
     get_normalized_labor_cost,
-    get_unit_contruction_GW_impact,
+    get_unit_construction_GW_impact,
     get_unit_stream_GW_impact,
-    get_unit_electrcitiy_GW_impact,
+    get_unit_electricity_GW_impact,
     get_unit_total_impact,
     compute_unit_total_cost,
     get_normalized_recovery_earning
@@ -124,9 +124,9 @@ def add_metrics(model, ppl= None):
     # for u in system.TEA.units:
     #     class_name = u.__class__.__name__
     #     metrics.extend([
-    #         Metric(f'{class_name} capital GW', get_unit_contruction_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
+    #         Metric(f'{class_name} capital GW', get_unit_construction_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
     #         Metric(f'{class_name} stream GW', get_unit_stream_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
-    #         Metric(f'{class_name} electricity GW', get_unit_electrcitiy_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
+    #         Metric(f'{class_name} electricity GW', get_unit_electricity_GW_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
     #         Metric(f'{class_name} total GW', get_unit_total_impact(u,ppl),'kg CO2-eq/cap/yr', f'{class_name} LCA'),
     #     ])
 
