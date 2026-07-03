@@ -23,6 +23,10 @@ from qsdsan import (
 from qsdsan.utils import time_printer, ospath, load_data, get_SRT
 from exposan.werf import data_path, default_rww
 
+# Make Homebrew Graphviz visible to Spyder for sys.diagram()
+import os
+os.environ["PATH"] = "/opt/homebrew/bin:" + os.environ.get("PATH", "")
+
 __all__ = ('create_g1_system',)
 
 ID = 'G1'
