@@ -40,6 +40,17 @@ Installation
 
     pip install exposan
 
+This installs the core package. A few optional features (e.g., routing optimization
+in the ``hap`` module) need extra packages.
+You can install complete dependencies with:
+
+.. code::
+
+    pip install exposan[complete]
+
+or install the specific package named in the error message when you first hit
+a missing feature.
+
 If you need to upgrade:
 
 .. code::

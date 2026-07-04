@@ -15,9 +15,8 @@ https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
 
-import os, numpy as np, pandas as pd
+import os, importlib, numpy as np, pandas as pd
 from math import log
-from sklearn.linear_model import LinearRegression as LR
 from chaospy import distributions as shape
 from thermosteam.functional import rho_to_V
 from qsdsan import ImpactItem, unit_operations as su
@@ -43,9 +42,52 @@ __all__ = (
     'get_generic_scaled_capital',
     'get_generic_tanker_truck_fee',
     'organize_and_save_results',
+    'require_package',
     'run_module_country_specific',
     'run_uncertainty',
     )
+
+
+def require_package(pip_name, import_name=None, feature=None):
+    '''
+    Check that an optional third-party package is importable, raising a
+    friendly, actionable error if not. Meant to be called immediately before
+    a lazy `import` of a package that isn't in EXPOsan's thin (required)
+    dependency set.
+
+    Parameters
+    ----------
+    pip_name : str
+        The name to pass to pip to install the package (e.g., "scikit-learn").
+    import_name : str, optional
+        The actual importable module name, if different from `pip_name`
+        (e.g., pip_name="scikit-learn", import_name="sklearn"). Defaults to
+        `pip_name`.
+    feature : str, optional
+        Short description of what needs this package, included in the error
+        message (e.g., "tanker truck fee regression
+        (exposan.utils.get_generic_tanker_truck_fee)"). Defaults to a generic
+        "this feature".
+
+    Examples
+    --------
+    >>> from exposan.utils import require_package
+    >>> require_package('numpy')  # numpy is always installed, so this returns None silently
+    '''
+    name = import_name or pip_name
+    try:
+        importlib.import_module(name)
+    except ModuleNotFoundError as e:
+        missing_root = (e.name or name).split('.')[0]
+        if missing_root != name.split('.')[0]:
+            raise  # a transitive dependency failed to import, not `name` itself
+        what = feature or 'this feature'
+        raise ModuleNotFoundError(
+            f"{what} requires the optional package '{pip_name}', which isn't "
+            f"installed. Install it directly with `pip install {pip_name}`, "
+            f"or install every optional dependency with "
+            f"`pip install exposan[complete]`."
+        ) from e
 
 
 def _init_modules(module_name, include_data_path=False, include_figures_path=False, create=False):
@@ -274,6 +316,9 @@ def get_generic_tanker_truck_fee(capacity,
     exchange_rate : float
         Exchange that will be multiplied to the prices.
     '''
+    require_package('scikit-learn', import_name='sklearn',
+                     feature='tanker truck fee regression (exposan.utils.get_generic_tanker_truck_fee)')
+    from sklearn.linear_model import LinearRegression as LR
     capacities = np.array(tuple(fitting_dct.keys()))
     costs = np.array(tuple(fitting_dct.values()))
     costs *= (1+emptying_fee)*exchange_rate

@@ -37,17 +37,21 @@ classifiers = [
 ]
 dependencies = [
     "qsdsan==1.5.3",
+]
+
+[project.optional-dependencies]
+complete = [
     "scikit-learn",
     "tsp_solver",
     "ortools",
 ]
-
-[project.optional-dependencies]
 ci = [
+    "exposan[complete]",
     "pytest",
     "pytest-xdist",
 ]
 dev = [
+    "exposan[complete]",
     "pytest",
     "pytest-xdist",
 ]

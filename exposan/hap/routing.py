@@ -14,7 +14,12 @@ for license details.
 
 from math import sqrt, ceil
 import numpy as np, scipy.spatial.distance as spa, matplotlib.pyplot as plt
+from exposan.utils import require_package
+
+require_package('tsp_solver', feature='HAP routing optimization (exposan.hap)')
 from tsp_solver.greedy import solve_tsp  # pypi: tsp-solver2; https://github.com/dmishin/tsp-solver/tree/master
+
+require_package('ortools', feature='HAP routing optimization (exposan.hap)')
 from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
 
