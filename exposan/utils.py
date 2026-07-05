@@ -316,16 +316,13 @@ def get_generic_tanker_truck_fee(capacity,
     exchange_rate : float
         Exchange that will be multiplied to the prices.
     '''
-    require_package('scikit-learn', import_name='sklearn',
-                     feature='tanker truck fee regression (exposan.utils.get_generic_tanker_truck_fee)')
-    from sklearn.linear_model import LinearRegression as LR
     capacities = np.array(tuple(fitting_dct.keys()))
     costs = np.array(tuple(fitting_dct.values()))
     costs *= (1+emptying_fee)*exchange_rate
     ln_p = np.log(costs)
-    ln_cap = np.log(np.array(capacities))
-    model = LR().fit(ln_cap.reshape(-1,1), ln_p.reshape(-1,1))
-    predicted = model.predict(np.array((np.log(capacity))).reshape(1, -1)).item()
+    ln_cap = np.log(capacities)
+    b, ln_a = np.polyfit(ln_cap, ln_p, 1)
+    predicted = ln_a + b*np.log(capacity)
     fee = np.exp(predicted)
     return fee
 

@@ -14,7 +14,6 @@ import numpy as np
 import pandas as pd
 import lhs
 import copy
-from sklearn.linear_model import LinearRegression
 
 
 #%% Tanker truck function
@@ -94,10 +93,15 @@ def tanker_truck(inputs, tech_operating_emissions, operating_cost, parameters, c
     b = np.full((n_samples,1), np.nan)
     R2 = np.full((n_samples,1), np.nan)
     for i in range(0, n_samples):
-        model = LinearRegression().fit(ln_capacity[i,:].reshape(-1,1), ln_price[i,:].reshape(-1,1))
-        a[i] = np.exp(model.intercept_)
-        b[i] = model.coef_
-        R2[i] = model.score(ln_capacity[i,:].reshape(-1,1), ln_price[i,:].reshape(-1,1))
+        x = ln_capacity[i,:]
+        y = ln_price[i,:]
+        slope, intercept = np.polyfit(x, y, 1)
+        a[i] = np.exp(intercept)
+        b[i] = slope
+        y_pred = slope*x + intercept
+        ss_res = np.sum((y-y_pred)**2)
+        ss_tot = np.sum((y-y.mean())**2)
+        R2[i] = 1 - ss_res/ss_tot
 
     cost_per_trip = a * ((mass*number_users*previous_storage_time/1000)**b)
     annualized_emptying_cost = (cost_per_trip/number_users/exchange_rate) * (discount_rate/(((1 + discount_rate)**previous_storage_time) - 1))
