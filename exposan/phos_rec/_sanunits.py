@@ -1059,6 +1059,14 @@ class FePO4_recovery(SanUnit):
         # -----------------------------
         iP = np.array(cmps.i_P, dtype=float)
         iCOD = np.array(cmps.i_COD, dtype=float)
+        
+        def _total(streams, i):
+            return sum(
+                np.sum(i * np.array([s.imass[j] for j in IDs], dtype=float))
+                for s in streams
+            )
+        P_in_total = _total((sludge, food_waste), iP)
+        COD_in_total = _total((sludge, food_waste), iCOD)
 
         sludge_imass_initial = np.array([sludge.imass[i] for i in IDs], dtype=float)  # kg/hr
         P_initial = np.sum(iP * sludge_imass_initial)      # kg-P/hr
@@ -1143,7 +1151,7 @@ class FePO4_recovery(SanUnit):
         P_err = 0.0 if P_initial == 0 else abs((P_total_after - P_initial) / P_initial)
         COD_err = 0.0 if COD_initial == 0 else abs((COD_final - COD_initial) / COD_initial)
 
-        tol = 0.025
+        tol = 0.01
 
         if P_err > tol:
             raise RuntimeError(
@@ -1188,6 +1196,25 @@ class FePO4_recovery(SanUnit):
         * effluent.components.X_S.i_C
         / gas.components.S_IC.i_C
         )
+        
+        # Tracking COD balance
+        COD_lost_to_gas_expected = XS0 * self.f_XS_gas * effluent.components.X_S.i_COD
+        
+        # Release P associated with X_S converted to non-P-bearing products
+        P_from_XS_to_SA = XS0 * self.f_XS_SA * (
+            effluent.components.X_S.i_P - effluent.components.S_A.i_P
+        )
+
+        P_from_XS_to_gas = XS0 * self.f_XS_gas * effluent.components.X_S.i_P
+
+        P_released_from_XS = P_from_XS_to_SA + P_from_XS_to_gas
+
+        if P_released_from_XS < -1e-12:
+            raise RuntimeError(
+                f"Negative P release from X_S conversion: {P_released_from_XS:.6e} kg-P/hr."
+            )
+
+        effluent.imass['S_PO4'] += P_released_from_XS / effluent.components.S_PO4.i_P
 
         effluent.imass['X_S'] -= XS0 * (
             self.f_XS_SA + self.f_XS_vfa + self.f_XS_eth + self.f_XS_cake + self.f_XS_gas
@@ -1202,6 +1229,38 @@ class FePO4_recovery(SanUnit):
         effluent.imass['H2O'] -= cake.imass['H2O']
         if effluent.imass['H2O'] < -1e-9:
             raise ValueError('Negative flow in effluent. Reduce moisture in cake')
+            
+        # -----------------------------
+        # FINAL OUTLET BALANCE CHECKS
+        # -----------------------------
+        outlets = (product, effluent, cake, gas)
+    
+        P_out_total = _total(outlets, iP)
+        COD_out_total = _total(outlets, iCOD)
+    
+        P_err_final = (
+            0.0 if P_in_total == 0
+            else abs((P_out_total - P_in_total) / P_in_total)
+        )
+    
+        COD_err_final = (
+            0.0 if COD_in_total == 0
+            else abs((COD_out_total + COD_lost_to_gas_expected - COD_in_total) / COD_in_total)
+        )
+    
+        if P_err_final > tol:
+            raise RuntimeError(
+                f"Final P balance error exceeds tolerance: {P_err_final*100:.2f}%\n"
+                f"P_in_total={P_in_total:.6f}, P_out_total={P_out_total:.6f}"
+            )
+    
+        if COD_err_final > tol:
+            raise RuntimeError(
+                f"Final COD balance error exceeds tolerance: {COD_err_final*100:.2f}%\n"
+                f"COD_in_total={COD_in_total:.6f}, "
+                f"COD_out_total={COD_out_total:.6f}, "
+                f"COD_lost_to_gas_expected={COD_lost_to_gas_expected:.6f}"
+            )
         
         # =====================================================================
         
