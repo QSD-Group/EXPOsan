@@ -1100,14 +1100,22 @@ class FePO4_recovery(SanUnit):
         Fe_released_total = dFe_from_FeOH + dFePO4_mob
 
         product.imol['X_FePO4'] = min(P_released_total, Fe_released_total)
-
+        
         # -----------------------------
         # POST-PROCESSING MASS BALANCE
         # -----------------------------
+        # Remove all mobilized FePO4 from the solid FePO4 pool
         sludge.imol['X_FePO4'] = max(0.0, sludge.imol['X_FePO4'] - dFePO4_mob)
-
+        
         P_used_total_mol = product.imol['X_FePO4']
         f_used = 0.0 if P_released_total <= 0 else min(1.0, P_used_total_mol / P_released_total)
+
+        dFePO4_unused = dFePO4_mob * (1 - f_used)
+
+        # Keep mobilized-but-unused FePO4-P in the sludge liquid as soluble phosphate
+        sludge.imass['S_PO4'] += (
+            dFePO4_unused * MW_P / sludge.components.S_PO4.i_P
+        )
 
         imass0 = np.array([sludge.imass[i] for i in IDs], dtype=float)
         P_used_part_by_cmp = (P_selected_particulates * P_pct) * f_used
@@ -1151,7 +1159,7 @@ class FePO4_recovery(SanUnit):
         P_err = 0.0 if P_initial == 0 else abs((P_total_after - P_initial) / P_initial)
         COD_err = 0.0 if COD_initial == 0 else abs((COD_final - COD_initial) / COD_initial)
 
-        tol = 0.01
+        tol = 0.005
 
         if P_err > tol:
             raise RuntimeError(
