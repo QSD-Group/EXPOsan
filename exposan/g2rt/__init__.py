@@ -31,11 +31,11 @@ INCLUDE_RESOURCE_RECOVERY = False
 #Module-wise setting on choosing manufacturing learning curve assumption
 OPTIMISTIC_LEARNING_CURVE = False
 
+# Created lazily (not at import time) by whichever function actually
+# writes results there, e.g. `models.run_uncertainty`.
 g2rt_path = os.path.dirname(__file__)
 g2rt_data_path = os.path.join(g2rt_path, 'data')
 results_path = os.path.join(g2rt_path, 'results')
-# Created lazily (not at import time) by whichever function actually
-# writes results there, e.g. `models.run_uncertainty`.
 default_ppl = 6
 dynamic_ppl = 6
 def get_dynamic_ppl():
