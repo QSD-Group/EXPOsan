@@ -1037,7 +1037,7 @@ class FePO4_recovery(SanUnit):
         for ws in (product, effluent, cake, gas):
             ws.empty()
 
-        # Food waste defined from sludge X_S and chosen moisture
+        # Food waste defined from food sludge ratio and chosen moisture
         food_waste.imass['X_S'] = sludge.imass['X_S'] * self.food_sludge_ratio
         food_waste.imass['H2O'] = (
             food_waste.imass['X_S'] / (1 - self.food_waste_moisture)
@@ -1173,29 +1173,35 @@ class FePO4_recovery(SanUnit):
         sludge.imass['X_I'] -= (product.imass['X_I'] + cake.imass['X_I'])
         sludge.imass['X_I'] = max(sludge.imass['X_I'], 0.0)
 
-        cake.imass['H2O'] = cake.imass['X_I'] / (1 - self.cake_moisture) * self.cake_moisture
-
+        # Remaining sludge + generated food waste first go to effluent/supernatant
         effluent.mix_from((sludge, food_waste))
 
-        effluent.imass['H2O'] -= cake.imass['H2O']
-        if effluent.imass['H2O'] < -1e-9:
-            raise ValueError('Negative flow in effluent. Reduce moisture in cake')
-
         # Food waste / X_S conversion and partitioning
-        effluent.imass['S_A'] += effluent.imass['X_S'] * self.f_XS_SA
-        effluent.imass['S_F'] += effluent.imass['X_S'] * (self.f_XS_eth + self.f_XS_vfa)
-        cake.imass['X_S'] += effluent.imass['X_S'] * self.f_XS_cake
+        XS0 = effluent.imass['X_S']
+        effluent.imass['S_A'] += XS0 * self.f_XS_SA
+        effluent.imass['S_F'] += XS0 * (self.f_XS_eth + self.f_XS_vfa)
+        cake.imass['X_S'] += XS0 * self.f_XS_cake
 
         gas.imass['S_IC'] += (
-            effluent.imass['X_S']
+            XS0
             * self.f_XS_gas
             * effluent.components.X_S.i_C
             * gas.components.S_IC.i_mass
         )
 
-        effluent.imass['X_S'] -= effluent.imass['X_S'] * (
+        effluent.imass['X_S'] -= XS0 * (
             self.f_XS_SA + self.f_XS_vfa + self.f_XS_eth + self.f_XS_cake + self.f_XS_gas
         )
+        
+        # Cake moisture after all cake solids have been assigned
+        cake_dry_mass = cake.F_mass - cake.imass['H2O']
+        cake.imass['H2O'] = (
+            cake_dry_mass / (1 - self.cake_moisture) * self.cake_moisture
+        )
+
+        effluent.imass['H2O'] -= cake.imass['H2O']
+        if effluent.imass['H2O'] < -1e-9:
+            raise ValueError('Negative flow in effluent. Reduce moisture in cake')
         
         # =====================================================================
         
