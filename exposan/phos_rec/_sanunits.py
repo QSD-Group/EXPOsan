@@ -1337,7 +1337,7 @@ class FePO4_recovery(SanUnit):
         ws.empty()
         ws.phase = phase
 
-        conc = {ID: c for ID, c in zip(IDs, C) if c != 0.0}
+        conc = {ID: c for ID, c in zip(IDs, C) if c != 0.0 and ID != 'H2O'}
 
         # QSDsan flow basis here is m3/hr
         ws.set_flow_by_concentration(
@@ -1356,13 +1356,13 @@ class FePO4_recovery(SanUnit):
         """
         thermo = self.thermo
 
-        sludge = WasteStream(f'{self.ID}_dyn_sludge', thermo=thermo)
-        food_waste = WasteStream(f'{self.ID}_dyn_food', thermo=thermo)
-
-        product = WasteStream(f'{self.ID}_dyn_product', thermo=thermo)
-        effluent = WasteStream(f'{self.ID}_dyn_effluent', thermo=thermo)
-        cake = WasteStream(f'{self.ID}_dyn_cake', thermo=thermo)
-        gas = WasteStream(f'{self.ID}_dyn_gas', thermo=thermo)
+        sludge = WasteStream('', thermo=thermo)
+        food_waste = WasteStream('', thermo=thermo)
+        
+        product = WasteStream('', thermo=thermo)
+        effluent = WasteStream('', thermo=thermo)
+        cake = WasteStream('', thermo=thermo)
+        gas = WasteStream('', thermo=thermo)
 
         # Both inlets are treated as liquid-state vectors
         self._state_to_stream(y_ins[0], sludge, phase='l')
