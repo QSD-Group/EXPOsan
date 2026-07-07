@@ -173,7 +173,7 @@ def load_g2rt_su_data(file_name):
         return load_data(os.path.join(su_data_path, file_name))
 
 excretion_path = load_g2rt_su_data('_excretion.tsv')
-murt_path = load_g2rt_su_data('_murt.tsv')
+surt_path = load_g2rt_su_data('_surt.tsv')
 mixer_toilet_path = load_g2rt_su_data('_g2rt_toilet.csv')
 vr_pasteurization_path = load_g2rt_su_data('_vr_pasteurization.csv')
 G2RT_homogenizer_path = load_g2rt_su_data('_g2rt_homogenizer.csv')
@@ -324,14 +324,14 @@ def add_shared_parameters(model, unit_dct, e_CF=None, flush_water=None, belt_moi
     exclude = ('e_cal', 'p_anim', 'p_veg') if city_specific else ()
     batch_setting_unit_params(excretion_path, model, excretion_unit, exclude)
     
-    # MURT Toilet
+    # SURT Toilet
     toilet_unit = unit_dct['toilet']
     exclude = ('OPEX_over_CAPEX')
-    batch_setting_unit_params(murt_path, model, toilet_unit, exclude)
+    batch_setting_unit_params(surt_path, model, toilet_unit, exclude)
     
     b = toilet_unit.OPEX_over_CAPEX
     D = shape.Uniform(lower=0.02, upper=0.08)
-    param(name='MURT operating cost', element=toilet_unit, kind='coupled', units='cost',
+    param(name='SURT operating cost', element=toilet_unit, kind='coupled', units='cost',
           baseline=b, distribution=D)
     def set_OPEX_over_CAPEX(i):
         toilet_unit.OPEX_over_CAPEX = i
