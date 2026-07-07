@@ -34,8 +34,8 @@ OPTIMISTIC_LEARNING_CURVE = False
 g2rt_path = os.path.dirname(__file__)
 g2rt_data_path = os.path.join(g2rt_path, 'data')
 results_path = os.path.join(g2rt_path, 'results')
-# To save simulation data
-if not os.path.isdir(results_path): os.mkdir(results_path)
+# Created lazily (not at import time) by whichever function actually
+# writes results there, e.g. `models.run_uncertainty`.
 default_ppl = 6
 dynamic_ppl = 6
 def get_dynamic_ppl():

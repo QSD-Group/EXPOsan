@@ -805,6 +805,9 @@ def run_uncertainty(model, path='', date = None, note = '', **kwargs):
     if note:
         file_name += f'_{note}'
     file_name += '.xlsx'
-    kwargs['path'] = os.path.join(results_path,file_name) if path=='' else path
+    if path=='':
+        os.makedirs(results_path, exist_ok=True)
+        path = os.path.join(results_path, file_name)
+    kwargs['path'] = path
     run(model=model, **kwargs)
     return
