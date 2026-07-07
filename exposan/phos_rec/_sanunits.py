@@ -1183,10 +1183,10 @@ class FePO4_recovery(SanUnit):
         cake.imass['X_S'] += XS0 * self.f_XS_cake
 
         gas.imass['S_IC'] += (
-            XS0
-            * self.f_XS_gas
-            * effluent.components.X_S.i_C
-            * gas.components.S_IC.i_mass
+        XS0
+        * self.f_XS_gas
+        * effluent.components.X_S.i_C
+        / gas.components.S_IC.i_C
         )
 
         effluent.imass['X_S'] -= XS0 * (
