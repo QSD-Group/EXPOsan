@@ -169,11 +169,11 @@ g2rt_su_data_path = os.path.join(su_data_path, 'g2rt')
 def load_g2rt_su_data(file_name):
     if file_name.startswith(('_g2rt_', '_vr_','_mscwo_')):
         return load_data(os.path.join(g2rt_su_data_path, file_name))
-    else: 
+    else:
         return load_data(os.path.join(su_data_path, file_name))
 
 excretion_path = load_g2rt_su_data('_excretion.tsv')
-surt_path = load_g2rt_su_data('_surt.tsv')
+surt_path = load_g2rt_su_data('_surt.csv')
 mixer_toilet_path = load_g2rt_su_data('_g2rt_toilet.csv')
 vr_pasteurization_path = load_g2rt_su_data('_vr_pasteurization.csv')
 G2RT_homogenizer_path = load_g2rt_su_data('_g2rt_homogenizer.csv')
