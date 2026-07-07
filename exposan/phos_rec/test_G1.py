@@ -24,6 +24,10 @@ from qsdsan.utils import time_printer, ospath, load_data, get_SRT
 from exposan.werf import data_path, default_rww
 from exposan.phos_rec import _sanunits as psu
 
+# Make Homebrew Graphviz visible to Spyder for sys.diagram()
+import os
+os.environ["PATH"] = "/opt/homebrew/bin:" + os.environ.get("PATH", "")
+
 __all__ = ('create_g1_system',)
 
 ID = 'G1'
@@ -161,7 +165,7 @@ def create_g1_system(flowsheet=None, default_init_conds=True):
         ID, 
         path=(MD, PC, PR, S1, A1, A2, A3, A4, O5, O6, FC, 
               MT, J1, AD, J2, DW, M2, HD)
-        # , recycle=(O6-0, FC-1, HD-0)
+        , recycle=(O6-0, FC-1, HD-0)
         )
     sys.set_dynamic_tracker(FC-0, AD)
     
