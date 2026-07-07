@@ -194,7 +194,7 @@ if __name__ == '__main__':
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     
-    t = 100
+    t = 300
     t_step = 1
     # method = 'RK45'
     # method = 'RK23'
@@ -204,6 +204,11 @@ if __name__ == '__main__':
     # method = 'LSODA'
     
     run(sys, t, t_step, method=method)
+    fs = sys.flowsheet.stream
+    fu = sys.flowsheet.unit
+    sys.diagram()
+    fig, axis = fs.SE.scope.plot_time_series(('S_A', 'S_F', 'X_S', 'S_NH4', 'X_I', 'S_I', 'S_N2')) 
+    fig
     # biomass_IDs = ('X_H', 'X_PAO', 'X_AUT')
     # srt = get_SRT(sys, biomass_IDs,
     #               wastage=[WAS],
