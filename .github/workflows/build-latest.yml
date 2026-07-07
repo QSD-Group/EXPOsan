@@ -19,7 +19,7 @@ jobs:
         python-version: ["3.12"]
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v6
       with:
@@ -47,7 +47,7 @@ jobs:
         python-version: ["3.12"]
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v6
       with:
@@ -75,7 +75,7 @@ jobs:
         python-version: ["3.12"]
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v6
       with:
@@ -108,6 +108,44 @@ jobs:
       run: |
         echo "Doc examples, BSM2, and system tests passed."
 
+  thin-install-smoke:
+
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+    - uses: actions/checkout@v6
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v6
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: "pip"
+        cache-dependency-path: |
+          pyproject.toml
+          .github/workflows/build-latest.yml
+    - name: Install with no extras (thin install)
+      run: |
+        python -m pip install --upgrade pip
+        pip install .
+    - name: Confirm core import works without complete extras
+      run: |
+        python -c "import exposan; print(exposan.__version__)"
+    - name: Confirm a complete-gated feature raises a friendly error
+      run: |
+        python -c "
+        try:
+            import exposan.hap
+        except ModuleNotFoundError as e:
+            msg = str(e)
+            assert 'pip install exposan[complete]' in msg, msg
+            print('OK: friendly error raised as expected')
+        else:
+            raise SystemExit('exposan.hap imported without ortools/tsp_solver installed — thin install leaked a complete dependency')
+        "
+
   retry-with-upstream-master:
     needs: [test-doc-examples, test-bsm2, test-systems]
     if: ${{ failure() }}
@@ -119,7 +157,7 @@ jobs:
         python-version: ["3.12"]
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v6
       with:
