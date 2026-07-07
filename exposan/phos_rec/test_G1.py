@@ -196,6 +196,7 @@ def run(sys, t, t_step, method=None, **kwargs):
 #%%
 if __name__ == '__main__':
     sys = create_g1_system()
+    sys.maxiter = 600
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     
