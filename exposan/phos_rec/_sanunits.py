@@ -1355,14 +1355,18 @@ class FePO4_recovery(SanUnit):
         [product_state, effluent_state, cake_state, gas_state]
         """
         thermo = self.thermo
-
-        sludge = WasteStream('', thermo=thermo)
-        food_waste = WasteStream('', thermo=thermo)
         
-        product = WasteStream('', thermo=thermo)
-        effluent = WasteStream('', thermo=thermo)
-        cake = WasteStream('', thermo=thermo)
-        gas = WasteStream('', thermo=thermo)
+        if not hasattr(self, '_dyn_tmp_streams'):
+            self._dyn_tmp_streams = (
+                WasteStream(f'{self.ID}_dyn_sludge_tmp', thermo=thermo),
+                WasteStream(f'{self.ID}_dyn_food_tmp', thermo=thermo),
+                WasteStream(f'{self.ID}_dyn_product_tmp', thermo=thermo),
+                WasteStream(f'{self.ID}_dyn_effluent_tmp', thermo=thermo),
+                WasteStream(f'{self.ID}_dyn_cake_tmp', thermo=thermo),
+                WasteStream(f'{self.ID}_dyn_gas_tmp', thermo=thermo),
+            )
+
+        sludge, food_waste, product, effluent, cake, gas = self._dyn_tmp_streams
 
         # Both inlets are treated as liquid-state vectors
         self._state_to_stream(y_ins[0], sludge, phase='l')
