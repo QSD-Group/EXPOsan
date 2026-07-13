@@ -18,8 +18,8 @@ References
 '''
 
 # !!! Temporarily ignoring warnings
-# import warnings
-# warnings.filterwarnings('ignore')
+import warnings
+warnings.filterwarnings('ignore')
 import numpy as np
 import os, biosteam as bst, qsdsan as qs
 from qsdsan import sanunits as qsu
@@ -101,7 +101,7 @@ gwp_dict = {
 
 def create_system(
         flowsheet=None,
-        feedstock_id='sludge',
+        feedstock_id='manure',
         central_dry_flowrate=None,
         pilot_dry_flowrate=None,
         decentralized_HTL=False,
@@ -1010,11 +1010,11 @@ def simulate_and_print(sys, save_report=False):
     #https://idot.illinois.gov/doing-business/procurements/construction-services/transportation-bulletin/price-indices.html
     #bitumnous, IL
     # price_dct['biobinder'] = 0.67
-    biobinder.price = MSP = tea.solve_price(biobinder)
-    # biobinder.price = 0.10
-    # IRR= tea.solve_IRR()
-    print(f'Minimum selling price of the biobinder is ${MSP:.2f}/kg.')
-    # print(f'Internal rate of return of the system is {IRR * 100:.2f}%')
+    # biobinder.price = MSP = tea.solve_price(biobinder)
+    biobinder.price = 0.10
+    IRR= tea.solve_IRR()
+    # print(f'Minimum selling price of the biobinder is ${MSP:.2f}/kg.')
+    print(f'Internal rate of return of the system is {IRR * 100:.2f}%')
     
     capex_per_ton= tea.FCI/(scaled_feedstock.F_mass * sys.operating_hours/1000)
     opex_per_ton = abs(tea.AOC)/(scaled_feedstock.F_mass * sys.operating_hours/1000)
