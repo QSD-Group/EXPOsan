@@ -49,6 +49,19 @@ def test_saf():
     assert_allclose(saf.get_MFSP(saf.sys), 3.495850, rtol=rtol)
     assert_allclose(saf.get_GWP(saf.sys), -10.181651, rtol=rtol, atol=gwp_atol)
 
+    #!!! TODO: below were previous metrics, need to figure out the GWP change reason.
+    # saf.load(configuration='baseline')
+    # assert_allclose(saf.get_MFSP(saf.sys), 3.95586679600505, rtol=rtol)
+    # assert_allclose(saf.get_GWP(saf.sys), -5.394022805849971, rtol=rtol)
+
+    # saf.load(configuration='EC')
+    # assert_allclose(saf.get_MFSP(saf.sys), 11.876241988677974, rtol=rtol)
+    # assert_allclose(saf.get_GWP(saf.sys), 2.8357334832704386, rtol=rtol)
+
+    # saf.load(configuration='EC-Future')
+    # assert_allclose(saf.get_MFSP(saf.sys), 3.821113328378629, rtol=rtol)
+    # assert_allclose(saf.get_GWP(saf.sys), -8.475883955624251, rtol=rtol)
+
 
 if __name__ == '__main__':
     test_saf()
