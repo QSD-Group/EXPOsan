@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "exposan"
-version = "1.5.3"
+version = "1.6.0"
 description = "Exposition of sanitation and resource recovery systems"
 readme = {file = "README.rst", content-type = "text/x-rst"}
 requires-python = ">=3.12"
@@ -37,24 +37,27 @@ classifiers = [
 ]
 dependencies = [
     "qsdsan==1.5.3",
+]
+
+[project.optional-dependencies]
+complete = [
     "scikit-learn",
     "tsp_solver",
     "ortools",
 ]
-
-[project.optional-dependencies]
 ci = [
+    "exposan[complete]",
     "pytest",
     "pytest-xdist",
 ]
 dev = [
+    "exposan[complete]",
     "pytest",
     "pytest-xdist",
 ]
 
 [project.urls]
 Homepage = "https://qsdsan.com"
-Documentation = "https://qsdsan.readthedocs.io"
 Repository = "https://github.com/QSD-Group/EXPOsan"
 
 [tool.setuptools.packages.find]
@@ -81,6 +84,8 @@ exposan = [
     "cas/*",
     "eco_san/*",
     "eco_san/data/*",
+    "g2rt/*",
+    "g2rt/data/*",
     "hap/*",
     "htl/*",
     "htl/data/crude_oil_price_2022.xlsx",

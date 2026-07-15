@@ -63,7 +63,8 @@ GDPCTPI = {2008: 87.977,
 def create_system(configuration='baseline', capacity=100,
                   sludge_moisture_content=0.8, sludge_dw_ash_content=0.257, 
                   sludge_afdw_lipid_content=0.204, sludge_afdw_protein_content=0.463,
-                  N_2_P_value=0.3927, waste_cost=0, waste_GWP=0, high_IRR=False):
+                  N_2_P_value=0.3927, waste_cost=0, waste_GWP=0, high_IRR=False,
+                  simulate=True):
     configuration = configuration or 'baseline'
     if configuration not in ('baseline','no_P','PSA'):
         raise ValueError('`configuration` can only be "baseline", '
@@ -171,8 +172,12 @@ def create_system(configuration='baseline', capacity=100,
     SP1 = qsu.ReversedSplitter('S200',ins=H2SO4_Tank-0, outs=('H2SO4_P','H2SO4_N'),
                                init_with='Stream')
     SP1.register_alias('SP1')
-    # must put after AcidEx and MemDis in path during simulation to ensure input
-    # not empty
+    # SP1.outs feed AcidEx/MemDis's own ins, so the network sorter always
+    # places SP1 before them (their real, non-reversed demand isn't known
+    # until they run). SP1.outs are declared as recycle streams below so the
+    # system iterates until AcidEx/MemDis's freshly-computed demand and
+    # SP1's split agree, instead of SP1 reading whatever demand was left
+    # over from the previous simulate() call.
     
     if configuration == 'no_P':
         M1_outs1 = ''
@@ -236,7 +241,8 @@ def create_system(configuration='baseline', capacity=100,
     
     RSP1 = qsu.ReversedSplitter('S300', ins='H2', outs=('HT_H2','HC_H2'),
                                 init_with='WasteStream')
-    # reversed splitter, write before HT and HC, simulate after HT and HC
+    # same reversed-splitter-before-its-demand situation as SP1 above;
+    # RSP1.outs are declared as recycle streams below.
     RSP1.ins[0].price = 1.61
     RSP1.register_alias('RSP1')
     
@@ -416,6 +422,19 @@ def create_system(configuration='baseline', capacity=100,
         operating_hours=WWTP.operation_hours, # 7920 hr Jones
         )
     sys.register_alias('sys')
+
+    # SP1/RSP1 (ReversedSplitter) run before AcidEx/MemDis/HT/HC compute their
+    # own reagent demand (see comments at SP1/RSP1 above), so without an
+    # explicit recycle the split reflects whatever demand was left over from
+    # the *previous* simulate() call, not the current one -- most visible
+    # (>1000x off) when repeatedly resimulating the same System object at
+    # very different scales, e.g. across Model parameter draws. Declaring
+    # these streams as a recycle makes the system iterate path in full until
+    # the split and the demand agree; the default recycle tolerance is
+    # loose enough to falsely call this "converged" after a single pass, so
+    # it's tightened here too.
+    sys.recycle = (SP1.outs[0], SP1.outs[1], RSP1.outs[0], RSP1.outs[1])
+    sys.set_tolerance(mol=1e-6, rmol=1e-9, maxiter=200)
 
     ##### Add stream impact items #####
 
@@ -674,6 +693,6 @@ def create_system(configuration='baseline', capacity=100,
            Electricity=lambda:(sys.get_electricity_consumption()-sys.get_electricity_production())*30,
            Cooling=lambda:sys.get_cooling_duty()/1000*30)
     
-    sys.simulate()
+    if simulate: sys.simulate()
     
     return sys
