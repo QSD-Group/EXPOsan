@@ -105,10 +105,12 @@ class KnockOutDrum(Reactor):
         self.mixing_intensity = mixing_intensity
         self.kW_per_m3 = kW_per_m3
         self.wall_thickness_factor = wall_thickness_factor
+        # `F_M` must be assigned before `vessel_material` 
+        # assigning `self.F_M` afterward would silently overwrite with the literal default.
+        self.F_M = F_M
         self.vessel_material = vessel_material
         self.vessel_type = vessel_type
-        self.F_M = F_M
-    
+
     def _run(self):
         pass
     
@@ -306,10 +308,12 @@ class HydrothermalLiquefaction(Reactor):
         self.mixing_intensity = mixing_intensity
         self.kW_per_m3 = kW_per_m3
         self.wall_thickness_factor = wall_thickness_factor
+        # See KnockOutDrum.__init__'s comment: F_M must be assigned before
+        # vessel_material, whose setter mutates F_M in place.
+        self.F_M = F_M
         self.vessel_material = vessel_material
         self.vessel_type = vessel_type
-        self.F_M = F_M
-        
+
 
     def _run(self):
         feed = self.ins[0]
@@ -372,7 +376,14 @@ class HydrothermalLiquefaction(Reactor):
         # Additional inf HX
         inf_hx_in.copy_like(inf_after_hx)
         inf_hx_out.copy_flow(inf_hx_in)
+        # `copy_flow` only copies flow rates, not T/P
         inf_hx_out.T = self.T
+        # No pressure drop is implied by this exchanger,
+        # so carry inf_hx_in.P through (mirroring Hydroprocessing._design's
+        # own inf_hx block below, which already does this).
+        inf_hx_out.P = inf_hx_in.P
+        inf_hx_in.vle(T=inf_hx_in.T, P=inf_hx_in.P)
+        inf_hx_out.vle(T=inf_hx_out.T, P=inf_hx_out.P)
         inf_hx.simulate_as_auxiliary_exchanger(ins=inf_hx.ins, outs=inf_hx.outs)
 
         # Additional eff HX
@@ -380,10 +391,11 @@ class HydrothermalLiquefaction(Reactor):
         eff_hx_in, eff_hx_out = eff_hx.ins[0], eff_hx.outs[0]
         eff_hx_in.copy_like(eff_after_hx)
         eff_hx_out.mix_from(self.outs)
-        # Hnet = Unit.H_out-Unit.H_in + Unit.Hf_out-Unit.Hf_in
-        # H is enthalpy; Hf is the enthalpy of formation, all in kJ/hr
-        duty = self.Hnet + eff_hx.Hnet
-        eff_hx.simulate_as_auxiliary_exchanger(ins=eff_hx.ins, outs=eff_hx.outs, duty=duty)
+        # eff_hx_in/eff_hx_out share composition (this exchanger only cools
+        # or heats, it doesn't react), so simulate_as_auxiliary_exchanger's
+        # own duty auto-computation (outlet.Hnet - inlet.Hnet) already equals
+        # the correct sensible/latent duty.
+        eff_hx.simulate_as_auxiliary_exchanger(ins=eff_hx.ins, outs=eff_hx.outs)
 
         Reactor._design(self)
         
@@ -466,7 +478,8 @@ class HydrothermalLiquefaction(Reactor):
     def energy_recovery(self):
         '''Energy recovery calculated as the HHV of the biocrude over the HHV of the feedstock.'''
         feed = self.ins[0]
-        return self.biocrude_HHV/(feed.HHV/feed.F_mass/1e3)
+        crude = self.outs[2]
+        return crude.HHV/feed.HHV
     
 
 
@@ -566,7 +579,7 @@ class Hydroprocessing(Reactor):
         'Heat exchanger': 3.17,
         'Compressor': 1.1,
         }
-    auxiliary_unit_names=('compressor','hx', 'hx_inf_heating',)
+    auxiliary_unit_names=('compressor','hx', 'inf_hx',)
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None,
                  init_with='Stream',
@@ -580,7 +593,7 @@ class Hydroprocessing(Reactor):
                  hydrogen_ratio=5.556,
                  include_PSA=False,
                  PSA_efficiency=0.9,
-                 gas_yield=0.03880-0.00630,
+                 gas_yield=0.03880+0.00630, # gas_yield = 1 - oil_yield
                  oil_yield=1-0.03880-0.00630,
                  gas_composition={'CO2':0.03880, 'CH4':0.00630,},
                  oil_composition={
@@ -683,9 +696,12 @@ class Hydroprocessing(Reactor):
         Design = self.design_results
         Design.clear()
         Design['PSA H2 lb flowrate'] = self._H2_residual / _lb_to_kg
-        Design['H2 recycled'] = recycled = self._H2_recycled / _lb_to_kg
+        # Keep `recycled` in kg/hr for the mass balance below; only convert
+        # to lb/hr for the Design report entry.
+        recycled = self._H2_recycled
+        Design['H2 recycled'] = recycled / _lb_to_kg
         Design['Oil lb flowrate'] = self.ins[0].F_mass/_lb_to_kg
-        
+
         IC = self.compressor # for H2 compressing
         H2 = self.ins[1]
         IC_ins0, IC_outs0 = IC.ins[0], IC.outs[0]

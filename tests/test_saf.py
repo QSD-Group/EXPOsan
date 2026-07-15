@@ -36,30 +36,18 @@ def test_saf():
     # while the large-magnitude GWPs keep an effectively relative check.
     gwp_atol = 0.75
 
+    # Re-baselined 2026-07-15 after fixing 7 confirmed bugs, see relevant commits for details
     saf.load(configuration='baseline', simulate=True)
-    assert_allclose(saf.get_MFSP(saf.sys), 3.771145, rtol=rtol)
-    assert_allclose(saf.get_GWP(saf.sys), -7.036813, rtol=rtol, atol=gwp_atol)
+    assert_allclose(saf.get_MFSP(saf.sys), 3.636344, rtol=rtol)
+    assert_allclose(saf.get_GWP(saf.sys), -7.415470, rtol=rtol, atol=gwp_atol)
 
     saf.load(configuration='EC', simulate=True)
-    assert_allclose(saf.get_MFSP(saf.sys), 11.664064, rtol=rtol)
-    assert_allclose(saf.get_GWP(saf.sys), 1.164505, rtol=rtol, atol=gwp_atol)
+    assert_allclose(saf.get_MFSP(saf.sys), 11.529264, rtol=rtol)
+    assert_allclose(saf.get_GWP(saf.sys), 0.785847, rtol=rtol, atol=gwp_atol)
 
     saf.load(configuration='EC-Future', simulate=True)
-    assert_allclose(saf.get_MFSP(saf.sys), 3.604148, rtol=rtol)
-    assert_allclose(saf.get_GWP(saf.sys), -10.129114, rtol=rtol, atol=gwp_atol)
-
-    #!!! TODO: below were previous metrics, need to figure out the GWP change reason
-    # saf.load(configuration='baseline')
-    # assert_allclose(saf.get_MFSP(saf.sys), 3.95586679600505, rtol=rtol)
-    # assert_allclose(saf.get_GWP(saf.sys), -5.394022805849971, rtol=rtol)
-    
-    # saf.load(configuration='EC')
-    # assert_allclose(saf.get_MFSP(saf.sys), 11.876241988677974, rtol=rtol)
-    # assert_allclose(saf.get_GWP(saf.sys), 2.8357334832704386, rtol=rtol)
-    
-    # saf.load(configuration='EC-Future')
-    # assert_allclose(saf.get_MFSP(saf.sys), 3.821113328378629, rtol=rtol)
-    # assert_allclose(saf.get_GWP(saf.sys), -8.475883955624251, rtol=rtol)
+    assert_allclose(saf.get_MFSP(saf.sys), 3.495850, rtol=rtol)
+    assert_allclose(saf.get_GWP(saf.sys), -10.181651, rtol=rtol, atol=gwp_atol)
 
 
 if __name__ == '__main__':
