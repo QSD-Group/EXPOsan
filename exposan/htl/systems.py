@@ -154,7 +154,7 @@ def create_system(configuration='baseline', capacity=100,
     H1.register_alias('H1')
     H1.include_construction = True
     
-    HTL = qsu.HydrothermalLiquefaction('A120', ins=H1-0, outs=('hydrochar','HTL_aqueous','biocrude','offgas_HTL'),
+    HTL = su.HydrothermalLiquefaction('A120', ins=H1-0, outs=('hydrochar','HTL_aqueous','biocrude','offgas_HTL'),
                                        mositure_adjustment_exist_in_the_system=True)
     HTL.register_alias('HTL')
     
@@ -248,7 +248,7 @@ def create_system(configuration='baseline', capacity=100,
     
     # HT_cls = su.HT if configuration != 'PSA' else su.HT_PSA
     include_PSA = False if 'PSA' not in configuration else True
-    HT = qsu.Hydrotreating('A310', ins=(P2-0, RSP1-0, 'CoMo_alumina_HT'),
+    HT = su.Hydrotreating('A310', ins=(P2-0, RSP1-0, 'CoMo_alumina_HT'),
                outs=('HTout','CoMo_alumina_HT_out'), include_PSA=include_PSA)
         
     HT.ins[2].price = 38.79
@@ -315,8 +315,8 @@ def create_system(configuration='baseline', capacity=100,
     # Tin = 394 C (741.2 F) based on Jones PNNL report. However, the reaction
     # releases a lot of heat and increase the temperature of effluent to 451 C
     # (844.6 F).
-    
-    HC = qsu.Hydrocracking('A410', ins=(P3-0, RSP1-1, 'CoMo_alumina_HC'),
+
+    HC = su.Hydrocracking('A410', ins=(P3-0, RSP1-1, 'CoMo_alumina_HC'),
                        outs=('HC_out','CoMo_alumina_HC_out'))
     HC.ins[2].price = 38.79
     HC.register_alias('HC')
