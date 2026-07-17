@@ -67,6 +67,49 @@ labor_index = {2014: 21.49,
                2022: 27.36,
                2023: 29.77}
 
+#%%run this in console if run into "UnboundLocalError: cannot access local variable 'isa' where it is not associated with a value" in biosteam System._summary when running create_geospatial_system
+#
+import biosteam as bst
+from biosteam.exceptions import try_method_with_object_stamp
+
+def fixed_summary(self):
+    isa = isinstance
+    Unit = bst.Unit
+    f = try_method_with_object_stamp
+
+    if not self._integrated_facilities:
+        simulated_units = set()
+        for unit in self._path:
+            if isa(unit, Unit):
+                if unit in simulated_units:
+                    continue
+                simulated_units.add(unit)
+            f(unit, unit._summary)
+
+    for facility in self._facilities:
+        if isa(facility, Unit):
+            f(facility, facility.simulate)
+        elif isa(facility, bst.System):
+            f(facility, facility.converge)
+            facility._summary()
+        else:
+            facility()
+
+    for facility in self._facilities:
+        if isa(facility, bst.BoilerTurbogenerator):
+            f(facility, facility.simulate)
+
+bst.System._summary = fixed_summary
+#%%
+
+def _create_cooling_tower():
+    CT = bst.facilities.CoolingTower(ID='CT')
+    makeup_water, chemicals = CT.ins
+    makeup_water.price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
+    chemicals.price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
+    return CT, makeup_water, chemicals
+
+
 # keep ww_2_dry_sludge_ratio=1 to get more accurate results
 # for parameters, unless otherwise stated, refer to the original HTL system model
 def create_geospatial_system(test_run=False,
@@ -621,11 +664,7 @@ def create_geospatial_system(test_run=False,
     
     # TODO: consider adding CT and its TEA and LCA items for other systems (HTL, HTL-PFAS)
     # construction cost for CT is based on the flow rate of cooling_tower_chemicals in the current version of BioSTEAM
-    CT = bst.facilities.CoolingTower(ID='CT')
-    # cooling_tower_makeup_water
-    CT.ins[1].price = 0.0002/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
-    # cooling_tower_chemicals: 1.7842 2016$/lb, https://doi.org/10.2172/1483234
-    CT.ins[2].price = 1.7842/_lb_to_kg/GDPCTPI[2016]*GDPCTPI[2022]
+    CT, cooling_tower_makeup_water, cooling_tower_chemicals = _create_cooling_tower()
     
     # CWP uses electricity to generate chilled water
     # the water cost can be ignored since the water can be recirculated
@@ -813,7 +852,9 @@ def create_geospatial_system(test_run=False,
            # assume the ratio between the CI of the cooling_tower_chemicals and the CI of cooling_tower_makeup_water is the same as the ratio of the prices of these two streams
            # note LCA for water_steam, cooling_tower_makeup_water, and cooling_tower_chemicals were included in the 'Other' category while it should be in the 'Stream' category
            # the effect is minimal since (i) this part of LCA is small and (ii) we do not use LCA breakdown results in the HTL geospatial analysis
-           Deionized_water=lambda:(water_steam.F_mass+CT.ins[1].F_mass+CT.ins[2].F_mass*1.7842/0.0002)*WWTP.operation_hours*30)
+           Deionized_water=lambda:(water_steam.F_mass+cooling_tower_makeup_water.F_mass
+                                   +cooling_tower_chemicals.F_mass*1.7842/0.0002)
+                                   *WWTP.operation_hours*30)
     
     # =========================================================================
     # TEA
