@@ -12,15 +12,6 @@ for license details.
 
 """
 UA (LHS) for SAF_FLEX-based system with rich CrudeHeavyDis diagnostics.
-
-Key fixes vs old UA:
-- Uses exposan.biobinder_ml.SAF_FLEX.create_system
-- No global biobinder feedstock_composition dict
-- Uses exposan.saf.tea_kwargs
-- Correct SAF stream IDs for H2: H2_HC, H2_HT
-- Correct transport cost attribute: transportation_unit_cost
-- Removes biobinder/BiofuelFlash assumptions
-- Keeps + extends CrudeHeavyDis diagnostics
 """
 
 import os
@@ -64,7 +55,7 @@ from exposan.biobinder_ml.SAF_FLEX import create_system as create_saf_system
 # ============================================================
 # CONFIG
 # ============================================================
-RUN_MODE = "full"  # full / shap_only (shap_only block kept commented as in your script)
+RUN_MODE = "full"  # full / shap_only 
 OUTPUT_DIR = "results"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 

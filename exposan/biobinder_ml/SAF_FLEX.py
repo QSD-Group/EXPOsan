@@ -108,8 +108,6 @@ class _DummyEffHX:
         self.Hnet = 0.0
 
     def simulate_as_auxiliary_exchanger(self, ins, outs, duty=None):
-        # No-op: We only need a compatible placeholder for design bookkeeping.
-        # If you want, you can store duty for debugging:
         self._last_duty = duty
         return
 

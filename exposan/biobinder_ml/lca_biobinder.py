@@ -4,7 +4,7 @@
 EXPOsan: Exposition of sanitation and resource recovery systems
 
 This module is developed by:
-    Ali Ahmad <aa3056@scarletmail.rutgers.edu>
+    Ali Ahmad <aliahmad1331@gmail.com>
     
     Yalin Li <mailto.yalin.li@gmail.com>
 
@@ -17,6 +17,9 @@ References
     2021 State of Technology; PNNL-32731; Pacific Northwest National Lab. (PNNL), Richland, WA (United States), 2022.
     https://doi.org/10.2172/1863608.
 '''
+"""
+system script for all TRACI Categories LCA with landfill/biofuel credit scenarios (EcoInvent 3.11)
+"""
 
 # !!! Temporarily ignoring warnings
 # import warnings
@@ -34,7 +37,7 @@ from exposan.biobinder_ml import (
     _load_process_settings,
     _units as u,
     BiobinderTEA,
-    cutoff_fracs_from_feed,
+    # cutoff_fracs_from_feed,
     central_dry_flowrate as default_central,
     data_path,
     find_Lr_Hr,
@@ -54,13 +57,18 @@ from exposan.biobinder_ml import (
 _psi_to_Pa = 6894.76
 SnowdenSwan_factor= 1.0646188596312727
 configure_utilities()
+from exposan.biobinder_ml._feedstocks import get_feedstock_composition
+from exposan.biobinder_ml._rf_htl_predictor import predict_htl_yields_from_rf
+from exposan.biobinder_ml._ml_features import FeatureDefaults
+from exposan.biobinder_ml._distill_utils import (safe_LHK_candidates, find_best_Lr_Hr_runtime, 
+add_runtime_LHK_LrHr_spec)
 
 # %%
 
 __all__ = ('create_system',)
 
 scenario_biofuel_zero_CF = True
-scenario_landfill_zero_CF = False
+scenario_landfill_zero_CF = True
 
 def create_system(
         flowsheet=None,
@@ -278,27 +286,8 @@ def create_system(
 
     # crude_fracs = crude_fracs or [0.0339, 0.8104 + 0.1557]
     # oil_fracs = oil_fracs or [0.5316, 0.4684]
-    
-    # def cutoff_fracs_from_feed(feedstock_composition, HTL_yields):
-    #     moisture = feedstock_composition['Water']
-    #     # Convert wet basis lipid back to dry basis
-    #     lipid_dry = feedstock_composition['Lipids'] / (1 - moisture)
-    #     lipid_wt = 100 * lipid_dry    
-    #     mass_wt = 100 * HTL_yields['biocrude']
-                                                       
-    #     a, b, c = -22.02, 0.33, 2.90
-    #     biofuel_range = (a * (lipid_wt ** b) + c * mass_wt)/100
-
-    #     # Clamp to valid range
-    #     biofuel_range = max(0.01, min(0.95 - 0.05, biofuel_range))
-        
-    #     light_frac = 0.05
-    #     mid_frac = biofuel_range
-    #     heavy_frac = 1 - light_frac - mid_frac
-
-    #     return [light_frac, mid_frac, heavy_frac]
-    
-    cutoff_fracs = cutoff_fracs_from_feed(feedstock_composition, HTL_yields, dewatered=True)
+    cutoff_fracs = [0.01, 0.69, 0.30]      
+    # cutoff_fracs = cutoff_fracs_from_feed(feedstock_composition, HTL_yields, dewatered=True)
     # cutoff_fracs = [0.07, 0.37, 0.56]
 
     
@@ -381,6 +370,17 @@ def create_system(
         # product_specification_format='Composition',
         k=2,
         is_divided=True)
+    
+    add_runtime_LHK_LrHr_spec(
+    splitter=BiocrudeSplitter,
+    col=CrudeHeavyDis,
+    idx=1,
+    fallback_LHK=("4M-PHYNO", "INDOLE"),
+    target_ratio=None,
+    prefer="max_top_ratio",
+    require_design=True,
+    require_cost=False,
+      )
     # Lr_trial_range=np.arange(0.5, 1, 0.01)
     # Hr_trial_range=np.arange(0.5, 1, 0.01)
     # results_df, best_Lr, best_Hr, max_yield = find_Lr_Hr(
@@ -395,135 +395,11 @@ def create_system(
     # # Reasonable trial ranges
     # Lr_range = np.linspace(0.6, 1.0, 9)
     # Hr_range = np.linspace(0.8, 1.0, 9)
-
-    # def optimize_CrudeHeavyDis():
-    #     """Find and apply best Lr/Hr for CrudeHeavyDis to match predicted cutoff fraction."""
-    #     try:
-    #       print(f"\n[Optimization] Target biofuel fraction: {target_light_frac:.3f}")
-    #       results_df, best_Lr, best_Hr, max_yield = find_Lr_Hr(
-    #             CrudeHeavyDis,
-    #             Lr_trial_range=Lr_range,
-    #             Hr_trial_range=Hr_range,
-    #           )
-    #       if best_Lr and best_Hr:
-    #             CrudeHeavyDis.Lr = best_Lr
-    #             CrudeHeavyDis._Lr = best_Lr
-    #             CrudeHeavyDis.Hr = best_Hr
-    #             CrudeHeavyDis._Hr = best_Hr
-    #             print(f"[Optimization] Applied optimal Lr={best_Lr:.3f}, Hr={best_Hr:.3f} "
-    #                     f"→ Biofuel yield={max_yield:.3f}")
-    #       else:
-    #             print("[Optimization] No convergence found; keeping default Lr/Hr.")
-    #     except Exception as e:
-    #       print(f"[Optimization] Distillation optimization failed: {e}")
     
-    CrudeHeavyDis.check_LHK = False
+    # CrudeHeavyDis.check_LHK = False
     # CrudeHeavyDis.add_specification(optimize_CrudeHeavyDis)
-    CrudeHeavyDis.run_after_specifications = True
-    
-    
-    # ratio0 = oil_fracs[0]
-    # lb, ub = round(ratio0,2)-0.20, round(ratio0,2)+0.20
-    
-    # def get_ratio():
-    #     if CrudeHeavyDis.F_mass_out > 0:
-    #         return CrudeHeavyDis.outs[0].F_mass/CrudeHeavyDis.F_mass_out
-    #     return 0
-    # def select_valid_LHK():
-    #     try:
-    #         feed = CrudeLightDis.outs[1]
-    #         comps = [(c.ID, c.Tb) for c in feed.chemicals if feed.imol[c.ID] > 1e-4 and c.Tb]
-    #         comps = sorted(comps, key=lambda x: x[1])
-    #         for i in range(len(comps)-1):
-    #             if comps[i+1][1] - comps[i][1] > 30:
-    #                 CrudeHeavyDis._LHK = (comps[i][0], comps[i+1][0])
-    #                 return
-    #         CrudeHeavyDis._LHK = (comps[0][0], comps[-1][0])
-    #     except Exception as e:
-    #         print(f"[LHK update skipped] {e}")
-    
-    # def _pick_LHK_for_heavy():
-    #     feed = CrudeLightDis.outs[1]
-    #     chems = feed.chemicals
-    #     # IDs present with a valid Tb and non-trace mol
-    #     IDs = [ID for ID in chems.IDs
-    #         if getattr(chems[ID], 'Tb', None)
-    #         and feed.imol[ID] > 1e-6]
-    #     if len(IDs) < 2:
-    #           # nothing to do; keep whatever is set
-    #         return
-
-    #     IDs.sort(key=lambda ID: chems[ID].Tb)
-    #     n = len(IDs)
-    #     # start near the median and expand outwards until we find a pair that’s separable & present
-    #     MIN_DT = 80.0  # K, minimum boiling point gap
-    #     MIN_Z  = 0.03  # mol fraction of LK+HK in the feed
-    #     idx = chems.index
-
-    #     for off in range(0, n//2):
-    #         iL = max(0, n//2 - 1 - off)
-    #         iH = min(n-1, n//2 + off)
-    #         LK, HK = IDs[iL], IDs[iH]
-    #         dT = chems[HK].Tb - chems[LK].Tb
-    #         zLK = feed.mol[idx(LK)] / feed.F_mol if feed.F_mol else 0.0
-    #         zHK = feed.mol[idx(HK)] / feed.F_mol if feed.F_mol else 0.0
-    #         if dT >= MIN_DT and (zLK + zHK) >= MIN_Z:
-    #             CrudeHeavyDis._LHK = (LK, HK)
-    #             # CrudeHeavyDis._y_top = 0.95  
-    #             # CrudeHeavyDis._x_bot = 0.05
-    #             return
-
-    #     # Fallback if nothing satisfies the guards
-    #     CrudeHeavyDis._LHK = ('4M-PHYNO', 'INDOLE')
-    #     # CrudeHeavyDis._y_top = 0.95
-    #     # CrudeHeavyDis._x_bot = 0.05
-
-    # CrudeHeavyDis.add_specification(_pick_LHK_for_heavy)
     # CrudeHeavyDis.run_after_specifications = True
-
-        # feed= CrudeLightDis.outs[1]
-        # comps = [(c.ID, c.Tb) for c in feed.chemicals
-        #       if feed.imol[c.ID] > 1e-4 and c.Tb]
-        # comps = sorted(comps, key=lambda x: x[1])
-        # if len(comps) < 2:
-        #     raise ValueError(f"Cannot determine valid LHK: {[c.ID for c in feed.chemicals if feed.imol[c.ID] > 0]}")
-        # CrudeHeavyDis.LHK = (comps[0][0], comps[-1][0])
-
-    # CrudeHeavyDis.add_specification(select_valid_LHK)
-    # CrudeHeavyDis.run_after_specifications = True
-    
-    # Simulation may converge at multiple points, filter out unsuitable ones
-    # def screen_results():
-    #     n = 0
-    #     status = False
-    #     while (status is False) and (n<20):
-    #         try:
-    #             CrudeHeavyDis._run()
-    #             ratio = get_ratio()
-    #             # assert(lb<=ratio<=ub)
-    #             # Log it instead of enforcing
-    #             print(f"[INFO] Actual biofuel ratio: {ratio:.3f}, target: {ratio0:.3f}")
-    #             CrudeHeavyDis._design()
-    #             CrudeHeavyDis._cost()
-    #             assert(all([v>0 for v in CrudeHeavyDis.baseline_purchase_costs.values()]))
-    #             status = True
-    #         except:
-    #             n += 1
-    #             status = False
-    #     if n >= 20:
-    #         raise RuntimeError(f'No suitable solution for `CrudeHeavyDis` within {n} simulation.')
-    # CrudeHeavyDis.add_specification(screen_results)
-    # CrudeHeavyDis.run_after_specifications = True
-
-    # import numpy as np
-    # from exposan.saf.utils import find_Lr_Hr
-    # oil_fracs = [0.5316, 0.4684]
-    # Lr_range = np.arange(0.5, 1, 0.01)
-    # Hr_range = [0.89]
-    # # Hr_range = np.arange(0.85, 1, 0.05)
-    # results = find_Lr_Hr(CrudeHeavyDis, Lr_trial_range=Lr_range, Hr_trial_range=Hr_range)
-    # results = find_Lr_Hr(CrudeHeavyDis, target_light_frac=oil_fracs[0], Lr_trial_range=Lr_range, Hr_trial_range=Hr_range)
-    # results_df, Lr, Hr = results
+   
 
     BiofuelFlash = qsu.Flash('BiofuelFlash', ins=CrudeHeavyDis-0, outs=('', 'cooled_biofuel',),
                               T=298.15, P=101325)
