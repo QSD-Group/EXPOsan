@@ -1503,67 +1503,78 @@ class FePO4_recovery(SanUnit):
         self._AE = y_t
         
 class StruviteReactor(SanUnit):
-    """
-    Struvite precipitation reactor — dynamic-capable (AE unit).
+    """Dynamic-capable struvite precipitation and recovery unit.
 
-    Continuous flow reactor for upstream phosphorus removal from
-    source-separated urine in the EnviroLoo Clear MURT system.
-
-    Mixing is achieved via an air blower (aeration), consistent with the
-    EnviroLoo field reactor design (IC_P_Recovery_Overview). No mechanical
-    stirrer is used.
-
-    Two distinct, independently uncertain performance parameters:
-        eff_PO4_mgL  : fixed-target effluent PO4 concentration (mg/L),
-                       representing P removal from solution.
-        precip_yield : fraction of precipitated struvite captured as solid
-                       (harvest efficiency), representing how much of the
-                       precipitated mass is actually recovered vs. carried
-                       forward as unsettled fines (handled downstream by
-                       StruviteRedissolution).
-
-    Parameters loaded from _EL_SR.tsv (same approach as other EnviroLoo units):
-        tank_cost_per_m3, tank_lifetime
-        dosing_pump_cost, pump_lifetime
-        blower_cost, blower_lifetime, power_demand_blower
-        pipeline_connectors, pipeline_connectors_lifetime
-        weld_female_adapter_fittings, weld_female_adapter_fittings_lifetime
-        price_MgCl2_per_kg
-        eff_PO4_mgL, precip_yield
+    The unit has two explicit inlets and two outlets.
 
     Inputs
     ------
-    ins[0] : liquid influent (urine + MgCl2 dose, pre-mixed via Mixer)
+    ins[0]
+        Liquid sidestream to be treated (e.g., dewatering centrate).
+    ins[1]
+        MgCl2 dosing stream. In ``Mg_dosing_mode='external'`` the stream is
+        used as supplied. In ``Mg_dosing_mode='auto'`` the unit calculates the
+        required Mg dose and populates this stream for reporting.
 
     Outputs
     -------
-    outs[0] : struvite_recovered  — solid struvite product  (phase 's')
-    outs[1] : loss                — reserved, always zero   (phase 'l')
-    outs[2] : effluent            — liquid effluent          (phase 'l')
+    outs[0]
+        Recovered wet struvite product. It can also contain captured competing
+        precipitates and captured influent impurities.
+    outs[1]
+        Treated liquid effluent containing uncaptured precipitates.
+
+    Notes
+    -----
+    * ``eff_PO4_mgL`` remains an empirical soluble-P target.
+    * ``precip_yield`` is the fraction of formed struvite captured in the
+      product, not the fraction of soluble P precipitated.
+    * Concentrations of ``S_PO4``, ``S_NH4``, and ``S_Mg`` are assumed to be on
+      elemental P, N, and Mg bases, respectively.
+    * Competing precipitation is empirical but stoichiometrically and
+      reactant-limited. Set the competition fractions to zero to disable it.
     """
 
-    _N_ins  = 1
-    _N_outs = 3
-    _ins_size_is_fixed  = True
+    _N_ins = 2
+    _N_outs = 2
+    _ins_size_is_fixed = True
     _outs_size_is_fixed = True
     _neg_tol = -1e-9
 
     def __init__(
-                self, ID='', ins=None, outs=(), thermo=None, *,
-                component_ID_NH3='S_NH4',
-                component_ID_P='S_PO4',
-                component_ID_Mg='S_Mg',
-                component_ID_struvite='X_struv',
-                precip_yield,
-                eff_PO4_mgL,
-                HRT_hr=1.0,
-                init_with='WasteStream',
-                F_BM_default=None,
-                isdynamic=True,
-                dose_MgCl2_kg_d=None,
-                pH_ctrl=None,
-                **kwargs,
-                ):
+            self, ID='', ins=None, outs=(), thermo=None, *,
+            component_ID_NH3='S_NH4',
+            component_ID_P='S_PO4',
+            component_ID_Mg='S_Mg',
+            component_ID_Cl='S_Cl',
+            component_ID_Ca='S_Ca',
+            component_ID_IC='S_IC',
+            component_ID_struvite='X_struv',
+            component_ID_ACP='X_ACP',
+            component_ID_MgCO3='X_MgCO3',
+            precip_yield,
+            eff_PO4_mgL,
+            Mg_dosing_mode='auto',
+            target_Mg_P_molar_ratio=1.1,
+            MgCl2_purity=1.0,
+            ACP_P_fraction=0.0,
+            MgCO3_Mg_fraction=0.0,
+            competing_solid_capture_fraction=None,
+            impurity_capture_fractions=None,
+            product_moisture=0.0,
+            product_density_kg_m3=1200.0,
+            HRT_hr=1.0,
+            pH_ctrl=None,
+            strict_component_basis=True,
+            component_basis_rtol=0.05,
+            check_mass_balance=True,
+            mass_balance_rtol=1e-7,
+            mass_balance_atol_g_d=1e-3,
+            init_with='WasteStream',
+            F_BM_default=None,
+            isdynamic=True,
+            **kwargs,
+            ):
 
         super().__init__(
             ID=ID,
@@ -1574,200 +1585,600 @@ class StruviteReactor(SanUnit):
             isdynamic=isdynamic,
             F_BM_default=F_BM_default,
             **kwargs,
-            )
+        )
 
         self._component_ID_NH3 = component_ID_NH3
         self._component_ID_P = component_ID_P
         self._component_ID_Mg = component_ID_Mg
+        self._component_ID_Cl = component_ID_Cl
+        self._component_ID_Ca = component_ID_Ca
+        self._component_ID_IC = component_ID_IC
         self._component_ID_struvite = component_ID_struvite
-    
+        self._component_ID_ACP = component_ID_ACP
+        self._component_ID_MgCO3 = component_ID_MgCO3
+
         self.precip_yield = float(precip_yield)
         self.eff_PO4_mgL = float(eff_PO4_mgL)
+        self.Mg_dosing_mode = str(Mg_dosing_mode).lower()
+        self.target_Mg_P_molar_ratio = float(target_Mg_P_molar_ratio)
+        self.MgCl2_purity = float(MgCl2_purity)
+        self.ACP_P_fraction = float(ACP_P_fraction)
+        self.MgCO3_Mg_fraction = float(MgCO3_Mg_fraction)
+        self.competing_solid_capture_fraction = (
+            self.precip_yield if competing_solid_capture_fraction is None
+            else float(competing_solid_capture_fraction)
+        )
+        self.impurity_capture_fractions = dict(impurity_capture_fractions or {})
+        self.product_moisture = float(product_moisture)
+        self.product_density_kg_m3 = float(product_density_kg_m3)
         self.HRT_hr = float(HRT_hr)
         self.pH_ctrl = pH_ctrl
-        self.dose_MgCl2_kg_d = dose_MgCl2_kg_d
+        self.strict_component_basis = bool(strict_component_basis)
+        self.component_basis_rtol = float(component_basis_rtol)
+        self.check_mass_balance = bool(check_mass_balance)
+        self.mass_balance_rtol = float(mass_balance_rtol)
+        self.mass_balance_atol_g_d = float(mass_balance_atol_g_d)
 
-        if not 0 <= self.precip_yield <= 1:
-            raise ValueError(
-                f'precip_yield must be between 0 and 1; '
-                f'received {self.precip_yield}.'
-            )
-    
-        if self.eff_PO4_mgL < 0:
-            raise ValueError(
-                f'eff_PO4_mgL cannot be negative; '
-                f'received {self.eff_PO4_mgL}.'
-            )
-    
-        # Apply any optional additional attributes.
-        for attr, value in kwargs.items():
-            setattr(self, attr, value)
+        self.Mg_dose_kg_hr = 0.0
+        self.MgCl2_dose_kg_d = 0.0
+        self.dose_MgCl2_kg_d = 0.0  # backward-compatible alias
+        self.last_results = {}
+        self.last_mass_balance = {}
 
-        # -------------------------------------------------------------------
-        # STEP 2: Apply explicit constructor arguments AFTER the TSV load,
-        # so they correctly take precedence over the TSV default whenever
-        # they are explicitly provided (not None).
-        # -------------------------------------------------------------------
-        if precip_yield is not None:
-            self.precip_yield = float(precip_yield)
-        if eff_PO4_mgL is not None:
-            self.eff_PO4_mgL = float(eff_PO4_mgL)
-
-        # -------------------------------------------------------------------
-        # STEP 3: Apply any remaining **kwargs LAST, so they take final
-        # precedence over both the TSV and the explicit named arguments
-        # above (matches the override behavior of every other EL unit).
-        # -------------------------------------------------------------------
-        for attr, value in kwargs.items():
-            setattr(self, attr, value)
+        self._validate_parameters()
 
     # --- Component ID properties ---
     @property
-    def component_ID_NH3(self):      return self._component_ID_NH3
+    def component_ID_NH3(self): return self._component_ID_NH3
+
     @property
-    def component_ID_P(self):        return self._component_ID_P
+    def component_ID_P(self): return self._component_ID_P
+
     @property
-    def component_ID_Mg(self):       return self._component_ID_Mg
+    def component_ID_Mg(self): return self._component_ID_Mg
+
+    @property
+    def component_ID_Cl(self): return self._component_ID_Cl
+
+    @property
+    def component_ID_Ca(self): return self._component_ID_Ca
+
+    @property
+    def component_ID_IC(self): return self._component_ID_IC
+
     @property
     def component_ID_struvite(self): return self._component_ID_struvite
 
-    # -------------------------------------------------------------------------
-    # Static mass balance
-    # -------------------------------------------------------------------------
-    def _run(self):
-        influent, = self.ins
-        recovered, loss, effluent = self.outs
+    @property
+    def component_ID_ACP(self): return self._component_ID_ACP
 
-        recovered.phase = 's'
-        loss.phase      = 'l'
-        effluent.phase  = 'l'
+    @property
+    def component_ID_MgCO3(self): return self._component_ID_MgCO3
 
-        cmps = influent.components
-        IDs  = cmps.IDs
+    def _validate_parameters(self):
+        bounded = {
+            'precip_yield': self.precip_yield,
+            'ACP_P_fraction': self.ACP_P_fraction,
+            'MgCO3_Mg_fraction': self.MgCO3_Mg_fraction,
+            'competing_solid_capture_fraction': self.competing_solid_capture_fraction,
+        }
+        for name, value in bounded.items():
+            if not 0.0 <= value <= 1.0:
+                raise ValueError(f'{name} must be between 0 and 1; received {value}.')
 
-        P_id     = self.component_ID_P
-        NH4_id   = self.component_ID_NH3
-        Mg_id    = self.component_ID_Mg
+        for ID, fraction in self.impurity_capture_fractions.items():
+            if not 0.0 <= float(fraction) <= 1.0:
+                raise ValueError(
+                    f'impurity capture fraction for {ID!r} must be between 0 and 1; '
+                    f'received {fraction}.'
+                )
+
+        if self.eff_PO4_mgL < 0:
+            raise ValueError('eff_PO4_mgL cannot be negative.')
+        if self.target_Mg_P_molar_ratio < 0:
+            raise ValueError('target_Mg_P_molar_ratio cannot be negative.')
+        if not 0 < self.MgCl2_purity <= 1:
+            raise ValueError('MgCl2_purity must be greater than 0 and no greater than 1.')
+        if not 0 <= self.product_moisture < 1:
+            raise ValueError('product_moisture must be in [0, 1).')
+        if self.product_density_kg_m3 <= 0:
+            raise ValueError('product_density_kg_m3 must be positive.')
+        if self.Mg_dosing_mode not in ('auto', 'external'):
+            raise ValueError("Mg_dosing_mode must be either 'auto' or 'external'.")
+
+    def _validate_components(self, cmps):
+        IDs = set(cmps.IDs)
+        required = {
+            self.component_ID_NH3,
+            self.component_ID_P,
+            self.component_ID_Mg,
+            self.component_ID_struvite,
+        }
+        if self.Mg_dosing_mode == 'auto':
+            required.add(self.component_ID_Cl)
+        if self.ACP_P_fraction > 0:
+            required.update((self.component_ID_Ca, self.component_ID_ACP))
+        if self.MgCO3_Mg_fraction > 0:
+            required.update((self.component_ID_IC, self.component_ID_MgCO3))
+        required.update(self.impurity_capture_fractions)
+
+        missing = sorted(required.difference(IDs))
+        if missing:
+            raise ValueError(f'{self.ID}: missing required components: {missing}.')
+
+        if not self.strict_component_basis:
+            return
+
+        expected_MW = {
+            self.component_ID_P: 30.973761998,   # elemental P basis
+            self.component_ID_NH3: 14.0067,      # elemental N basis
+            self.component_ID_Mg: 24.305,        # elemental Mg basis
+            self.component_ID_struvite: 245.41,  # MgNH4PO4.6H2O
+        }
+        if self.ACP_P_fraction > 0:
+            expected_MW[self.component_ID_Ca] = 40.078
+        if self.MgCO3_Mg_fraction > 0:
+            expected_MW[self.component_ID_IC] = 12.011
+
+        for ID, expected in expected_MW.items():
+            actual = float(cmps[ID].MW)
+            if not np.isfinite(actual) or not np.isclose(
+                    actual, expected, rtol=self.component_basis_rtol, atol=0.0):
+                raise ValueError(
+                    f'{self.ID}: component {ID!r} has MW={actual:g}, but this unit '
+                    f'expects approximately {expected:g}. This usually means the '
+                    'component is not on the assumed elemental/compound mass basis.'
+                )
+
+    def _indices_and_MWs(self, cmps):
+        IDs = list(cmps.IDs)
+        index = {ID: i for i, ID in enumerate(IDs)}
+        MW = {ID: float(cmps[ID].MW) for ID in IDs}
+        return IDs, index, MW
+
+    def _auto_dose_vector(self, M_feed_g_d, Q_feed_m3_d, index, MW):
+        """Return auto-dose mass vector (g/d) and dose-water flow (m3/d)."""
+        n = len(M_feed_g_d)
+        M_dose = np.zeros(n, dtype=float)
+
+        idx_P = index[self.component_ID_P]
+        idx_Mg = index[self.component_ID_Mg]
+        idx_Cl = index[self.component_ID_Cl]
+        MW_P = MW[self.component_ID_P]
+        MW_Mg = MW[self.component_ID_Mg]
+
+        # Use the removable soluble-P load. The competition correction supplies
+        # enough Mg to retain the requested Mg:P ratio after empirical MgCO3 loss.
+        P_target_g_d = self.eff_PO4_mgL * max(Q_feed_m3_d, 1e-12)
+        P_removable_g_d = max(M_feed_g_d[idx_P] - P_target_g_d, 0.0)
+        P_for_struvite_g_d = P_removable_g_d * (1.0 - self.ACP_P_fraction)
+        mol_P_for_struvite_d = P_for_struvite_g_d / MW_P
+
+        available_fraction = max(1.0 - self.MgCO3_Mg_fraction, 1e-12)
+        mol_Mg_target_d = (
+            mol_P_for_struvite_d
+            * self.target_Mg_P_molar_ratio
+            / available_fraction
+        )
+        Mg_target_g_d = mol_Mg_target_d * MW_Mg
+        Mg_add_g_d = max(Mg_target_g_d - M_feed_g_d[idx_Mg], 0.0)
+
+        # Anhydrous MgCl2 molecular weight and chloride stoichiometry.
+        MW_Cl = 35.453
+        MW_MgCl2 = MW_Mg + 2.0 * MW_Cl
+        MgCl2_pure_g_d = Mg_add_g_d * MW_MgCl2 / MW_Mg
+        MgCl2_solution_g_d = MgCl2_pure_g_d / self.MgCl2_purity
+        carrier_water_g_d = max(MgCl2_solution_g_d - MgCl2_pure_g_d, 0.0)
+
+        M_dose[idx_Mg] = Mg_add_g_d
+        M_dose[idx_Cl] = Mg_add_g_d * (2.0 * MW_Cl / MW_Mg)
+
+        if 'H2O' in index:
+            M_dose[index['H2O']] = carrier_water_g_d
+
+        self.Mg_dose_kg_hr = Mg_add_g_d / 24.0 / 1000.0
+        self.MgCl2_dose_kg_d = MgCl2_solution_g_d / 1000.0
+        self.dose_MgCl2_kg_d = self.MgCl2_dose_kg_d
+
+        # Approximate carrier-water volume only; dissolved salt volume is ignored.
+        Q_dose_m3_d = carrier_water_g_d / 1e6
+        return M_dose, Q_dose_m3_d
+
+    def _set_auto_dose_stream(self, M_dose_g_d):
+        dose = self.ins[1]
+        dose.mass[:] = 0.0
+        dose.mass[:] = np.asarray(M_dose_g_d, dtype=float) / 24.0 / 1000.0
+        dose.phase = 'l'
+        if self.pH_ctrl is not None:
+            try:
+                dose.pH = self.pH_ctrl
+                dose._pH = self.pH_ctrl
+            except AttributeError:
+                pass
+
+    def _element_totals(self, M_g_d, index, MW):
+        """Return tracked elemental masses (g/d) from the selected species."""
+        P_id = self.component_ID_P
+        N_id = self.component_ID_NH3
+        Mg_id = self.component_ID_Mg
         struv_id = self.component_ID_struvite
 
-        MW_P   = cmps[P_id].MW
-        MW_NH4 = cmps[NH4_id].MW
-        MW_Mg  = cmps[Mg_id].MW
-        MW_STR = cmps[struv_id].MW
+        totals = {
+            'P': float(M_g_d[index[P_id]]),
+            'N': float(M_g_d[index[N_id]]),
+            'Mg': float(M_g_d[index[Mg_id]]),
+        }
 
-        effluent.mass[:]  = influent.mass
-        recovered.mass[:] = 0.0
-        loss.mass[:]      = 0.0
+        m_struv = float(M_g_d[index[struv_id]])
+        totals['P'] += m_struv * MW[P_id] / MW[struv_id]
+        totals['N'] += m_struv * MW[N_id] / MW[struv_id]
+        totals['Mg'] += m_struv * MW[Mg_id] / MW[struv_id]
 
-        if influent.state is not None:
-            Q = max(float(influent.state[-1]), 1e-12)
+        if self.component_ID_ACP in index:
+            acp_id = self.component_ID_ACP
+            m_acp = float(M_g_d[index[acp_id]])
+            totals['P'] += m_acp * (2.0 * MW[P_id]) / MW[acp_id]
+            if self.component_ID_Ca in index:
+                ca_id = self.component_ID_Ca
+                totals['Ca'] = float(M_g_d[index[ca_id]])
+                totals['Ca'] += m_acp * (3.0 * MW[ca_id]) / MW[acp_id]
+
+        if self.component_ID_MgCO3 in index:
+            mgco3_id = self.component_ID_MgCO3
+            m_mgco3 = float(M_g_d[index[mgco3_id]])
+            totals['Mg'] += m_mgco3 * MW[Mg_id] / MW[mgco3_id]
+            if self.component_ID_IC in index:
+                ic_id = self.component_ID_IC
+                totals['C'] = float(M_g_d[index[ic_id]])
+                totals['C'] += m_mgco3 * MW[ic_id] / MW[mgco3_id]
+
+        return totals
+
+    def _check_balances(self, M_in_g_d, M_product_g_d, M_eff_g_d, index, MW):
+        before = self._element_totals(M_in_g_d, index, MW)
+        after = self._element_totals(M_product_g_d + M_eff_g_d, index, MW)
+        errors = {}
+        failed = []
+
+        for element in sorted(set(before) | set(after)):
+            b = float(before.get(element, 0.0))
+            a = float(after.get(element, 0.0))
+            error = a - b
+            errors[element] = {
+                'in_g_d': b,
+                'out_g_d': a,
+                'error_g_d': error,
+            }
+            tol = self.mass_balance_atol_g_d + self.mass_balance_rtol * max(abs(b), 1.0)
+            if abs(error) > tol:
+                failed.append((element, error, tol))
+
+        total_in = float(np.sum(M_in_g_d))
+        total_out = float(np.sum(M_product_g_d) + np.sum(M_eff_g_d))
+        total_error = total_out - total_in
+        errors['TotalMass'] = {
+            'in_g_d': total_in,
+            'out_g_d': total_out,
+            'error_g_d': total_error,
+        }
+        total_tol = (
+            self.mass_balance_atol_g_d
+            + self.mass_balance_rtol * max(abs(total_in), 1.0)
+        )
+        if abs(total_error) > total_tol:
+            failed.append(('TotalMass', total_error, total_tol))
+
+        self.last_mass_balance = errors
+        if self.check_mass_balance and failed:
+            detail = ', '.join(
+                f'{element}: error={error:.6g} g/d (tol={tol:.6g})'
+                for element, error, tol in failed
+            )
+            raise RuntimeError(f'{self.ID}: elemental mass-balance failure: {detail}.')
+
+    def _calculate(self, M_feed_g_d, Q_feed_m3_d, M_dose_g_d, Q_dose_m3_d,
+                   index, MW):
+        """Calculate product and effluent mass flows in g/d."""
+        M_feed_g_d = np.maximum(np.asarray(M_feed_g_d, dtype=float), 0.0)
+
+        if self.Mg_dosing_mode == 'auto':
+            M_dose_g_d, Q_dose_m3_d = self._auto_dose_vector(
+                M_feed_g_d, Q_feed_m3_d, index, MW,
+            )
+            self._set_auto_dose_stream(M_dose_g_d)
         else:
-            Q = max(float(influent.F_vol) * 24.0, 1e-12)
+            M_dose_g_d = np.maximum(np.asarray(M_dose_g_d, dtype=float), 0.0)
+            self.Mg_dose_kg_hr = M_dose_g_d[index[self.component_ID_Mg]] / 24.0 / 1000.0
+            MW_Mg = MW[self.component_ID_Mg]
+            MW_Cl = 35.453
+            MW_MgCl2 = MW_Mg + 2.0 * MW_Cl
+            self.MgCl2_dose_kg_d = (
+                M_dose_g_d[index[self.component_ID_Mg]]
+                * MW_MgCl2 / MW_Mg
+                / self.MgCl2_purity
+                / 1000.0
+            )
+            self.dose_MgCl2_kg_d = self.MgCl2_dose_kg_d
 
-        C_PO4_in   = float(influent.iconc[P_id])   if P_id   in IDs else 0.0
-        C_NH4_in   = float(influent.iconc[NH4_id]) if NH4_id in IDs else 0.0
-        C_Mg_in    = float(influent.iconc[Mg_id])  if Mg_id  in IDs else 0.0
-        C_struv_in = float(influent.iconc[struv_id]) if struv_id in IDs else 0.0
+        M_in = M_feed_g_d + M_dose_g_d
+        Q_in = max(float(Q_feed_m3_d + Q_dose_m3_d), 1e-12)
+        M_eff = M_in.copy()
+        M_product = np.zeros_like(M_in)
 
-        if (C_PO4_in < self._neg_tol or
-            C_NH4_in < self._neg_tol or
-            C_Mg_in  < self._neg_tol):
+        P_id = self.component_ID_P
+        N_id = self.component_ID_NH3
+        Mg_id = self.component_ID_Mg
+        struv_id = self.component_ID_struvite
+        idx_P = index[P_id]
+        idx_N = index[N_id]
+        idx_Mg = index[Mg_id]
+        idx_struv = index[struv_id]
+
+        if (M_eff[idx_P] < self._neg_tol or
+                M_eff[idx_N] < self._neg_tol or
+                M_eff[idx_Mg] < self._neg_tol):
             raise ValueError(
-                f'{self.ID}: negative inlet concentration '
-                f'(PO4={C_PO4_in:g}, NH4={C_NH4_in:g}, Mg={C_Mg_in:g} mg/L).')
+                f'{self.ID}: negative reactive inlet load '
+                f'(P={M_eff[idx_P]:g}, N={M_eff[idx_N]:g}, '
+                f'Mg={M_eff[idx_Mg]:g} g/d).'
+            )
 
-        M_PO4_in   = C_PO4_in   * Q
-        M_NH4_in   = C_NH4_in   * Q
-        M_Mg_in    = C_Mg_in    * Q
-        M_struv_in = C_struv_in * Q
+        P_target_g_d = self.eff_PO4_mgL * Q_in
+        P_removal_request_g_d = max(M_eff[idx_P] - P_target_g_d, 0.0)
 
-        M_PO4_target_eff = self.eff_PO4_mgL * Q
-        M_PO4_req        = max(M_PO4_in - M_PO4_target_eff, 0.0)
+        # --- Competing calcium-phosphate precipitation (Ca3(PO4)2 basis) ---
+        ACP_formed_g_d = 0.0
+        P_to_ACP_g_d = 0.0
+        if self.ACP_P_fraction > 0.0:
+            Ca_id = self.component_ID_Ca
+            ACP_id = self.component_ID_ACP
+            idx_Ca = index[Ca_id]
+            idx_ACP = index[ACP_id]
+            mol_P_target = P_removal_request_g_d * self.ACP_P_fraction / MW[P_id]
+            mol_P_Ca_limit = (M_eff[idx_Ca] / MW[Ca_id]) / 1.5
+            mol_P_to_ACP = max(min(mol_P_target, mol_P_Ca_limit), 0.0)
+            mol_ACP = mol_P_to_ACP / 2.0
 
-        mol_form = max(min(
-            M_PO4_req / MW_P,
-            M_NH4_in  / MW_NH4,
-            M_Mg_in   / MW_Mg,
+            P_to_ACP_g_d = mol_P_to_ACP * MW[P_id]
+            Ca_to_ACP_g_d = 3.0 * mol_ACP * MW[Ca_id]
+            ACP_formed_g_d = mol_ACP * MW[ACP_id]
+
+            M_eff[idx_P] = max(M_eff[idx_P] - P_to_ACP_g_d, 0.0)
+            M_eff[idx_Ca] = max(M_eff[idx_Ca] - Ca_to_ACP_g_d, 0.0)
+            M_eff[idx_ACP] += ACP_formed_g_d
+
+        # --- Competing MgCO3 precipitation, limited by S_IC ---
+        MgCO3_formed_g_d = 0.0
+        if self.MgCO3_Mg_fraction > 0.0:
+            IC_id = self.component_ID_IC
+            MgCO3_id = self.component_ID_MgCO3
+            idx_IC = index[IC_id]
+            idx_MgCO3 = index[MgCO3_id]
+            mol_Mg_target = (
+                M_eff[idx_Mg] / MW[Mg_id]
+                * self.MgCO3_Mg_fraction
+            )
+            mol_IC_limit = M_eff[idx_IC] / MW[IC_id]
+            mol_MgCO3 = max(min(mol_Mg_target, mol_IC_limit), 0.0)
+
+            Mg_to_MgCO3_g_d = mol_MgCO3 * MW[Mg_id]
+            IC_to_MgCO3_g_d = mol_MgCO3 * MW[IC_id]
+            MgCO3_formed_g_d = mol_MgCO3 * MW[MgCO3_id]
+
+            M_eff[idx_Mg] = max(M_eff[idx_Mg] - Mg_to_MgCO3_g_d, 0.0)
+            M_eff[idx_IC] = max(M_eff[idx_IC] - IC_to_MgCO3_g_d, 0.0)
+            M_eff[idx_MgCO3] += MgCO3_formed_g_d
+
+        # Mineral components are represented on compound-mass bases, while
+        # S_PO4/S_NH4/S_Mg/S_Ca/S_IC are elemental-mass bases. The untracked
+        # O/H mass incorporated into the minerals is therefore withdrawn from
+        # H2O so that the full component mass balance closes.
+        mineral_matrix_water_g_d = 0.0
+        if ACP_formed_g_d > 0.0:
+            mineral_matrix_water_g_d += max(
+                ACP_formed_g_d - P_to_ACP_g_d - Ca_to_ACP_g_d, 0.0,
+            )
+        if MgCO3_formed_g_d > 0.0:
+            mineral_matrix_water_g_d += max(
+                MgCO3_formed_g_d - Mg_to_MgCO3_g_d - IC_to_MgCO3_g_d, 0.0,
+            )
+
+        # --- Struvite formation and capture ---
+        P_request_after_ACP_g_d = max(P_removal_request_g_d - P_to_ACP_g_d, 0.0)
+        mol_struvite = max(min(
+            P_request_after_ACP_g_d / MW[P_id],
+            M_eff[idx_N] / MW[N_id],
+            M_eff[idx_Mg] / MW[Mg_id],
         ), 0.0)
 
-        M_PO4_eff = max(M_PO4_in - mol_form * MW_P,   0.0)
-        M_NH4_eff = max(M_NH4_in - mol_form * MW_NH4, 0.0)
-        M_Mg_eff  = max(M_Mg_in  - mol_form * MW_Mg,  0.0)
+        P_to_struvite_g_d = mol_struvite * MW[P_id]
+        N_to_struvite_g_d = mol_struvite * MW[N_id]
+        Mg_to_struvite_g_d = mol_struvite * MW[Mg_id]
+        struvite_formed_g_d = mol_struvite * MW[struv_id]
+        mineral_matrix_water_g_d += max(
+            struvite_formed_g_d
+            - P_to_struvite_g_d
+            - N_to_struvite_g_d
+            - Mg_to_struvite_g_d,
+            0.0,
+        )
 
-        M_struv_total = M_struv_in + mol_form * MW_STR
-        frac_rec      = float(np.clip(self.precip_yield, 0.0, 1.0))
-        M_struv_rec   = M_struv_total * frac_rec
-        M_struv_unrec = M_struv_total * (1.0 - frac_rec)
+        if mineral_matrix_water_g_d > 0.0:
+            if 'H2O' not in index:
+                raise ValueError(
+                    f'{self.ID}: mineral formation requires an H2O component '
+                    'for compound-mass closure.'
+                )
+            idx_water = index['H2O']
+            if M_eff[idx_water] + self._neg_tol < mineral_matrix_water_g_d:
+                raise RuntimeError(
+                    f'{self.ID}: insufficient H2O for mineral mass closure.'
+                )
+            M_eff[idx_water] = max(
+                M_eff[idx_water] - mineral_matrix_water_g_d, 0.0,
+            )
 
-        effluent.copy_like(influent)
-        recovered.mass[:] = 0.0
-        loss.mass[:]      = 0.0
+        M_eff[idx_P] = max(M_eff[idx_P] - P_to_struvite_g_d, 0.0)
+        M_eff[idx_N] = max(M_eff[idx_N] - N_to_struvite_g_d, 0.0)
+        M_eff[idx_Mg] = max(M_eff[idx_Mg] - Mg_to_struvite_g_d, 0.0)
+        M_eff[idx_struv] += struvite_formed_g_d
 
-        effluent.imass[P_id]     = M_PO4_eff    / 24.0 / 1000.0
-        effluent.imass[NH4_id]   = M_NH4_eff    / 24.0 / 1000.0
-        effluent.imass[Mg_id]    = M_Mg_eff     / 24.0 / 1000.0
-        effluent.imass[struv_id] = M_struv_unrec / 24.0 / 1000.0
+        struvite_available_g_d = M_eff[idx_struv]
+        struvite_captured_g_d = struvite_available_g_d * self.precip_yield
+        M_product[idx_struv] += struvite_captured_g_d
+        M_eff[idx_struv] = struvite_available_g_d - struvite_captured_g_d
 
-        recovered.imass[struv_id] = M_struv_rec / 24.0 / 1000.0
-        for cmp in IDs:
-            if cmp != struv_id:
-                recovered.imass[cmp] = 0.0
+        # Capture competing solids as product impurities.
+        for solid_ID in (self.component_ID_ACP, self.component_ID_MgCO3):
+            if solid_ID not in index:
+                continue
+            idx = index[solid_ID]
+            captured = M_eff[idx] * self.competing_solid_capture_fraction
+            M_product[idx] += captured
+            M_eff[idx] -= captured
 
-        if 'H2O' in IDs:
-            w = recovered.imass['H2O']
-            if w > 0:
-                recovered.imass['H2O'] = 0.0
-                effluent.imass['H2O'] += w
+        # Capture user-selected influent/effluent solids as product impurities.
+        protected = {
+            struv_id,
+            self.component_ID_ACP,
+            self.component_ID_MgCO3,
+            'H2O',
+        }
+        for impurity_ID, fraction in self.impurity_capture_fractions.items():
+            if impurity_ID in protected:
+                continue
+            idx = index[impurity_ID]
+            captured = M_eff[idx] * float(fraction)
+            M_product[idx] += captured
+            M_eff[idx] -= captured
+
+        # Wet product: remove moisture from the liquid and add it to the product.
+        dry_product_g_d = float(M_product.sum())
+        product_water_g_d = 0.0
+        if self.product_moisture > 0.0 and dry_product_g_d > 0.0:
+            if 'H2O' not in index:
+                raise ValueError(
+                    f'{self.ID}: product_moisture requires an H2O component.'
+                )
+            idx_water = index['H2O']
+            product_water_g_d = (
+                dry_product_g_d
+                * self.product_moisture
+                / (1.0 - self.product_moisture)
+            )
+            if M_eff[idx_water] + self._neg_tol < product_water_g_d:
+                raise RuntimeError(
+                    f'{self.ID}: insufficient water to achieve the specified '
+                    f'product moisture ({self.product_moisture:.3f}).'
+                )
+            M_product[idx_water] += product_water_g_d
+            M_eff[idx_water] = max(M_eff[idx_water] - product_water_g_d, 0.0)
+
+        wet_product_kg_d = float(M_product.sum()) / 1000.0
+        Q_product_m3_d = wet_product_kg_d / self.product_density_kg_m3
+        # Only entrained liquid moisture is removed from the liquid hydraulic
+        # flow. Dry crystal volume is represented in the product stream but is
+        # not subtracted from the aqueous flow used for concentration targets.
+        Q_eff_m3_d = max(Q_in - product_water_g_d / 1e6, 1e-12)
+
+        self._check_balances(M_in, M_product, M_eff, index, MW)
+
+        self.last_results = {
+            'influent_flow_m3_d': Q_in,
+            'effluent_flow_m3_d': Q_eff_m3_d,
+            'Mg_dose_kg_hr': self.Mg_dose_kg_hr,
+            'MgCl2_dose_kg_d': self.MgCl2_dose_kg_d,
+            'P_removal_request_g_d': P_removal_request_g_d,
+            'P_to_ACP_g_d': P_to_ACP_g_d,
+            'ACP_formed_g_d': ACP_formed_g_d,
+            'MgCO3_formed_g_d': MgCO3_formed_g_d,
+            'struvite_formed_g_d': struvite_formed_g_d,
+            'struvite_captured_g_d': struvite_captured_g_d,
+            'dry_product_kg_d': dry_product_g_d / 1000.0,
+            'wet_product_kg_d': wet_product_kg_d,
+            'product_water_kg_d': product_water_g_d / 1000.0,
+            'mineral_matrix_water_kg_d': mineral_matrix_water_g_d / 1000.0,
+        }
+        return M_product, M_eff, Q_product_m3_d, Q_eff_m3_d
+
+    # ------------------------------------------------------------------
+    # Static mass balance
+    # ------------------------------------------------------------------
+    def _run(self):
+        feed, dose = self.ins
+        product, effluent = self.outs
+        product.phase = 's'
+        effluent.phase = 'l'
+
+        cmps = feed.components
+        self._validate_components(cmps)
+        IDs, index, MW = self._indices_and_MWs(cmps)
+
+        M_feed_g_d = np.asarray(feed.mass, dtype=float) * 24.0 * 1000.0
+        M_dose_g_d = np.asarray(dose.mass, dtype=float) * 24.0 * 1000.0
+        Q_feed_m3_d = max(float(feed.F_vol) * 24.0, 1e-12)
+        Q_dose_m3_d = max(float(dose.F_vol) * 24.0, 0.0)
+
+        M_product, M_eff, _, _ = self._calculate(
+            M_feed_g_d, Q_feed_m3_d,
+            M_dose_g_d, Q_dose_m3_d,
+            index, MW,
+        )
+
+        product.mass[:] = M_product / 24.0 / 1000.0
+        effluent.mass[:] = M_eff / 24.0 / 1000.0
 
         if self.pH_ctrl is not None:
-            for ws in (recovered, loss, effluent):
+            for ws in (product, effluent):
                 try:
-                    ws.pH  = self.pH_ctrl
+                    ws.pH = self.pH_ctrl
                     ws._pH = self.pH_ctrl
                 except AttributeError:
                     pass
 
-    # -------------------------------------------------------------------------
-    # Dynamic methods — AE
-    # -------------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Dynamic algebraic evaluation
+    # ------------------------------------------------------------------
     def _init_state(self):
-        eff = self.outs[2]
-        n   = len(self.components)
-        self._state      = np.empty(n + 1)
-        self._state[:-1] = eff.conc
-        self._state[-1]  = max(eff.F_vol * 24, 1e-12)
-        self._dstate     = np.zeros(n + 1)
+        product, effluent = self.outs
+        n = len(self.components)
 
-        dummy = np.zeros(n + 1)
-        dummy[-1] = 1e-12
-        for ws in (self.outs[0], self.outs[1]):
-            if ws.state  is None: ws.state  = dummy.copy()
-            else:                 ws.state[:]  = dummy
-            if ws.dstate is None: ws.dstate = np.zeros(n + 1)
-            else:                 ws.dstate[:] = 0.0
+        self._product_state = np.zeros(n + 1)
+        self._product_dstate = np.zeros(n + 1)
+        self._effluent_state = np.zeros(n + 1)
+        self._effluent_dstate = np.zeros(n + 1)
 
-        if eff.state  is None: eff.state  = self._state.copy()
-        else:                  eff.state[:]  = self._state
-        if eff.dstate is None: eff.dstate = self._dstate.copy()
-        else:                  eff.dstate[:] = self._dstate
+        self._product_state[:-1] = product.conc
+        self._product_state[-1] = max(float(product.F_vol) * 24.0, 1e-12)
+        self._effluent_state[:-1] = effluent.conc
+        self._effluent_state[-1] = max(float(effluent.F_vol) * 24.0, 1e-12)
+
+        self._state = self._effluent_state
+        self._dstate = self._effluent_dstate
+        self._update_state()
+        self._update_dstate()
 
     def _update_state(self):
-        dummy = np.zeros_like(self._state)
-        dummy[-1] = 1e-12
-        for ws in (self.outs[0], self.outs[1]):
-            if ws.state is None: ws.state = dummy.copy()
-            else:                ws.state[:] = dummy
-        eff = self.outs[2]
-        if eff.state is None: eff.state = self._state.copy()
-        else:                 eff.state[:] = self._state
+        product, effluent = self.outs
+        if product.state is None:
+            product.state = self._product_state.copy()
+        else:
+            product.state[:] = self._product_state
+        if effluent.state is None:
+            effluent.state = self._effluent_state.copy()
+        else:
+            effluent.state[:] = self._effluent_state
 
     def _update_dstate(self):
-        for ws in (self.outs[0], self.outs[1]):
-            if ws.dstate is None: ws.dstate = np.zeros_like(self._dstate)
-            else:                 ws.dstate[:] = 0.0
-        eff = self.outs[2]
-        if eff.dstate is None: eff.dstate = self._dstate.copy()
-        else:                  eff.dstate[:] = self._dstate
+        product, effluent = self.outs
+        if product.dstate is None:
+            product.dstate = self._product_dstate.copy()
+        else:
+            product.dstate[:] = self._product_dstate
+        if effluent.dstate is None:
+            effluent.dstate = self._effluent_dstate.copy()
+        else:
+            effluent.dstate[:] = self._effluent_dstate
 
     @property
     def AE(self):
@@ -1776,201 +2187,65 @@ class StruviteReactor(SanUnit):
         return self._AE
 
     def _compile_AE(self):
-        _state         = self._state
-        _dstate        = self._dstate
-        _update_state  = self._update_state
-        _update_dstate = self._update_dstate
-
         cmps = self.components
-        IDs  = list(cmps.IDs)
+        self._validate_components(cmps)
+        IDs, index, MW = self._indices_and_MWs(cmps)
 
-        idx_P     = IDs.index(self.component_ID_P)
-        idx_NH4   = IDs.index(self.component_ID_NH3)
-        idx_Mg    = IDs.index(self.component_ID_Mg)
-        idx_struv = IDs.index(self.component_ID_struvite)
-
-        MW_P    = cmps[self.component_ID_P].MW
-        MW_NH4  = cmps[self.component_ID_NH3].MW
-        MW_Mg   = cmps[self.component_ID_Mg].MW
-        MW_STR  = cmps[self.component_ID_struvite].MW
-
-        eff_PO4_gm3 = self.eff_PO4_mgL
-        frac_rec    = float(np.clip(self.precip_yield, 0.0, 1.0))
-        frac_unrec  = 1.0 - frac_rec
+        product_state = self._product_state
+        product_dstate = self._product_dstate
+        effluent_state = self._effluent_state
+        effluent_dstate = self._effluent_dstate
+        update_state = self._update_state
+        update_dstate = self._update_dstate
 
         def y_t(t, y_ins, dy_ins):
-            Q_in  = max(y_ins[0, -1], 1e-12)
-            C_in  = y_ins[0, :-1]
-            dQ_in = dy_ins[0, -1]
+            Q_feed = max(float(y_ins[0, -1]), 1e-12)
+            Q_dose = max(float(y_ins[1, -1]), 0.0)
+            M_feed = np.maximum(y_ins[0, :-1], 0.0) * Q_feed
+            M_dose = np.maximum(y_ins[1, :-1], 0.0) * Q_dose
 
-            M_in = C_in * Q_in
+            M_product, M_eff, Q_product, Q_eff = self._calculate(
+                M_feed, Q_feed, M_dose, Q_dose, index, MW,
+            )
 
-            m_PO4_target_eff = eff_PO4_gm3 * Q_in
-            m_PO4_req = max(M_in[idx_P] - m_PO4_target_eff, 0.0)
+            product_state[:-1] = M_product / max(Q_product, 1e-12)
+            product_state[-1] = max(Q_product, 1e-12)
+            effluent_state[:-1] = M_eff / max(Q_eff, 1e-12)
+            effluent_state[-1] = max(Q_eff, 1e-12)
 
-            mol_form = max(min(
-                m_PO4_req        / MW_P,
-                M_in[idx_NH4]    / MW_NH4,
-                M_in[idx_Mg]     / MW_Mg,
-            ), 0.0)
+            # This remains an algebraic unit. Product derivatives are set to zero;
+            # the effluent flow derivative follows the combined inlet flow.
+            product_dstate[:] = 0.0
+            effluent_dstate[:-1] = 0.0
+            effluent_dstate[-1] = float(dy_ins[:, -1].sum())
 
-            m_PO4_eff  = max(M_in[idx_P]   - mol_form * MW_P,   0.0)
-            m_NH4_eff  = max(M_in[idx_NH4] - mol_form * MW_NH4, 0.0)
-            m_Mg_eff   = max(M_in[idx_Mg]  - mol_form * MW_Mg,  0.0)
-
-            m_struv_total = M_in[idx_struv] + mol_form * MW_STR
-            m_struv_un    = m_struv_total * frac_unrec
-
-            C_eff            = C_in.copy()
-            C_eff[C_eff < 1e-12] = 1e-12
-            C_eff[idx_P]     = m_PO4_eff  / Q_in
-            C_eff[idx_NH4]   = m_NH4_eff  / Q_in
-            C_eff[idx_Mg]    = m_Mg_eff   / Q_in
-            C_eff[idx_struv] = m_struv_un / Q_in
-
-            _state[:-1] = C_eff
-            _state[-1]  = max(Q_in, 1e-9)
-            _dstate[:-1] = 0.0
-            _dstate[-1]  = dQ_in
-
-            _update_state()
-            _update_dstate()
+            update_state()
+            update_dstate()
 
         self._AE = y_t
 
-    # -------------------------------------------------------------------------
-    # Utility methods
-    # -------------------------------------------------------------------------
-    def report_recovery(unit):
-        ws_in  = unit.ins[0]
-        ws_eff = unit.outs[2]
+    # ------------------------------------------------------------------
+    # User-facing diagnostics (no printing)
+    # ------------------------------------------------------------------
+    def get_recovery_results(self):
+        """Return the latest reactor diagnostics as a plain dictionary."""
+        results = dict(self.last_results)
+        results['mass_balance'] = dict(self.last_mass_balance)
+        return results
 
-        cmps     = unit.components
-        P_id     = unit.component_ID_P
-        NH4_id   = unit.component_ID_NH3
-        Mg_id    = unit.component_ID_Mg
-        struv_id = unit.component_ID_struvite
-
-        MW_P   = cmps[P_id].MW
-        MW_NH4 = cmps[NH4_id].MW
-        MW_Mg  = cmps[Mg_id].MW
-        MW_STR = cmps[struv_id].MW
-
-        Q_m3_d = (max(float(ws_in.state[-1]), 1e-12)
-                  if ws_in.state is not None
-                  else max(float(ws_in.F_vol) * 24.0, 1e-12))
-
-        C_PO4_in  = float(ws_in.iconc[P_id])
-        C_NH4_in  = float(ws_in.iconc[NH4_id])
-        C_Mg_in   = float(ws_in.iconc[Mg_id])
-        C_PO4_eff = float(ws_eff.iconc[P_id])
-        C_NH4_eff = float(ws_eff.iconc[NH4_id])
-        C_Mg_eff  = float(ws_eff.iconc[Mg_id])
-
-        removal_P = (max((C_PO4_in - C_PO4_eff) / C_PO4_in, 0.0)
-                     if C_PO4_in > 1e-12 else 0.0)
-
-        M_PO4_req   = max(C_PO4_in*Q_m3_d - unit.eff_PO4_mgL*Q_m3_d, 0.0)
-        mol_form    = max(min(M_PO4_req/MW_P,
-                              C_NH4_in*Q_m3_d/MW_NH4,
-                              C_Mg_in*Q_m3_d/MW_Mg), 0.0)
-        C_STR_in    = float(ws_in.iconc[struv_id])
-        M_struv_rec = (C_STR_in*Q_m3_d + mol_form*MW_STR) * float(
-            np.clip(unit.precip_yield, 0, 1))
-
-        tank_vol = unit.design_results.get(
-            'Tank_volume_m3', unit.HRT_hr * float(unit.ins[0].F_vol))
-
-        print("\n===== STRUVITE REACTOR SUMMARY =====")
-        print(f"Q urine (m3/d)          : {Q_m3_d:.3f}")
-        print(f"Tank volume (m3)        : {tank_vol:.4f}  [HRT={unit.HRT_hr} hr]")
-        print(f"Inlet  PO4  (mg/L)      : {C_PO4_in:.3f}")
-        print(f"Inlet  NH4  (mg/L)      : {C_NH4_in:.3f}")
-        print(f"Inlet  Mg   (mg/L)      : {C_Mg_in:.3f}")
-        print(f"Effluent PO4 (mg/L)     : {C_PO4_eff:.3f}")
-        print(f"Effluent NH4 (mg/L)     : {C_NH4_eff:.3f}")
-        print(f"Effluent Mg  (mg/L)     : {C_Mg_eff:.3f}")
-        print(f"P removal               : {removal_P*100:.1f}%")
-        print(f"Struvite recovered(g/hr): {M_struv_rec/24:.3f}")
-        print(f"MgCl2 dose (kg/d)       : {unit.dose_MgCl2_kg_d:.4f}")
-        print(f"eff_PO4_mgL (target)    : {unit.eff_PO4_mgL}")
-        print(f"precip_yield            : {unit.precip_yield}")
-        print(f"tank_cost_per_m3 (USD)  : {unit.tank_cost_per_m3}")
-        print(f"dosing_pump_cost (USD)  : {unit.dosing_pump_cost}")
-        print(f"blower_cost (USD)       : {unit.blower_cost}")
-        print(f"power_demand_blower     : {unit.power_demand_blower} kWh/day")
-        print(f"price_MgCl2 (USD/kg)    : {unit.price_MgCl2_per_kg}")
-        print("=====================================\n")
-        
-    def update_product_stream(unit):
-        ws_in = unit.ins[0]
-        recovered, loss, effluent = unit.outs
-
-        cmps     = unit.components
-        P_id     = unit.component_ID_P
-        NH4_id   = unit.component_ID_NH3
-        Mg_id    = unit.component_ID_Mg
-        struv_id = unit.component_ID_struvite
-
-        MW_P   = cmps[P_id].MW
-        MW_NH4 = cmps[NH4_id].MW
-        MW_Mg  = cmps[Mg_id].MW
-        MW_STR = cmps[struv_id].MW
-
-        Q_m3_d = (max(float(ws_in.state[-1]), 1e-12)
-                  if ws_in.state is not None
-                  else max(float(ws_in.F_vol) * 24.0, 1e-12))
-
-        C_PO4_in  = float(ws_in.iconc[P_id])
-        C_NH4_in  = float(ws_in.iconc[NH4_id])
-        C_Mg_in   = float(ws_in.iconc[Mg_id])
-        C_STR_in  = float(ws_in.iconc[struv_id])
-
-        M_PO4_req   = max(C_PO4_in*Q_m3_d - unit.eff_PO4_mgL*Q_m3_d, 0.0)
-        mol_form    = max(min(M_PO4_req/MW_P,
-                              C_NH4_in*Q_m3_d/MW_NH4,
-                              C_Mg_in*Q_m3_d/MW_Mg), 0.0)
-        M_struv_rec = (C_STR_in*Q_m3_d + mol_form*MW_STR) * float(
-            np.clip(unit.precip_yield, 0, 1))
-
-        recovered.mass[:] = 0.0
-        if struv_id in recovered.components.IDs:
-            recovered.imass[struv_id] = M_struv_rec / 24.0 / 1000.0
-            
     def _design(self):
         pass
 
     def _cost(self):
         pass
 
-# %%
-# =============================================================================
-# StruviteRedissolution
-#
-# Dissolves residual unsettled X_struv particles (from SR effluent) back
-# into S_PO4, S_NH4, S_Mg using Shrinking Object model kinetics.
-# No capital or operating cost — minor unit, no separate TSV file needed.
-#
-# References:
-#     Aguiar 2019 (Shrinking Object model kinetics)
-# =============================================================================
 
 class StruviteRedissolution(SanUnit):
-    """
-    Struvite redissolution unit — dynamic-capable (AE unit).
+    """Dynamic-capable redissolution of residual struvite fines."""
 
-    Dissolves residual unsettled X_struv particles (from SR effluent)
-    back into S_PO4, S_NH4, S_Mg using Shrinking Object model kinetics.
-
-    No capital or operating cost — minor unit, no separate TSV file needed.
-
-    References:
-        Aguiar 2019 (Shrinking Object model kinetics)
-    """
-
-    _N_ins  = 1
+    _N_ins = 1
     _N_outs = 1
-    _ins_size_is_fixed  = True
+    _ins_size_is_fixed = True
     _outs_size_is_fixed = True
     _neg_tol = -1e-9
 
@@ -1987,30 +2262,33 @@ class StruviteRedissolution(SanUnit):
                  **kwargs):
 
         super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo,
-                         init_with='WasteStream',
-                         isdynamic=isdynamic,
-                         **kwargs)
+                         init_with='WasteStream', isdynamic=isdynamic, **kwargs)
 
-        self._component_ID_P        = component_ID_P
-        self._component_ID_NH3      = component_ID_NH3
-        self._component_ID_Mg       = component_ID_Mg
+        self._component_ID_P = component_ID_P
+        self._component_ID_NH3 = component_ID_NH3
+        self._component_ID_Mg = component_ID_Mg
         self._component_ID_struvite = component_ID_struvite
 
-        self.k_max   = float(k_max)
-        self.d_p     = float(d_p)
+        self.k_max = float(k_max)
+        self.d_p = float(d_p)
         self.HRT_min = float(HRT_min)
         self.pH_ctrl = pH_ctrl
 
-        R0           = self.d_p / 2.0
-        t_diss       = R0 / self.k_max
-        self._f_diss = float(np.clip(1.0 - np.exp(-self.HRT_min / t_diss), 0.0, 1.0))
+        R0 = self.d_p / 2.0
+        t_diss = R0 / self.k_max
+        self._f_diss = float(np.clip(
+            1.0 - np.exp(-self.HRT_min / t_diss), 0.0, 1.0,
+        ))
 
     @property
-    def component_ID_P(self):        return self._component_ID_P
+    def component_ID_P(self): return self._component_ID_P
+
     @property
-    def component_ID_NH3(self):      return self._component_ID_NH3
+    def component_ID_NH3(self): return self._component_ID_NH3
+
     @property
-    def component_ID_Mg(self):       return self._component_ID_Mg
+    def component_ID_Mg(self): return self._component_ID_Mg
+
     @property
     def component_ID_struvite(self): return self._component_ID_struvite
 
@@ -2021,53 +2299,65 @@ class StruviteRedissolution(SanUnit):
         if 'H2O' in influent.components.IDs:
             effluent.imass['H2O'] = max(float(effluent.imass['H2O']), 1e-9)
 
-        cmps   = influent.components
-        MW_P   = cmps[self.component_ID_P].MW
+        cmps = influent.components
+        MW_P = cmps[self.component_ID_P].MW
         MW_NH4 = cmps[self.component_ID_NH3].MW
-        MW_Mg  = cmps[self.component_ID_Mg].MW
+        MW_Mg = cmps[self.component_ID_Mg].MW
         MW_STR = cmps[self.component_ID_struvite].MW
 
         m_struv_in = float(influent.imass[self.component_ID_struvite])
         if m_struv_in < self._neg_tol:
             raise ValueError(
-                f'{self.ID}: negative influent struvite ({m_struv_in:g} kg/hr).')
+                f'{self.ID}: negative influent struvite ({m_struv_in:g} kg/hr).'
+            )
 
         m_struv_diss = m_struv_in * self._f_diss
-        mol_diss     = m_struv_diss / MW_STR
+        mol_diss = m_struv_diss / MW_STR
 
-        effluent.imass[self.component_ID_P]        += mol_diss * MW_P
-        effluent.imass[self.component_ID_NH3]      += mol_diss * MW_NH4
-        effluent.imass[self.component_ID_Mg]       += mol_diss * MW_Mg
-        effluent.imass[self.component_ID_struvite]  = max(m_struv_in - m_struv_diss, 0.0)
+        effluent.imass[self.component_ID_P] += mol_diss * MW_P
+        effluent.imass[self.component_ID_NH3] += mol_diss * MW_NH4
+        effluent.imass[self.component_ID_Mg] += mol_diss * MW_Mg
+        if 'H2O' in influent.components.IDs:
+            matrix_mass = max(MW_STR - MW_P - MW_NH4 - MW_Mg, 0.0)
+            effluent.imass['H2O'] += mol_diss * matrix_mass
+        effluent.imass[self.component_ID_struvite] = max(
+            m_struv_in - m_struv_diss, 0.0,
+        )
 
         if self.pH_ctrl is not None:
             try:
-                effluent.pH  = self.pH_ctrl
+                effluent.pH = self.pH_ctrl
                 effluent._pH = self.pH_ctrl
             except AttributeError:
                 pass
 
     def _init_state(self):
         eff = self.outs[0]
-        n   = len(self.components)
-        self._state      = np.empty(n + 1)
+        n = len(self.components)
+        self._state = np.empty(n + 1)
         self._state[:-1] = eff.conc
-        self._state[-1]  = max(eff.F_vol * 24, 1e-12)
-        self._dstate     = np.zeros(n + 1)
-        if eff.state  is None: eff.state  = self._state.copy()
-        if eff.dstate is None: eff.dstate = self._dstate.copy()
-        eff.state[:]  = self._state
+        self._state[-1] = max(eff.F_vol * 24, 1e-12)
+        self._dstate = np.zeros(n + 1)
+        if eff.state is None:
+            eff.state = self._state.copy()
+        if eff.dstate is None:
+            eff.dstate = self._dstate.copy()
+        eff.state[:] = self._state
         eff.dstate[:] = self._dstate
 
     def _update_state(self):
         eff = self.outs[0]
-        if eff.state is None: eff.state = self._state.copy()
-        else:                 eff.state[:] = self._state
+        if eff.state is None:
+            eff.state = self._state.copy()
+        else:
+            eff.state[:] = self._state
 
     def _update_dstate(self):
         eff = self.outs[0]
-        if eff.dstate is None: eff.dstate = self._dstate.copy()
-        else:                  eff.dstate[:] = self._dstate
+        if eff.dstate is None:
+            eff.dstate = self._dstate.copy()
+        else:
+            eff.dstate[:] = self._dstate
 
     @property
     def AE(self):
@@ -2076,56 +2366,62 @@ class StruviteRedissolution(SanUnit):
         return self._AE
 
     def _compile_AE(self):
-        _state         = self._state
-        _dstate        = self._dstate
-        _update_state  = self._update_state
+        _state = self._state
+        _dstate = self._dstate
+        _update_state = self._update_state
         _update_dstate = self._update_dstate
 
         cmps = self.components
-        IDs  = list(cmps.IDs)
+        IDs = list(cmps.IDs)
 
-        idx_P     = IDs.index(self.component_ID_P)
-        idx_NH4   = IDs.index(self.component_ID_NH3)
-        idx_Mg    = IDs.index(self.component_ID_Mg)
+        idx_P = IDs.index(self.component_ID_P)
+        idx_NH4 = IDs.index(self.component_ID_NH3)
+        idx_Mg = IDs.index(self.component_ID_Mg)
         idx_struv = IDs.index(self.component_ID_struvite)
+        idx_H2O = IDs.index('H2O') if 'H2O' in IDs else None
 
-        MW_P   = cmps[self.component_ID_P].MW
+        MW_P = cmps[self.component_ID_P].MW
         MW_NH4 = cmps[self.component_ID_NH3].MW
-        MW_Mg  = cmps[self.component_ID_Mg].MW
+        MW_Mg = cmps[self.component_ID_Mg].MW
         MW_STR = cmps[self.component_ID_struvite].MW
 
-        f_diss    = self._f_diss
-        f_rem     = 1.0 - f_diss
-        ratio_P   = f_diss * MW_P   / MW_STR
+        f_diss = self._f_diss
+        f_rem = 1.0 - f_diss
+        ratio_P = f_diss * MW_P / MW_STR
         ratio_NH4 = f_diss * MW_NH4 / MW_STR
-        ratio_Mg  = f_diss * MW_Mg  / MW_STR
+        ratio_Mg = f_diss * MW_Mg / MW_STR
+        ratio_H2O = f_diss * max(MW_STR - MW_P - MW_NH4 - MW_Mg, 0.0) / MW_STR
 
         def y_t(t, y_ins, dy_ins):
-            Q_in  = max(y_ins[0, -1],  1e-12)
-            C_in  = y_ins[0, :-1]
+            Q_in = max(y_ins[0, -1], 1e-12)
+            C_in = y_ins[0, :-1]
             dQ_in = dy_ins[0, -1]
             dC_in = dy_ins[0, :-1]
 
-            c_struv  = C_in[idx_struv]
+            c_struv = C_in[idx_struv]
             dc_struv = dC_in[idx_struv]
 
-            C_eff             = C_in.copy()
-            C_eff[idx_P]     += ratio_P   * c_struv
-            C_eff[idx_NH4]   += ratio_NH4 * c_struv
-            C_eff[idx_Mg]    += ratio_Mg  * c_struv
-            C_eff[idx_struv]  = f_rem * c_struv
+            C_eff = C_in.copy()
+            C_eff[idx_P] += ratio_P * c_struv
+            C_eff[idx_NH4] += ratio_NH4 * c_struv
+            C_eff[idx_Mg] += ratio_Mg * c_struv
+            if idx_H2O is not None:
+                C_eff[idx_H2O] += ratio_H2O * c_struv
+            C_eff[idx_struv] = f_rem * c_struv
 
             _state[:-1] = C_eff
-            _state[-1]  = Q_in
+            _state[-1] = Q_in
 
-            dC_eff             = dC_in.copy()
-            dC_eff[idx_P]     += ratio_P   * dc_struv
-            dC_eff[idx_NH4]   += ratio_NH4 * dc_struv
-            dC_eff[idx_Mg]    += ratio_Mg  * dc_struv
-            dC_eff[idx_struv]  = f_rem * dc_struv
+            dC_eff = dC_in.copy()
+            dC_eff[idx_P] += ratio_P * dc_struv
+            dC_eff[idx_NH4] += ratio_NH4 * dc_struv
+            dC_eff[idx_Mg] += ratio_Mg * dc_struv
+            if idx_H2O is not None:
+                dC_eff[idx_H2O] += ratio_H2O * dc_struv
+            dC_eff[idx_struv] = f_rem * dc_struv
 
             _dstate[:-1] = dC_eff
-            _dstate[-1]  = dQ_in
+            _dstate[-1] = dQ_in
 
             _update_state()
             _update_dstate()
@@ -2133,7 +2429,7 @@ class StruviteRedissolution(SanUnit):
         self._AE = y_t
 
     def _design(self):
-        pass  # no capital cost
+        pass
 
 # components in the system:
 # CO2: just TEA + LCA
