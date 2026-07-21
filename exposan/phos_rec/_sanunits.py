@@ -11,6 +11,8 @@ This module is developed by:
     
     Saumitra Rai <raisaumitra9@gmail.com>
     
+    Rishabh Puri <rp34@illinois.edu>
+    
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
@@ -1499,6 +1501,618 @@ class FePO4_recovery(SanUnit):
             _update_dstate()
 
         self._AE = y_t
+        
+class StruviteReactor(SanUnit):
+    """
+    Struvite precipitation reactor — dynamic-capable (AE unit).
+
+    Continuous flow reactor for upstream phosphorus removal from
+    source-separated urine in the EnviroLoo Clear MURT system.
+
+    Mixing is achieved via an air blower (aeration), consistent with the
+    EnviroLoo field reactor design (IC_P_Recovery_Overview). No mechanical
+    stirrer is used.
+
+    Two distinct, independently uncertain performance parameters:
+        eff_PO4_mgL  : fixed-target effluent PO4 concentration (mg/L),
+                       representing P removal from solution.
+        precip_yield : fraction of precipitated struvite captured as solid
+                       (harvest efficiency), representing how much of the
+                       precipitated mass is actually recovered vs. carried
+                       forward as unsettled fines (handled downstream by
+                       StruviteRedissolution).
+
+    Parameters loaded from _EL_SR.tsv (same approach as other EnviroLoo units):
+        tank_cost_per_m3, tank_lifetime
+        dosing_pump_cost, pump_lifetime
+        blower_cost, blower_lifetime, power_demand_blower
+        pipeline_connectors, pipeline_connectors_lifetime
+        weld_female_adapter_fittings, weld_female_adapter_fittings_lifetime
+        price_MgCl2_per_kg
+        eff_PO4_mgL, precip_yield
+
+    Inputs
+    ------
+    ins[0] : liquid influent (urine + MgCl2 dose, pre-mixed via Mixer)
+
+    Outputs
+    -------
+    outs[0] : struvite_recovered  — solid struvite product  (phase 's')
+    outs[1] : loss                — reserved, always zero   (phase 'l')
+    outs[2] : effluent            — liquid effluent          (phase 'l')
+    """
+
+    _N_ins  = 1
+    _N_outs = 3
+    _ins_size_is_fixed  = True
+    _outs_size_is_fixed = True
+    _neg_tol = -1e-9
+
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, *,
+                 component_ID_NH3='S_NH4',
+                 component_ID_P='S_PO4',
+                 component_ID_Mg='S_Mg',
+                 component_ID_struvite='X_struv',
+                 precip_yield=None,
+                 eff_PO4_mgL=None,
+                 HRT_hr=1.0,
+                 init_with='WasteStream',
+                 F_BM_default=None,
+                 isdynamic=True,
+                 dose_MgCl2_kg_d=None,
+                 pH_ctrl=None,
+                 **kwargs):
+
+        super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo,
+                         init_with=init_with, isdynamic=isdynamic,
+                         F_BM_default=F_BM_default, **kwargs)
+
+        self._component_ID_NH3      = component_ID_NH3
+        self._component_ID_P        = component_ID_P
+        self._component_ID_Mg       = component_ID_Mg
+        self._component_ID_struvite = component_ID_struvite
+
+        self.HRT_hr          = float(HRT_hr)
+        self.pH_ctrl         = pH_ctrl
+        self.dose_MgCl2_kg_d = dose_MgCl2_kg_d
+
+        # -------------------------------------------------------------------
+        # STEP 1: Load ALL parameters from _EL_SR.tsv FIRST as defaults.
+        # This includes eff_PO4_mgL and precip_yield among all other rows.
+        # Same pattern as EL_CT, EL_PC, EL_Anoxic etc.
+        # -------------------------------------------------------------------
+        data = load_data(path=SR_data_path)
+        for para in data.index:
+            value = float(data.loc[para]['expected'])
+            setattr(self, para, value)
+        del data
+
+        # -------------------------------------------------------------------
+        # STEP 2: Apply explicit constructor arguments AFTER the TSV load,
+        # so they correctly take precedence over the TSV default whenever
+        # they are explicitly provided (not None).
+        # -------------------------------------------------------------------
+        if precip_yield is not None:
+            self.precip_yield = float(precip_yield)
+        if eff_PO4_mgL is not None:
+            self.eff_PO4_mgL = float(eff_PO4_mgL)
+
+        # -------------------------------------------------------------------
+        # STEP 3: Apply any remaining **kwargs LAST, so they take final
+        # precedence over both the TSV and the explicit named arguments
+        # above (matches the override behavior of every other EL unit).
+        # -------------------------------------------------------------------
+        for attr, value in kwargs.items():
+            setattr(self, attr, value)
+
+    # --- Component ID properties ---
+    @property
+    def component_ID_NH3(self):      return self._component_ID_NH3
+    @property
+    def component_ID_P(self):        return self._component_ID_P
+    @property
+    def component_ID_Mg(self):       return self._component_ID_Mg
+    @property
+    def component_ID_struvite(self): return self._component_ID_struvite
+
+    # -------------------------------------------------------------------------
+    # Static mass balance
+    # -------------------------------------------------------------------------
+    def _run(self):
+        influent, = self.ins
+        recovered, loss, effluent = self.outs
+
+        recovered.phase = 's'
+        loss.phase      = 'l'
+        effluent.phase  = 'l'
+
+        cmps = influent.components
+        IDs  = cmps.IDs
+
+        P_id     = self.component_ID_P
+        NH4_id   = self.component_ID_NH3
+        Mg_id    = self.component_ID_Mg
+        struv_id = self.component_ID_struvite
+
+        MW_P   = cmps[P_id].MW
+        MW_NH4 = cmps[NH4_id].MW
+        MW_Mg  = cmps[Mg_id].MW
+        MW_STR = cmps[struv_id].MW
+
+        effluent.mass[:]  = influent.mass
+        recovered.mass[:] = 0.0
+        loss.mass[:]      = 0.0
+
+        if influent.state is not None:
+            Q = max(float(influent.state[-1]), 1e-12)
+        else:
+            Q = max(float(influent.F_vol) * 24.0, 1e-12)
+
+        C_PO4_in   = float(influent.iconc[P_id])   if P_id   in IDs else 0.0
+        C_NH4_in   = float(influent.iconc[NH4_id]) if NH4_id in IDs else 0.0
+        C_Mg_in    = float(influent.iconc[Mg_id])  if Mg_id  in IDs else 0.0
+        C_struv_in = float(influent.iconc[struv_id]) if struv_id in IDs else 0.0
+
+        if (C_PO4_in < self._neg_tol or
+            C_NH4_in < self._neg_tol or
+            C_Mg_in  < self._neg_tol):
+            raise ValueError(
+                f'{self.ID}: negative inlet concentration '
+                f'(PO4={C_PO4_in:g}, NH4={C_NH4_in:g}, Mg={C_Mg_in:g} mg/L).')
+
+        M_PO4_in   = C_PO4_in   * Q
+        M_NH4_in   = C_NH4_in   * Q
+        M_Mg_in    = C_Mg_in    * Q
+        M_struv_in = C_struv_in * Q
+
+        M_PO4_target_eff = self.eff_PO4_mgL * Q
+        M_PO4_req        = max(M_PO4_in - M_PO4_target_eff, 0.0)
+
+        mol_form = max(min(
+            M_PO4_req / MW_P,
+            M_NH4_in  / MW_NH4,
+            M_Mg_in   / MW_Mg,
+        ), 0.0)
+
+        M_PO4_eff = max(M_PO4_in - mol_form * MW_P,   0.0)
+        M_NH4_eff = max(M_NH4_in - mol_form * MW_NH4, 0.0)
+        M_Mg_eff  = max(M_Mg_in  - mol_form * MW_Mg,  0.0)
+
+        M_struv_total = M_struv_in + mol_form * MW_STR
+        frac_rec      = float(np.clip(self.precip_yield, 0.0, 1.0))
+        M_struv_rec   = M_struv_total * frac_rec
+        M_struv_unrec = M_struv_total * (1.0 - frac_rec)
+
+        effluent.copy_like(influent)
+        recovered.mass[:] = 0.0
+        loss.mass[:]      = 0.0
+
+        effluent.imass[P_id]     = M_PO4_eff    / 24.0 / 1000.0
+        effluent.imass[NH4_id]   = M_NH4_eff    / 24.0 / 1000.0
+        effluent.imass[Mg_id]    = M_Mg_eff     / 24.0 / 1000.0
+        effluent.imass[struv_id] = M_struv_unrec / 24.0 / 1000.0
+
+        recovered.imass[struv_id] = M_struv_rec / 24.0 / 1000.0
+        for cmp in IDs:
+            if cmp != struv_id:
+                recovered.imass[cmp] = 0.0
+
+        if 'H2O' in IDs:
+            w = recovered.imass['H2O']
+            if w > 0:
+                recovered.imass['H2O'] = 0.0
+                effluent.imass['H2O'] += w
+
+        if self.pH_ctrl is not None:
+            for ws in (recovered, loss, effluent):
+                try:
+                    ws.pH  = self.pH_ctrl
+                    ws._pH = self.pH_ctrl
+                except AttributeError:
+                    pass
+
+    # -------------------------------------------------------------------------
+    # Dynamic methods — AE
+    # -------------------------------------------------------------------------
+    def _init_state(self):
+        eff = self.outs[2]
+        n   = len(self.components)
+        self._state      = np.empty(n + 1)
+        self._state[:-1] = eff.conc
+        self._state[-1]  = max(eff.F_vol * 24, 1e-12)
+        self._dstate     = np.zeros(n + 1)
+
+        dummy = np.zeros(n + 1)
+        dummy[-1] = 1e-12
+        for ws in (self.outs[0], self.outs[1]):
+            if ws.state  is None: ws.state  = dummy.copy()
+            else:                 ws.state[:]  = dummy
+            if ws.dstate is None: ws.dstate = np.zeros(n + 1)
+            else:                 ws.dstate[:] = 0.0
+
+        if eff.state  is None: eff.state  = self._state.copy()
+        else:                  eff.state[:]  = self._state
+        if eff.dstate is None: eff.dstate = self._dstate.copy()
+        else:                  eff.dstate[:] = self._dstate
+
+    def _update_state(self):
+        dummy = np.zeros_like(self._state)
+        dummy[-1] = 1e-12
+        for ws in (self.outs[0], self.outs[1]):
+            if ws.state is None: ws.state = dummy.copy()
+            else:                ws.state[:] = dummy
+        eff = self.outs[2]
+        if eff.state is None: eff.state = self._state.copy()
+        else:                 eff.state[:] = self._state
+
+    def _update_dstate(self):
+        for ws in (self.outs[0], self.outs[1]):
+            if ws.dstate is None: ws.dstate = np.zeros_like(self._dstate)
+            else:                 ws.dstate[:] = 0.0
+        eff = self.outs[2]
+        if eff.dstate is None: eff.dstate = self._dstate.copy()
+        else:                  eff.dstate[:] = self._dstate
+
+    @property
+    def AE(self):
+        if self._AE is None:
+            self._compile_AE()
+        return self._AE
+
+    def _compile_AE(self):
+        _state         = self._state
+        _dstate        = self._dstate
+        _update_state  = self._update_state
+        _update_dstate = self._update_dstate
+
+        cmps = self.components
+        IDs  = list(cmps.IDs)
+
+        idx_P     = IDs.index(self.component_ID_P)
+        idx_NH4   = IDs.index(self.component_ID_NH3)
+        idx_Mg    = IDs.index(self.component_ID_Mg)
+        idx_struv = IDs.index(self.component_ID_struvite)
+
+        MW_P    = cmps[self.component_ID_P].MW
+        MW_NH4  = cmps[self.component_ID_NH3].MW
+        MW_Mg   = cmps[self.component_ID_Mg].MW
+        MW_STR  = cmps[self.component_ID_struvite].MW
+
+        eff_PO4_gm3 = self.eff_PO4_mgL
+        frac_rec    = float(np.clip(self.precip_yield, 0.0, 1.0))
+        frac_unrec  = 1.0 - frac_rec
+
+        def y_t(t, y_ins, dy_ins):
+            Q_in  = max(y_ins[0, -1], 1e-12)
+            C_in  = y_ins[0, :-1]
+            dQ_in = dy_ins[0, -1]
+
+            M_in = C_in * Q_in
+
+            m_PO4_target_eff = eff_PO4_gm3 * Q_in
+            m_PO4_req = max(M_in[idx_P] - m_PO4_target_eff, 0.0)
+
+            mol_form = max(min(
+                m_PO4_req        / MW_P,
+                M_in[idx_NH4]    / MW_NH4,
+                M_in[idx_Mg]     / MW_Mg,
+            ), 0.0)
+
+            m_PO4_eff  = max(M_in[idx_P]   - mol_form * MW_P,   0.0)
+            m_NH4_eff  = max(M_in[idx_NH4] - mol_form * MW_NH4, 0.0)
+            m_Mg_eff   = max(M_in[idx_Mg]  - mol_form * MW_Mg,  0.0)
+
+            m_struv_total = M_in[idx_struv] + mol_form * MW_STR
+            m_struv_un    = m_struv_total * frac_unrec
+
+            C_eff            = C_in.copy()
+            C_eff[C_eff < 1e-12] = 1e-12
+            C_eff[idx_P]     = m_PO4_eff  / Q_in
+            C_eff[idx_NH4]   = m_NH4_eff  / Q_in
+            C_eff[idx_Mg]    = m_Mg_eff   / Q_in
+            C_eff[idx_struv] = m_struv_un / Q_in
+
+            _state[:-1] = C_eff
+            _state[-1]  = max(Q_in, 1e-9)
+            _dstate[:-1] = 0.0
+            _dstate[-1]  = dQ_in
+
+            _update_state()
+            _update_dstate()
+
+        self._AE = y_t
+
+    # -------------------------------------------------------------------------
+    # Utility methods
+    # -------------------------------------------------------------------------
+    def report_recovery(unit):
+        ws_in  = unit.ins[0]
+        ws_eff = unit.outs[2]
+
+        cmps     = unit.components
+        P_id     = unit.component_ID_P
+        NH4_id   = unit.component_ID_NH3
+        Mg_id    = unit.component_ID_Mg
+        struv_id = unit.component_ID_struvite
+
+        MW_P   = cmps[P_id].MW
+        MW_NH4 = cmps[NH4_id].MW
+        MW_Mg  = cmps[Mg_id].MW
+        MW_STR = cmps[struv_id].MW
+
+        Q_m3_d = (max(float(ws_in.state[-1]), 1e-12)
+                  if ws_in.state is not None
+                  else max(float(ws_in.F_vol) * 24.0, 1e-12))
+
+        C_PO4_in  = float(ws_in.iconc[P_id])
+        C_NH4_in  = float(ws_in.iconc[NH4_id])
+        C_Mg_in   = float(ws_in.iconc[Mg_id])
+        C_PO4_eff = float(ws_eff.iconc[P_id])
+        C_NH4_eff = float(ws_eff.iconc[NH4_id])
+        C_Mg_eff  = float(ws_eff.iconc[Mg_id])
+
+        removal_P = (max((C_PO4_in - C_PO4_eff) / C_PO4_in, 0.0)
+                     if C_PO4_in > 1e-12 else 0.0)
+
+        M_PO4_req   = max(C_PO4_in*Q_m3_d - unit.eff_PO4_mgL*Q_m3_d, 0.0)
+        mol_form    = max(min(M_PO4_req/MW_P,
+                              C_NH4_in*Q_m3_d/MW_NH4,
+                              C_Mg_in*Q_m3_d/MW_Mg), 0.0)
+        C_STR_in    = float(ws_in.iconc[struv_id])
+        M_struv_rec = (C_STR_in*Q_m3_d + mol_form*MW_STR) * float(
+            np.clip(unit.precip_yield, 0, 1))
+
+        tank_vol = unit.design_results.get(
+            'Tank_volume_m3', unit.HRT_hr * float(unit.ins[0].F_vol))
+
+        print("\n===== STRUVITE REACTOR SUMMARY =====")
+        print(f"Q urine (m3/d)          : {Q_m3_d:.3f}")
+        print(f"Tank volume (m3)        : {tank_vol:.4f}  [HRT={unit.HRT_hr} hr]")
+        print(f"Inlet  PO4  (mg/L)      : {C_PO4_in:.3f}")
+        print(f"Inlet  NH4  (mg/L)      : {C_NH4_in:.3f}")
+        print(f"Inlet  Mg   (mg/L)      : {C_Mg_in:.3f}")
+        print(f"Effluent PO4 (mg/L)     : {C_PO4_eff:.3f}")
+        print(f"Effluent NH4 (mg/L)     : {C_NH4_eff:.3f}")
+        print(f"Effluent Mg  (mg/L)     : {C_Mg_eff:.3f}")
+        print(f"P removal               : {removal_P*100:.1f}%")
+        print(f"Struvite recovered(g/hr): {M_struv_rec/24:.3f}")
+        print(f"MgCl2 dose (kg/d)       : {unit.dose_MgCl2_kg_d:.4f}")
+        print(f"eff_PO4_mgL (target)    : {unit.eff_PO4_mgL}")
+        print(f"precip_yield            : {unit.precip_yield}")
+        print(f"tank_cost_per_m3 (USD)  : {unit.tank_cost_per_m3}")
+        print(f"dosing_pump_cost (USD)  : {unit.dosing_pump_cost}")
+        print(f"blower_cost (USD)       : {unit.blower_cost}")
+        print(f"power_demand_blower     : {unit.power_demand_blower} kWh/day")
+        print(f"price_MgCl2 (USD/kg)    : {unit.price_MgCl2_per_kg}")
+        print("=====================================\n")
+
+    def update_product_stream(unit):
+        ws_in = unit.ins[0]
+        recovered, loss, effluent = unit.outs
+
+        cmps     = unit.components
+        P_id     = unit.component_ID_P
+        NH4_id   = unit.component_ID_NH3
+        Mg_id    = unit.component_ID_Mg
+        struv_id = unit.component_ID_struvite
+
+        MW_P   = cmps[P_id].MW
+        MW_NH4 = cmps[NH4_id].MW
+        MW_Mg  = cmps[Mg_id].MW
+        MW_STR = cmps[struv_id].MW
+
+        Q_m3_d = (max(float(ws_in.state[-1]), 1e-12)
+                  if ws_in.state is not None
+                  else max(float(ws_in.F_vol) * 24.0, 1e-12))
+
+        C_PO4_in  = float(ws_in.iconc[P_id])
+        C_NH4_in  = float(ws_in.iconc[NH4_id])
+        C_Mg_in   = float(ws_in.iconc[Mg_id])
+        C_STR_in  = float(ws_in.iconc[struv_id])
+
+        M_PO4_req   = max(C_PO4_in*Q_m3_d - unit.eff_PO4_mgL*Q_m3_d, 0.0)
+        mol_form    = max(min(M_PO4_req/MW_P,
+                              C_NH4_in*Q_m3_d/MW_NH4,
+                              C_Mg_in*Q_m3_d/MW_Mg), 0.0)
+        M_struv_rec = (C_STR_in*Q_m3_d + mol_form*MW_STR) * float(
+            np.clip(unit.precip_yield, 0, 1))
+
+        recovered.mass[:] = 0.0
+        if struv_id in recovered.components.IDs:
+            recovered.imass[struv_id] = M_struv_rec / 24.0 / 1000.0
+
+
+# %%
+# =============================================================================
+# StruviteRedissolution
+#
+# Dissolves residual unsettled X_struv particles (from SR effluent) back
+# into S_PO4, S_NH4, S_Mg using Shrinking Object model kinetics.
+# No capital or operating cost — minor unit, no separate TSV file needed.
+#
+# References:
+#     Aguiar 2019 (Shrinking Object model kinetics)
+# =============================================================================
+
+class StruviteRedissolution(SanUnit):
+    """
+    Struvite redissolution unit — dynamic-capable (AE unit).
+
+    Dissolves residual unsettled X_struv particles (from SR effluent)
+    back into S_PO4, S_NH4, S_Mg using Shrinking Object model kinetics.
+
+    No capital or operating cost — minor unit, no separate TSV file needed.
+
+    References:
+        Aguiar 2019 (Shrinking Object model kinetics)
+    """
+
+    _N_ins  = 1
+    _N_outs = 1
+    _ins_size_is_fixed  = True
+    _outs_size_is_fixed = True
+    _neg_tol = -1e-9
+
+    def __init__(self, ID='', ins=None, outs=(), thermo=None, *,
+                 component_ID_P='S_PO4',
+                 component_ID_NH3='S_NH4',
+                 component_ID_Mg='S_Mg',
+                 component_ID_struvite='X_struv',
+                 k_max=2.61,
+                 d_p=0.3,
+                 HRT_min=5.0,
+                 isdynamic=True,
+                 pH_ctrl=None,
+                 **kwargs):
+
+        super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo,
+                         init_with='WasteStream',
+                         isdynamic=isdynamic,
+                         **kwargs)
+
+        self._component_ID_P        = component_ID_P
+        self._component_ID_NH3      = component_ID_NH3
+        self._component_ID_Mg       = component_ID_Mg
+        self._component_ID_struvite = component_ID_struvite
+
+        self.k_max   = float(k_max)
+        self.d_p     = float(d_p)
+        self.HRT_min = float(HRT_min)
+        self.pH_ctrl = pH_ctrl
+
+        R0           = self.d_p / 2.0
+        t_diss       = R0 / self.k_max
+        self._f_diss = float(np.clip(1.0 - np.exp(-self.HRT_min / t_diss), 0.0, 1.0))
+
+    @property
+    def component_ID_P(self):        return self._component_ID_P
+    @property
+    def component_ID_NH3(self):      return self._component_ID_NH3
+    @property
+    def component_ID_Mg(self):       return self._component_ID_Mg
+    @property
+    def component_ID_struvite(self): return self._component_ID_struvite
+
+    def _run(self):
+        influent, = self.ins
+        effluent, = self.outs
+        effluent.copy_like(influent)
+        if 'H2O' in influent.components.IDs:
+            effluent.imass['H2O'] = max(float(effluent.imass['H2O']), 1e-9)
+
+        cmps   = influent.components
+        MW_P   = cmps[self.component_ID_P].MW
+        MW_NH4 = cmps[self.component_ID_NH3].MW
+        MW_Mg  = cmps[self.component_ID_Mg].MW
+        MW_STR = cmps[self.component_ID_struvite].MW
+
+        m_struv_in = float(influent.imass[self.component_ID_struvite])
+        if m_struv_in < self._neg_tol:
+            raise ValueError(
+                f'{self.ID}: negative influent struvite ({m_struv_in:g} kg/hr).')
+
+        m_struv_diss = m_struv_in * self._f_diss
+        mol_diss     = m_struv_diss / MW_STR
+
+        effluent.imass[self.component_ID_P]        += mol_diss * MW_P
+        effluent.imass[self.component_ID_NH3]      += mol_diss * MW_NH4
+        effluent.imass[self.component_ID_Mg]       += mol_diss * MW_Mg
+        effluent.imass[self.component_ID_struvite]  = max(m_struv_in - m_struv_diss, 0.0)
+
+        if self.pH_ctrl is not None:
+            try:
+                effluent.pH  = self.pH_ctrl
+                effluent._pH = self.pH_ctrl
+            except AttributeError:
+                pass
+
+    def _init_state(self):
+        eff = self.outs[0]
+        n   = len(self.components)
+        self._state      = np.empty(n + 1)
+        self._state[:-1] = eff.conc
+        self._state[-1]  = max(eff.F_vol * 24, 1e-12)
+        self._dstate     = np.zeros(n + 1)
+        if eff.state  is None: eff.state  = self._state.copy()
+        if eff.dstate is None: eff.dstate = self._dstate.copy()
+        eff.state[:]  = self._state
+        eff.dstate[:] = self._dstate
+
+    def _update_state(self):
+        eff = self.outs[0]
+        if eff.state is None: eff.state = self._state.copy()
+        else:                 eff.state[:] = self._state
+
+    def _update_dstate(self):
+        eff = self.outs[0]
+        if eff.dstate is None: eff.dstate = self._dstate.copy()
+        else:                  eff.dstate[:] = self._dstate
+
+    @property
+    def AE(self):
+        if self._AE is None:
+            self._compile_AE()
+        return self._AE
+
+    def _compile_AE(self):
+        _state         = self._state
+        _dstate        = self._dstate
+        _update_state  = self._update_state
+        _update_dstate = self._update_dstate
+
+        cmps = self.components
+        IDs  = list(cmps.IDs)
+
+        idx_P     = IDs.index(self.component_ID_P)
+        idx_NH4   = IDs.index(self.component_ID_NH3)
+        idx_Mg    = IDs.index(self.component_ID_Mg)
+        idx_struv = IDs.index(self.component_ID_struvite)
+
+        MW_P   = cmps[self.component_ID_P].MW
+        MW_NH4 = cmps[self.component_ID_NH3].MW
+        MW_Mg  = cmps[self.component_ID_Mg].MW
+        MW_STR = cmps[self.component_ID_struvite].MW
+
+        f_diss    = self._f_diss
+        f_rem     = 1.0 - f_diss
+        ratio_P   = f_diss * MW_P   / MW_STR
+        ratio_NH4 = f_diss * MW_NH4 / MW_STR
+        ratio_Mg  = f_diss * MW_Mg  / MW_STR
+
+        def y_t(t, y_ins, dy_ins):
+            Q_in  = max(y_ins[0, -1],  1e-12)
+            C_in  = y_ins[0, :-1]
+            dQ_in = dy_ins[0, -1]
+            dC_in = dy_ins[0, :-1]
+
+            c_struv  = C_in[idx_struv]
+            dc_struv = dC_in[idx_struv]
+
+            C_eff             = C_in.copy()
+            C_eff[idx_P]     += ratio_P   * c_struv
+            C_eff[idx_NH4]   += ratio_NH4 * c_struv
+            C_eff[idx_Mg]    += ratio_Mg  * c_struv
+            C_eff[idx_struv]  = f_rem * c_struv
+
+            _state[:-1] = C_eff
+            _state[-1]  = Q_in
+
+            dC_eff             = dC_in.copy()
+            dC_eff[idx_P]     += ratio_P   * dc_struv
+            dC_eff[idx_NH4]   += ratio_NH4 * dc_struv
+            dC_eff[idx_Mg]    += ratio_Mg  * dc_struv
+            dC_eff[idx_struv]  = f_rem * dc_struv
+
+            _dstate[:-1] = dC_eff
+            _dstate[-1]  = dQ_in
+
+            _update_state()
+            _update_dstate()
+
+        self._AE = y_t
+
+    def _design(self):
+        pass  # no capital cost
 
 # components in the system:
 # CO2: just TEA + LCA
