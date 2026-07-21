@@ -154,29 +154,30 @@ def create_g1_system(flowsheet=None, default_init_conds=True):
     S_Mg=9.51,
     )
     
-    MMg = su.Mixer(
-    'MMg',
-    ins=(DW-0, Mg),
-    outs='struvite_feed',
-    )
+    MgCl2_dose = WasteStream('MgCl2_dose', T=Temp,)
 
     SR = psu.StruviteReactor(
     'SR',
-    ins=MMg-0,
-    outs=(
-        'struvite',
-        'SR_loss',
-        'SR_effluent',
-    ),
-    eff_PO4_mgL=6.55,    # assumption
-    precip_yield=0.70,   # assumption
+    ins=(DW-0, MgCl2_dose),
+    outs=('struvite', 'SR_effluent'),
+    eff_PO4_mgL=6.55,
+    precip_yield=0.70,
+    Mg_dosing_mode='auto',
+    target_Mg_P_molar_ratio=1.1,
+    MgCl2_purity=1.0,
     HRT_hr=1.0,
     isdynamic=True,
+
+    # Leave at zero until supported values are selected.
+    ACP_P_fraction=0.0,
+    MgCO3_Mg_fraction=0.0,
+    impurity_capture_fractions={},
+    product_moisture=0.0,
     )
     
     SRD = psu.StruviteRedissolution(
     'SRD',
-    ins=SR-2,
+    ins=SR-1,
     outs='SRD_effluent',
     isdynamic=True,
     k_max=2.61,
@@ -204,7 +205,7 @@ def create_g1_system(flowsheet=None, default_init_conds=True):
     sys = qs.System(
         ID, 
         path=(PC, GT, S1, A1, A2, A3, A4, O5, O6, FC, 
-              MT, M1, J1, AD, J2, DW, MMg, SR, SRD, M2, HD),
+              MT, M1, J1, AD, J2, DW, SR, SRD, M2, HD),
         recycle=(O6-0, FC-1, HD-0)
         # path=(PC, GT, ASR, FC, MT, M1, J1, AD, J2, DW, M2, HD),
         # recycle=(FC-1, HD-0)
@@ -250,12 +251,7 @@ if __name__ == '__main__':
     run(sys, t, t_step, method=method)
     fs = sys.flowsheet.stream
     fu = sys.flowsheet.unit
-    fu.SR.update_product_stream()
-    print(
-        'Struvite flow:',
-        fs.struvite.imass['X_struv'],
-        'kg/hr',
-    )
+    
     sys.diagram()
     fig, axis = fs.SE.scope.plot_time_series(('S_A', 'S_F', 'X_S', 'S_NH4', 'X_I', 'S_I', 'S_N2')) 
     fig
