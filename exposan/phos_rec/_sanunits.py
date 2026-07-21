@@ -1548,44 +1548,60 @@ class StruviteReactor(SanUnit):
     _outs_size_is_fixed = True
     _neg_tol = -1e-9
 
-    def __init__(self, ID='', ins=None, outs=(), thermo=None, *,
-                 component_ID_NH3='S_NH4',
-                 component_ID_P='S_PO4',
-                 component_ID_Mg='S_Mg',
-                 component_ID_struvite='X_struv',
-                 precip_yield=None,
-                 eff_PO4_mgL=None,
-                 HRT_hr=1.0,
-                 init_with='WasteStream',
-                 F_BM_default=None,
-                 isdynamic=True,
-                 dose_MgCl2_kg_d=None,
-                 pH_ctrl=None,
-                 **kwargs):
+    def __init__(
+                self, ID='', ins=None, outs=(), thermo=None, *,
+                component_ID_NH3='S_NH4',
+                component_ID_P='S_PO4',
+                component_ID_Mg='S_Mg',
+                component_ID_struvite='X_struv',
+                precip_yield,
+                eff_PO4_mgL,
+                HRT_hr=1.0,
+                init_with='WasteStream',
+                F_BM_default=None,
+                isdynamic=True,
+                dose_MgCl2_kg_d=None,
+                pH_ctrl=None,
+                **kwargs,
+                ):
 
-        super().__init__(ID=ID, ins=ins, outs=outs, thermo=thermo,
-                         init_with=init_with, isdynamic=isdynamic,
-                         F_BM_default=F_BM_default, **kwargs)
+        super().__init__(
+            ID=ID,
+            ins=ins,
+            outs=outs,
+            thermo=thermo,
+            init_with=init_with,
+            isdynamic=isdynamic,
+            F_BM_default=F_BM_default,
+            **kwargs,
+            )
 
-        self._component_ID_NH3      = component_ID_NH3
-        self._component_ID_P        = component_ID_P
-        self._component_ID_Mg       = component_ID_Mg
+        self._component_ID_NH3 = component_ID_NH3
+        self._component_ID_P = component_ID_P
+        self._component_ID_Mg = component_ID_Mg
         self._component_ID_struvite = component_ID_struvite
-
-        self.HRT_hr          = float(HRT_hr)
-        self.pH_ctrl         = pH_ctrl
+    
+        self.precip_yield = float(precip_yield)
+        self.eff_PO4_mgL = float(eff_PO4_mgL)
+        self.HRT_hr = float(HRT_hr)
+        self.pH_ctrl = pH_ctrl
         self.dose_MgCl2_kg_d = dose_MgCl2_kg_d
 
-        # -------------------------------------------------------------------
-        # STEP 1: Load ALL parameters from _EL_SR.tsv FIRST as defaults.
-        # This includes eff_PO4_mgL and precip_yield among all other rows.
-        # Same pattern as EL_CT, EL_PC, EL_Anoxic etc.
-        # -------------------------------------------------------------------
-        data = load_data(path=SR_data_path)
-        for para in data.index:
-            value = float(data.loc[para]['expected'])
-            setattr(self, para, value)
-        del data
+        if not 0 <= self.precip_yield <= 1:
+            raise ValueError(
+                f'precip_yield must be between 0 and 1; '
+                f'received {self.precip_yield}.'
+            )
+    
+        if self.eff_PO4_mgL < 0:
+            raise ValueError(
+                f'eff_PO4_mgL cannot be negative; '
+                f'received {self.eff_PO4_mgL}.'
+            )
+    
+        # Apply any optional additional attributes.
+        for attr, value in kwargs.items():
+            setattr(self, attr, value)
 
         # -------------------------------------------------------------------
         # STEP 2: Apply explicit constructor arguments AFTER the TSV load,
