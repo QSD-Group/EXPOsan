@@ -9,6 +9,8 @@ This module is developed by:
     
     Jianan Feng <jiananf2@illinois.edu>
     
+    Saumitra Rai <raisaumitra9@gmail.com>
+    
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
@@ -55,23 +57,19 @@ def create_g1_system(flowsheet=None, default_init_conds=True):
     
     rww = default_rww()
     carb = WasteStream('carbon', T=Temp, units='kg/hr', S_A=85)
-    
-    # TODO: need to adjust metal_dosage
-    MD = su.MetalDosage.from_mASM2d(
-        'MD', ins=rww, model=asm,
-        metal_ID='X_FeOH', metal_dosage=19
-        )
-    
+
     PC = su.PrimaryClarifier(
-        'PC', ins=[MD-0, 'reject'], 
+        'PC', ins=[rww, 'reject'], 
         outs=('PE', 'PS'),
         isdynamic=True, 
         sludge_flow_rate=0.074*MGD2cmd,
         solids_removal_efficiency=0.6
         )
     
-    PR = psu.FePO4_recovery(
-        'PR', ins=[PC-1, 'food_waste'], outs=['FePO4', 'PR_effluent', 'PR_cake', 'PR_gas'], isdynamic=True
+    GT = su.IdealClarifier(
+        'GT', PC-1, outs=['', 'thickened_PS'],
+        sludge_flow_rate=0.026*MGD2cmd,
+        solids_removal_efficiency=0.9,
         )
     
     n_zones = 6
@@ -92,7 +90,7 @@ def create_g1_system(flowsheet=None, default_init_conds=True):
     O5 = su.CSTR('O5', A4-0, V_max=V_tot*fr_V[4], **ae_kwargs)
     O6 = su.CSTR('O6', O5-0, [1-A3, 'treated'], split=[40, 14],
                   V_max=V_tot*fr_V[5], **ae_kwargs)
-    
+
     # ASR = su.PFR(
     #     'ASR', ins=[PC-0, 'RAS', carb], outs='treated', 
     #     N_tanks_in_series=n_zones,
@@ -123,12 +121,13 @@ def create_g1_system(flowsheet=None, default_init_conds=True):
         sludge_flow_rate=0.0241*MGD2cmd,
         solids_removal_efficiency=0.95,
         )
+    M1 = su.Mixer('M1', ins=(GT-1, MT-1))
         
     pc.create_adm1p_cmps()
     thermo_adm = qs.get_thermo()
     adm = pc.ADM1p(kLa=10.0)
     
-    J1 = su.mASM2dtoADM1p('J1', upstream=MT-1, thermo=thermo_adm, isdynamic=True, 
+    J1 = su.mASM2dtoADM1p('J1', upstream=M1-0, thermo=thermo_adm, isdynamic=True, 
                           adm1_model=adm, asm2d_model=asm)
     AD = su.AnaerobicCSTR(
         'AD', ins=J1-0, outs=('biogas', 'digestate'), 
@@ -147,8 +146,49 @@ def create_g1_system(flowsheet=None, default_init_conds=True):
         sludge_flow_rate=0.00715*MGD2cmd,    # aim for 18% TS
         solids_removal_efficiency=0.9,
         )
+    
+    Mg = WasteStream(
+    'Mg',
+    T=Temp,
+    units='kg/hr',
+    S_Mg=9.51,
+    )
+    
+    MMg = su.Mixer(
+    'MMg',
+    ins=(DW-0, Mg),
+    outs='struvite_feed',
+    )
 
-    M2 = su.Mixer('M2', ins=(PR-1, MT-0, DW-0))
+    SR = psu.StruviteReactor(
+    'SR',
+    ins=MMg-0,
+    outs=(
+        'struvite',
+        'SR_loss',
+        'SR_effluent',
+    ),
+    eff_PO4_mgL=6.55,    # assumption
+    precip_yield=0.70,   # assumption
+    HRT_hr=1.0,
+    isdynamic=True,
+    )
+    
+    SRD = psu.StruviteRedissolution(
+    'SRD',
+    ins=SR-2,
+    outs='SRD_effluent',
+    isdynamic=True,
+    k_max=2.61,
+    d_p=0.3,
+    HRT_min=5.0,
+    )
+    
+    M2 = su.Mixer(
+        'M2',
+        ins=(GT-0, MT-0, SRD-0),
+    )
+    
     HD = su.HydraulicDelay('HD', ins=M2-0, outs=1-PC)
 
     if default_init_conds:
@@ -163,9 +203,11 @@ def create_g1_system(flowsheet=None, default_init_conds=True):
     
     sys = qs.System(
         ID, 
-        path=(MD, PC, PR, S1, A1, A2, A3, A4, O5, O6, FC, 
-              MT, J1, AD, J2, DW, M2, HD)
-        , recycle=(O6-0, FC-1, HD-0)
+        path=(PC, GT, S1, A1, A2, A3, A4, O5, O6, FC, 
+              MT, M1, J1, AD, J2, DW, MMg, SR, SRD, M2, HD),
+        recycle=(O6-0, FC-1, HD-0)
+        # path=(PC, GT, ASR, FC, MT, M1, J1, AD, J2, DW, M2, HD),
+        # recycle=(FC-1, HD-0)
         )
     sys.set_dynamic_tracker(FC-0, AD)
     
@@ -178,9 +220,6 @@ def run(sys, t, t_step, method=None, **kwargs):
     msg = f'Method {method}'
     print(f'\n{msg}\n{"-"*len(msg)}')
     print(f'Time span 0-{t}d \n')
-    
-    # sys.isdynamic = False
-    # sys.simulate()
     
     sys.simulate(
         # state_reset_hook='reset_cache',
@@ -196,7 +235,6 @@ def run(sys, t, t_step, method=None, **kwargs):
 #%%
 if __name__ == '__main__':
     sys = create_g1_system()
-    sys.maxiter = 600
     dct = globals()
     dct.update(sys.flowsheet.to_dict())
     
@@ -212,10 +250,15 @@ if __name__ == '__main__':
     run(sys, t, t_step, method=method)
     fs = sys.flowsheet.stream
     fu = sys.flowsheet.unit
+    fu.SR.update_product_stream()
+    print(
+        'Struvite flow:',
+        fs.struvite.imass['X_struv'],
+        'kg/hr',
+    )
     sys.diagram()
     fig, axis = fs.SE.scope.plot_time_series(('S_A', 'S_F', 'X_S', 'S_NH4', 'X_I', 'S_I', 'S_N2')) 
     fig
-    
     # biomass_IDs = ('X_H', 'X_PAO', 'X_AUT')
     # srt = get_SRT(sys, biomass_IDs,
     #               wastage=[WAS],

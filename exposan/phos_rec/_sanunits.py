@@ -1901,7 +1901,7 @@ class StruviteReactor(SanUnit):
         print(f"power_demand_blower     : {unit.power_demand_blower} kWh/day")
         print(f"price_MgCl2 (USD/kg)    : {unit.price_MgCl2_per_kg}")
         print("=====================================\n")
-
+        
     def update_product_stream(unit):
         ws_in = unit.ins[0]
         recovered, loss, effluent = unit.outs
@@ -1936,7 +1936,12 @@ class StruviteReactor(SanUnit):
         recovered.mass[:] = 0.0
         if struv_id in recovered.components.IDs:
             recovered.imass[struv_id] = M_struv_rec / 24.0 / 1000.0
+            
+    def _design(self):
+        pass
 
+    def _cost(self):
+        pass
 
 # %%
 # =============================================================================
