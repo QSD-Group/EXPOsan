@@ -2139,31 +2139,66 @@ class StruviteReactor(SanUnit):
     # ------------------------------------------------------------------
     # Dynamic algebraic evaluation
     # ------------------------------------------------------------------
+    # QSDsan natively converts dynamic states back to stream flows for liquid
+    # and gas WasteStreams, but not for phase='s'. Therefore, the recovered
+    # product uses a solid-specific state convention here:
+    #
+    #   product_state[:-1] = component mass flows [g/d]
+    #   product_state[-1]  = 1.0
+    #
+    # The product mass vector is also synchronized explicitly in
+    # _update_state(), so the recovered stream remains phase='s' and has the
+    # correct mass after and during dynamic simulation.
     def _init_state(self):
         product, effluent = self.outs
         n = len(self.components)
+
+        product.phase = 's'
+        effluent.phase = 'l'
 
         self._product_state = np.zeros(n + 1)
         self._product_dstate = np.zeros(n + 1)
         self._effluent_state = np.zeros(n + 1)
         self._effluent_dstate = np.zeros(n + 1)
 
-        self._product_state[:-1] = product.conc
-        self._product_state[-1] = max(float(product.F_vol) * 24.0, 1e-12)
+        # Solid-product convention: direct component mass flows [g/d],
+        # followed by a unit scaling factor.
+        self._product_state[:-1] = (
+            np.asarray(product.mass, dtype=float) * 24.0 * 1000.0
+        )
+        self._product_state[-1] = 1.0
+
+        # Liquid-effluent convention: concentrations [mg/L] and flow [m3/d].
         self._effluent_state[:-1] = effluent.conc
         self._effluent_state[-1] = max(float(effluent.F_vol) * 24.0, 1e-12)
 
+        # Preserve the conventional public unit state as the liquid effluent.
         self._state = self._effluent_state
         self._dstate = self._effluent_dstate
         self._update_state()
         self._update_dstate()
 
+    def _sync_solid_product_flow(self):
+        """Synchronize the phase-'s' product flow from its dynamic state."""
+        product = self.outs[0]
+        product.phase = 's'
+
+        scale = max(float(self._product_state[-1]), 0.0)
+        M_product_g_d = np.maximum(self._product_state[:-1], 0.0) * scale
+        product.mass[:] = M_product_g_d / 24.0 / 1000.0
+
     def _update_state(self):
         product, effluent = self.outs
+
         if product.state is None:
             product.state = self._product_state.copy()
         else:
             product.state[:] = self._product_state
+
+        # WasteStream._state2flows() does not currently reconstruct phase-'s'
+        # streams, so do it explicitly within this SanUnit.
+        self._sync_solid_product_flow()
+
         if effluent.state is None:
             effluent.state = self._effluent_state.copy()
         else:
@@ -2204,17 +2239,21 @@ class StruviteReactor(SanUnit):
             M_feed = np.maximum(y_ins[0, :-1], 0.0) * Q_feed
             M_dose = np.maximum(y_ins[1, :-1], 0.0) * Q_dose
 
-            M_product, M_eff, Q_product, Q_eff = self._calculate(
+            M_product, M_eff, _, Q_eff = self._calculate(
                 M_feed, Q_feed, M_dose, Q_dose, index, MW,
             )
 
-            product_state[:-1] = M_product / max(Q_product, 1e-12)
-            product_state[-1] = max(Q_product, 1e-12)
+            # Solid product: store direct component mass flows [g/d].
+            product_state[:-1] = M_product
+            product_state[-1] = 1.0
+
+            # Liquid effluent: store concentrations [mg/L] and flow [m3/d].
             effluent_state[:-1] = M_eff / max(Q_eff, 1e-12)
             effluent_state[-1] = max(Q_eff, 1e-12)
 
-            # This remains an algebraic unit. Product derivatives are set to zero;
-            # the effluent flow derivative follows the combined inlet flow.
+            # This remains an algebraic unit. The terminal solid product has no
+            # independently integrated inventory; its state is recalculated from
+            # the current inlet at every AE evaluation.
             product_dstate[:] = 0.0
             effluent_dstate[:-1] = 0.0
             effluent_dstate[-1] = float(dy_ins[:, -1].sum())
@@ -2238,7 +2277,6 @@ class StruviteReactor(SanUnit):
 
     def _cost(self):
         pass
-
 
 class StruviteRedissolution(SanUnit):
     """Dynamic-capable redissolution of residual struvite fines."""

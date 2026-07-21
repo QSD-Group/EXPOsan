@@ -171,6 +171,7 @@ def create_g1_system(flowsheet=None, default_init_conds=True):
     # Leave at zero until supported values are selected.
     ACP_P_fraction=0.0,
     MgCO3_Mg_fraction=0.0,
+    competing_solid_capture_fraction=0.0,
     impurity_capture_fractions={},
     product_moisture=0.0,
     )
