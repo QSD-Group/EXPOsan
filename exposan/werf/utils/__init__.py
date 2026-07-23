@@ -22,9 +22,13 @@ from .P_flows import *
 from . import aeration_demand
 from .aeration_demand import *
 
+from . import _chp
+from ._chp import *
+
 __all__ = (
     *helper.__all__,
     *N_flows.__all__,
     *P_flows.__all__,
     *aeration_demand.__all__,
+    *_chp.__all__,
 	)

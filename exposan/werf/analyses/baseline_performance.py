@@ -5,6 +5,7 @@ EXPOsan: Exposition of sanitation and resource recovery systems
 This module is developed by:
 
     Joy Zhang <joycheung1994@gmail.com>
+    Zixuan Wang <wyatt4428@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
@@ -27,17 +28,30 @@ kwargs = dict(
     # if_sheet_exists='replace'
     )
 metrics = {}
+
+BASELINE_CONFIGURATIONS = (
+    'B1', 'B1E', 'B2', 'B3',
+    'C1', 'C1E', 'C2', 'C3',
+    'E2', 'E2P',
+    'F1', 'F1E',
+    'G1', 'G1E', 'G2', 'G3',
+    'H1', 'H1E',
+    'I1', 'I1E', 'I2', 'I3',
+    'N1', 'N1E', 'N2',
+    )
+
+AD_CONFIGURATIONS = (
+    'B1',
+    'C1',
+    'F1',
+    'G1',
+    'H1',
+    'I1',
+    'N1',
+    )
+
 #%%
-for ID in (
-        'B1', 'B2', 'B3', 
-        'C1', 'C2', 'C3', 
-        'E2', 'E2P', 
-        'F1', 
-        'G1', 'G2', 'G3', 
-        'H1', 
-        'I1', 'I2', 'I3', 
-        'N1', 'N2',
-        ):
+for ID in BASELINE_CONFIGURATIONS:
     print(f"System {ID}")
     print("="*30)
     sys = create_system(ID)
@@ -91,7 +105,7 @@ for ID in (
         pdf = plantwide_P_mass_flows(sys)
         with pd.ExcelWriter(os.path.join(results_path, 'P_mass_unopt.xlsx'), **kwargs) as writer:
             pdf.to_excel(writer, sheet_name=ID)
-        metrics[ID] = [m() for m in mdl.metrics]
+        metrics[ID] = pd.Series([m() for m in mdl.metrics], index=var_columns(mdl.metrics))
     except Exception as exc:
         print(exc, '\n')
     
@@ -101,15 +115,7 @@ for ID in (
     del sys
 
 #%% configurations with AD
-for ID in (
-        'B1', 
-        'C1',
-        'F1', 
-        'G1',
-        'H1', 
-        'I1',
-        'N1',
-        ):
+for ID in AD_CONFIGURATIONS:
     print(f"System {ID}")
     print("="*30)
     sys = create_system(ID)
@@ -172,6 +178,7 @@ for ID in (
     sys.flowsheet.clear()
     del sys
 #%%
-metrics = pd.DataFrame.from_dict(metrics, orient='index', columns=var_columns(mdl.metrics))
+if not isinstance(metrics, pd.DataFrame):
+    metrics = pd.DataFrame(metrics).T
 metrics.to_excel(os.path.join(results_path, '_baseline_unopt_performance.xlsx'))
 # metrics.to_clipboard()

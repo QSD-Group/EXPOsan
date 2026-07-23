@@ -5,6 +5,7 @@ EXPOsan: Exposition of sanitation and resource recovery systems
 This module is developed by:
 
     Joy Zhang <joycheung1994@gmail.com>
+    Zixuan Wang <wyatt4428@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
@@ -20,12 +21,16 @@ __all__ = ('cache_state', 'load_state')
 def cache_state(sys, folder='', filename=''):
     filename = filename or sys.ID
     path = os.path.join(results_path, f'{folder}/{filename}.npy')
-    np.save(path, sys._state) 
-    
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    np.save(path, sys._state)
+
 def load_state(sys, state_arr=None, folder='steady_states'):
     """Load a previously saved state to a system object for faster model evaluation."""
     if state_arr is None:
-        path = os.path.join(results_path, f'{folder}/{sys.ID}.npy')
+        filename = sys.ID
+        if filename.upper().endswith('E'):
+            filename = filename[:-1]
+        path = os.path.join(results_path, f'{folder}/{filename}.npy')
         state_arr = np.load(path)
     nr = sys._n_rotate
     units = sys.units[nr:] + sys.units[:nr]
@@ -54,4 +59,3 @@ def load_state(sys, state_arr=None, folder='steady_states'):
         assert len(y) == len(state_arr)
         sys._state = state_arr
         sys._state_idx = idx
-

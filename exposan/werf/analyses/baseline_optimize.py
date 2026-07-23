@@ -5,6 +5,7 @@ EXPOsan: Exposition of sanitation and resource recovery systems
 This module is developed by:
 
     Joy Zhang <joycheung1994@gmail.com>
+    Zixuan Wang <wyatt4428@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
@@ -20,33 +21,49 @@ from qsdsan.utils import get_SRT
 from biosteam.evaluation._utils import var_columns
 
 #%%
-def display_metrics(model):
+def display_metrics(model, append=False):
     vals = [m() for m in model.metrics]
     print(f'{vals[-1]:.2f}')
     idx = var_columns(model.metrics)
-    df = pd.DataFrame(vals, index=idx, columns=[model._system.ID])
-    return df
+    out = pd.DataFrame(vals, index=idx, columns=[model._system.ID])
+    if append:
+        global df
+        try:
+            df
+        except NameError:
+            df = out
+        else:
+            df = pd.concat([df.drop(columns=[model._system.ID], errors='ignore'), out], axis=1)
+        return df
+    return out
 
 MGD2cmd = 3785.412
 #%%
 
 # ID = 'B1'
+# ID = 'B1E'
 # ID = 'B2'
 # ID = 'B3'
 # ID = 'C1'
+# ID = 'C1E'
 # ID = 'C2'
 # ID = 'C3'
 # ID = 'E2'
 # ID = 'E2P'
 # ID = 'F1'
+# ID = 'F1E'
 # ID = 'G1'
+# ID = 'G1E'
 # ID = 'G2'
 # ID = 'G3'
 # ID = 'H1'
+# ID = 'H1E'
 # ID = 'I1'
+# ID = 'I1E'
 # ID = 'I2'
 # ID = 'I3'
 # ID = 'N1'
+# ID = 'N1E'
 ID = 'N2'
 
 sys = create_system(ID)
@@ -104,7 +121,7 @@ V_tot = 2.61 * MGD2cmd
 fr_V = [0.16, 0.16, 0.24, 0.24, 0.17, 0.03]     # larger anaerobic zone seems better for EBPR
 # fr_V = [0.18, 0.14, 0.24, 0.24, 0.16, 0.04]     # larger anaerobic zone seems better for EBPR
 u.ASR.V_tanks[:] = [v * V_tot for v in fr_V[:-1]]
-# u.ASR.internal_recycles[0] = (3,1,30*MGD2cmd)
+# u.ASR.internal_recycles[0] = (3,1,20*MGD2cmd)
 u.ASR._ODE = None
 
 u.MBR.V_max = fr_V[-1] * V_tot
@@ -119,8 +136,8 @@ s.carbon.imass['S_A'] = 82
 s.carbon._init_state()
 # u.MD.metal_dosage = 18
 # u.MD._AE = None
-# u.FC.underflow = 0.67 * 10 * MGD2cmd
-# u.FC.wastage = 0.2815 * MGD2cmd
+# u.FC.underflow = 0.25 * 10 * MGD2cmd
+# u.FC.wastage = 0.22 * MGD2cmd
 # u.FC._ODE = None
 
 sys._DAE = None
@@ -150,7 +167,7 @@ end2 = tm.time()
 print("Final underflows:", f"({thickener.sludge_flow_rate:.2f}, {u.DW.sludge_flow_rate:.2f}),")
 print('Duration: ', tm.strftime('%H:%M:%S', tm.gmtime(end2-end)), '\n')
 
-df = display_metrics(mdl)
+df = display_metrics(mdl, append=True)
 srt = get_SRT(sys, ('X_H', 'X_PAO', 'X_AUT'), wastage=[s.WAS], 
               active_unit_IDs=('ASR', 'MBR', 'A1', 'A2', 'A3', 'A4', 'O5', 'O6'))
 print(f'SRT = {srt:.2f} d')
