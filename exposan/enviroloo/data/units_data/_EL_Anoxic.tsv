@@ -4,7 +4,7 @@ steel_density	density of steel	kg/m3	7850			constant	BOM
 anoxic_tank_cost		USD	855	598.5	1111.5	uniform	BOM
 weld_female_adapter_fittings		USD	6.87	4.809	8.931	uniform	https://thedrainagesource.com/4-pvc-sdr35-solvent-weld-female-adapter-s-x-fpt/?srsltid=AfmBOorc5xzjQmxhmGZ2dstlABtaDC0az8KOrbJaDaI1zrV2U6IJzc1r
 pipeline_connectors		USD	13.16	9.212	17.108	uniform	https://www.eco-filtration.co.uk/product/110mm-4-pond-threaded-tank-connector/?srsltid=AfmBOoqFzwEcDdzmztkcvuSYA_anY1hoj5U5rOQz0Q8s1FUBhTeQpdX2
-chemical_glucose_mixing_ratio		kg/L	0.035			constant	BOM
+chemical_glucose_mixing_ratio		kg/L	0.035	0.0245	0.0455	uniform	BOM
 chemical_glucose_price		USD/kg	0.75	0.525	0.975	uniform	https://www.alibaba.com/product-detail/Bulk-Food-Grade-glucose-Powder-99_1600987002678.html?spm=a2700.galleryofferlist.p_offer.d_title.48b513a084WF5B&s=p
 anoxic_tank_lifetime		yr	8	5.6	10.4	uniform	assumption
 weld_female_adapter_fittings_lifetime		yr	5	3.5	6.5	uniform	assumption

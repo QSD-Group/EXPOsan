@@ -350,15 +350,15 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
         )
 
         # ---- 7. Struvite Redissolution (SRD) ----
-        SRD = elu.StruviteRedissolution(
-            'SRD',
-            ins=SR-2,
-            outs=qs.WasteStream('effluent_SRD', T=Temp),
-            isdynamic=True,
-            k_max=2.61,
-            d_p=0.3,
-            HRT_min=5.0,
-        )
+        # SRD = elu.StruviteRedissolution(
+        #     'SRD',
+        #     ins=SR-2,
+        #     outs=qs.WasteStream('effluent_SRD', T=Temp),
+        #     isdynamic=True,
+        #     k_max=2.61,
+        #     d_p=0.3,
+        #     HRT_min=5.0,
+        # )
 
         # ---- 8. Collection Tank (CT): remaining_ins + SRD effluent ----
         effluent_CT = qs.WasteStream('effluent_CT', T=Temp)
@@ -367,14 +367,14 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
 
         CT = elu.EL_CT(
             'CT',
-            ins=(remaining_ins, SRD-0),
+            ins=(remaining_ins, SR-2),
             outs=effluent_CT,
             isdynamic=True, V_max=10, aeration=None,
             suspended_growth_model=None,
             ppl=ppl, baseline_ppl=baseline_ppl,
         )
 
-        upstream_units = (M_MgCl2, SR, SRD)
+        upstream_units = (M_MgCl2, SR)
 
     else:
         # =====================================================================
@@ -539,10 +539,10 @@ if __name__ == '__main__':
         print(f"S_NH4 : {fs.effluent_SR.iconc['S_NH4']:.3f} mg/L")
         print(f"S_Mg  : {fs.effluent_SR.iconc['S_Mg']:.3f}  mg/L")
 
-        print('\n--- SRD Effluent (after redissolution) ---')
-        print(f"S_PO4 : {fs.effluent_SRD.iconc['S_PO4']:.3f} mg/L")
-        print(f"S_NH4 : {fs.effluent_SRD.iconc['S_NH4']:.3f} mg/L")
-        print(f"S_Mg  : {fs.effluent_SRD.iconc['S_Mg']:.3f}  mg/L")
+        # print('\n--- SRD Effluent (after redissolution) ---')
+        # print(f"S_PO4 : {fs.effluent_SRD.iconc['S_PO4']:.3f} mg/L")
+        # print(f"S_NH4 : {fs.effluent_SRD.iconc['S_NH4']:.3f} mg/L")
+        # print(f"S_Mg  : {fs.effluent_SRD.iconc['S_Mg']:.3f}  mg/L")
 
     print('\n--- MBR Effluent ---')
     print(f"S_PO4 : {fs.effluent_MembT.iconc['S_PO4']:.3f} mg/L")

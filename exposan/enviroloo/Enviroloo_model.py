@@ -167,7 +167,50 @@ def add_metrics(model):
     Metric('Grid electricity emissions', lambda: calc_electricity_emissions(system),
            'kg CO2-eq/cap/yr', 'Electricity emissions'),
     ])
-    
+
+    # === Struvite Reactor (SR) performance metrics ===
+    # Only added when el.INCLUDE_STRUVITE = True (SR unit doesn't exist
+    # in the baseline system). Tracks the two Monte-Carlo-varying SR
+    # design outputs so eff_PO4_mgL and precip_yield's effect on cost
+    # and struvite recovery is directly visible in the results table,
+    # rather than buried in the aggregate OPEX figure.
+    if el.INCLUDE_STRUVITE and hasattr(system.flowsheet.unit, 'SR'):
+        SR_unit = system.flowsheet.unit.SR
+        metrics.extend([
+            Metric('SR MgCl2 dose',
+                   lambda: SR_unit.design_results.get('MgCl2_kg_d', 0.0),
+                   'kg/d', 'Struvite reactor'),
+            Metric('SR MgCl2 cost',
+                   lambda: (SR_unit.design_results.get('MgCl2_kg_d', 0.0)
+                            * SR_unit.price_MgCl2_per_kg * 365 / el.ppl),
+                   f'{qs.currency}/cap/yr', 'Struvite reactor'),
+            Metric('SR struvite recovered',
+                   lambda: SR_unit.design_results.get('Struvite_recovered_kg_d', 0.0),
+                   'kg/d', 'Struvite reactor'),
+        ])
+
+    # === PAC / Glucose dosing cost metrics ===
+    # Uses the corrected pac_ratio/gluc_ratio attributes (SR-scaled
+    # when INCLUDE_STRUVITE=True, raw TSV ratio otherwise) -- matches
+    # exactly what's already inside OPEX via EL_Aerobic._cost() /
+    # EL_Anoxic._cost(). Exposes the real number as its own tracked
+    # column instead of only being buried inside aggregate OPEX.
+    O1_unit = system.flowsheet.unit.O1
+    A1_unit = system.flowsheet.unit.A1
+
+    metrics.extend([
+        Metric('PAC dosing cost',
+               lambda: (getattr(O1_unit, 'pac_ratio', O1_unit.chemical_PAC_mixing_ratio)
+                        * O1_unit.dosing_flow * O1_unit.scale_factor
+                        * O1_unit.chemical_PAC_price / 24) * 24 * 365 / el.ppl,
+               f'{qs.currency}/cap/yr', 'Chemical dosing'),
+        Metric('Glucose dosing cost',
+               lambda: (getattr(A1_unit, 'gluc_ratio', A1_unit.chemical_glucose_mixing_ratio)
+                        * A1_unit.dosing_flow * A1_unit.scale_factor
+                        * A1_unit.chemical_glucose_price) * 24 * 365 / el.ppl,
+               f'{qs.currency}/cap/yr', 'Chemical dosing'),
+    ])
+
     model.metrics = metrics
 
 
@@ -327,13 +370,16 @@ def add_parameters(model, unit_dct, country_specific=False):
     
     ########### Remove if Grid share needs to be remoed ######################
     # === Add grid-share uncertainty (optional new parameter) ===
-    b = PV_unit.grid_share
-    D = shape.Uniform(lower=0.1, upper=0.4)
-    @param(name='Grid share', element='PhotovoltaicWind', kind='coupled', units='fraction',
-           baseline=b, distribution=D)
-    def set_grid_share(i):
-        PV_unit.grid_share = i
-        PV_unit.wind_solar_share = 1 - i
+    ########### Grid share uncertainty — only for hybrid (PV+grid) runs ######
+    if not el.PV_ONLY:
+        b = PV_unit.grid_share
+        D = shape.Triangle(lower=0.1, midpoint=0.2, upper=0.3)  # triangular, peaked at design value
+        @param(name='Grid share', element='PhotovoltaicWind', kind='coupled', units='fraction',
+               baseline=b, distribution=D)
+        def set_grid_share(i):
+            PV_unit.grid_share = i
+            PV_unit.wind_solar_share = 1 - i
+    ##########################################################################
 
    ###########################################################################
     # EL housing

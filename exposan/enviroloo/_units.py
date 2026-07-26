@@ -535,8 +535,30 @@ class EL_Anoxic(CSTR):
     
     def _run(self):
         glucose = self.ins[2]
-        glucose.imass['S_F'] = self.chemical_glucose_mixing_ratio * self.dosing_flow * self.scale_factor * 1.067 # kg/L and L/h    to kg/h TODO: add source for 1.067 kg COD/kg glucose
         
+        # Baseline O1 effluent S_NO3 by population (mg/L)
+        # Measured from no-SR baseline simulation runs at each population density
+        # Used only when el.INCLUDE_STRUVITE=True to scale Glucose dose
+        # proportionally to actual denitrification demand reduction
+        # Reference: field-derived from mASM2d steady-state runs, this study
+        _BASELINE_NO3 = {
+            448:  5.951,
+            1500: 5.678,
+            2500: 5.586,
+            3000: 5.540,
+        }
+        
+        if el.INCLUDE_STRUVITE:
+            ref_NO3  = _BASELINE_NO3.get(int(el.ppl), 5.951)
+            live_NO3 = max(float(self.ins[0].iconc['S_NO3']), 1e-12)
+            scale_N  = live_NO3 / ref_NO3
+            gluc_ratio = self.chemical_glucose_mixing_ratio * scale_N
+        else:
+            gluc_ratio = self.chemical_glucose_mixing_ratio
+        
+        self.gluc_ratio = gluc_ratio    # <-- ADD THIS LINE
+        
+        glucose.imass['S_F'] = gluc_ratio * self.dosing_flow * self.scale_factor * 1.067
         super()._run()
             
     def _init_lca(self):
@@ -567,7 +589,8 @@ class EL_Anoxic(CSTR):
         for equipment, cost in C.items():
             C[equipment] = cost * ratio
         
-        self.add_OPEX = (self._calc_replacement_cost() + self.chemical_glucose_mixing_ratio * self.dosing_flow * self.scale_factor *
+        self.add_OPEX = (self._calc_replacement_cost() + 
+            getattr(self, 'gluc_ratio', self.chemical_glucose_mixing_ratio) * self.dosing_flow * self.scale_factor *
             self.chemical_glucose_price)
         
         power_demand = self.power_demand_AnoxicTank
@@ -695,9 +718,31 @@ class EL_Aerobic(CSTR):
         ############################################### 
         
     def _run(self):
-     
         PAC = self.ins[1]
-        PAC.imass['X_AlOH'] = self.chemical_PAC_mixing_ratio * self.dosing_flow * self.scale_factor * 0.2886 # kg/L and L/h    to kg/h TODO: add source for 0.2886 kg AlOH/kg PAC
+        
+        # Baseline O1 influent S_PO4 by population (mg/L)
+        # Measured from no-SR baseline simulation runs at each population density
+        # Used only when el.INCLUDE_STRUVITE=True to scale PAC dose
+        # proportionally to actual upstream P removal by struvite reactor
+        # Reference: field-derived from mASM2d steady-state runs, this study
+        _BASELINE_PO4 = {
+            448:  29.451,
+            1500: 41.982,
+            2500: 41.726,
+            3000: 41.568,
+        }
+        
+        if el.INCLUDE_STRUVITE:
+            ref_PO4 = _BASELINE_PO4.get(int(el.ppl), 29.451)
+            live_PO4 = max(float(self.ins[0].iconc['S_PO4']), 1e-12)
+            scale_P  = live_PO4 / ref_PO4
+            pac_ratio = self.chemical_PAC_mixing_ratio * scale_P
+        else:
+            pac_ratio = self.chemical_PAC_mixing_ratio
+        
+        self.pac_ratio = pac_ratio    # <-- ADD THIS LINE
+        
+        PAC.imass['X_AlOH'] = pac_ratio * self.dosing_flow * self.scale_factor * 0.2886
         super()._run()
         
     def _init_lca(self):
@@ -731,7 +776,7 @@ class EL_Aerobic(CSTR):
             C[equipment] = cost * ratio
             
         self.add_OPEX = (self._calc_replacement_cost() + 
-                         self.chemical_PAC_mixing_ratio * self.dosing_flow * self.scale_factor *
+                         getattr(self, 'pac_ratio', self.chemical_PAC_mixing_ratio) * self.dosing_flow * self.scale_factor *
                          self.chemical_PAC_price / 24)
         
         # self.add_OPEX = (self._calc_replacement_cost() + 
@@ -1377,9 +1422,42 @@ class StruviteReactor(SanUnit):
         influent = self.ins[0]
 
         # Tank volume based on HRT = 1 hr (continuous flow)
-        # F_vol in m3/hr × HRT_hr = tank volume in m3
         d['Tank_volume_m3'] = float(influent.F_vol) * self.HRT_hr
-        d['MgCl2_kg_d']     = float(self.dose_MgCl2_kg_d or 0.0)
+
+        # ---------------------------------------------------------------
+        # MgCl2 dose derived directly from eff_PO4_mgL and precip_yield,
+        # using the same stoichiometry as _run(), so both parameters
+        # respond to Monte Carlo sampling in the design/cost layer.
+        # Replaces the old fixed dose_MgCl2_kg_d (computed once, from a
+        # separate 1.1:1 Mg:P formula in Enviroloo_system.py, which never
+        # responded to eff_PO4_mgL at all).
+        # ---------------------------------------------------------------
+        cmps = influent.components
+        MW_P     = cmps['S_PO4'].MW
+        MW_NH4   = cmps['S_NH4'].MW
+        MW_Mg    = cmps['S_Mg'].MW
+        MW_STR   = cmps['X_struv'].MW
+        MW_MgCl2 = 95.21
+
+        Q = max(float(influent.F_vol) * 24.0, 1e-12)   # m3/d
+        C_PO4_in = float(influent.iconc['S_PO4'])
+        C_NH4_in = float(influent.iconc['S_NH4'])
+        C_Mg_in  = float(influent.iconc['S_Mg'])
+
+        M_PO4_req = max(C_PO4_in * Q - self.eff_PO4_mgL * Q, 0.0)
+        mol_form  = max(min(
+            M_PO4_req / MW_P,
+            C_NH4_in  * Q / MW_NH4,
+            C_Mg_in   * Q / MW_Mg,
+        ), 0.0)
+
+        d['MgCl2_kg_d'] = mol_form * MW_MgCl2 / 1000.0
+
+        # Struvite recovered mass, driven by precip_yield (for future
+        # revenue accounting, not yet wired into _cost()).
+        d['Struvite_recovered_kg_d'] = (
+            mol_form * MW_STR / 1000.0
+        ) * float(np.clip(self.precip_yield, 0.0, 1.0))
 
     # -------------------------------------------------------------------------
     # Cost — all values loaded from _EL_SR.tsv via __init__
