@@ -219,11 +219,31 @@ def create_system(
     _seen = set()
     Lr_ladder = [x for x in Lr_ladder if not (x in _seen or _seen.add(x))]
 
+    # `System.simulate()` always re-invokes `_design`/`_cost` once more on every
+    # unit at the very end (via the unconditional `Unit._summary()` pass), *after*
+    # `screen_results` below has already accepted an Lr. That second, unguarded
+    # solve is the one that "would corrupt the warm cache and throw" (see above) --
+    # it isn't protected by the try/except in `screen_results`/`_try_Lr`. Streams
+    # don't change between the last `_try_Lr` call (during recycle convergence)
+    # and this final pass, so recomputing normally usually just reproduces the
+    # same result. If it doesn't -- conditions may genuinely have shifted since
+    # screening last ran (e.g. a later recycle iteration moved the feed after
+    # every Lr candidate in that iteration had failed) -- re-run the full
+    # Lr-ladder search against the *current* feed. If even that can't converge a
+    # design for the true final flows, raise rather than silently substituting an
+    # earlier, possibly non-matching design/cost: a wrong-looking number that
+    # doesn't correspond to the reported streams is worse than a clear failure.
+    _run_design = CrudeHeavyDis._design
+    _run_cost = CrudeHeavyDis._cost
+
+    def _run_design_and_cost():
+        _run_design()
+        _run_cost()
+
     def _try_Lr(Lr):
         CrudeHeavyDis._Lr = Lr
         CrudeHeavyDis._run()
-        CrudeHeavyDis._design()
-        CrudeHeavyDis._cost()
+        _run_design_and_cost()
         # Reject degenerate designs: non-positive *and* absurdly large costs (the
         # FUG solve can "converge" to ~1e120 $ at a near-singular operating point).
         costs = CrudeHeavyDis.baseline_purchase_costs.values()
@@ -237,7 +257,7 @@ def create_system(
             for Lr in Lr_ladder:
                 try:
                     if abs(_try_Lr(Lr)-ratio0) <= tol:
-                        return
+                        return True
                 except Exception:
                     continue
         # Degrade to a warning instead of raising so the system can still close;
@@ -246,6 +266,25 @@ def create_system(
         warnings.warn(
             f'`{CrudeHeavyDis.ID}`: no in-band distillation solution found across '
             f'{len(Lr_ladder)} Lr trials; leaving last converged state.')
+        return False
+
+    def _design_retry_before_failing():
+        try:
+            _run_design_and_cost()
+            return
+        except Exception:
+            pass
+        if screen_results():
+            return
+        raise RuntimeError(
+            f'`{CrudeHeavyDis.ID}`: FUG design failed to converge for the final '
+            'converged flows across all Lr candidates')
+
+    def _cost_noop():
+        pass  # cost is already computed inside `_design_retry_before_failing`
+
+    CrudeHeavyDis._design = _design_retry_before_failing
+    CrudeHeavyDis._cost = _cost_noop
     CrudeHeavyDis.add_specification(screen_results)
     CrudeHeavyDis.run_after_specifications = True
     
