@@ -100,7 +100,7 @@ def _init_modules(module_name, include_data_path=False, include_figures_path=Fal
     for dirname in dirnames:
         p = os.path.join(module_path, dirname)
         paths.append(p)
-        if create and not os.path.isdir(p): os.mkdir(p)
+        if create: os.makedirs(p, exist_ok=True)
     return paths
 
 
