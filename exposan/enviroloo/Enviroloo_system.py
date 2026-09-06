@@ -99,7 +99,7 @@ Temp = 273.15 + 20   # temperature [K]
 # Hydraulic flows
 Q_w   = 4.48 * scale_factor    # m3/day -- total wastewater flow
 Q_ras = 2.24 * scale_factor    # m3/day -- nitrate return flow
-Q_was = 0.05 * 24              # m3/day -- waste activated sludge flow
+Q_was = 1.5            # m3/day -- waste activated sludge flow
 
 biomass_IDs = ('X_H', 'X_AUT', 'X_PAO')
 
