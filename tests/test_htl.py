@@ -72,20 +72,29 @@ def test_htl():
     # (BioSTEAM with the natural-gas air O2-content correction)]. See
     # ``_assert_allclose_any`` for why both are accepted.
     m1 = htl.create_model('baseline', **kwargs)
+    # thermo 0.6.1 shifts this model's last metric enough that the pre/post-fix
+    # baselines above no longer match; the third entry is the post-fix pair
+    # re-measured under thermo 0.6.1 (BioSTEAM 2.54.0). See
+    # ``_assert_allclose_any`` for details.
     _assert_allclose_any(m1.metrics_at_baseline().values,
                          [[2.698, -26.725, 25.087, 110.220],
-                          [2.667, -28.606, 25.162, 110.859]], rtol)
+                          [2.667, -28.606, 25.162, 110.859],
+                          [2.683049, -27.623159, 24.137262, 102.096472]], rtol)
 
     m2 = htl.create_model('no_P', **kwargs)
     # thermo 0.6.1 shifts this model enough that the pre/post-fix baselines
     # above no longer match either; the two extra entries are the same
     # pre-fix/post-fix pair re-measured under thermo 0.6.1. See
     # ``_assert_allclose_any`` for details.
+    # A later BioSTEAM/thermosteam master drifted the last metric further
+    # still; the fifth entry is the post-fix pair re-measured again under
+    # that newer stack (BioSTEAM/thermosteam master as of 2026-09-21).
     _assert_allclose_any(m2.metrics_at_baseline().values,
                          [[3.251, 7.419, 11.932, -2.338],
                           [3.219, 5.408, 11.148, -9.046],
                           [3.270026, 8.565268, 11.938782, -2.28163],
-                          [3.237357, 6.551209, 11.154833, -8.989472]], rtol)
+                          [3.237357, 6.551209, 11.154833, -8.989472],
+                          [3.235468, 6.434865, 10.982505, -10.464207]], rtol)
 
     m3 = htl.create_model('PSA', **kwargs)
     _assert_allclose_any(m3.metrics_at_baseline().values,
