@@ -61,34 +61,39 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 timestamp = datetime.now().strftime("%Y%m%d_%H%M")
 
-FEEDSTOCKS = ["food", "sludge", "manure", "green"]
+FEEDSTOCKS = ["food","sludge", "manure", "green"]
 
 
 from exposan.biobinder_ml import central_dry_flowrate as default_central
 
 CONFIGS = [
     {"name": "CHCU_No_EC",
-     "config_kwargs": dict(
-         flowsheet=None,
-         central_dry_flowrate=default_central,
-         decentralized_HTL=False,
-         decentralized_upgrading=False,
-         include_PSA=True,
-         include_EC=False,
-     )},
-     {"name": "DHCU_No_EC",
-     "config_kwargs": dict(
+      "config_kwargs": dict(
           flowsheet=None,
           central_dry_flowrate=default_central,
-          decentralized_HTL=True,
+          decentralized_HTL=False,
           decentralized_upgrading=False,
           include_PSA=True,
           include_EC=False,
       )},
+       # {"name": "DHCU_No_EC",
+       # "config_kwargs": dict(
+       #      flowsheet=None,
+       #      central_dry_flowrate=default_central,
+       #      decentralized_HTL=True,
+       #      decentralized_upgrading=False,
+       #      include_PSA=True,
+       #      include_EC=False,
+       #  )},
 ]
 
-N_SAMPLES = 10000
+N_SAMPLES = 1
 SEED = 42
+# Inclusive sample ranges to skip
+SKIP_SAMPLE_RANGES = [
+    (1,9190),
+]
+
 plant_scale_dtpd=110
 PREFER = "max_top_ratio_saf"
 RF_MODEL_PATH = os.path.join(OUTPUT_DIR, "rf_yield_model.joblib")
@@ -1424,7 +1429,14 @@ def main():
 
                 # BUILD TASKS
                 tasks = []
-                for i, srow in enumerate(samples, 1):
+                for i, srow in enumerate(samples, start=1):
+                    skip_sample = any(
+                        start_id <= i <= end_id
+                        for start_id, end_id in SKIP_SAMPLE_RANGES
+                      )
+                    if skip_sample:
+                        print(f"Skipping Sample {i}")
+                        continue
                     srow = dict(srow)
                     srow["Sample_ID"] = i
                     srow["Feedstock"] = feedstock_id
@@ -1436,6 +1448,11 @@ def main():
                         "feedstock_id": feedstock_id,
                         "rf_model_path": RF_MODEL_PATH,
                     })
+                print(
+                f"Generated={len(samples)} | "
+                f"Skipped={len(samples) - len(tasks)} | "
+                f"Scheduled={len(tasks)}"
+                )
 
                 # RUN PARALLEL
                 ctx = mp.get_context("spawn")
@@ -1443,7 +1460,7 @@ def main():
                 t0 = time.perf_counter()
                 done = ok = fail = 0
 
-                print(f"🚀 Launching {len(tasks)} simulations with {N_WORKERS} workers...")
+                print(f"Launching {len(tasks)} simulations with {N_WORKERS} workers...")
 
                 with cf.ProcessPoolExecutor(max_workers=N_WORKERS, mp_context=ctx) as ex:
                     future_to_sid = {}

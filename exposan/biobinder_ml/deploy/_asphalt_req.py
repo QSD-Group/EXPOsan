@@ -16,8 +16,9 @@ import numpy as np
 
 # --- 1. CONFIGURATION AND FILE PATHS ---
 data_dir = r"C:\Work\Rutgers\QSDsan\EXPOsan\exposan\biobinder_ml\deploy\Data"
-master_input_path = os.path.join(data_dir, "master_infrastructure_model_matrix.csv")
-binder_output_path = os.path.join(data_dir, "county_asphalt_binder_demand_projections.csv")
+master_input_path = os.path.join(data_dir, "master_infrastructure_model_matrix_with_climate.csv")
+
+binder_output_path = os.path.join(data_dir, "county_asphalt_binder_demand_projections_updated.csv")
 
 print("Initializing Demand-Side Asphalt Binder Projection Model...")
 
@@ -26,6 +27,17 @@ if not os.path.exists(master_input_path):
 
 df = pd.read_csv(master_input_path)
 df['county_fips'] = df['county_fips'].astype(str).str.zfill(5)
+
+if "Climate_Zone_Factor" not in df.columns:
+    raise KeyError(
+        "Climate_Zone_Factor is missing. "
+        "Use master_infrastructure_model_matrix_with_climate.csv."
+    )
+
+if df["Climate_Zone_Factor"].isna().any():
+    raise ValueError(
+        "Some rows have missing Climate_Zone_Factor values."
+    )
 
 
 # --- 2. STRUCTURAL MODELING COEFFICIENTS & CLIMATE MODIFIERS ---
@@ -80,11 +92,14 @@ def calculate_baseline_annual_binder_tons(row):
     # Extract baseline structural geometry constraints [Ref D]
     design = structural_design_matrix[f_sys]
     thickness_ft = design["thickness_in"] / 12.0
+    asphalt_surface_fraction = float( row["Asphalt_Surface_Fraction"])
     
     # DYNAMIC CLIMATE CALIBRATION LOOP [Ref E]
     # Checks for 'Climate_Zone' column in dataset, defaults safely to 'Wet-Freeze' if unlisted
-    county_climate = row.get('Climate_Zone', 'Wet-Freeze')
-    climate_factor = CLIMATE_LIFESPAN_MODIFIER.get(county_climate, 1.0)
+    # county_climate = row.get('Climate_Zone', 'Wet-Freeze')
+    # climate_factor = CLIMATE_LIFESPAN_MODIFIER.get(county_climate, 1.0)
+    climate_factor = float(row["Climate_Zone_Factor"]
+)
     
     # Calculate the localized recurrence cycle adjusted by environmental strain
     R_years = design["base_R"] * climate_factor
@@ -100,7 +115,7 @@ def calculate_baseline_annual_binder_tons(row):
     
     # Step D: Apply annualized lifecycle maintenance recurrence interval (Annualized Baseline Demand)
     # The climate-adjusted 'R_years' now shifts material demand dynamically based on the region.
-    annual_pavement_cycle_demand = (lane_miles * binder_tons_per_lane_mile) / R_years
+    annual_pavement_cycle_demand = (lane_miles * asphalt_surface_fraction* binder_tons_per_lane_mile) / R_years
     
     return annual_pavement_cycle_demand
 

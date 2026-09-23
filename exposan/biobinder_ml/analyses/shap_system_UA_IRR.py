@@ -11,10 +11,6 @@ for license details.
 '''
 
 import os
-os.environ["OMP_NUM_THREADS"] = "1"
-os.environ["MKL_NUM_THREADS"] = "1"
-os.environ["OPENBLAS_NUM_THREADS"] = "1"
-os.environ["NUMEXPR_NUM_THREADS"] = "1"
 import flexsolve as flx
 import numpy as np
 import pandas as pd
@@ -23,15 +19,14 @@ from scipy.stats import qmc
 import glob
 import qsdsan as qs
 from chaospy import distributions as shape
-import concurrent.futures as cf
-import multiprocessing as mp
+
 from joblib import load
 from shap import TreeExplainer
-import time
+
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import r2_score
-from concurrent.futures.process import BrokenProcessPool
+
 # ---- Your system imports (EXPOsan biobinder)
 from exposan.biobinder_ml import (
     HTL_yields,
@@ -48,9 +43,8 @@ from exposan.biobinder_ml.Dist_flex import create_system
 # from exposan.biobinder_ml._irr_brent import solve_IRR_brent
 import flexsolve as flx
 from biosteam import TEA
-from custom_plot import custom_waterfall_plot
 
-RUN_MODE = "shap_only" #full/shap_only
+RUN_MODE = "full" #full/shap_only
 # ============================================================
 # CONFIG
 # ============================================================
@@ -59,18 +53,18 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 timestamp = datetime.now().strftime("%Y%m%d_%H%M")
 
-FEEDSTOCKS = ["sludge", "manure","food","green"]  #"sludge", "manure","food","green"
+FEEDSTOCKS = ["fog", "sludge", "manure", "green", "food",] #
 
 CONFIGS = [
     {"name": "CHCU_No_EC", "config_kwargs": {"flowsheet": None, "central_dry_flowrate": default_central,
                                             "decentralized_HTL": False, "decentralized_upgrading": False,
-                                                "skip_EC": True, "generate_H2": False, "EC_config": None}},
+                                            "skip_EC": True, "generate_H2": False, "EC_config": None}},
     {"name": "DHCU_No_EC", "config_kwargs": {"flowsheet": None, "central_dry_flowrate": default_central,
-                                                "decentralized_HTL": True, "decentralized_upgrading": False,
-                                                "skip_EC": True, "generate_H2": False, "EC_config": None}},
+                                            "decentralized_HTL": True, "decentralized_upgrading": False,
+                                            "skip_EC": True, "generate_H2": False, "EC_config": None}},
 ]
 
-N_SAMPLES = 10000
+N_SAMPLES = 500
 SEED = 42
 
 PREFER = "max_top_ratio"
@@ -82,148 +76,13 @@ USE_RF_YIELD_NOISE = False
 USE_SYSTEM_PARAM_UNCERTAINTY = True
 
 # ---- Targets in surrogate (IRR in % + GWP)
-TARGETS = ["IRR_pct"] #, "GWP"
+TARGETS = ["IRR_pct", "GWP"]
 CAPS = {
         # "MSP": 50,
-    "IRR_pct": 100.0,   # $/kg cap magnitude (±20) – you can also use [0, 20] if MSP is non-negative
+    "IRR_pct": 50.0,   # $/kg cap magnitude (±20) – you can also use [0, 20] if MSP is non-negative
     "GWP": 100.0,   # kgCO2e/kg cap magnitude (tune to your model scale)
     
 }
-# ============================================================
-# Tippping Fee Distribution
-# ============================================================
-
-import chaospy as cp
-from scipy import stats
-tea_indices = qs.utils.indices.tea_indices
-_short_ton_to_metric_tonne = 0.907185
-cost_year = 2020
-PCE_indices = tea_indices['PCEPI']
-FOG_year=2021
-FOG_factor= PCE_indices[cost_year]/PCE_indices[FOG_year]
-SnowdenSwan_year = 2016
-SnowdenSwan_factor = PCE_indices[cost_year]/PCE_indices[SnowdenSwan_year]
-Green_year= 2000
-Green_factor= PCE_indices[cost_year]/PCE_indices[Green_year]
-Badgett_year= 2019
-Badgett_factor= PCE_indices[cost_year]/PCE_indices[Badgett_year]
-# # -----------------------------
-# # Custom fitted distributions
-# # -----------------------------
-# class SludgePriceDist(cp.UserDistribution):
-#     def __init__(self):
-#         # Fitted to sludge avoided-disposal / tipping-fee data
-#         # Units: 2020$ / wet tonne
-#         self.a, self.loc, self.scale = -42.3, 8.8, 77.1
-#         super().__init__(lower=-160, upper=15)
-
-#     def _cdf(self, x):
-#         return stats.skewnorm.cdf(x, self.a, loc=self.loc, scale=self.scale)
-
-#     def _ppf(self, q):
-#         return stats.skewnorm.ppf(q, self.a, loc=self.loc, scale=self.scale)
-
-
-# class ManurePriceDist(cp.UserDistribution):
-#     def __init__(self):
-#         # Fitted to manure avoided-disposal / tipping-fee data
-#         # Units: 2020$ / wet tonne
-#         self.a, self.loc, self.scale = -1000000.0, 7.5, 112.8
-#         super().__init__(lower=-320, upper=10)
-
-#     def _cdf(self, x):
-#         return stats.skewnorm.cdf(x, self.a, loc=self.loc, scale=self.scale)
-
-#     def _ppf(self, q):
-#         return stats.skewnorm.ppf(q, self.a, loc=self.loc, scale=self.scale)
-
-
-# sludge_dist = SludgePriceDist()
-# manure_dist = ManurePriceDist()
-import numpy as np
-
-# -----------------------------
-# MANURE (empirical CDF)
-# -----------------------------
-MANURE_CDF_P = np.array([
-    0.00, 0.03, 0.04, 0.05, 0.05, 0.07, 0.10, 0.11, 0.13, 0.15,
-    0.17, 0.20, 0.23, 0.27, 0.30, 0.33, 0.36, 0.39, 0.43, 0.46,
-    0.50, 0.54, 0.58, 0.62, 0.66, 0.69, 0.73, 0.76, 0.80, 0.83,
-    0.86, 0.89, 0.93, 0.96, 0.98, 1.00
-], dtype=float)
-
-MANURE_CDF_X = np.array([
-    -310.7, -276.7, -256.6, -216.4, -173.6, -123.3, -119.5, -100.6,
-     -90.6,  -88.1,  -73.0,  -73.0,  -67.9,  -65.4,  -64.2,  -57.9,
-     -52.8,  -49.1,  -47.8,  -44.0,  -40.3,  -35.2,  -32.7,  -28.9,
-     -28.9,  -27.7,  -22.6,  -18.9,  -18.9,  -15.1,  -15.1,  -13.8,
-     -12.6,   -3.8,    6.3,    7.5
-], dtype=float)
-
-def manure_price_ppf(u):
-    u = float(np.clip(u, 0.0, 1.0))
-    return float(np.interp(u, MANURE_CDF_P, MANURE_CDF_X))
-
-
-# -----------------------------
-# SLUDGE (empirical CDF)
-# -----------------------------
-SLUDGE_CDF_P = np.array([
-    0.000, 0.028, 0.088, 0.155, 0.218, 0.244, 0.281, 0.330, 0.382,
-    0.428, 0.472, 0.535, 0.593, 0.667, 0.740, 0.813, 0.885, 0.950,
-    1.000
-], dtype=float)
-
-SLUDGE_CDF_X = np.array([
-    -152.9, -123.5, -120.6, -113.2, -102.9, -69.1, -58.8, -51.5, -48.5,
-     -39.7,  -42.6,  -29.4,  -22.1,   -5.9,    0.0,    2.9,    2.9,    7.4,
-       8.8
-], dtype=float)
-
-def sludge_price_ppf(u):
-    u = float(np.clip(u, 0.0, 1.0))
-    return float(np.interp(u, SLUDGE_CDF_P, SLUDGE_CDF_X))
-
-# -----------------------------
-# Central feedstock prices
-# Units: 2020$ / wet tonne
-# -----------------------------
-# Replace these numbers if you want updated calibration later.
-feedprice_tonne_dct = {
-    "fog":    +390.0,    # yellow grease purchase cost, 2020$ / wet tonne
-    "green":  -16/_short_ton_to_metric_tonne *Green_factor,   # Leaves & Yardwaste: $20/ton broome county NY; Atlantic County NJ 27$/ton
-    "food":   -36/_short_ton_to_metric_tonne,  # 36 $/wet short ton -> 39.69 $/wet metric tonne, Li et al. 2026
-    "sludge": -40.0*Badgett_factor,     # representative sludge tipping credit, Li et al 2026
-    "manure": -53.0*Badgett_factor,     # representative manure tipping credit, Li et al. 2026
-}
-
-# -----------------------------
-# Feedstock uncertainty distributions
-# Units: 2020$ / wet tonne
-# -----------------------------
-feedprice_dist_dct = {
-    "sludge": "empirical_sludge",
-    "manure": "empirical_manure",
-
-    "food": shape.Triangle(
-        lower   = -55.0 / _short_ton_to_metric_tonne,
-        midpoint= -36.0 / _short_ton_to_metric_tonne,
-        upper   = -18.0 / _short_ton_to_metric_tonne,
-    ),
-
-    "green": shape.Triangle(
-        lower   = -40.0 / _short_ton_to_metric_tonne,
-        midpoint= -16.0 / _short_ton_to_metric_tonne * Green_factor,
-        upper   = 0.0,
-    ),
-
-    "fog": shape.Triangle(
-        lower   = 300.0,
-        midpoint= 390.0,
-        upper   = 600.0,
-    ),
-}
-
 
 # # ---- Cutoff ratio uncertainty
 # CUTOFF_FRACS_BASE = [0.03, 0.61, 0.36]
@@ -234,16 +93,6 @@ feedprice_dist_dct = {
 # ============================================================
 # Helpers
 # ============================================================
-def _ppf(dist, u):
-    if isinstance(dist, str):
-        if dist == "empirical_manure":
-            return manure_price_ppf(u)
-        elif dist == "empirical_sludge":
-            return sludge_price_ppf(u)
-        else:
-            raise ValueError(f"Unknown custom distribution tag: {dist}")
-    return float(dist.ppf(u))
-
 def safe_float(x):
     try:
         return float(x)
@@ -267,26 +116,18 @@ def _lhs_samples(n, d, seed=42):
     sampler = qmc.LatinHypercube(d=d, seed=seed)
     return sampler.random(n=n)
 
-# def _ppf(dist, u):
-#     return float(dist.ppf(u))
+def _ppf(dist, u):
+    return float(dist.ppf(u))
 
 
 def find_latest_meta(feedstock_id, config_name, prefer, output_dir="results"):
     pattern = os.path.join(
         output_dir,
-        f"META_SHAP3_10000_{feedstock_id}_{config_name}_prefer-{prefer}_*.xlsx"
+        f"META_SHAP3_{feedstock_id}_{config_name}_prefer-{prefer}_*.xlsx"
     )
-    files = glob.glob(pattern)
-
+    files = sorted(glob.glob(pattern))
     if not files:
         raise FileNotFoundError(f"No META files found for {feedstock_id} | {config_name}")
-
-    # prioritize MERGED file if present
-    merged = [f for f in files if "MERGED" in f]
-    if merged:
-        return merged[0]
-
-    files.sort()
     return files[-1]
 
 import numpy as np
@@ -366,9 +207,13 @@ def hx_duty_kJ_per_hr(hx):
 def safe_get_design(col, key):
     try:
         v = col.design_results.get(key, np.nan)
+        # Some design entries can be strings like '100+'
+        return float(v) if np.isfinite(v) else np.nan
     except Exception:
-        return np.nan
-    return safe_float(v)
+        try:
+            return float(col.design_results[key])
+        except Exception:
+            return np.nan
 
 def add_column_diagnostics(out, col, prefix="CHD_"):
     # --- design numbers ---
@@ -581,7 +426,7 @@ def compute_gwp_per_kg_biobinder(sys):
 # ============================================================
 # Define uncertain inputs (distributions)
 # ============================================================
-def build_uncertainty_spec(sys, config_name, feedstock_id):
+def build_uncertainty_spec(sys, config_name):
     spec = []
 
     # (A) Feedstock composition uncertainty
@@ -622,8 +467,7 @@ def build_uncertainty_spec(sys, config_name, feedstock_id):
             {"name": "Electricity_Price",      "dist": shape.Triangle(0.03, 0.074, 0.1059),  "group": "economics"},
             {"name": "Uptime_Ratio",           "dist": shape.Uniform(0.8, 1.0),              "group": "operations"},
             {"name": "income_tax",             "dist": shape.Uniform(0.15, 0.35),            "group": "policy_finance"},
-            # {"name": "IRR",                    "dist": shape.Uniform(0.05, 0.15),            "group": "policy_finance"},
-            {"name": "Feedstock_price_$/tonne", "dist": feedprice_dist_dct[feedstock_id],     "group": "feedstock_economics"},
+            # {"name": "IRR",                    "dist": shape.Uniform(0.05, 0.15),            "group": "policy_finance"}
         ]
 
         if "CHCU" in config_name:
@@ -661,7 +505,7 @@ def generate_lhs_samples(spec, n_samples, seed=42):
 # ============================================================
 # Apply sampled scenario to system
 # ============================================================
-def apply_sample_to_system(sample, sys, tea, config_name, feedstock_id, rf_model=None, base_wet=None):
+def apply_sample_to_system(sample, sys, tea, config_name, rf_model=None, base_wet=None):
     wet = dict(base_wet) if base_wet is not None else {}
 
     # (1) Feedstock composition
@@ -800,19 +644,6 @@ def apply_sample_to_system(sample, sys, tea, config_name, feedstock_id, rf_model
 
     # (4) system params
     if USE_SYSTEM_PARAM_UNCERTAINTY:
-        
-        if "Feedstock_price_$/tonne" in sample:
-            fs_price_tonne = float(sample["Feedstock_price_$/tonne"])
-        else:
-            fs_price_tonne = float(feedprice_tonne_dct[feedstock_id])
-
-        fs_price_kg = fs_price_tonne / 1000.0
-
-        if hasattr(sys.flowsheet.stream, "scaled_feedstock"):
-            sys.flowsheet.stream.scaled_feedstock.price = fs_price_kg
-        elif hasattr(sys.flowsheet.stream, "feedstock"):
-            sys.flowsheet.stream.feedstock.price = fs_price_kg
-            
         if "Biofuel_price" in sample:
             sys.flowsheet.stream.biofuel.price = float(sample["Biofuel_price"])
         # if "N_Fertilizer_Price" in sample:
@@ -853,8 +684,7 @@ def apply_sample_to_system(sample, sys, tea, config_name, feedstock_id, rf_model
 # Run one full simulation with one sample
 # ============================================================
 def simulate_one(sample, config_name, config_kwargs, feedstock_id, rf_model):
-    t_run0 = time.perf_counter()
-    out = dict(sample)   
+    out = dict(sample)
 
     print(
         "SAMPLED:",
@@ -873,7 +703,6 @@ def simulate_one(sample, config_name, config_kwargs, feedstock_id, rf_model):
         sys=sys,
         tea=tea,
         config_name=config_name,
-        feedstock_id=feedstock_id,
         rf_model=rf_model,
         base_wet=base_wet,
     )
@@ -1104,20 +933,6 @@ def simulate_one(sample, config_name, config_kwargs, feedstock_id, rf_model):
             out["TEA_NPV"] = safe_float(tea.NPV)
         except Exception:
             out["TEA_NPV"] = np.nan
-        CF = tea.cashflow_array
-        dur = tea._get_duration_array()  
-        try:
-            out["NPV_at_0pct"]   = float(_NPV_at_r(0.0, CF, dur))
-            out["NPV_at_5pct"]   = float(_NPV_at_r(0.05, CF, dur))
-            out["NPV_at_10pct"]  = float(_NPV_at_r(0.10, CF, dur))
-            out["NPV_at_minus10pct"] = float(_NPV_at_r(-0.1, CF, dur))
-        except Exception as e:
-            out["NPV_at_0pct"] = np.nan
-            out["NPV_at_5pct"] = np.nan
-            out["NPV_at_10pct"] = np.nan
-            out["NPV_at_minus10pct"] = np.nan
-            out["NPV_eval_error"] = str(e)
-            
 
         try:
             out["TEA_net_earnings"] = safe_float(tea.net_earnings)
@@ -1125,7 +940,6 @@ def simulate_one(sample, config_name, config_kwargs, feedstock_id, rf_model):
             out["TEA_net_earnings"] = np.nan
 
         biobinder = sys.flowsheet.stream.biobinder
-        MSP= tea.solve_price (biobinder)
         biofuel = sys.flowsheet.stream.biofuel
         out["Biobinder_MT"] = safe_float(biobinder.F_mass * hours / 1000)
         out["Biofuel_MT"] = safe_float(biofuel.F_mass * hours / 1000)
@@ -1172,7 +986,6 @@ def simulate_one(sample, config_name, config_kwargs, feedstock_id, rf_model):
         out.update(
             {
                 "OK": True,
-                "MSP": safe_float(MSP),
                 "IRR_pct": safe_float(IRR_pct),
                 "GWP": safe_float(gwp),
                 "product_ratio_biobinder_over_biofuel": safe_float(prod_ratio),
@@ -1210,8 +1023,6 @@ def simulate_one(sample, config_name, config_kwargs, feedstock_id, rf_model):
         out["Cutoff_frac_light"] = np.nan
         out["Cutoff_frac_medium"] = np.nan
         out["Cutoff_frac_heavy"] = np.nan
-    
-    out["Run_time_s"] = float(time.perf_counter() - t_run0)
 
     return out
 
@@ -1252,18 +1063,16 @@ def train_surrogate_and_shap(df, feature_cols, target, cap=None, n_estimators=80
 
     expl = TreeExplainer(rf)
     shap_vals = expl.shap_values(X)
-    base_value = expl.expected_value
 
-    return rf, r2, X, d, np.array(shap_vals), base_value
+    return rf, r2, X, d, np.array(shap_vals)
 
 
-def save_shap_longform(X, d_ok, shap_vals, feature_cols, target, base_value, out_path, r2_test, extra_cols=None):
+def save_shap_longform(X, d_ok, shap_vals, feature_cols, target, out_path, r2_test, extra_cols=None):
     shap_col = f"{target}_SHAP"
     val_col  = f"{target}_value"
     
     extra_cols = extra_cols or []
     d_ok["prefer"] = PREFER
-    base_value = float(np.array(base_value).mean())
 
     rows = []
     for i in range(X.shape[0]):
@@ -1271,7 +1080,6 @@ def save_shap_longform(X, d_ok, shap_vals, feature_cols, target, base_value, out
         for j, feat in enumerate(feature_cols):
             rows.append({
                 "Sample_ID": sid,
-                "Base_value": float(base_value),
                 "Target": target,
                 "Target_R2_test": float(r2_test),
                 "Feature": feat,
@@ -1286,85 +1094,15 @@ def save_shap_longform(X, d_ok, shap_vals, feature_cols, target, base_value, out
     df_out.to_excel(out_path, index=False)
     print(f"📁 Saved SHAP longform: {out_path}")
 
-def _run_one_task(task):
-    """
-    task is a plain dict with only picklable stuff.
-    Returns a dict result (picklable) that you already produce.
-    """
-    # Import inside worker to avoid any weird fork/spawn import ordering issues
-    import os
-    from joblib import load
 
-    sample = task["sample"]
-    config_name = task["config_name"]
-    config_kwargs = task["config_kwargs"]
-    feedstock_id = task["feedstock_id"]
-    rf_model_path = task["rf_model_path"]
-
-    rf_model = load(rf_model_path) if (rf_model_path and os.path.exists(rf_model_path)) else None
-
-    return simulate_one(sample, config_name, config_kwargs, feedstock_id, rf_model)
-
-def pretty_surrogate_feature_name(f):
-    return {
-        "Feedstock_price_$/tonne": "Feedstock price ($/wet tonne)",
-        "Temperature (C)": "Temperature (°C)",
-        "Residence Time": "Residence time (min)",
-        "Solid content (w/w) %": "Solid loading (%)",
-        "Biofuel_price": "Biofuel price ($/kg)",
-        "Natural_Gas_Price": "Natural gas price",
-        "Electricity_Price": "Electricity price",
-        "Uptime_Ratio": "Uptime ratio",
-        "income_tax": "Income tax",
-        "product_ratio_biobinder_over_biofuel": "Biobinder/biofuel ratio",
-        "Y_biocrude": "Biocrude yield",
-    }.get(f, f)
-
-
-def format_surrogate_feature_value(feature, value):
-    try:
-        v = float(value)
-    except Exception:
-        return str(value)
-
-    if feature == "Feedstock_price_$/tonne":
-        return f"{v:.2f}"
-    elif feature == "Temperature (C)":
-        return f"{v:.0f}"
-    elif feature == "Residence Time":
-        return f"{v:.2f}"
-    elif feature == "Solid content (w/w) %":
-        return f"{v:.2f}"
-    elif feature in ("Biofuel_price", "Natural_Gas_Price", "Electricity_Price"):
-        return f"{v:.3f}"
-    elif feature == "Uptime_Ratio":
-        return f"{v:.3f}"
-    elif feature == "income_tax":
-        return f"{v:.3f}"
-    elif feature == "product_ratio_biobinder_over_biofuel":
-        return f"{v:.3f}"
-    elif feature == "Y_biocrude":
-        return f"{v:.3f}"
-    else:
-        return f"{v:.3f}"
-
-def get_target_labels(target):
-    if target == "IRR_pct":
-        return "Final IRR (%)", "Baseline IRR (%)"
-    elif target == "GWP":
-        return "Final GWP (kg CO2e/kg)", "Baseline GWP (kg CO2e/kg)"
-    else:
-        return f"Final {target}", f"Baseline {target}"
 # ============================================================
 # MAIN
 # ============================================================
 def main():
-    N_WORKERS = 10
     rf_model = None
-
-    # NOTE: rf_model is not used directly in parallel mode (loaded inside each worker)
     if os.path.exists(RF_MODEL_PATH):
-        print(f"✅ RF yield model found: {RF_MODEL_PATH}")
+        rf_model = load(RF_MODEL_PATH)
+        print(f"✅ RF yield model loaded: {RF_MODEL_PATH}")
     else:
         print(f"⚠️ RF model not found at {RF_MODEL_PATH}. Proceeding without RF yield propagation.")
 
@@ -1373,212 +1111,87 @@ def main():
             config_name = cfg["name"]
             config_kwargs = cfg["config_kwargs"]
 
-            print("\n" + "=" * 80)
+            print("\n" + "="*80)
             print(f"FEEDSTOCK={feedstock_id} | CONFIG={config_name}")
-            print("=" * 80)
+            print("="*80)
+
+            # meta_path = find_latest_meta(feedstock_id, config_name, PREFER, OUTPUT_DIR)
 
             if RUN_MODE == "full":
                 run_ts = datetime.now().strftime("%Y%m%d_%H%M")
                 meta_path = os.path.join(
-                    OUTPUT_DIR,
-                    f"META_SHAP3_{N_SAMPLES}_{feedstock_id}_{config_name}_prefer-{PREFER}_{run_ts}.xlsx",
-                )
+                                    OUTPUT_DIR,
+                              f"META_SHAP3_{feedstock_id}_{config_name}_prefer-{PREFER}_{run_ts}.xlsx"
+                 )
+                # ---------- RUN SIMULATIONS ----------
 
-                # ---------- BUILD SAMPLES ----------
                 sys_tmp = create_system(feedstock_id=feedstock_id, **config_kwargs)
-                spec = build_uncertainty_spec(sys_tmp, config_name, feedstock_id)
+                spec = build_uncertainty_spec(sys_tmp, config_name)
+                var_names = [s["name"] for s in spec]
+
                 feature_names, samples = generate_lhs_samples(spec, N_SAMPLES, seed=SEED)
 
-                # ---------- BUILD TASKS (picklable only) ----------
-                tasks = []
+                results = []
                 for i, sample in enumerate(samples, 1):
-                    sample = dict(sample)  # ensure plain dict
                     sample["Sample_ID"] = i
                     sample["Feedstock"] = feedstock_id
                     sample["Scenario"] = config_name
 
-                    tasks.append(
-                        {
-                            "sample": sample,
-                            "config_name": config_name,
-                            "config_kwargs": config_kwargs,
-                            "feedstock_id": feedstock_id,
-                            "rf_model_path": RF_MODEL_PATH,
-                        }
-                    )
+                    print(f"▶️ {feedstock_id} | {config_name} | sample {i}/{N_SAMPLES}")
+                    res = simulate_one(sample, config_name, config_kwargs, feedstock_id, rf_model)
+                    results.append(res)
 
-                # ---------- RUN IN PARALLEL ----------
-                ctx = mp.get_context("spawn")  # Windows stability
-                results = []
-
-                t0 = time.perf_counter()
-                done = 0
-                ok = 0
-                fail = 0
-
-                print(f"🚀 Launching {len(tasks)} simulations with {N_WORKERS} workers...")
-                
-                pool_broken = False
-                with cf.ProcessPoolExecutor(max_workers=N_WORKERS, mp_context=ctx) as ex:
-                    future_to_sid = {}
-                    for t in tasks:
-                        sid = t["sample"]["Sample_ID"]
-                        fut = ex.submit(_run_one_task, t)
-                        future_to_sid[fut] = sid
-
-                    for fut in cf.as_completed(future_to_sid):
-                        sid = future_to_sid[fut]
-                        done += 1
-
-                        try:
-                            res = fut.result()
-                        
-                        except BrokenProcessPool as e:
-                            res = {
-                                 "Sample_ID": sid,
-                                 "Feedstock": feedstock_id,
-                                 "Scenario": config_name,
-                                 "OK": False,
-                                 "Error": f"worker_exception:BrokenProcessPool:{e}",
-                            }
-                            results.append(res)
-                            fail += 1
-                            print(f"💥 Pool broke at sample {sid}: {e}")
-                            ex.shutdown(wait=False, cancel_futures=True)
-                            pool_broken = True
-                            break
-
-                        except Exception as e:
-                            res = {
-                                "Sample_ID": sid,
-                                "Feedstock": feedstock_id,
-                                "Scenario": config_name,
-                                "OK": False,
-                                "Error": f"worker_exception:{type(e).__name__}:{e}",
-                            }
-
-                        results.append(res)
-
-                        if res.get("OK", False):
-                            ok += 1
-                            status = "OK"
-                        else:
-                            fail += 1
-                            status = "FAIL"
-
-                        elapsed = time.perf_counter() - t0
-                        rate = done / elapsed if elapsed > 0 else float("nan")
-                        eta = (len(tasks) - done) / rate if rate and rate > 0 else float("nan")
-
-                        # If you later add out["Run_time_s"] in simulate_one, this will show it
-                        rt = res.get("Run_time_s", None)
-                        rt_txt = f", run={rt:.1f}s" if isinstance(rt, (int, float)) and np.isfinite(rt) else ""
-
-                        print(
-                            f"✅ {done}/{len(tasks)} | Sample {sid} {status}{rt_txt} | "
-                            f"OK={ok} FAIL={fail} | ETA~{eta/60:.1f} min"
-                        )
-                if pool_broken:
-                   print("⚠️ Parallel pool broke. Partial results will be saved.")
-
-                # ---------- SAVE ----------
-                results.sort(key=lambda d: d.get("Sample_ID", 10**9))
                 df = pd.DataFrame(results)
                 df.to_excel(meta_path, index=False)
                 print(f"📁 Saved meta dataset: {meta_path}")
-                
-            else:
-                # ---------- SHAP-ONLY OR FULL ----------
-                meta_path = find_latest_meta(feedstock_id, config_name, PREFER, OUTPUT_DIR)
-                #         print(f"📖 Loading meta dataset: {meta_path}")
-                df = pd.read_excel(meta_path)
+    #         else:
+    #             # ---------- SHAP-ONLY OR FULL ----------
+    #             meta_path = find_latest_meta(feedstock_id, config_name, PREFER, OUTPUT_DIR)
+    #             #         print(f"📖 Loading meta dataset: {meta_path}")
+    #             df = pd.read_excel(meta_path)
  
 
-            feature_cols = [c for c in df.columns if c in [
-                # uncertainty knobs
-                # "FS_factor_Water", "FS_factor_Carb", "FS_factor_Prot", "FS_factor_Lipid", "FS_factor_Ash",
-                "Feedstock_price_$/tonne",
-                "Temperature (C)", "Residence Time", "Solid content (w/w) %",
-                # "Pre-processing", "Catalyst", "Reactor Type", "Solvent",
-                "Biofuel_price", "Natural_Gas_Price", "Electricity_Price",
-                "Uptime_Ratio", "income_tax",
-                # intermediate + separation
-                "product_ratio_biobinder_over_biofuel",
-                "Y_biocrude",
-            ]]
+    #         feature_cols = [c for c in df.columns if c in [
+    #             # uncertainty knobs
+    #             "FS_factor_Water", "FS_factor_Carb", "FS_factor_Prot", "FS_factor_Lipid", "FS_factor_Ash",
+    #             "Temperature (C)", "Residence Time", "Solid content (w/w) %",
+    #             "Pre-processing", "Catalyst", "Reactor Type", "Solvent",
+    #             "Biofuel_price", "Natural_Gas_Price", "Electricity_Price",
+    #             "Uptime_Ratio", "income_tax",
+    #             # intermediate + separation
+    #             "product_ratio_biobinder_over_biofuel",
+    #             "Y_biocrude",
+    #         ]]
 
-            for target in TARGETS:
-                cap = CAPS.get(target, None)
+    #         for target in TARGETS:
+    #             cap = CAPS.get(target, None)
 
-                rf_surr, r2, X_ok, d_ok, shap_vals, base_value = train_surrogate_and_shap(
-                    df=df,
-                    feature_cols=feature_cols,
-                    target=target,
-                    cap= cap,
-                )
-                base_value = float(np.array(base_value).mean())
+    #             rf_surr, r2, X_ok, d_ok, shap_vals = train_surrogate_and_shap(
+    #                 df=df,
+    #                 feature_cols=feature_cols,
+    #                 target=target,
+    #                 cap=cap,
+    #             )
 
-                print(f"✅ {target} surrogate trained | R2(test) = {r2:.3f}")
-                import shap
-                import matplotlib.pyplot as plt
-                print(f"Base value (expected {target}): {base_value:.3f}")
-                y_vals = d_ok[target].values
-                idx_high = int(np.argmax(y_vals))
-                idx_low = int(np.argmin(y_vals))
-                idx_med = int(np.argsort(y_vals)[len(y_vals)//2])
-                cases = {
-                      "high": idx_high,
-                      "median": idx_med,
-                      "low": idx_low,
-                        }
-                pretty_names = [pretty_surrogate_feature_name(f) for f in X_ok.columns.tolist()]
-                final_label, baseline_label = get_target_labels(target)
-                for label, i in cases.items():
-                    local_shap = np.asarray(shap_vals[i]).flatten()
-                    row_vals = X_ok.iloc[i].values
-                    display_vals = [
-                       format_surrogate_feature_value(f, v)
-                       for f, v in zip(X_ok.columns.tolist(), row_vals)
-                        ]
-                    pred_value = float(base_value + local_shap.sum())
+    #             print(f"✅ {target} surrogate trained | R2(test) = {r2:.3f}")
 
-                    out_path = os.path.join(
-                        OUTPUT_DIR,
-                        f"WATERFALL_{feedstock_id}_{config_name}_{target}_{label}_{timestamp}.png"
-                        )
-                    custom_waterfall_plot(
-                        shap_values=local_shap,
-                        feature_names=pretty_names,
-                        feature_display_values=display_vals,
-                        base_value=base_value,
-                        final_value=pred_value,
-                        save_path=out_path,
-                        max_display=10,
-                        figsize=(11, 7),
-                        final_label=final_label,
-                        baseline_label=baseline_label,
-                        )
-                print("📊 Custom waterfall plots saved (high / median / low)")
+    #             shap_path = os.path.join(
+    #                 OUTPUT_DIR,
+    #                 f"SHAP3_SURROGATE_{feedstock_id}_{config_name}_{target}_prefer-{PREFER}_{timestamp}.xlsx"
+    #             )
 
+    #             save_shap_longform(
+    #                 X=X_ok,
+    #                 d_ok=d_ok,
+    #                 shap_vals=shap_vals,
+    #                 feature_cols=feature_cols,
+    #                 target=target,
+    #                 out_path=shap_path,
+    #                 r2_test=r2,
+    #                 extra_cols=["Feedstock", "Scenario", "prefer"],
+    #             )
 
-                shap_path = os.path.join(
-                    OUTPUT_DIR,
-                    f"SHAP3_SURROGATE_B_{N_SAMPLES}_{feedstock_id}_{config_name}_{target}_prefer-{PREFER}_{timestamp}.xlsx"
-                )
-
-                save_shap_longform(
-                    X=X_ok,
-                    d_ok=d_ok,
-                    shap_vals=shap_vals,
-                    feature_cols=feature_cols,
-                    target=target,
-                    out_path=shap_path,
-                    r2_test=r2,
-                    base_value=base_value,
-                    extra_cols=["Feedstock", "Scenario", "prefer"],
-                )
-
-    print("\n✅ SHAP analysis complete.")
+    # print("\n✅ SHAP analysis complete.")
 
 
 if __name__ == "__main__":

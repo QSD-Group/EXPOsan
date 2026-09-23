@@ -9,11 +9,9 @@ __pycache__/
 # Generated outputs
 # ============================================================================
 results/
+!exposan/biobinder_ml/results/
+!exposan/biobinder_ml/results/rf_yield_model.joblib
 analyses/results/
-
-# Deployment (keep scripts, ignore local datasets)
-deploy/Data/
-deploy/results/
 
 # ============================================================================
 # Local archives (not part of the public module)
@@ -21,6 +19,9 @@ deploy/results/
 legacy/
 legacy models/
 _to_be_removed/
+deploy/
+archived_results_for_publications/
+plotting/
 
 # ============================================================================
 # IDE

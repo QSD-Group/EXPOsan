@@ -29,7 +29,7 @@ print("RF model loaded")
 # -------------------------------------------------
 # Feedstock → dry-basis composition
 # -------------------------------------------------
-feedstock_id = "sludge"
+feedstock_id = "manure"
 wet_comp = get_feedstock_composition(feedstock_id)
 
 dry_frac = 1.0 - wet_comp["Water"]
@@ -81,6 +81,7 @@ predicted_yields_frac = {
 # SHAP
 # -------------------------------------------------
 shap_vals = explainer.shap_values(X)
+base_values = np.asarray(explainer.expected_value).flatten()
 feature_values = X.iloc[0]
 shap_arr = shap_vals[0]  # shape: (n_features, 4)
 timestamp = datetime.now().strftime("%Y%m%d_%H%M")
@@ -142,7 +143,10 @@ shap_out.insert(
         for f, v in zip(shap_out["Feature"], shap_out["Feature value"])
     ],
 )
-
+shap_out["Biocrude expected value"] = float(base_values[0])
+shap_out["Aqueous expected value"] = float(base_values[1])
+shap_out["Gas expected value"] = float(base_values[2])
+shap_out["Char expected value"] = float(base_values[3])
 # -------------------------------------------------
 # Optional rounding for readability
 # -------------------------------------------------

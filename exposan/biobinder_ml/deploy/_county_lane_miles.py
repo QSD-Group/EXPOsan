@@ -18,7 +18,7 @@ import os
 data_dir = r"C:\Work\Rutgers\QSDsan\EXPOsan\exposan\biobinder_ml\deploy\Data"
 
 # Inputs
-lane_miles_path = os.path.join(data_dir, "county_lane_miles_summary.csv")
+lane_miles_path = os.path.join(data_dir, "county_lane_miles_structural_summary.csv")
 demographics_path = os.path.join(data_dir, "county_geo_demographics_summary.csv")
 
 # FAF5 Truck Data Folder

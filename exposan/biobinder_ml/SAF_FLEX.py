@@ -33,7 +33,6 @@ References
 
 '''
 
-# -*- coding: utf-8 -*-
 # !!! Temporarily ignoring warnings
 import warnings
 warnings.filterwarnings('ignore')
@@ -297,7 +296,7 @@ def create_system(
     # =========================================================================
 
     # --- crude split ---
-    cutoff_fracs = [0.01, 0.69, 0.30]  # keep your SAF baseline split for now
+    cutoff_fracs = [0.01, 0.69, 0.30]  # keep SAF baseline split for now
 
     CrudeSplitter = u_bb.BiocrudeSplitter(
         "CrudeSplitter",

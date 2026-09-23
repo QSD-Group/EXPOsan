@@ -17,7 +17,7 @@ What this script does
 1. Loads predefined Train/Test sheets
 2. Runs 10-fold CV on Train only
 3. Trains/evaluates:
-      - DNN (multi-output)
+      - DNN (Physics-Aware Softmax Keras Neural Network)
       - Random Forest (multi-output)
       - Gradient Boosting (4 separate single-output models)
 4. Reports BOTH:
@@ -43,12 +43,13 @@ import os
 import warnings
 import numpy as np
 import pandas as pd
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers
 
 from sklearn.model_selection import KFold
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
-from sklearn.pipeline import Pipeline
-from sklearn.neural_network import MLPRegressor
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 
@@ -62,7 +63,7 @@ output_dir = "results"
 os.makedirs(output_dir, exist_ok=True)
 
 file_path = os.path.join(output_dir, "HTL_all_yield_normalized_split_stratified_10pct.xlsx")
-out_xlsx = os.path.join(output_dir, "Results_10Fold_DNN_RF_GBR_Extended_tuned.xlsx")
+out_xlsx = os.path.join(output_dir, "Results_10Fold_DNN_RF_GBR_Extended_tuned_SI_figure.xlsx")
 
 yield_cols = ["Biocrude wt%", "Aqueous wt%", "Gas wt%", "Solids wt%"]
 
@@ -96,89 +97,7 @@ print(f"Train shape: X={X_train_full.shape}, y={y_train_full.shape}")
 print(f"Test  shape: X={X_test.shape}, y={y_test.shape}")
 print("=" * 70)
 
-# # ===============================================================
-# # 2.5 Duplicate Feature Variability Analysis (Range + Histogram)
-# # ===============================================================
-# import numpy as np
-# import matplotlib.pyplot as plt
-# import os
 
-# print("\n🔍 Running duplicate feature variability analysis...")
-
-# # Separate features and targets
-# X = train_df.drop(columns=yield_cols)
-# y = train_df[yield_cols]
-
-# # Group identical feature rows
-# dup_groups = X.groupby(list(X.columns)).groups
-# dup_indices = [idxs for idxs in dup_groups.values() if len(idxs) > 1]
-
-# print(f"Total duplicate feature groups: {len(dup_indices)}")
-
-# # ---------------------------------------------------------------
-# # Compute variability stats
-# # ---------------------------------------------------------------
-# group_stats = []
-
-# for i, idxs in enumerate(dup_indices):
-#     vals = y.iloc[idxs]["Biocrude wt%"]
-#     group_stats.append({
-#         "Group": f"G{i}",
-#         "std": np.std(vals),
-#         "range": vals.max() - vals.min(),
-#         "min": vals.min(),
-#         "max": vals.max(),
-#         "indices": idxs
-#     })
-
-# stats_df = pd.DataFrame(group_stats)
-
-# # ---------------------------------------------------------------
-# # Select top variable groups (cleaner visualization)
-# # ---------------------------------------------------------------
-# top_n = 12
-# top_groups = stats_df.sort_values("range", ascending=False).head(top_n).reset_index(drop=True)
-
-# # ---------------------------------------------------------------
-# # 📊 RANGE PLOT (Best for slides)
-# # ---------------------------------------------------------------
-# plt.figure(figsize=(10, 5))
-
-# for i, row in top_groups.iterrows():
-#     plt.plot([i, i], [row["min"], row["max"]], linewidth=3)
-
-# plt.ylabel("Biocrude yield (wt%)", fontsize=12)
-# plt.title("Yield variability for identical inputs (Top groups)", fontsize=13)
-# plt.xticks(range(len(top_groups)), top_groups["Group"], rotation=45)
-# plt.grid(True, alpha=0.3)
-
-# plt.tight_layout()
-
-# range_path = os.path.join(output_dir, "duplicate_variability_range.png")
-# plt.savefig(range_path, dpi=300)
-# plt.show()
-
-# print(f"✅ Range plot saved → {range_path}")
-
-# # ---------------------------------------------------------------
-# # 📊 HISTOGRAM (Best for paper)
-# # ---------------------------------------------------------------
-# ranges = stats_df["range"].values
-
-# plt.figure(figsize=(6, 4))
-# plt.hist(ranges, bins=12)
-# plt.xlabel("Yield range (wt%)", fontsize=11)
-# plt.ylabel("Frequency", fontsize=11)
-# plt.title("Distribution of yield variability for identical inputs", fontsize=12)
-# plt.grid(True, alpha=0.3)
-
-# plt.tight_layout()
-
-# hist_path = os.path.join(output_dir, "duplicate_variability_hist.png")
-# plt.savefig(hist_path, dpi=300)
-# plt.show()
-
-# print(f"✅ Histogram saved → {hist_path}")
 # ===============================================================
 # 3. Helper functions
 # ===============================================================
@@ -313,21 +232,16 @@ def gbr_leaf_complexity(gbr_models):
     """
     total = 0
     for model in gbr_models:
-        # GradientBoostingRegressor.estimators_ shape = (n_estimators, 1)
         for est in model.estimators_.ravel():
             total += est.get_n_leaves()
     return int(total)
 
 
-def dnn_weight_complexity(dnn_pipeline):
+def dnn_weight_complexity(dnn_model):
     """
-    Complexity proxy for DNN: total weights + biases.
+    Complexity proxy for Keras Softmax DNN: total trainable parameters.
     """
-    mlp = dnn_pipeline.named_steps["mlp"]
-    total = 0
-    for w, b in zip(mlp.coefs_, mlp.intercepts_):
-        total += w.size + b.size
-    return int(total)
+    return int(dnn_model.count_params())
 
 
 def leakage_audit(train_df, test_df, yield_cols):
@@ -336,15 +250,12 @@ def leakage_audit(train_df, test_df, yield_cols):
     """
     feature_cols_full = [c for c in train_df.columns if c not in yield_cols]
 
-    # exact full-row overlap
     full_overlap = train_df.merge(test_df, how="inner", on=train_df.columns.tolist())
 
-    # exact feature-only overlap
     train_feat = train_df[feature_cols_full].copy()
     test_feat = test_df[feature_cols_full].copy()
     feat_overlap = train_feat.merge(test_feat, how="inner", on=feature_cols_full)
 
-    # duplicate counts within each set
     train_dup_full = train_df.duplicated().sum()
     test_dup_full = test_df.duplicated().sum()
     train_dup_feat = train_feat.duplicated().sum()
@@ -364,21 +275,27 @@ def leakage_audit(train_df, test_df, yield_cols):
     return audit, full_overlap, feat_overlap
 
 
-def make_dnn():
-    return Pipeline([
-        ("scaler", StandardScaler()),
-        ("mlp", MLPRegressor(
-            hidden_layer_sizes=(64, 128, 128, 64, 64, 64, 64),
-            activation="relu",
-            alpha=0.01,
-            learning_rate_init=5e-4,
-            max_iter=600,
-            random_state=dnn_random_state,
-            early_stopping=True,
-            n_iter_no_change=20,
-            verbose=False
-        ))
-    ])
+def build_dnn(input_dim):
+    """
+    Physics-Aware Softmax + Huber Loss Keras Neural Network (from ml_models.py)
+    """
+    tf.random.set_seed(dnn_random_state)
+    inputs = keras.Input(shape=(input_dim,))
+    x = layers.BatchNormalization()(inputs)
+    x = layers.Dense(128, activation="relu", kernel_regularizer=keras.regularizers.l2(1e-2))(x)
+    x = layers.Dense(128, activation="relu", kernel_regularizer=keras.regularizers.l2(1e-2))(x)
+    x = layers.Dropout(0.2)(x)
+    x = layers.Dense(64, activation="relu", kernel_regularizer=keras.regularizers.l2(1e-2))(x)
+    logits = layers.Dense(4)(x)
+    outputs = layers.Lambda(lambda t: 100.0 * tf.nn.softmax(t))(logits)
+    
+    model = keras.Model(inputs, outputs)
+    model.compile(
+        optimizer=keras.optimizers.Adam(learning_rate=5e-4),
+        loss=keras.losses.Huber(delta=2.0),
+        metrics=[keras.metrics.MeanAbsoluteError(name="MAE")]
+    )
+    return model
 
 
 def make_rf():
@@ -396,6 +313,8 @@ def make_gbr():
         learning_rate=0.05,
         max_depth=3
     )
+
+
 def make_rf_tuned():
     return RandomForestRegressor(
         n_estimators=500,
@@ -406,6 +325,7 @@ def make_rf_tuned():
         random_state=rf_random_state,
         n_jobs=-1
     )
+
 
 # ===============================================================
 # 4. 10-fold CV on TRAIN only
@@ -430,15 +350,23 @@ for f, (tr_idx, va_idx) in enumerate(kf.split(X_train_full), start=1):
     Xtr_imp = pd.DataFrame(imp.fit_transform(Xtr), columns=feature_cols)
     Xva_imp = pd.DataFrame(imp.transform(Xva), columns=feature_cols)
 
-    # ---------------- DNN (multi-output) ----------------
-    dnn = make_dnn()
-    dnn.fit(Xtr_imp, ytr)
-    yhat_dnn = dnn.predict(Xva_imp)
+    # ---------------- DNN (Physics-Aware Softmax) ----------------
+    scaler_fold = StandardScaler()
+    Xtr_s = scaler_fold.fit_transform(Xtr_imp)
+    Xva_s = scaler_fold.transform(Xva_imp)
+
+    dnn = build_dnn(Xtr_s.shape[1])
+    cb = [
+        keras.callbacks.EarlyStopping(patience=12, restore_best_weights=True),
+        keras.callbacks.ReduceLROnPlateau(patience=6, factor=0.5, min_lr=1e-5)
+    ]
+    dnn.fit(Xtr_s, ytr, validation_split=0.15, epochs=400, batch_size=64, verbose=0, callbacks=cb)
+    yhat_dnn = dnn.predict(Xva_s, verbose=0)
 
     dnn_eval = evaluate_multioutput(
         y_true=yva,
         y_pred=yhat_dnn,
-        model_name="DNN(MLP)",
+        model_name="DNN(Softmax)",
         split_name="CV",
         fold_label=f,
         target_names=targets
@@ -446,10 +374,10 @@ for f, (tr_idx, va_idx) in enumerate(kf.split(X_train_full), start=1):
     cv_all_rows.append(dnn_eval)
 
     cv_complexity_rows.append({
-        "Model": "DNN(MLP)",
+        "Model": "DNN(Softmax)",
         "Split": "CV",
         "Fold": f,
-        "Complexity_Definition": "weights_plus_biases",
+        "Complexity_Definition": "total_trainable_parameters",
         "Complexity_Value": dnn_weight_complexity(dnn)
     })
 
@@ -523,16 +451,24 @@ Xte_all = pd.DataFrame(imp_final.transform(X_test), columns=feature_cols)
 holdout_rows = []
 holdout_complexity_rows = []
 
-# ---------------- DNN final ----------------
-dnn_final = make_dnn()
-dnn_final.fit(Xtr_all, y_train_full)
-y_pred_dnn = dnn_final.predict(Xte_all)
+# ---------------- DNN final (Physics-Aware Softmax) ----------------
+scaler_final = StandardScaler()
+Xtr_all_s = scaler_final.fit_transform(Xtr_all)
+Xte_all_s = scaler_final.transform(Xte_all)
+
+dnn_final = build_dnn(Xtr_all_s.shape[1])
+cb_final = [
+    keras.callbacks.EarlyStopping(patience=12, restore_best_weights=True),
+    keras.callbacks.ReduceLROnPlateau(patience=6, factor=0.5, min_lr=1e-5)
+]
+dnn_final.fit(Xtr_all_s, y_train_full, validation_split=0.15, epochs=400, batch_size=64, verbose=0, callbacks=cb_final)
+y_pred_dnn = dnn_final.predict(Xte_all_s, verbose=0)
 
 holdout_rows.append(
     evaluate_multioutput(
         y_true=y_test,
         y_pred=y_pred_dnn,
-        model_name="DNN(MLP)",
+        model_name="DNN(Softmax)",
         split_name="Holdout",
         fold_label="Holdout",
         target_names=targets
@@ -540,10 +476,10 @@ holdout_rows.append(
 )
 
 holdout_complexity_rows.append({
-    "Model": "DNN(MLP)",
+    "Model": "DNN(Softmax)",
     "Split": "Holdout",
     "Fold": "Holdout",
-    "Complexity_Definition": "weights_plus_biases",
+    "Complexity_Definition": "total_trainable_parameters",
     "Complexity_Value": dnn_weight_complexity(dnn_final)
 })
 
@@ -606,6 +542,27 @@ holdout_complexity = pd.DataFrame(holdout_complexity_rows)
 holdout_macro_summary = summarize_macro(holdout_results)
 holdout_target_summary = summarize_per_target(holdout_results)
 
+# ===============================================================
+# 5B. EXPORT HOLDOUT PREDICTIONS FOR FIGURE REPRODUCIBILITY
+# ===============================================================
+
+prediction_rows = []
+
+for i, target in enumerate(yield_cols):
+    for j in range(len(y_test)):
+        prediction_rows.append({
+            "Observation": j + 1,
+            "Target": target,
+            "Experimental": y_test[j, i],
+            "RF_Predicted": y_pred_rf[j, i],
+            "GBR_Predicted": y_pred_gbr[j, i],
+            "DNN_Predicted": y_pred_dnn[j, i],
+            "RF_Residual": y_pred_rf[j, i] - y_test[j, i],
+            "GBR_Residual": y_pred_gbr[j, i] - y_test[j, i],
+            "DNN_Residual": y_pred_dnn[j, i] - y_test[j, i],
+        })
+
+holdout_predictions = pd.DataFrame(prediction_rows)
 
 # ===============================================================
 # 6. Combined summary tables
@@ -631,16 +588,7 @@ audit_df, full_overlap_df, feat_overlap_df = leakage_audit(train_df, test_df, yi
 
 
 # ===============================================================
-# 8. Optional: save final RF model for downstream use
-# ===============================================================
-# Uncomment if you want to overwrite or save a fresh RF joblib.
-# from joblib import dump
-# rf_joblib_path = os.path.join(output_dir, "rf_yield_model_retrained.joblib")
-# dump(rf_final, rf_joblib_path)
-
-
-# ===============================================================
-# 9. Save all outputs
+# 8. Save all outputs
 # ===============================================================
 with pd.ExcelWriter(out_xlsx, engine="openpyxl") as writer:
 
@@ -663,6 +611,11 @@ with pd.ExcelWriter(out_xlsx, engine="openpyxl") as writer:
     cv_complexity.to_excel(writer, sheet_name="CV_Model_Complexity", index=False)
     holdout_complexity.to_excel(writer, sheet_name="Holdout_Model_Complexity", index=False)
     combined_complexity.to_excel(writer, sheet_name="All_Model_Complexity", index=False)
+    holdout_predictions.to_excel(
+        writer,
+        sheet_name="Holdout_Predictions",
+        index=False
+    )
 
     # Leakage / overlap audit
     audit_df.to_excel(writer, sheet_name="Leakage_Audit", index=False)
@@ -682,7 +635,7 @@ with pd.ExcelWriter(out_xlsx, engine="openpyxl") as writer:
         {"Key": "GBR random_state", "Value": gbr_random_state},
         {"Key": "DNN random_state", "Value": dnn_random_state},
         {"Key": "RF output structure", "Value": "single multi-output model"},
-        {"Key": "DNN output structure", "Value": "single multi-output model"},
+        {"Key": "DNN output structure", "Value": "single multi-output model (Keras Softmax)"},
         {"Key": "GBR output structure", "Value": "4 separate single-output models"},
     ])
     meta_df.to_excel(writer, sheet_name="Run_Metadata", index=False)
@@ -691,39 +644,291 @@ print("\n" + "=" * 70)
 print(f"Done. Extended results saved to:\n{out_xlsx}")
 print("=" * 70)
 
+# ===============================================================
+# 9. FIGURE S1 — PARITY PLOTS
+#    Rows: RF, GBR, DNN
+#    Columns: Biocrude, Aqueous, Gas, Solids
+# ===============================================================
 
-import pandas as pd
 import matplotlib.pyplot as plt
+from sklearn.metrics import r2_score, mean_squared_error
 
-# Load train data
-train_df = pd.read_excel(file, sheet_name="Train")
+figure_dir = os.path.join(output_dir, "SI_Figures")
+os.makedirs(figure_dir, exist_ok=True)
 
-# Separate features and targets
-X = train_df.drop(columns=yield_cols)
-y = train_df[yield_cols]
+# Display names
+product_names = ["Biocrude", "Aqueous", "Gas", "Solids"]
 
-# Identify duplicate feature groups
-dup_groups = X.groupby(list(X.columns)).groups
+models_plot = {
+    "RF": y_pred_rf,
+    "GBR": y_pred_gbr,
+    "DNN": y_pred_dnn,
+}
 
-# Keep only groups with duplicates
-dup_indices = [idxs for idxs in dup_groups.values() if len(idxs) > 1]
+# Publication-oriented defaults
+plt.rcParams.update({
+    "font.family": "Arial",
+    "font.size": 9,
+    "axes.labelsize": 9,
+    "axes.titlesize": 10,
+    "xtick.labelsize": 8,
+    "ytick.labelsize": 8,
+    "legend.fontsize": 8,
+    "axes.linewidth": 0.8,
+    "xtick.direction": "out",
+    "ytick.direction": "out",
+})
 
-# Build plotting dataframe
-rows = []
-for i, idxs in enumerate(dup_indices):
-    for idx in idxs:
-        rows.append({
-            "Group": f"G{i}",
-            "Biocrude": y.iloc[idx]["Biocrude wt%"]
-        })
+fig, axes = plt.subplots(
+    nrows=3,
+    ncols=4,
+    figsize=(10.5, 7.6),
+    sharex=True,
+    sharey=True
+)
 
-plot_df = pd.DataFrame(rows)
+# All yields use the same physical scale
+axis_min = 0
+axis_max = 100
 
-# Plot
-plt.figure()
-plot_df.boxplot(column="Biocrude", by="Group")
-plt.xticks(rotation=90)
-plt.ylabel("Biocrude yield (wt%)")
-plt.title("Variability in yield for identical input features")
-plt.suptitle("")
-plt.show()
+panel_letters = [
+    "(a)", "(b)", "(c)", "(d)",
+    "(e)", "(f)", "(g)", "(h)",
+    "(i)", "(j)", "(k)", "(l)"
+]
+
+panel = 0
+
+for row, (model_name, y_pred) in enumerate(models_plot.items()):
+
+    for col, product_name in enumerate(product_names):
+
+        ax = axes[row, col]
+
+        y_obs = y_test[:, col]
+        y_hat = y_pred[:, col]
+
+        # Metrics
+        r2 = r2_score(y_obs, y_hat)
+        rmse = np.sqrt(mean_squared_error(y_obs, y_hat))
+
+        # Experimental vs predicted observations
+        ax.scatter(
+            y_obs,
+            y_hat,
+            s=24,
+            facecolors="none",
+            edgecolors="black",
+            linewidths=0.8,
+            alpha=0.85
+        )
+
+        # Perfect-agreement line
+        ax.plot(
+            [axis_min, axis_max],
+            [axis_min, axis_max],
+            linestyle="--",
+            linewidth=1.0,
+            color="black"
+        )
+
+        ax.set_xlim(axis_min, axis_max)
+        ax.set_ylim(axis_min, axis_max)
+
+        ax.set_xticks(np.arange(0, 101, 20))
+        ax.set_yticks(np.arange(0, 101, 20))
+
+        # Keep panels square so slope = 1 visually
+        ax.set_aspect("equal", adjustable="box")
+
+        # Column headings
+        if row == 0:
+            ax.set_title(product_name, fontweight="bold")
+
+        # Row labels
+        if col == 0:
+            ax.set_ylabel(
+                f"{model_name}\nPredicted yield (wt%)",
+                fontweight="bold"
+            )
+
+        # Bottom x-axis labels only
+        if row == 2:
+            ax.set_xlabel(
+                "Experimental yield (wt%)",
+                fontweight="bold"
+            )
+
+        # R2 and RMSE annotation
+        ax.text(
+            0.05,
+            0.94,
+            f"$R^2$ = {r2:.3f}\nRMSE = {rmse:.2f}",
+            transform=ax.transAxes,
+            ha="left",
+            va="top",
+            fontsize=8
+        )
+
+        # Panel letter
+        ax.text(
+            0.96,
+            0.05,
+            panel_letters[panel],
+            transform=ax.transAxes,
+            ha="right",
+            va="bottom",
+            fontsize=9,
+            fontweight="bold"
+        )
+
+        # Clean publication appearance
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+
+        panel += 1
+
+fig.tight_layout(w_pad=1.0, h_pad=1.0)
+
+# Vector format for manuscript/SI
+fig.savefig(
+    os.path.join(figure_dir, "Figure_S1_Parity_AllModels.pdf"),
+    bbox_inches="tight"
+)
+
+# High-resolution raster copy
+fig.savefig(
+    os.path.join(figure_dir, "Figure_S1_Parity_AllModels.png"),
+    dpi=600,
+    bbox_inches="tight"
+)
+
+plt.close(fig)
+
+print("Figure S1 parity plots saved.")
+
+# ===============================================================
+# 10. FIGURE S2 — RESIDUAL DIAGNOSTIC PLOTS
+#     Residual = Predicted - Experimental
+#     Rows: RF, GBR, DNN
+#     Columns: Biocrude, Aqueous, Gas, Solids
+# ===============================================================
+
+fig, axes = plt.subplots(
+    nrows=3,
+    ncols=4,
+    figsize=(10.5, 7.6),
+    sharex=True
+)
+
+# Determine one symmetric residual range for all panels
+all_residuals = []
+
+for y_pred in models_plot.values():
+    all_residuals.append((y_pred - y_test).ravel())
+
+all_residuals = np.concatenate(all_residuals)
+
+residual_limit = np.ceil(
+    np.max(np.abs(all_residuals)) / 5
+) * 5
+
+panel = 0
+
+for row, (model_name, y_pred) in enumerate(models_plot.items()):
+
+    for col, product_name in enumerate(product_names):
+
+        ax = axes[row, col]
+
+        y_obs = y_test[:, col]
+        residual = y_pred[:, col] - y_obs
+
+        # Summary statistics
+        mean_residual = np.mean(residual)
+        mae = np.mean(np.abs(residual))
+
+        ax.scatter(
+            y_obs,
+            residual,
+            s=24,
+            facecolors="none",
+            edgecolors="black",
+            linewidths=0.8,
+            alpha=0.85
+        )
+
+        # Zero-error reference
+        ax.axhline(
+            0,
+            linestyle="--",
+            linewidth=1.0,
+            color="black"
+        )
+
+        ax.set_xlim(0, 100)
+        ax.set_ylim(-residual_limit, residual_limit)
+
+        ax.set_xticks(np.arange(0, 101, 20))
+
+        # Column headings
+        if row == 0:
+            ax.set_title(product_name, fontweight="bold")
+
+        # Row-specific y labels
+        if col == 0:
+            ax.set_ylabel(
+                f"{model_name}\nResidual (wt%)",
+                fontweight="bold"
+            )
+
+        if row == 2:
+            ax.set_xlabel(
+                "Experimental yield (wt%)",
+                fontweight="bold"
+            )
+
+        # Diagnostic annotation
+        ax.text(
+            0.05,
+            0.94,
+            f"Mean residual = {mean_residual:.2f}\nMAE = {mae:.2f}",
+            transform=ax.transAxes,
+            ha="left",
+            va="top",
+            fontsize=8
+        )
+
+        # Panel letter
+        ax.text(
+            0.96,
+            0.05,
+            panel_letters[panel],
+            transform=ax.transAxes,
+            ha="right",
+            va="bottom",
+            fontsize=9,
+            fontweight="bold"
+        )
+
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+
+        panel += 1
+
+fig.tight_layout(w_pad=1.0, h_pad=1.0)
+
+fig.savefig(
+    os.path.join(figure_dir, "Figure_S2_Residuals_AllModels.pdf"),
+    bbox_inches="tight"
+)
+
+fig.savefig(
+    os.path.join(figure_dir, "Figure_S2_Residuals_AllModels.png"),
+    dpi=600,
+    bbox_inches="tight"
+)
+
+plt.close(fig)
+
+print("Figure S2 residual plots saved.")

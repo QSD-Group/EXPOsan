@@ -1,9 +1,14 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Tue Mar 10 14:53:15 2026
+'''
+EXPOsan: Exposition of sanitation and resource recovery systems
 
-@author: aliah
-"""
+This module is developed by:
+    Ali Ahmad <aliahmad1331@gmail.com>
+
+This module is under the University of Illinois/NCSA Open Source License.
+Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
+for license details.
+'''
 
 import pandas as pd
 import numpy as np
@@ -164,15 +169,15 @@ for i, feed in enumerate(feedstock_order):
 ax.set_xticks(base_positions)
 ax.set_xticklabels(
     [f.capitalize() for f in feedstock_order],
-    fontsize=14,
+    fontsize=15,
     fontweight="bold"
 )
 
-ax.set_ylabel("IRR (%)", fontsize=13, fontweight="bold")
+ax.set_ylabel(r"$\bf{IRR}$ [%]", fontsize=15)
 ax.set_xlabel("")
 
 for tick in ax.get_yticklabels():
-    tick.set_fontweight("bold")
+    # tick.set_fontweight("bold")
     tick.set_fontsize(14)
 
 ax.axhline(0, color="black", linewidth=1.2, alpha=0.6)
@@ -203,6 +208,6 @@ plt.tight_layout(pad=0.5)
 # ==============================
 # Save
 # ==============================
-plt.savefig("IRR_vertical_halfeye_halfpoint_2.png", dpi=300, bbox_inches="tight")
+plt.savefig("IRR_vertical_halfeye_halfpoint_2.png", dpi=600, bbox_inches="tight")
 plt.savefig("IRR_vertical_halfeye_halfpoint_2.pdf", bbox_inches="tight")
 plt.show()

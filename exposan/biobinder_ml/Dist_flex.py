@@ -64,7 +64,7 @@ _RF_MODEL = None
 def _get_rf_model():
     global _RF_MODEL
     if _RF_MODEL is None:
-        model_path = os.path.join("results", "rf_yield_model.joblib")
+        model_path = os.path.join(results_path, "rf_yield_model.joblib")
         _RF_MODEL = load(model_path)
         print("RF model loaded")
     return _RF_MODEL
@@ -411,44 +411,6 @@ def create_system(
     # print("\n---- CrudeLightDis Bottom Output Composition ----")
     # print(CrudeLightDis.outs[1].show())
     
-    # def get_dynamic_LHK(stream, Tb_threshold=600):
-   
-    #     cmps = stream.chemicals
-    #     mol_comps = stream.mol
-        
-    #     # Filter out components that are present in stream
-    #     present_IDs = [i.ID for i in cmps if mol_comps[cmps.index(i.ID)] > 0]
-        
-    #     if len(present_IDs) < 2:
-    #        raise RuntimeError("Not enough volatile components to select LHK pair.")
-        
-      
-    #     # Filter out components that are present in stream
-    #     Tb_dict = {i.ID: i.Tb for i in cmps if i.ID in present_IDs}
-
-    #     # Sort by boiling point
-    #     sorted_cmps = sorted(Tb_dict.items(), key=lambda x: x[1])
-    
-    #     # Find light and heavy components around threshold
-    #     light_keys = [k for k, Tb in sorted_cmps if Tb < Tb_threshold]
-    #     heavy_keys = [k for k, Tb in sorted_cmps if Tb >= Tb_threshold]
-
-    #     if not light_keys or not heavy_keys:
-    #         raise RuntimeError("Failed to find both light and heavy keys for ShortcutColumn.")
-
-    #     return (light_keys[-1], heavy_keys[0])
-    
-    # LHK_keys = get_dynamic_LHK(CrudeLightDis-1)
-    # def select_valid_LHK(stream):
-    #     comps = [(c.ID, c.Tb) for c in stream.chemicals
-    #          if stream.imol[c.ID] > 1e-4 and c.Tb]
-    #     comps = sorted(comps, key=lambda x: x[1])
-    #     if len(comps) < 2:
-    #        raise ValueError(f"Cannot determine valid LHK: {[c.ID for c in stream.chemicals if stream.imol[c.ID] > 0]}")
-    #     return (comps[0][0], comps[-1][0])
-
-
-
     # Separate fuel from biobinder
     CrudeHeavyDis = qsu.ShortcutColumn(
         'CrudeHeavyDis', ins=CrudeLightDis-1,
@@ -475,154 +437,7 @@ def create_system(
     require_design=True,
     require_cost=False,
       )
-#     add_runtime_LHK_LrHr_spec(
-#     splitter=BiocrudeSplitter,
-#     col=CrudeHeavyDis,
-#     idx=1,
-#     fallback_LHK=("4M-PHYNO", "INDOLE"),
-#     target_ratio=target_fuel_share,
-#     tol=0.20,
-#     prefer="min_err",
-#     require_design=True,
-# )
 
-    
-    # add_runtime_LHK_LrHr_spec(
-    # splitter=BiocrudeSplitter,
-    # col=CrudeHeavyDis,
-    # idx=1,  # heavy split
-    # fallback_LHK=("4M-PHYNO", "INDOLE"),
-    # target_ratio= target_fuel_share,   
-    # tol=0.20,
-    # prefer="max_Hr_then_max_Lr"
-    # )
-    
-    
-         
-    # target_light_frac = cutoff_fracs[1]   # fraction to distill as 'biofuel'
-
-    # # Reasonable trial ranges
-    # Lr_range = np.linspace(0.6, 1.0, 9)
-    # Hr_range = np.linspace(0.8, 1.0, 9)
-
-    # def optimize_CrudeHeavyDis():
-    #     """Find and apply best Lr/Hr for CrudeHeavyDis to match predicted cutoff fraction."""
-    #     try:
-    #       print(f"\n[Optimization] Target biofuel fraction: {target_light_frac:.3f}")
-    #       results_df, best_Lr, best_Hr, max_yield = find_Lr_Hr(
-    #            CrudeHeavyDis,
-    #            Lr_trial_range=Lr_range,
-    #            Hr_trial_range=Hr_range,
-    #           )
-    #       if best_Lr and best_Hr:
-    #             CrudeHeavyDis.Lr = best_Lr
-    #             CrudeHeavyDis._Lr = best_Lr
-    #             CrudeHeavyDis.Hr = best_Hr
-    #             CrudeHeavyDis._Hr = best_Hr
-    #             print(f"[Optimization] Applied optimal Lr={best_Lr:.3f}, Hr={best_Hr:.3f} "
-    #                     f"→ Biofuel yield={max_yield:.3f}")
-    #       else:
-    #             print("[Optimization] No convergence found; keeping default Lr/Hr.")
-    #     except Exception as e:
-    #      print(f"[Optimization] Distillation optimization failed: {e}")
-    
-    # CrudeHeavyDis.check_LHK = False
-    # # CrudeHeavyDis.add_specification(optimize_CrudeHeavyDis)
-    # CrudeHeavyDis.run_after_specifications = True
-    
-    
-    # ratio0 = oil_fracs[0]
-    # lb, ub = round(ratio0,2)-0.20, round(ratio0,2)+0.20
-    
-    # def get_ratio():
-    #     if CrudeHeavyDis.F_mass_out > 0:
-    #         return CrudeHeavyDis.outs[0].F_mass/CrudeHeavyDis.F_mass_out
-    #     return 0
-    # def select_valid_LHK():
-    #     try:
-    #         feed = CrudeLightDis.outs[1]
-    #         comps = [(c.ID, c.Tb) for c in feed.chemicals if feed.imol[c.ID] > 1e-4 and c.Tb]
-    #         comps = sorted(comps, key=lambda x: x[1])
-    #         for i in range(len(comps)-1):
-    #             if comps[i+1][1] - comps[i][1] > 30:
-    #                 CrudeHeavyDis._LHK = (comps[i][0], comps[i+1][0])
-    #                 return
-    #         CrudeHeavyDis._LHK = (comps[0][0], comps[-1][0])
-    #     except Exception as e:
-    #         print(f"[LHK update skipped] {e}")
-    
-    # def _pick_LHK_for_heavy():
-    #     feed = CrudeLightDis.outs[1]
-    #     chems = feed.chemicals
-    #     # IDs present with a valid Tb and non-trace mol
-    #     IDs = [ID for ID in chems.IDs
-    #         if getattr(chems[ID], 'Tb', None)
-    #         and feed.imol[ID] > 1e-6]
-    #     if len(IDs) < 2:
-    #           # nothing to do; keep whatever is set
-    #         return
-
-    #     IDs.sort(key=lambda ID: chems[ID].Tb)
-    #     n = len(IDs)
-    #     # start near the median and expand outwards until we find a pair that’s separable & present
-    #     MIN_DT = 80.0  # K, minimum boiling point gap
-    #     MIN_Z  = 0.03  # mol fraction of LK+HK in the feed
-    #     idx = chems.index
-
-    #     for off in range(0, n//2):
-    #         iL = max(0, n//2 - 1 - off)
-    #         iH = min(n-1, n//2 + off)
-    #         LK, HK = IDs[iL], IDs[iH]
-    #         dT = chems[HK].Tb - chems[LK].Tb
-    #         zLK = feed.mol[idx(LK)] / feed.F_mol if feed.F_mol else 0.0
-    #         zHK = feed.mol[idx(HK)] / feed.F_mol if feed.F_mol else 0.0
-    #         if dT >= MIN_DT and (zLK + zHK) >= MIN_Z:
-    #             CrudeHeavyDis._LHK = (LK, HK)
-    #             # CrudeHeavyDis._y_top = 0.95  
-    #             # CrudeHeavyDis._x_bot = 0.05
-    #             return
-
-    #     # Fallback if nothing satisfies the guards
-    #     CrudeHeavyDis._LHK = ('4M-PHYNO', 'INDOLE')
-    #     # CrudeHeavyDis._y_top = 0.95
-    #     # CrudeHeavyDis._x_bot = 0.05
-
-    # CrudeHeavyDis.add_specification(_pick_LHK_for_heavy)
-    # CrudeHeavyDis.run_after_specifications = True
-
-        # feed= CrudeLightDis.outs[1]
-        # comps = [(c.ID, c.Tb) for c in feed.chemicals
-        #       if feed.imol[c.ID] > 1e-4 and c.Tb]
-        # comps = sorted(comps, key=lambda x: x[1])
-        # if len(comps) < 2:
-        #     raise ValueError(f"Cannot determine valid LHK: {[c.ID for c in feed.chemicals if feed.imol[c.ID] > 0]}")
-        # CrudeHeavyDis.LHK = (comps[0][0], comps[-1][0])
-
-    # CrudeHeavyDis.add_specification(select_valid_LHK)
-    # CrudeHeavyDis.run_after_specifications = True
-    
-    # # Simulation may converge at multiple points, filter out unsuitable ones
-    # def screen_results():
-    #     n = 0
-    #     status = False
-    #     while (status is False) and (n<20):
-    #         try:
-    #             CrudeHeavyDis._run()
-    #             ratio = get_ratio()
-    #             # assert(lb<=ratio<=ub)
-    #             # Log it instead of enforcing
-    #             print(f"[INFO] Actual biofuel ratio: {ratio:.3f}, target: {ratio0:.3f}")
-    #             CrudeHeavyDis._design()
-    #             CrudeHeavyDis._cost()
-    #             assert(all([v>0 for v in CrudeHeavyDis.baseline_purchase_costs.values()]))
-    #             status = True
-    #         except:
-    #             n += 1
-    #             status = False
-    #     if n >= 20:
-    #         raise RuntimeError(f'No suitable solution for `CrudeHeavyDis` within {n} simulation.')
-    # CrudeHeavyDis.add_specification(screen_results)
-    # CrudeHeavyDis.run_after_specifications = True
 
     # import numpy as np
     # from exposan.saf.utils import find_Lr_Hr
