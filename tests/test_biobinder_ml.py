@@ -91,4 +91,5 @@ def test_biobinder_ml():
 
 
 if __name__ == '__main__':
-    test_biobinder_ml()
+    pass
+    # test_biobinder_ml()
