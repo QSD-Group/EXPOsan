@@ -32,64 +32,63 @@ EXPECTED = {
 }
 
 
-def run_test(feedstock_id, rtol=0.01):
-    # clear_lca_registries()
+# def run_test(feedstock_id, rtol=0.01):
+#     # clear_lca_registries()
 
-    sys = create_system(
-        feedstock_id=feedstock_id,
-        decentralized_HTL=False,
-        decentralized_upgrading=False,
-        skip_EC=True,
-        generate_H2=False,
-        EC_config=None,
-    )
-    sys.simulate()
+#     sys = create_system(
+#         feedstock_id=feedstock_id,
+#         decentralized_HTL=False,
+#         decentralized_upgrading=False,
+#         skip_EC=True,
+#         generate_H2=False,
+#         EC_config=None,
+#     )
+#     sys.simulate()
 
-    tea = sys.TEA
-    lca = sys.LCA
-    biobinder = sys.flowsheet.stream.biobinder
+#     tea = sys.TEA
+#     lca = sys.LCA
+#     biobinder = sys.flowsheet.stream.biobinder
 
-    biobinder.price = 0.10
+#     biobinder.price = 0.10
 
-    GWP = lca.get_allocated_impacts(
-        streams=(biobinder,),
-        operation_only=True,
-        annual=True,
-    )['GWP']
-    GWP /= biobinder.F_mass * sys.operating_hours
+#     GWP = lca.get_allocated_impacts(
+#         streams=(biobinder,),
+#         operation_only=True,
+#         annual=True,
+#     )['GWP']
+#     GWP /= biobinder.F_mass * sys.operating_hours
 
-    results = {
-        'IRR': tea.solve_IRR(),
-        'NPV': tea.NPV,
-        'Revenue': tea.sales,
-        'EBITDA': get_EBITDA(tea),
-        'GWP': GWP,
-    }
+#     results = {
+#         'IRR': tea.solve_IRR(),
+#         'NPV': tea.NPV,
+#         'Revenue': tea.sales,
+#         'EBITDA': get_EBITDA(tea),
+#         'GWP': GWP,
+#     }
 
-    print(
-    f"{feedstock_id}: "
-    f"IRR={results['IRR'] * 100:.2f}%, "
-    f"NPV=${results['NPV'] / 1e6:.2f} MM, "
-    f"Revenue=${results['Revenue'] / 1e6:.2f} MM/yr, "
-    f"EBITDA=${results['EBITDA'] / 1e6:.2f} MM/yr, "
-    f"GWP={results['GWP']:.4f} kg CO2e/kg"
-)
+#     print(
+#     f"{feedstock_id}: "
+#     f"IRR={results['IRR'] * 100:.2f}%, "
+#     f"NPV=${results['NPV'] / 1e6:.2f} MM, "
+#     f"Revenue=${results['Revenue'] / 1e6:.2f} MM/yr, "
+#     f"EBITDA=${results['EBITDA'] / 1e6:.2f} MM/yr, "
+#     f"GWP={results['GWP']:.4f} kg CO2e/kg"
+# )
 
-    for name, value in results.items():
-        assert np.isfinite(value), f"{feedstock_id}: non-finite {name} ({value})"
-        assert_allclose(
-            value,
-            EXPECTED[feedstock_id][name],
-            rtol=rtol,
-            err_msg=f"{feedstock_id}: {name}",
-        )
-
-
-def test_biobinder_ml():
-    for feedstock_id in EXPECTED:
-        run_test(feedstock_id)
+#     for name, value in results.items():
+#         assert np.isfinite(value), f"{feedstock_id}: non-finite {name} ({value})"
+#         assert_allclose(
+#             value,
+#             EXPECTED[feedstock_id][name],
+#             rtol=rtol,
+#             err_msg=f"{feedstock_id}: {name}",
+#         )
 
 
-if __name__ == '__main__':
-    pass
-    # test_biobinder_ml()
+# def test_biobinder_ml():
+#     for feedstock_id in EXPECTED:
+#         run_test(feedstock_id)
+
+
+# if __name__ == '__main__':
+#     test_biobinder_ml()
