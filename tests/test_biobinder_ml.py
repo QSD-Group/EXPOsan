@@ -19,8 +19,8 @@ __all__ = ('test_biobinder_ml',)
 
 import numpy as np
 from numpy.testing import assert_allclose
-from qsdsan.utils import clear_lca_registries
-from exposan.biobinder_ml.Dist_flex import create_system, get_EBITDA
+# from qsdsan.utils import clear_lca_registries
+# from exposan.biobinder_ml.Dist_flex import create_system, get_EBITDA
 
 
 # IRR [-], NPV [USD], Revenue [USD/yr], EBITDA [USD/yr], GWP [kg CO2e/kg biobinder]
@@ -33,7 +33,7 @@ EXPECTED = {
 
 
 def run_test(feedstock_id, rtol=0.01):
-    clear_lca_registries()
+    # clear_lca_registries()
 
     sys = create_system(
         feedstock_id=feedstock_id,
