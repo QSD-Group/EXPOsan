@@ -35,40 +35,6 @@ def load_mdl(ID):
     return mdl
 
 
-def simulate_with_cache_reset(system, **kwargs):
-    # Workaround for a spurious FloatingPointError in stiff dynamic solves:
-    # flexsolve sets np.seterr(divide='raise', invalid='raise') process-globally
-    # at import, so a transient invalid that BDF would normally reject and retry
-    # becomes a fatal crash; re-simulating with a cache reset re-seeds the state
-    # and usually gets past it. This is redundant once BioSTEAM runs the
-    # integration under np.errstate(invalid='ignore', divide='ignore') in
-    # System.dynamic_run. REMOVE this helper and
-    # test_simulate_with_cache_reset_retries_floating_point_error once that fix
-    # is in the pinned/released BioSTEAM.
-    try:
-        system.simulate(**kwargs)
-    except FloatingPointError:
-        system.simulate(**kwargs, state_reset_hook='reset_cache')
-
-
-def test_simulate_with_cache_reset_retries_floating_point_error():
-    class System:
-        def __init__(self):
-            self.calls = []
-
-        def simulate(self, **kwargs):
-            self.calls.append(kwargs)
-            if len(self.calls) == 1:
-                raise FloatingPointError
-
-    system = System()
-    simulate_with_cache_reset(system, t_span=(0, 300), method='BDF')
-
-    assert system.calls == [
-        {'t_span': (0, 300), 'method': 'BDF'},
-        {'t_span': (0, 300), 'method': 'BDF', 'state_reset_hook': 'reset_cache'},
-        ]
-
 # %%
 
 def test_werf():
@@ -85,7 +51,7 @@ def test_werf():
     PowerUtility.price = 0.0782
 
     b1 = load_mdl('B1')
-    simulate_with_cache_reset(b1.system, **sim_kwargs)
+    b1.system.simulate(**sim_kwargs)
     s = b1.system.flowsheet.stream
     cmps = s.SE.components
     n_cmps = len(cmps)-1 # ignore H2O
@@ -125,7 +91,7 @@ def test_werf():
     del b1
     
     e2 = load_mdl('E2')
-    simulate_with_cache_reset(e2.system, **sim_kwargs)
+    e2.system.simulate(**sim_kwargs)
     u = e2.system.flowsheet.unit
     # concentration profiles in activated sludge reactor
     nh4_ss = np.array([7.508173609332913,
@@ -199,7 +165,7 @@ def test_werf():
     from math import isclose, isnan
     
     h1 = load_mdl('H1')
-    simulate_with_cache_reset(h1.system, **sim_kwargs)
+    h1.system.simulate(**sim_kwargs)
     metrics_ss = [21.964757971468394, 2.78300193174046, 8.007124655120837,
                   7.541028943961043, 0.1264223633457642, 1.7588373988576718,
                   1.3451256754322871, 7.952053512713743, 10.707765002030902,
@@ -219,7 +185,7 @@ def test_werf():
     del h1
                 
     i3 = load_mdl('I3')
-    simulate_with_cache_reset(i3.system, **sim_kwargs)
+    i3.system.simulate(**sim_kwargs)
     metrics_ss = [27.134694762854124, 2.3923400803895634, 8.067051949396125,
                   4.407792093009145, 0.2528977058283219, 0.9957580441871827,
                   0.5337430428853317, 9.822474460391645, 12.7116403614637,
