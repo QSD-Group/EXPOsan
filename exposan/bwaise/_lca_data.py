@@ -80,7 +80,7 @@ def create_indicators(replace=True):
             # else:
             #     new_name = f'{kind}_{old_name}'
 
-        ind_df_processed.iloc[num]['indicator'] = new_name
+        ind_df_processed.loc[num, 'indicator'] = new_name
 
     ind_df_processed.sort_values(by=['method', 'category', 'indicator'], inplace=True)
 
