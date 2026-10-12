@@ -43,7 +43,7 @@ def create_model(system=None, flowsheet=None, kind='general'):
     A1, A2, O1, O2, O3, C1 = unit.A1, unit.A2, unit.O1, unit.O2, unit.O3, unit.C1
     aer1, aer3 = O1.aeration, O3.aeration
     
-    model = qs.Model(system=sys, exception_hook='raise')
+    model = qs.Model(system=sys, exception_hook='warn')
     param = model.parameter
     metric = model.metric
     
