@@ -19,7 +19,12 @@ analyses/results/
 legacy/
 legacy models/
 _to_be_removed/
-deploy/
+deploy/*
+!deploy/systems/
+!deploy/systems/**
+deploy/systems/comparison_results/
+deploy/systems/__pycache__/
+deploy/systems/**/__pycache__/
 archived_results_for_publications/
 plotting/
 
