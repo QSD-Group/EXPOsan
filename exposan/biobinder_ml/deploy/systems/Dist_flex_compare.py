@@ -351,7 +351,9 @@ def create_system(
             )
         
         streams_to_upgrading_EC_lst = []
-        streams_to_CHP_lst = []
+        # Aggregate HTL gas once across N_HTL and recover its energy in CHP.
+        # HTLchar remains in solids_to_disposal_lst below (inert surrogate).
+        streams_to_CHP_lst = [HTLgasScaler-0]
         H2_streams = [HTL_ECH2Scaler-0]
         N_streams = [HTL_ECNScaler-0]
         P_streams = [HTL_ECPScaler-0]
@@ -829,8 +831,6 @@ def create_system(
     
     recovered_K = qs.WasteStream('recovered_K', price=price_dct['K'])
     Kmixer = qsu.Mixer('Kmixer', ins=K_streams, outs=recovered_K)
-    
-    price_dct['natural_gas'] = 0.14  # $/kg, 2020$, https://www.eia.gov/dnav/ng/hist/n3035us3m.htm 
 
     natural_gas = qs.WasteStream('natural_gas', CH4=1, price=price_dct['natural_gas'])
     
@@ -894,7 +894,8 @@ def create_system(
     #       'ethylene': 1.0159 #US Average Production, GREET 2024
     #       }
     
-    price_dct['electricity'] = 0.074 #2020$, https://www.energy.gov/sites/default/files/2024-12/hydrogen-shot-water-electrolysis-technology-assessment.pdf   
+    price_dct['electricity'] = 0.074 #2020$, https://www.energy.gov/sites/default/files/2024-12/hydrogen-shot-water-electrolysis-technology-assessment.pdf
+    price_dct['natural_gas'] = 0.14  # $/kg, 2020$, https://www.eia.gov/dnav/ng/hist/n3035us3m.htm 
     qs.PowerUtility.price = EC_config.get('electricity_price', price_dct['electricity']) if EC_config else price_dct['electricity']
     electricity_GHG = EC_config.get('electricity_GHG', gwp_dict['electricity']) if EC_config else gwp_dict['electricity']
 
