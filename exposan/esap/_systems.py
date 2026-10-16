@@ -16,7 +16,6 @@ for license details.
 import qsdsan as qs
 from qsdsan import unit_operations as qsu
 from biosteam.units import (
-    BatchCrystallizer,
     DrumDryer,
     IsothermalCompressor,
     MolecularSieve,
@@ -28,6 +27,13 @@ from exposan.esap._components import (
     ammonium_sulfate_solution_molarity,
     create_components,
     )
+from exposan.esap._sanunits import ESAPBatchCrystallizer
+from exposan.esap._process_settings import (
+    acid_prices as default_acid_prices,
+    electricity_price,
+    natural_gas_price,
+    natural_gas_price_per_kmol,
+    )
 from exposan.htl import _sanunits as htl_su
 
 __all__ = ('create_system',)
@@ -35,6 +41,7 @@ __all__ = ('create_system',)
 _products = {
     'ammonium_sulfate': {
         'solute': 'NH42SO4',
+        'crystal': 'NH42SO4Crystal',
         'feed': 'ammonium_sulfate_solution',
         'product': 'ammonium_sulfate_solids',
         },
@@ -45,6 +52,7 @@ _products = {
         },
     'ammonium_citrate': {
         'solute': 'NH4Citrate',
+        'crystal': 'NH4CitrateCrystal',
         'feed': 'ammonium_citrate_solution',
         'product': 'ammonium_citrate_dibasic_solids',
         },
@@ -55,6 +63,7 @@ _products = {
         },
     'ammonium_maleate': {
         'solute': 'NH4Maleate',
+        'crystal': 'NH4MaleateCrystal',
         'feed': 'ammonium_maleate_solution',
         'product': 'ammonium_maleate_powder',
         },
@@ -85,13 +94,8 @@ _default_feed_molarities = {
     'NH4Maleate': ammonium_sulfate_solution_molarity,
     }
 
-_acid_replacement_interval_hr = 16 * 24
-_acid_solution_volume_L = 0.4
 _acid_solution_molarity = 1
 _acid_solution_density_kg_per_L = 1
-# acid dose from Kogler et al. was 0.2 M, here we referred to data from RP: 1 M
-# Environ. Sci. Technol. Lett. (2024) 11 (8): 886–894.
-# https://doi.org/10.1021/acs.estlett.4c00366
 
 _acid_components = {
     'ammonium_sulfate': 'H2SO4',
@@ -103,11 +107,49 @@ _acid_components = {
 _default_acid_molarities = {
     'ammonium_sulfate': _acid_solution_molarity,
     'ammonium_citrate': _acid_solution_molarity,
-    'ammonium_lactate': 2 * _acid_solution_molarity,
+    'ammonium_lactate': _acid_solution_molarity,
     'ammonium_maleate': _acid_solution_molarity,
     }
 
+_ammonium_per_product = {
+    'ammonium_sulfate': 2,
+    'ammonium_citrate': 2,
+    'ammonium_lactate': 1,
+    'ammonium_maleate': 2,
+    }
+
+_acid_per_ammonium = {
+    'ammonium_sulfate': 0.5,
+    'ammonium_citrate': 0.5,
+    'ammonium_lactate': 1,
+    'ammonium_maleate': 0.5,
+    }
+
 _evaporator_pressures = (101325, 73581, 50892, 32777, 20000)
+
+_default_crystallizer_parameters = {
+    'ammonium_sulfate': {
+        'crystallization_recovery': 0.85,
+        'crystal_capture_efficiency': 0.98,
+        'wet_cake_moisture': 0.20,
+        'heat_of_crystallization': 0,
+        'separator_kWhr_per_m3': 1.40,
+        },
+    'ammonium_citrate': {
+        'crystallization_recovery': 0.80,
+        'crystal_capture_efficiency': 0.98,
+        'wet_cake_moisture': 0.25,
+        'heat_of_crystallization': 0,
+        'separator_kWhr_per_m3': 1.40,
+        },
+    'ammonium_maleate': {
+        'crystallization_recovery': 0.80,
+        'crystal_capture_efficiency': 0.98,
+        'wet_cake_moisture': 0.20,
+        'heat_of_crystallization': 0,
+        'separator_kWhr_per_m3': 1.40,
+        },
+    }
 
 
 def _normalize_product(product):
@@ -168,63 +210,80 @@ def _create_influent_streams(components, flow_L_hr, feed_molarities,
     return influents
 
 
-def _create_acid_stream(product, components, acid_molarities=None,
-                        acid_solution_volume_L=_acid_solution_volume_L,
-                        acid_replacement_interval_hr=_acid_replacement_interval_hr,
+def _create_acid_stream(product, feed, solute_ID, components,
+                        acid_molarities=None, acid_prices=None,
                         acid_solution_density_kg_per_L=(
                             _acid_solution_density_kg_per_L)):
     acid_molarities = dict(_default_acid_molarities, **(acid_molarities or {}))
+    acid_prices = acid_prices or {}
     acid_ID = _acid_components[product]
     acid = qs.WasteStream(f'{acid_ID}_solution', phase='l')
-    flow_L_hr = acid_solution_volume_L / acid_replacement_interval_hr
+    acid_molarity = acid_molarities[product]
+    if acid_molarity <= 0:
+        raise ValueError('Acid molarity must be greater than zero.')
+
+    ammonium_flow = feed.imol[solute_ID] * _ammonium_per_product[product]
+    acid_flow = ammonium_flow * _acid_per_ammonium[product]
+    flow_L_hr = acid_flow * 1000 / acid_molarity
     _set_solution_flow(
         acid,
         acid_ID,
-        acid_molarities[product],
+        acid_molarity,
         flow_L_hr,
         acid_solution_density_kg_per_L,
         components,
         )
+    dry_acid_price = acid_prices.get(product, acid_prices.get(acid_ID, 0))
+    if dry_acid_price < 0:
+        raise ValueError('Dry-acid price cannot be negative.')
+    if acid.F_mass:
+        acid.price = dry_acid_price * acid.imass[acid_ID] / acid.F_mass
     return acid
 
 
-def _create_solid_product_system(product, feed, solute_ID, product_ID,
+def _add_acid_accounting_unit(product, acid, units):
+    """Add a pass-through path that includes stoichiometric acid in TEA feeds."""
+    AcidAccounting = htl_su.StreamTypeConverter(
+        'AcidAccounting',
+        ins=acid,
+        outs=f'{_acid_components[product]}_consumed',
+        init_with='WasteStream',
+        )
+    units.append(AcidAccounting)
+
+
+def _create_solid_product_system(product, feed, solute_ID, crystal_ID, product_ID,
                                  evaporator_V, dryer_moisture_content,
-                                 acid=None):
+                                 crystallizer_parameters, acid=None):
     units = []
-    MEE_feed = feed
     if acid:
-        AcidMixer = qsu.Mixer(
-            'AcidMixer',
-            ins=(feed, acid),
-            outs='acidified_solution',
-            init_with='WasteStream',
-            )
-        MEE_feed = AcidMixer-0
-        units.append(AcidMixer)
+        _add_acid_accounting_unit(product, acid, units)
 
     MEE = MultiEffectEvaporator(
         'MEE',
-        ins=MEE_feed,
+        ins=feed,
         outs=('concentrated_solution', 'evaporated_water'),
         P=_evaporator_pressures,
         V=evaporator_V,
         V_definition='Overall',
         )
 
-    Crystallizer = BatchCrystallizer(
+    Crystallizer = ESAPBatchCrystallizer(
         'Crystallizer',
         ins=MEE-0,
-        outs='crystallized_slurry',
+        outs=('wet_crystal_cake', 'mother_liquor'),
+        solute_ID=solute_ID,
+        crystal_ID=crystal_ID,
         tau=4,
         N=2,
+        **crystallizer_parameters,
         )
 
     Dryer = DrumDryer(
         'Dryer',
         ins=(Crystallizer-0, 'dry_gas', 'natural_gas'),
         outs=('dried_solids', 'hot_gas', 'dryer_missions'),
-        split={solute_ID: 0, 'H2O': 1},
+        split={solute_ID: 0, crystal_ID: 0, 'H2O': 1},
         moisture_content=dryer_moisture_content,
         moisture_ID='H2O',
         utility_agent='Natural gas',
@@ -246,20 +305,12 @@ def _create_solid_product_system(product, feed, solute_ID, product_ID,
 
 def _create_lactate_system(feed, evaporator_V, acid=None):
     units = []
-    MEE_feed = feed
     if acid:
-        AcidMixer = qsu.Mixer(
-            'AcidMixer',
-            ins=(feed, acid),
-            outs='acidified_solution',
-            init_with='WasteStream',
-            )
-        MEE_feed = AcidMixer-0
-        units.append(AcidMixer)
+        _add_acid_accounting_unit('ammonium_lactate', acid, units)
 
     MEE = MultiEffectEvaporator(
         'MEE',
-        ins=MEE_feed,
+        ins=feed,
         outs=('ammonium_lactate_solution_60wt_raw', 'evaporated_water'),
         P=_evaporator_pressures,
         V=evaporator_V,
@@ -372,12 +423,11 @@ def _create_anhydrous_ammonia_system(feed, steam_kg_per_hr,
 def create_system(product='ammonium_sulfate', flowsheet=None,
                   flow_L_hr=1000, feed_molarities=None,
                   solution_density_kg_per_L=1,
-                  acid_molarities=None,
-                  acid_solution_volume_L=_acid_solution_volume_L,
-                  acid_replacement_interval_hr=_acid_replacement_interval_hr,
+                  acid_molarities=None, acid_prices=None,
                   solid_evaporator_solute_wt_frac=0.5,
                   lactate_product_solute_wt_frac=0.6,
                   dryer_moisture_content=0.01,
+                  crystallizer_parameters=None,
                   target_pH=11.25,
                   ammonia_pKa=9.25,
                   steam_kg_per_hr=None,
@@ -386,6 +436,13 @@ def create_system(product='ammonium_sulfate', flowsheet=None,
                       _acid_solution_density_kg_per_L)):
     '''
     Create a downstream ESAP fertilizer production system.
+
+    Sets shared BioSTEAM/QSDsan electricity and natural-gas prices from
+    ``_process_settings``. Electricity is 0.1429 USD/kWh; natural gas is
+    converted from 4.58 USD/thousand standard cubic feet using ideal methane
+    at 60 deg F and 14.73 psia. Both the dryer fuel price (USD/kg) and the
+    natural-gas heating-agent price (USD/kmol) are updated. These global
+    settings also affect other systems in the same Python process.
 
     Parameters
     ----------
@@ -413,19 +470,23 @@ def create_system(product='ammonium_sulfate', flowsheet=None,
     acid_molarities : dict[str, float], optional
         Custom acid molarities for acid makeup streams, [mol/L]. Keys should be
         product IDs: ``'ammonium_sulfate'``, ``'ammonium_citrate'``,
-        ``'ammonium_lactate'``, and ``'ammonium_maleate'``. The default is
-        0.2 mol/L for sulfate, citrate, and maleate, and 0.4 mol/L for lactate.
-        Used only for ammonium salt systems, not ``'anhydrous_ammonia'``.
-    acid_solution_volume_L : float, optional
-        Acid solution volume added each replacement cycle, [L]. Used only for
-        ammonium salt systems. The default is 0.4 L from the experimental
-        sulfuric acid dosing basis.
-    acid_replacement_interval_hr : float, optional
-        Acid replacement interval, [hr]. Used only for ammonium salt systems.
-        The default is 16 days, converted to 384 hr.
+        ``'ammonium_lactate'``, and ``'ammonium_maleate'``. All acids default
+        to 1 mol/L. Acid consumption is calculated stoichiometrically from the
+        ammonium fertilizer production rate. Used only for ammonium salt
+        systems, not ``'anhydrous_ammonia'``.
+    acid_prices : dict[str, float], optional
+        Dry-acid prices, [USD/kg pure acid]. Keys may be product IDs or acid
+        component IDs (e.g., ``'ammonium_sulfate'`` or ``'H2SO4'``). The
+        effective price assigned to each aqueous acid stream charges only its
+        pure-acid mass, not dilution water. If None, use the purity-adjusted
+        wholesale quote midpoints in ``_process_settings.acid_prices``.
+        An explicit dictionary replaces these defaults; missing entries then
+        have zero price. Pass an empty dictionary for zero acid costs.
     acid_solution_density_kg_per_L : float, optional
         Assumed density of the acid makeup solution, [kg/L]. This is used to
-        convert its volumetric flow into acid and water mass flows.
+        convert its volumetric flow into acid and water mass flows. The acid
+        stream is an upstream consumption-accounting stream and is not mixed
+        into the already-formed fertilizer solution.
     solid_evaporator_solute_wt_frac : float, optional
         Target solute mass fraction after multi-effect evaporation, [kg solute
         / kg solution]. Used only for solid-product systems:
@@ -440,6 +501,19 @@ def create_system(product='ammonium_sulfate', flowsheet=None,
         product]. Used only for solid-product systems:
         ``'ammonium_sulfate'``, ``'ammonium_citrate'``, and
         ``'ammonium_maleate'``.
+    crystallizer_parameters : dict[str, float], optional
+        Overrides for the selected solid product's black-box crystallizer and
+        separator. Supported keys are ``'crystallization_recovery'``,
+        ``'crystal_capture_efficiency'``, ``'wet_cake_moisture'``, and
+        ``'heat_of_crystallization'``, and ``'separator_kWhr_per_m3'``.
+        Baseline
+        values are assumptions for preliminary TEA: sulfate uses 0.85, 0.98,
+        and 0.20; citrate uses 0.80, 0.98, and 0.25; maleate uses 0.80, 0.98,
+        and 0.20, respectively. Heat of crystallization defaults to zero kJ/kg
+        for all salts. These values are not equilibrium predictions and should
+        be replaced or varied when product-specific data are found. Separator
+        electricity defaults to 1.40 kWh/m3 of crystallizer effluent, matching
+        BioSTEAM's ``SolidsCentrifuge`` default.
     target_pH : float, optional
         Target pH before ammonia stripping. Used only for
         ``'anhydrous_ammonia'`` to estimate NaOH addition. 
@@ -462,6 +536,11 @@ def create_system(product='ammonium_sulfate', flowsheet=None,
 
     '''
     product = _normalize_product(product)
+    qs.PowerUtility.price = electricity_price
+    qs.settings.stream_prices['Natural gas'] = natural_gas_price
+    qs.HeatUtility.get_agent('natural_gas').regeneration_price = natural_gas_price_per_kmol
+    if acid_prices is None:
+        acid_prices = default_acid_prices
     flowsheet_ID = f'esap_{product}'
 
     if hasattr(qs.main_flowsheet.flowsheet, flowsheet_ID):
@@ -485,10 +564,11 @@ def create_system(product='ammonium_sulfate', flowsheet=None,
     if product in _acid_components:
         acid = _create_acid_stream(
             product,
+            feed,
+            solute_ID,
             components,
             acid_molarities,
-            acid_solution_volume_L,
-            acid_replacement_interval_hr,
+            acid_prices,
             acid_solution_density_kg_per_L,
             )
 
@@ -512,6 +592,10 @@ def create_system(product='ammonium_sulfate', flowsheet=None,
             )
         sys = _create_lactate_system(feed, evaporator_V, acid)
     else:
+        crystallizer_parameters = dict(
+            _default_crystallizer_parameters[product],
+            **(crystallizer_parameters or {}),
+            )
         evaporator_V = _get_evaporation_fraction(
             solute_ID,
             feed_molarities[solute_ID],
@@ -524,9 +608,11 @@ def create_system(product='ammonium_sulfate', flowsheet=None,
             product,
             feed,
             solute_ID,
+            data['crystal'],
             data['product'],
             evaporator_V,
             dryer_moisture_content,
+            crystallizer_parameters,
             acid,
             )
 

@@ -51,6 +51,12 @@ def create_components(set_thermo=True):
                         degradability='Undegradable', organic=False)
     add_V_from_rho(NH42SO4, 1770) # density in kg/m3 from PubChem
 
+    NH42SO4Crystal = Component(
+        'NH42SO4Crystal', search_ID='AmmoniumSulfate', phase='s',
+        particle_size='Particulate', degradability='Undegradable', organic=False,
+        )
+    add_V_from_rho(NH42SO4Crystal, 1770)
+
     H2SO4 = Component('H2SO4', phase='l', particle_size='Soluble',
                       degradability='Undegradable', organic=False)
 
@@ -73,6 +79,13 @@ def create_components(set_thermo=True):
     add_V_from_rho(NH4Citrate, 1480)
     # Provisional S from parent citric acid
     NH4Citrate.copy_models_from(Chemical('CitricAcid'), ('mu', 'Cn'))
+
+    NH4CitrateCrystal = Component(
+        'NH4CitrateCrystal', phase='s', formula='C6H14N2O7',
+        particle_size='Particulate', degradability='Undegradable', organic=True,
+        )
+    add_V_from_rho(NH4CitrateCrystal, 1480)
+    NH4CitrateCrystal.copy_models_from(Chemical('CitricAcid'), ('Cn',))
     
     NH4Lactate = Component('NH4Lactate', phase='l',
                            formula='C3H9NO3', particle_size='Soluble',
@@ -89,13 +102,21 @@ def create_components(set_thermo=True):
     add_V_from_rho(NH4Maleate, 1641)
     # Provisional S from parent maleic acid
     NH4Maleate.copy_models_from(Chemical('MaleicAcid'), ('mu', 'Cn'))
+
+    NH4MaleateCrystal = Component(
+        'NH4MaleateCrystal', phase='s', formula='C4H10N2O4',
+        particle_size='Particulate', degradability='Undegradable', organic=True,
+        )
+    add_V_from_rho(NH4MaleateCrystal, 1641)
+    NH4MaleateCrystal.copy_models_from(Chemical('MaleicAcid'), ('Cn',))
     
     NaOH = Component('NaOH', phase='s', particle_size='Particulate',
                      degradability='Undegradable', organic=False)
 
-    cmps = Components([H2O, NH3, O2, N2, CH4, CO2, NH42SO4, H2SO4,
-                       CitricAcid, LacticAcid, MaleicAcid, NH4Citrate,
-                       NH4Lactate, NH4Maleate, NaOH])
+    cmps = Components([H2O, NH3, O2, N2, CH4, CO2, NH42SO4,
+                       NH42SO4Crystal, H2SO4, CitricAcid, LacticAcid,
+                       MaleicAcid, NH4Citrate, NH4CitrateCrystal, NH4Lactate,
+                       NH4Maleate, NH4MaleateCrystal, NaOH])
 
     for i in cmps:
         for attr in ('HHV', 'LHV', 'Hf'):
@@ -105,13 +126,16 @@ def create_components(set_thermo=True):
     cmps.set_alias('H2O', 'Water')
     cmps.set_alias('NH42SO4', 'AmmoniumSulfate')
     cmps.set_alias('NH42SO4', '(NH4)2SO4')
+    cmps.set_alias('NH42SO4Crystal', 'AmmoniumSulfateCrystal')
     cmps.set_alias('NH4Citrate', 'AmmoniumCitrate')
     cmps.set_alias('NH4Citrate', 'DiammoniumCitrate')
     cmps.set_alias('NH4Citrate', '(NH4)2HC6H5O7')
+    cmps.set_alias('NH4CitrateCrystal', 'DiammoniumCitrateCrystal')
     cmps.set_alias('NH4Lactate', 'AmmoniumLactate')
     cmps.set_alias('NH4Lactate', 'NH4C3H5O3')
     cmps.set_alias('NH4Maleate', 'AmmoniumMaleate')
     cmps.set_alias('NH4Maleate', '(NH4)2C4H2O4')
+    cmps.set_alias('NH4MaleateCrystal', 'DiammoniumMaleateCrystal')
     cmps.set_alias('NaOH', 'SodiumHydroxide')
 
     if set_thermo: qs_set_thermo(cmps)
