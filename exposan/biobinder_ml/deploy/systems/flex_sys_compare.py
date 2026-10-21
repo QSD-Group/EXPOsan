@@ -1,6 +1,3 @@
-# Joint SAF/biobinder integration draft; originals unchanged.
-# Basis and usage are documented below; full simulation requires the user's EXPOsan environment.
-
 # -*- coding: utf-8 -*-
 '''
 EXPOsan: Exposition of sanitation and resource recovery systems
@@ -86,10 +83,8 @@ from exposan.biobinder_ml.Dist_flex import gwp_dict
 # ============================
 from exposan.saf import price_dct as _base_price_dct, gwp_dct
 
-# Original helper and original BioSTEAM/QSDsan column solver.
-# Separate logged copy; the original helper is unchanged.
-import importlib.util
-from _distill_utils_flex import add_runtime_LHK_LrHr_spec, get_distillation_trials
+# Shared runtime key search and trial registry.
+from exposan.biobinder_ml._distill_utils_flex import add_runtime_LHK_LrHr_spec, get_distillation_trials
 
 
 _psi_to_Pa = 6894.76
@@ -1237,7 +1232,7 @@ def create_system(
     
     _INTEGRATION_ASSUMPTIONS[sys] = dict(cutoff_fracs=fractions,
         HTL_yield_source=yield_source, HTL_yields=dict(dw_yields),
-        distillation_setup="Original _distill_utils + qsu.ShortcutColumn",
+        distillation_setup="Shared adaptive helper + qsu.ShortcutColumn",
         prefer=prefer, tolerance=tol, Lr_grid=Lr_grid, Hr_grid=Hr_grid,
         intermediate_surrogate_ratios=dict(intermediate_surrogate_ratios),
         intermediate_route=intermediate_route, intermediate_price=intermediate_price,
@@ -1272,30 +1267,12 @@ def simulate_and_report(sys):
     print(result)
     return result
 
-INTEGRATION_NOTES = r"""
-Combined binder/SAF system using ORIGINAL distillation implementation:
-  # Separate logged copy; the original helper is unchanged.
-import importlib.util
-from pathlib import Path
-_logged_path = Path(r"C:\Work\Rutgers\QSDsan\EXPOsan\exposan\biobinder_ml\deploy\_distill_utils_logged.py")
-_logged_spec = importlib.util.spec_from_file_location('_joint_distill_logged', _logged_path)
-_logged_module = importlib.util.module_from_spec(_logged_spec)
-_logged_spec.loader.exec_module(_logged_module)
-add_runtime_LHK_LrHr_spec = _logged_module.add_runtime_LHK_LrHr_spec
-get_distillation_trials = _logged_module.get_distillation_trials
-  qsu.ShortcutColumn (no strict subclass or replacement recovery solver).
-Original partial-condenser defaults, 50 psi crude columns, max_top_ratio policy,
-0.05 target tolerance, original recovery grids and run_after_specifications behavior
-are restored. Original helper's VLE/design checks remain enabled. This version does
-not add recovery-residual or key-recovery rejection criteria. Simulation completion
-is not a claim of product qualification or experimental validation.
-
-Run this file directly in your existing EXPOsan environment. RF is enabled and
-loads the supplied absolute biobinder_ml/results/rf_yield_model.joblib path.
-Helper is the existing _distill_utils.py, not the diagnostic file in deploy.
-Original project files are not edited. Optional Lr_grid/Hr_grid and tol arguments
-allow explicitly recorded recovery-search sensitivity cases; defaults reproduce
-the old helper. include_EC=False in the runnable example.
+INTEGRATION_NOTES = """
+Distillation uses qsu.ShortcutColumn and the shared adaptive helper in
+exposan.biobinder_ml._distill_utils_flex. Candidate pairs are generated from
+actual column inlet composition at runtime. Minimum purchase-cost selection
+retains the configured pressure, recovery grids, tolerance and feasibility
+checks. Distillation trials are available through get_distillation_trials.
 
 Four fractions: <150, 150-300, 300-343, >343 C, using <= cutoff conventions from
 original splitter. Example (0.01,0.59,0.10,0.30) is an assumed assay scenario.

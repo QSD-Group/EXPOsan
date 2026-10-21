@@ -56,9 +56,9 @@ from exposan.biobinder_ml._feedstocks import get_feedstock_composition
 from exposan.biobinder_ml._rf_htl_predictor import predict_htl_yields_from_rf
 from exposan.biobinder_ml._ml_features import FeatureDefaults
 from joblib import load
-from _distill_utils_flex import add_runtime_LHK_LrHr_spec
+from exposan.biobinder_ml._distill_utils_flex import add_runtime_LHK_LrHr_spec
 import os
-DISTILLATION_POLICY = "max_top_ratio"
+DISTILLATION_POLICY = "min_purchase_cost"
 
 from pathlib import Path
 from joblib import load

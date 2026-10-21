@@ -228,42 +228,97 @@ def _NPV_at_r(r, CF, dur):
     return (CF / (1.0 + r)**dur).sum()
 
 def solve_IRR_aitken_limit(tea, maxiter=200, xtol=1e-6, ytol=10.0, npv_tol_abs=1e3):
+    """Try Aitken/secant first, then scan brackets and solve with Brent.
+
+    Every accepted rate must be real, finite, greater than -0.999999 and
+    have absolute NPV <= npv_tol_abs (USD; default $1,000). The fallback
+    searches -0.999999 < r <= 1e6 on a log(1+r) grid. Multiple distinct
+    fallback roots are reported as unavailable rather than selecting one.
+    A finite scan cannot prove uniqueness or detect every tangent root;
+    an accepted primary-solver root is also not a uniqueness guarantee.
+    """
+    from scipy.optimize import brentq
+
     CF = tea.cashflow_array
     dur = tea._get_duration_array()
-
-    if (CF is None) or (dur is None) or (not np.isfinite(CF).all()) or (not np.isfinite(dur).all()):
+    if CF is None or dur is None:
         return np.nan, "CF_or_dur_nonfinite"
+    CF = np.asarray(CF, dtype=float)
+    dur = np.asarray(dur, dtype=float)
+    if (CF.ndim != 1 or dur.shape != CF.shape or not CF.size
+            or not np.isfinite(CF).all() or not np.isfinite(dur).all()):
+        return np.nan, "CF_or_dur_nonfinite"
+    if not np.any(CF):
+        return np.nan, "IRR_indeterminate_zero_cashflows"
+    if not (np.any(CF < 0) and np.any(CF > 0)):
+        return np.nan, "no_cashflow_sign_change"
+    if (not np.isfinite(npv_tol_abs) or npv_tol_abs < 0
+            or not np.isfinite(xtol) or xtol <= 0):
+        raise ValueError('NPV tolerance must be nonnegative; xtol must be positive')
 
     args = (CF, dur)
     IRR_guess = float(getattr(tea, "IRR", 0.10) or 0.10)
-    if (not np.isfinite(IRR_guess)) or (IRR_guess <= -0.999999):
+    if not np.isfinite(IRR_guess) or IRR_guess <= -0.999999:
         IRR_guess = 0.10
 
-    x0 = IRR_guess
-    x1 = 1.0001 * IRR_guess + 1e-3
+    def residual(r):
+        with np.errstate(over='ignore', under='ignore', invalid='ignore', divide='ignore'):
+            return float(_NPV_at_r(r, *args))
 
-    y0 = _NPV_at_r(x0, *args)
-    y1 = _NPV_at_r(x1, *args)
-    if (not np.isfinite(y0)) or (not np.isfinite(y1)):
-        return np.nan, "endpoint_nonfinite"
+    def verified(r):
+        if not np.isfinite(r) or r <= -0.999999:
+            return False
+        value = residual(r)
+        return np.isfinite(value) and abs(value) <= npv_tol_abs
 
     try:
-        irr = flx.aitken_secant(
-            _NPV_at_r,
-            x0, x1,
-            xtol=xtol, ytol=ytol, maxiter=maxiter,
-            args=args, checkiter=False
-        )
-    except Exception as e:
-        return np.nan, f"solver_exception:{type(e).__name__}"
+        x0, x1 = IRR_guess, 1.0001 * IRR_guess + 1e-3
+        if np.isfinite(residual(x0)) and np.isfinite(residual(x1)):
+            with np.errstate(over='ignore', invalid='ignore', divide='ignore'):
+                irr = flx.aitken_secant(
+                    _NPV_at_r, x0, x1, xtol=xtol, ytol=ytol,
+                    maxiter=maxiter, args=args, checkiter=False)
+            if verified(irr):
+                return float(irr), "ok"
+    except Exception:
+        # A failed primary iteration does not establish absence of an IRR.
+        pass
 
-    if (not np.isfinite(irr)) or (irr <= -0.999999):
-        return np.nan, "solver_returned_invalid"
+    rates = np.expm1(np.linspace(np.log(1.000001e-6), np.log1p(1e6), 2049))
+    rates = np.unique(np.append(rates, [0., IRR_guess]))
+    values = [residual(r) for r in rates]
+    roots = [float(r) for r, value in zip(rates, values)
+             if value == 0. and verified(r)]
+    rejected_residual = False
+    failed_bracket = False
+    for low, high, f_low, f_high in zip(rates[:-1], rates[1:], values[:-1], values[1:]):
+        if not (np.isfinite(f_low) and np.isfinite(f_high)):
+            continue
+        if f_low == 0. or f_high == 0. or np.signbit(f_low) == np.signbit(f_high):
+            continue
+        try:
+            # Tight rate tolerance is needed for steep NPV curves at negative
+            # rates. Acceptance is determined by the USD residual, not xtol.
+            root = brentq(residual, low, high, xtol=min(xtol, 1e-12),
+                          rtol=4*np.finfo(float).eps, maxiter=maxiter)
+            if not verified(root):
+                root = brentq(residual, low, high, xtol=np.nextafter(0., 1.),
+                              rtol=4*np.finfo(float).eps, maxiter=maxiter)
+            if verified(root):
+                roots.append(float(root))
+            else:
+                rejected_residual = True
+        except (ValueError, RuntimeError, OverflowError):
+            failed_bracket = True
 
-    y = _NPV_at_r(irr, *args)
-    if not np.isfinite(y):
-        return np.nan, "npv_at_solution_nonfinite"
-    if abs(float(y)) > float(npv_tol_abs):
-        return np.nan, f"npv_not_close:{float(y):.3g}"
-
-    return float(irr), "ok"
+    distinct = []
+    for root in sorted(roots):
+        if not distinct or not np.isclose(root, distinct[-1], rtol=1e-9, atol=1e-10):
+            distinct.append(root)
+    if len(distinct) > 1:
+        return np.nan, f"multiple_bracketed_IRRs:{len(distinct)}"
+    if rejected_residual or failed_bracket:
+        return np.nan, "bracketed_search_incomplete_or_residual_not_close"
+    if distinct:
+        return distinct[0], "ok_bracketed"
+    return np.nan, "no_verified_IRR_in_search_range"

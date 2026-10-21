@@ -16,7 +16,7 @@ import pandas as pd
 import numpy as np
 import qsdsan as qs
 import biosteam as bst
-from _distill_utils_flex import get_distillation_trials
+from exposan.biobinder_ml._distill_utils_flex import get_distillation_trials
 from ua_column_diagnostics import add_crudeheavy_dis_diagnostics, solve_IRR_aitken_limit
 
 

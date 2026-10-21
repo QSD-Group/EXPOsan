@@ -84,7 +84,7 @@ from exposan.biobinder_ml.Dist_flex import gwp_dict
 # ============================
 from exposan.saf import price_dct, gwp_dct  # keep SAF CFs if you want SAF GWP dictionary
 
-from _distill_utils_flex import add_runtime_LHK_LrHr_spec
+from exposan.biobinder_ml._distill_utils_flex import add_runtime_LHK_LrHr_spec
 
 _psi_to_Pa = 6894.76
 _m3_to_gal = 264.172

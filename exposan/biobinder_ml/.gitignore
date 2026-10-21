@@ -19,12 +19,6 @@ analyses/results/
 legacy/
 legacy models/
 _to_be_removed/
-deploy/*
-!deploy/systems/
-!deploy/systems/**
-deploy/systems/comparison_results/
-deploy/systems/__pycache__/
-deploy/systems/**/__pycache__/
 archived_results_for_publications/
 plotting/
 
@@ -39,3 +33,22 @@ plotting/
 # ============================================================================
 .DS_Store
 Thumbs.db
+# Deploy source files; keep data, archives, outputs and caches local.
+!deploy/
+!deploy/**
+# Keep system source scripts visible to Git, including nested system scripts.
+!deploy/systems/
+!deploy/systems/**/
+!deploy/systems/**/*.py
+deploy/**/Data/
+deploy/**/legacy/
+deploy/**/results/
+deploy/systems/comparison_results/
+deploy/systems/comaprison_results/
+deploy/**/__pycache__/
+deploy/**/.ipynb_checkpoints/
+deploy/**/.pytest_cache/
+deploy/**/.mypy_cache/
+deploy/**/.ruff_cache/
+deploy/**/.cache/
+deploy/**/*.py[cod]
