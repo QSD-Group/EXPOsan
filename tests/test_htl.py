@@ -33,18 +33,20 @@ def test_htl():
         include_check=False,
         )
 
-    # Baselines are for BioSTEAM >= 2.54.0 and thermo >= 0.6.1.
+    # Baselines are for BioSTEAM with flue-gas heat recovery for fuel-fired
+    # heat utilities (air and fuel preheating, BioSTEAM commit 2dd9b4dc) and
+    # thermo >= 0.6.1.
     m1 = htl.create_model('baseline', **kwargs)
     assert_allclose(m1.metrics_at_baseline().values,
-                    [2.683049, -27.623159, 24.137262, 102.096472], rtol=rtol)
+                    [2.562068, -35.081915, 15.158588, 25.269086], rtol=rtol)
 
     m2 = htl.create_model('no_P', **kwargs)
     assert_allclose(m2.metrics_at_baseline().values,
-                    [3.235468, 6.434865, 10.982505, -10.464207], rtol=rtol)
+                    [3.121138, -0.613885, 2.497389, -83.068385], rtol=rtol)
 
     m3 = htl.create_model('PSA', **kwargs)
     assert_allclose(m3.metrics_at_baseline().values,
-                    [2.044986, -66.961316, 45.230590, 282.584720], rtol=rtol)
+                    [1.924005, -74.420137, 36.251841, 205.756707], rtol=rtol)
 
 
 def test_htl_reversed_splitter_recycle():
