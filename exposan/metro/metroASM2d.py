@@ -117,13 +117,13 @@ def batch_init(sys, path, sheet):
 def create_components():
      asm2d_cmps = pc.create_asm2d_cmps()
      asm2d_cmps.X_S.f_BOD5_COD = 0.54
-     CO2 = qs.Component.from_chemical('S_CO2', search_ID='CO2', particle_size='Dissolved gas', degradability='Undegradable', organic=False)
-     CH4 = qs.Component.from_chemical('S_CH4', search_ID='CH4', particle_size='Dissolved gas', degradability='Undegradable', organic=False)
-     H2 = qs.Component.from_chemical('S_H2', search_ID='H2', particle_size='Dissolved gas', degradability='Undegradable', organic=False)
+     CO2 = qs.Component.from_chemical('S_CO2', chemical='CO2', particle_size='Dissolved gas', degradability='Undegradable', organic=False)
+     CH4 = qs.Component.from_chemical('S_CH4', chemical='CH4', particle_size='Dissolved gas', degradability='Undegradable', organic=False)
+     H2 = qs.Component.from_chemical('S_H2', chemical='H2', particle_size='Dissolved gas', degradability='Undegradable', organic=False)
      cmps1 = qs.Components.load_default()
      ash = cmps1.X_Ig_ISS.copy('ash')
      cmps = qs.Components([*asm2d_cmps, CO2, CH4, H2, ash])
-     cmps.compile()
+     cmps.compile(ignore_inaccurate_molar_weight=True)
      return cmps
 
 def create_system(flowsheet=None, inf_kwargs=None, asm_kwargs=None, init_conds=None,
@@ -243,7 +243,7 @@ def run(t, t_step, method=None, **kwargs):
     #         u.set_init_conc(**default_init_conds)
     # batch_init(sys, "C:\\Users\\raisa\\Downloads\\initial_conditions_ASM2d.xlsx", sheet='t=10')
     
-    path = ospath.join("/Users/saumitrarai/Desktop/Research/MS_research/metro/data/initial_conditions_ASM2d.xlsx")
+    path = ospath.join(ospath.dirname(__file__), 'initial_conditions_ASM2d.xlsx')
     
     batch_init(sys, path, 
                sheet='ss')
