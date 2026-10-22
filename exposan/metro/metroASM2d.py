@@ -213,8 +213,7 @@ def create_system(flowsheet=None, inf_kwargs=None, asm_kwargs=None, init_conds=N
                             thickener_perc=27, TSS_removal_perc=96.29)
 
     IC = su.Incinerator(ID ='IC', ins = [DU1-0, air, fuel], outs=(), thermo=None, isdynamic=False, 
-                  init_with='WasteStream', F_BM_default=None, process_efficiency=0.90, 
-                  calorific_value_sludge= 12000, calorific_value_fuel=50000, carbon_di_oxide_ID = 'CO2',
+                  init_with='WasteStream', F_BM_default=None, process_efficiency=0.90,
                   ash_component_ID = 'ash')
 
     sys = qs.System('metro_ASM2d', 
