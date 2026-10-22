@@ -142,7 +142,10 @@ def create_system(flowsheet=None, inf_kwargs=None, asm_kwargs=None, init_conds=N
     WAS = WasteStream('WAS', T=Temp)
     RAS = WasteStream('RAS', T=Temp)
     fuel = WasteStream('nat_gas', phase='g', S_CH4=1000)
-    air = WasteStream('air', phase='g', S_O2=210, S_N2=780, S_H2=10)
+    # Air for the incinerator: 40% excess over the O2 demand of the sludge and fuel at the baseline
+    # (13,380 kg O2/hr, 60 d simulation); 23.2 wt% O2 in dry air; fluidized bed incinerators for
+    # sludge are typically designed for 30-45% excess air
+    air = WasteStream('air', phase='g', S_O2=18700, S_N2=62000)
     
     asm2d = pc.ASM2d(iP_SF=0.005, iP_XS=0.005, iP_XI=0.005, iN_BM=0.1, iTSS_XI=0.72)
     
@@ -203,14 +206,15 @@ def create_system(flowsheet=None, inf_kwargs=None, asm_kwargs=None, init_conds=N
                                         v_max_practical=250, rh=5.76e-4, rp=2.86e-3, 
                                         fns=2.28e-3)
     
+    # TSS removal of TC1, TC2, and DU1: Rai et al., ES&T 2026, SI Table S2 (corrected from previous 97.14, 95.54, 96.29)
     TC1 = su.Thickener(ID='TC1', ins = PC-1, outs = ['sludge_TC1', effluent_TC1],
-                       thickener_perc= 6.1, TSS_removal_perc=97.14)
+                       thickener_perc= 6.1, TSS_removal_perc=95.2)
     
     TC2 = su.Thickener(ID='TC2', ins = WAS, outs = ['sludge_TC2', effluent_TC2],
-                       thickener_perc=4.3, TSS_removal_perc=95.54)
+                       thickener_perc=4.3, TSS_removal_perc=98.3)
     
     DU1 = su.Centrifuge(ID='DU1', ins = [TC1-0, TC2-0], outs = ['sludge_DU1', effluent_DU1],
-                            thickener_perc=27, TSS_removal_perc=96.29)
+                            thickener_perc=27, TSS_removal_perc=94)
 
     IC = su.Incinerator(ID ='IC', ins = [DU1-0, air, fuel], outs=(), thermo=None, isdynamic=False, 
                   init_with='WasteStream', F_BM_default=None, process_efficiency=0.90,
