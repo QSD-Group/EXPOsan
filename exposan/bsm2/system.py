@@ -175,7 +175,7 @@ def _create_bsm2(flowsheet, reactor_model, default_init_conds):
                          f'not {reactor_model}.')
 
     TC1 = su.Thickener('TC1', C2-2, outs=['thickened_sludge', ''],
-                       thickening_perc=7, TSS_removal_perc=98)
+                       thickener_perc=7, TSS_removal_perc=98)
     M1 = su.Mixer('M1', ins=(C1-1, TC1-0))
 
     # Switch to ADM1 components for the anaerobic digester
@@ -196,7 +196,7 @@ def _create_bsm2(flowsheet, reactor_model, default_init_conds):
 
     # Dewatering
     C3 = su.Centrifuge(ID='C3', ins=J2-0, outs=['digested_sludge', ''],
-                       thickening_perc=28, TSS_removal_perc=96.29)
+                       thickener_perc=28, TSS_removal_perc=96.29)
 
     M2 = su.Mixer('M2', ins=(TC1-1, C3-1), outs=1-C1)
 
