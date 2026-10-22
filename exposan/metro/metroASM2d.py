@@ -150,9 +150,12 @@ def create_system(flowsheet=None, inf_kwargs=None, asm_kwargs=None, init_conds=N
     
     # Create unit operations
     
-    PC = su.PrimaryClarifier(ID='PC', ins = [wastewater, effluent_TC1], outs = ['sludge_PC', 'effluent_PC'], 
-                        thermo=None, isdynamic=False, init_with='WasteStream', thickener_perc= 0.09, 
-                        TSS_removal_perc=69)
+    # PrimaryClarifier outs: [0] effluent, [1] sludge
+    # Previously had `thickener_perc`=0.09, but not applicable and no sources
+    # 69% TSS removal: Rai et al., ES&T 2026, SI Table S2.
+    PC = su.PrimaryClarifier(ID='PC', ins = [wastewater, effluent_TC1], outs = ['effluent_PC', 'sludge_PC'],
+                        thermo=None, isdynamic=False, init_with='WasteStream',
+                        solids_removal_efficiency=0.69)
     
     effluent_TC2 = WasteStream(ID = 'effluent_TC2')
     effluent_DU1 = WasteStream(ID = 'effluent_DU1')
@@ -163,7 +166,7 @@ def create_system(flowsheet=None, inf_kwargs=None, asm_kwargs=None, init_conds=N
     A1 = su.CSTR('A1', O1-0, V_max=V_an,
                   aeration=None, suspended_growth_model=asm2d)
     
-    A2 = su.CSTR('A2', [A1-0, PC-1, effluent_TC2, effluent_DU1], V_max=V_an,
+    A2 = su.CSTR('A2', [A1-0, PC-0, effluent_TC2, effluent_DU1], V_max=V_an,
                   aeration=None, suspended_growth_model=asm2d)
     
     A3 = su.CSTR('A3', A2-0, V_max=V_an,
@@ -200,7 +203,7 @@ def create_system(flowsheet=None, inf_kwargs=None, asm_kwargs=None, init_conds=N
                                         v_max_practical=250, rh=5.76e-4, rp=2.86e-3, 
                                         fns=2.28e-3)
     
-    TC1 = su.Thickener(ID='TC1', ins = PC-0, outs = ['sludge_TC1', effluent_TC1], 
+    TC1 = su.Thickener(ID='TC1', ins = PC-1, outs = ['sludge_TC1', effluent_TC1],
                        thickener_perc= 6.1, TSS_removal_perc=97.14)
     
     TC2 = su.Thickener(ID='TC2', ins = WAS, outs = ['sludge_TC2', effluent_TC2],
