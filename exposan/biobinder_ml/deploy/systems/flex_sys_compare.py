@@ -456,6 +456,7 @@ def create_system(
     HTL_yields_override=None,
     use_RF=True,
     rf_model_path=None,
+    feedstock_composition_override=None,
 
     # runtime distillation tuning
     prefer="min_purchase_cost",
@@ -556,7 +557,14 @@ def create_system(
         scaling_factor=N_HTL, reverse=True,
     )
 
-    feedstock_composition = get_feedstock_composition(feedstock_id)
+    feedstock_composition = (get_feedstock_composition(feedstock_id)
+                            if feedstock_composition_override is None else
+                            dict(feedstock_composition_override))
+    required = {'Water','Carbohydrates','Proteins','Lipids','Ash'}
+    if (set(feedstock_composition) != required or
+        any(not np.isfinite(v) or v < 0 for v in feedstock_composition.values()) or
+        abs(sum(feedstock_composition.values())-1.) > 1e-9):
+        raise ValueError('feedstock_composition_override must contain five nonnegative wet fractions summing to one')
     print(f"Feedstock used is {feedstock_id}")
     print("Corresponding composition:")
     for k, v in feedstock_composition.items():

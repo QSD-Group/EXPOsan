@@ -52,3 +52,18 @@ deploy/**/.mypy_cache/
 deploy/**/.ruff_cache/
 deploy/**/.cache/
 deploy/**/*.py[cod]
+
+# Module-wide exclusions must follow the deploy source exceptions above.
+*.md
+.vscode/
+.idea/
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+.hypothesis/
+.tox/
+.nox/

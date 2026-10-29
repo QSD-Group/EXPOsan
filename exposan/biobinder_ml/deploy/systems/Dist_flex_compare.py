@@ -123,6 +123,8 @@ gwp_dict = {
 def create_system(
         flowsheet=None,
         feedstock_id='sludge',
+        feedstock_composition_override=None,
+        tea_overrides=None,
         central_dry_flowrate=None,
         pilot_dry_flowrate=None,
         decentralized_HTL=False,
@@ -208,7 +210,14 @@ def create_system(
 
     # Price accounted for in PWC
     scaled_process_water = qs.WasteStream('scaled_process_water')
-    feedstock_composition = get_feedstock_composition(feedstock_id)
+    feedstock_composition = (get_feedstock_composition(feedstock_id)
+                            if feedstock_composition_override is None else
+                            dict(feedstock_composition_override))
+    required = {'Carbohydrates', 'Proteins', 'Lipids', 'Ash', 'Water'}
+    if (set(feedstock_composition) != required or
+        any(not np.isfinite(v) or v < 0 for v in feedstock_composition.values()) or
+        abs(sum(feedstock_composition.values())-1) > 1e-9):
+        raise ValueError('feedstock_composition_override must contain five nonnegative wet fractions summing to one')
     print(f'Feedstock used is {feedstock_id}')
     print("Corresponding composition:")
     for k, v in feedstock_composition.items():
@@ -899,7 +908,9 @@ def create_system(
     qs.PowerUtility.price = EC_config.get('electricity_price', price_dct['electricity']) if EC_config else price_dct['electricity']
     electricity_GHG = EC_config.get('electricity_GHG', gwp_dict['electricity']) if EC_config else gwp_dict['electricity']
 
-    tea = create_tea(sys, cls=BiobinderTEA, **tea_kwargs)
+    binder_tea_kwargs = dict(tea_kwargs)
+    binder_tea_kwargs.update(tea_overrides or {})
+    tea = create_tea(sys, cls=BiobinderTEA, **binder_tea_kwargs)
     land_factor = 115000/24 #115000 gal/day, PNNL 32731
     tea.land = lambda: 90000+(tea.system.flowsheet.unit.BiocrudeScaler.outs[0].F_vol*264.172)/land_factor*4.692*1e6 # 6% of 78.2M$, PNNL 32731
 

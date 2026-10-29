@@ -67,7 +67,7 @@ from exposan.biobinder_ml import (
     configure_utilities,
     set_eff_hx_temperature,
     )
-from exposan.biobinder_ml._distill_utils import add_runtime_LHK_LrHr_spec
+from exposan.biobinder_ml._distill_utils_flex import add_runtime_LHK_LrHr_spec
 _psi_to_Pa = 6894.76
 _m3_to_gal = 264.172
 

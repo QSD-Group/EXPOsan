@@ -60,7 +60,7 @@ configure_utilities()
 from exposan.biobinder_ml._feedstocks import get_feedstock_composition
 from exposan.biobinder_ml._rf_htl_predictor import predict_htl_yields_from_rf
 from exposan.biobinder_ml._ml_features import FeatureDefaults
-from exposan.biobinder_ml._distill_utils import (safe_LHK_candidates, find_best_Lr_Hr_runtime, 
+from exposan.biobinder_ml._distill_utils_flex import (safe_LHK_candidates, find_best_Lr_Hr_runtime,
 add_runtime_LHK_LrHr_spec)
 
 # %%

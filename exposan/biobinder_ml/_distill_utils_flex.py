@@ -127,43 +127,66 @@ def _design_cost_sanity(
     return (len(bad) == 0), "|".join(bad)
 
 def safe_LHK_candidates(
-    splitter,
-    col_feed,
-    idx,
-    fallback=("4M-PHYNO", "INDOLE"),
-    min_massfrac=1e-6,  #1e-6 for food/sludge, -3 for green/manure
+    splitter, col_feed, idx, fallback=("4M-PHYNO", "INDOLE"),
+    min_massfrac=1e-6, target_ratio=None, max_adjacent_pairs=6,
 ):
-    def massfrac(stream, cid):
+    """Keep legacy pairs and add adjacent boiling-point pairs near the mass cut.
+
+    Uses normalized inlet mass fractions, so uniform flow scaling does not
+    change pair selection. Normal boiling points generate candidates only;
+    column VLE/design/cost checks still decide feasibility. The same rule
+    applies to every feedstock. No thermodynamic checks are disabled.
+    """
+    total = float(col_feed.F_mass)
+    if total <= 0:
+        return []
+
+    def massfrac(cid):
         try:
-            tot = float(stream.F_mass)
-            if tot <= 0:
-                return 0.0
-            return float(stream.imass[cid]) / tot
-        except Exception:
+            return float(col_feed.imass[cid]) / total
+        except (KeyError, IndexError, TypeError, ValueError):
             return 0.0
 
-    cands = []
+    pairs = []
     try:
-        ks = splitter.keys
-        if ks and len(ks) > idx and ks[idx]:
-            lk, hk = ks[idx]
-            if massfrac(col_feed, lk) > min_massfrac and massfrac(col_feed, hk) > min_massfrac:
-                cands.append(ks[idx])
-    except Exception:
-        pass
+        primary = tuple(splitter.keys[idx])
+    except (AttributeError, IndexError, TypeError):
+        primary = ()
+    for pair in (primary, tuple(fallback) if fallback else ()):
+        if len(pair) == 2 and all(massfrac(cid) > min_massfrac for cid in pair):
+            pairs.append(pair)
 
-    lk, hk = fallback
-    if massfrac(col_feed, lk) > min_massfrac and massfrac(col_feed, hk) > min_massfrac:
-        cands.append(fallback)
-    else:
-        cands.append(fallback)
+    # Include every present component in ordering so that a small component
+    # is not silently skipped between supposedly adjacent keys.
+    present = []
+    for chemical in col_feed.chemicals:
+        tb = getattr(chemical, 'Tb', None)
+        fraction = massfrac(chemical.ID)
+        if (fraction > 0 and tb is not None and np.isfinite(tb)
+                and getattr(chemical, 'locked_state', None) not in ('g', 'l', 's')):
+            present.append((float(tb), chemical.ID, fraction))
+    present.sort(key=lambda item: (item[0], item[1]))
 
-    out, seen = [], set()
-    for c in cands:
-        if c not in seen:
-            out.append(c)
-            seen.add(c)
-    return out
+    # Without a target, anchor around the original pair's boiling boundary.
+    primary_tbs = [item[0] for item in present if item[1] in primary]
+    anchor_tb = np.mean(primary_tbs) if primary_tbs else None
+    adjacent = []
+    cumulative = 0.0
+    for light, heavy in zip(present, present[1:]):
+        cumulative += light[2]
+        if (light[2] <= min_massfrac or heavy[2] <= min_massfrac
+                or heavy[0] <= light[0]):
+            continue
+        if target_ratio is not None:
+            distance = abs(cumulative - float(target_ratio))
+        elif anchor_tb is not None:
+            distance = abs((light[0] + heavy[0]) / 2 - anchor_tb)
+        else:
+            continue
+        adjacent.append((distance, light[1], heavy[1]))
+    adjacent.sort()
+    pairs.extend((lk, hk) for _, lk, hk in adjacent[:max_adjacent_pairs])
+    return list(dict.fromkeys(pairs))
 
 # Cost ranking uses the column's own baseline purchase-cost dictionary.
 # Auxiliary equipment coverage is whatever this BioSTEAM version places there.
@@ -358,7 +381,7 @@ def add_runtime_LHK_LrHr_spec(splitter, col, idx,
         x_min=1e-12, bp_T_max=950., alpha_max=1e6, design_sanity=True,
         max_purchase_cost=1e9, K_max=1e14, cost_band=0.0,
         cost_tiebreak='min_err', cost_verify_rtol=.01):
-    """Cost policy compares ALL primary/fallback pairs; old policies keep pair priority.
+    """Cost policy compares ALL legacy/adjacent pairs; old policies keep pair priority.
 
     cost_band=0 is strict minimum purchase cost. Set .01 to permit a 1% band.
     All ratios are mass-based top/feed fractions, not purity specifications.
@@ -377,7 +400,9 @@ def add_runtime_LHK_LrHr_spec(splitter, col, idx,
                 stream.empty()
             return
         all_candidates = []
-        for LHK in safe_LHK_candidates(splitter, feed, idx, fallback=fallback_LHK):
+        for LHK in safe_LHK_candidates(
+                splitter, feed, idx, fallback=fallback_LHK,
+                target_ratio=target_ratio):
             candidates = _scan(col, LHK, options, Lr_grid, Hr_grid)
             if prefer == 'min_purchase_cost':
                 all_candidates.extend(candidates)

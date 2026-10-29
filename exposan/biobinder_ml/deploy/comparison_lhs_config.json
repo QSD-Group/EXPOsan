@@ -1,0 +1,137 @@
+{
+    "n_samples": 100,
+    "seed": 20261026,
+    "variation": 0.1,
+    "variation_mode": "relative",
+    "recipe_wet_mass": {
+        "food": 0.5,
+        "sludge": 0.25,
+        "manure": 0.25
+    },
+    "capacity_dry_tpd": 110.0,
+    "capacity_uptime_ratio": 0.9,
+    "workers": 8,
+    "tea_overrides": {},
+    "feedstock_price_usd_t": null,
+    "htl": {
+        "factory": "systems/Dist_flex_compare.py:create_system",
+        "system_kwargs": {
+            "decentralized_HTL": true,
+            "decentralized_upgrading": false,
+            "skip_EC": true,
+            "generate_H2": false,
+            "cutoff_fracs": [
+                0.01,
+                0.69,
+                0.3
+            ],
+            "heavy_route": "binder"
+        },
+        "simulate_kwargs": {},
+        "stream_prices_usd_kg": {}
+    },
+    "ad": {
+        "config": {
+            "route": "chp"
+        },
+        "system_kwargs": {},
+        "economics": {},
+        "product_price_usd_t": 0.0,
+        "marketable_fraction": 1.0
+    },
+    "composting": {
+        "config": {
+            "bulking_kg_per_kg_feed": 0.125
+        },
+        "bulking_feedstock": "green",
+        "bulking_composition": null,
+        "system_kwargs": {},
+        "economics": {},
+        "_comment_product_price_calculation": "ECUA bulk biosolids compost: 10 USD/yd3 / (0.764554857984 m3/yd3 * 600 kg/m3 / 1000 kg/metric tonne) = 21.799177 USD per wet metric tonne in current 2026 dollars. Finished density 600 kg/m3 is an explicit assumption, independent of pile density.",
+        "_comment_product_price_deflation": "2020 USD per wet metric tonne = 21.799177 * 104.635 / 131.579 = 17.335265. PCEPI 2020 = 104.635 matches the HTL/QSDsan index table; August 2026 = 131.579 is the latest monthly proxy available as of 2026-10-28. The product_price_usd_t input is already deflated; do not deflate it again.",
+        "_comment_product_price_references": "Compost price: https://www.ecua.fl.gov/174/Composting ; PCEPI: https://fred.stlouisfed.org/data/PCEPI ; accessed 2026-10-28.",
+        "product_price_usd_t": 17.335265,
+        "marketable_fraction": 1.0,
+        "product_price_reference": {
+            "source": "https://www.ecua.fl.gov/174/Composting",
+            "accessed": "2026-10-28",
+            "source_price_usd_yd3": 10.0,
+            "finished_bulk_density_kg_m3": 600.0,
+            "density_basis": "Scenario assumption at modeled finished moisture; independent of pile density.",
+            "dollar_basis": "Constant 2020 USD, deflated with PCEPI as in HTL process settings.",
+            "conversion": "2020 USD/wet metric tonne = source_price_usd_yd3 / (0.764554857984 * finished_bulk_density_kg_m3 / 1000) * target_pcepi / source_pcepi. product_price_usd_t is the authoritative input and is already deflated; do not deflate again.",
+            "price_index": "PCEPI (2017=100); same series as qsdsan.utils.indices.tea_indices[\"PCEPI\"] used in HTL",
+            "target_year": 2020,
+            "target_pcepi": 104.635,
+            "source_index_period": "2026-08",
+            "source_pcepi": 131.579,
+            "index_source": "https://fred.stlouisfed.org/data/PCEPI",
+            "index_accessed": "2026-10-28",
+            "index_period_basis": "Latest available monthly PCEPI used as proxy for current listed price; full-year 2026 index unavailable.",
+            "deflation_factor": 0.7952256819097272
+        }
+    },
+    "lca": {
+        "avoided_disposal_kg_co2e_t": 0.0,
+        "factors": {
+            "ad": {},
+            "composting": {}
+        },
+        "require_complete_factors": false,
+        "boundaries_confirmed_comparable": false,
+        "reuse_htl_utilities": true,
+        "excluded_activities": {
+            "ad": {
+                "water_kg": "Excluded: HTL process-water impact item is commented out; no active matching factor.",
+                "methane_kg": "Excluded: no direct methane-emission GWP factor in the active HTL inventory.",
+                "biogenic_co2_kg": "Excluded pending a shared biogenic-carbon accounting convention.",
+                "residue_kg": "Excluded: HTL solids factor covers transport only, not digestate/compost residual treatment.",
+                "liquid_kg": "Excluded: HTL wastewater uses kg COD; AD inventory is kg liquid with no effluent COD estimate."
+            },
+            "composting": {
+                "water_kg": "Excluded: HTL process-water impact item is commented out; no active matching factor.",
+                "diesel_l": "Excluded: HTL diesel factor is upstream kg CO2e/gallon and excludes combustion; compost diesel requires a complete fuel-use boundary.",
+                "bulking_kg": "Excluded: no HTL matching bulking-material supply factor.",
+                "methane_kg": "Excluded: no direct methane-emission GWP factor in the active HTL inventory.",
+                "n2o_kg": "Excluded: no direct N2O-emission GWP factor in the active HTL inventory.",
+                "biogenic_co2_kg": "Excluded pending a shared biogenic-carbon accounting convention.",
+                "residue_kg": "Excluded: HTL solids factor covers transport only, not digestate/compost residual treatment.",
+                "ammonia_kg": "Excluded pending consistent GWP method and indirect-N2O boundary.",
+                "nitrogen_gas_kg": "Excluded pending an explicit direct-N2 climate convention.",
+                "inoculum_kg": "Excluded: no matching HTL inoculum-production factor."
+            }
+        }
+    },
+    "notes": [
+        "Capacity is 110 dry US short tons/day using the legacy 907.185 kg/short-ton and 0.9 uptime hourly conversion. Wet rates are derived internally from sample moisture for all technologies; project operating days remain the shared TEA setting.",
+        "Four LHS multipliers perturb each recipe component on its dry basis; dry fractions are normalized and moisture and wet blending weights stay fixed.",
+        "Variation 0.1 means relative +/-10% before closure. Realized closed fractions need not remain inside the unnormalized bounds.",
+        "Green feedstock is the explicit bulking proxy; PaCTEA uses lumped carbohydrates unless detailed fractions are provided.",
+        "AD biodegradability is COD-weighted across the sampled component feeds. Source factors remain fixed literature proxies.",
+        "HTL separates 1% light, 69% biofuel additive and 30% binder as an explicit scenario. Biofuel additive uses the native diesel USD/GGE price multiplied by its HHV GGE/kg.",
+        "AD digestate sales default to zero. Compost uses a current US biosolids-compost price scenario; edit composting.product_price_usd_t in USD/wet metric tonne and marketable_fraction for the actual outlet. The compost price is deflated to 2020 USD with PCEPI; reference metadata records the latest-month 2026 proxy. AD electricity inherits the HTL tariff, already in 2020 USD; digestate price remains zero. All product-price and economics overrides must be in 2020 USD.",
+        "First-run LCA reuses HTL electricity/steam factors and explicitly excludes listed missing activities. Reported impacts are partial utility-only screening results; no technology ranking is enabled.",
+        "Native AD/compost SanUnit hooks calculate scaled installed-only capital; FOB/BM split remains unavailable. Common HTL CEPCI and electricity tariff are enforced. Open process, equipment, product and boundary gaps prevent fair-comparison differences by default.",
+        "Every sample runs HTL, AD-CHP (ad), AD-RNG (ad_rng), and composting. AD-RNG inherits AD LCA factors/exclusions unless route-specific entries are supplied. RNG compression/treatment capital uses EPA Table 4-10 as an LFG proxy for AD gas, not an NREL quotation; RNG price is a 2020-USD scenario without RIN/LCFS credits."
+    ],
+    "comparison": {
+        "allow_screening_differences": false
+    },
+    "worker_threads": 1,
+    "worker_tasks_before_restart": 20,
+    "diagnostic_stack_interval_seconds": 0,
+    "ad_rng": {
+        "config": {
+            "route": "rng",
+            "rng_usd_mj": 0.012,
+            "interconnection_usd": 0.0,
+            "rng_usd_per_scfm_at_1000": 8300.0,
+            "rng_usd_per_scfm_at_6000": 6200.0
+        },
+        "system_kwargs": {},
+        "economics": {},
+        "product_price_usd_t": 0.0,
+        "marketable_fraction": 1.0,
+        "_comment_rng_capital_reference": "EPA LMOP January 2024, Table 4-10: 8300 USD/scfm at 1000 scfm and 6200 USD/scfm at 6000 scfm, 2020 USD. Log-log interpolation/extrapolation of total compression/treatment capital through both endpoints. Inlet is biogas after methane leakage and internal boiler use, before upgrading recovery. Nm3/h = scfm * 60 * 0.028316846592 * 273.15 / 288.7055556; scf assumed dry at 60 F and 1 atm, Nm3 at 0 C and 1 atm. Flow outside 1000-6000 scfm is flagged. LFG proxy for AD gas; pipeline/interconnection separate. https://www.epa.gov/system/files/documents/2024-01/pdh_full.pdf"
+    }
+}
