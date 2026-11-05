@@ -30,9 +30,14 @@ from exposan.esap._components import (
 from exposan.esap._sanunits import ESAPBatchCrystallizer
 from exposan.esap._process_settings import (
     acid_prices as default_acid_prices,
+    acid_purities as default_acid_purities,
+    equipment_cost_index,
     electricity_price,
     natural_gas_price,
     natural_gas_price_per_kmol,
+    steam_regeneration_price,
+    cooling_water_regeneration_price,
+    chilled_water_heat_transfer_price,
     )
 from exposan.htl import _sanunits as htl_su
 
@@ -117,7 +122,7 @@ _ammonium_per_product = {
     'ammonium_lactate': 1,
     'ammonium_maleate': 2,
     }
-
+# system assumed to produce diammonium citrate.
 _acid_per_ammonium = {
     'ammonium_sulfate': 0.5,
     'ammonium_citrate': 0.5,
@@ -125,7 +130,11 @@ _acid_per_ammonium = {
     'ammonium_maleate': 0.5,
     }
 
-_evaporator_pressures = (101325, 73581, 50892, 32777, 20000)
+_evaporator_pressures = (101325,)
+# can adjust number of pressures i.e. number of stages of evaporation
+# only supply one pressure and flash = TRUE means in the Multi-effect
+# evaporator we only have the first flash unit. Spce for optimization
+# by tuning number of effects and pressures. 
 
 _default_crystallizer_parameters = {
     'ammonium_sulfate': {
@@ -183,14 +192,17 @@ def _set_solution_flow(stream, solute_ID, molarity, flow_L_hr,
 def _get_evaporation_fraction(solute_ID, molarity, flow_L_hr,
                               target_solute_wt_frac,
                               solution_density_kg_per_L, components):
+    """Return water removed / feed water for MEE's Overall specification.
+
+    Calculate removal needed for the target solute mass fraction, retaining
+    the 0.95 evaporation cap. Return zero for no feed water or no removal.
+    """
     solute = getattr(components, solute_ID)
     solute_mass = molarity * flow_L_hr * solute.MW / 1000
     water_mass = solution_density_kg_per_L * flow_L_hr - solute_mass
     target_water_mass = solute_mass * (1 - target_solute_wt_frac) / target_solute_wt_frac
     water_removed = max(water_mass - target_water_mass, 0)
-    water_removed_kmol = water_removed / components.H2O.MW
-    total_kmol = molarity * flow_L_hr / 1000 + water_mass / components.H2O.MW
-    return min(water_removed_kmol / total_kmol, 0.95) if total_kmol else 0
+    return min(water_removed / water_mass, 0.95) if water_mass > 0 else 0
 
 
 def _create_influent_streams(components, flow_L_hr, feed_molarities,
@@ -213,7 +225,8 @@ def _create_influent_streams(components, flow_L_hr, feed_molarities,
 def _create_acid_stream(product, feed, solute_ID, components,
                         acid_molarities=None, acid_prices=None,
                         acid_solution_density_kg_per_L=(
-                            _acid_solution_density_kg_per_L)):
+                            _acid_solution_density_kg_per_L),
+                        acid_purities=None):
     acid_molarities = dict(_default_acid_molarities, **(acid_molarities or {}))
     acid_prices = acid_prices or {}
     acid_ID = _acid_components[product]
@@ -233,11 +246,16 @@ def _create_acid_stream(product, feed, solute_ID, components,
         acid_solution_density_kg_per_L,
         components,
         )
-    dry_acid_price = acid_prices.get(product, acid_prices.get(acid_ID, 0))
-    if dry_acid_price < 0:
-        raise ValueError('Dry-acid price cannot be negative.')
+    product_price = acid_prices.get(product, acid_prices.get(acid_ID, 0))
+    purities = default_acid_purities if acid_purities is None else acid_purities
+    purity = purities.get(product, purities.get(acid_ID, default_acid_purities[acid_ID]))
+    if not 0 < purity <= 1:
+        raise ValueError('Purchased-acid purity must be greater than zero and at most one.')
+    if not 0 <= product_price < float('inf'):
+        raise ValueError('Purchased-acid product price must be finite and nonnegative.')
     if acid.F_mass:
-        acid.price = dry_acid_price * acid.imass[acid_ID] / acid.F_mass
+        # Purchased mass = required acid mass / supplier-product acid mass fraction.
+        acid.price = product_price * acid.imass[acid_ID] / purity / acid.F_mass
     return acid
 
 
@@ -433,16 +451,21 @@ def create_system(product='ammonium_sulfate', flowsheet=None,
                   steam_kg_per_hr=None,
                   simulate=True,
                   acid_solution_density_kg_per_L=(
-                      _acid_solution_density_kg_per_L)):
+                      _acid_solution_density_kg_per_L),
+                  acid_purities=None):
     '''
     Create a downstream ESAP fertilizer production system.
 
-    Sets shared BioSTEAM/QSDsan electricity and natural-gas prices from
+    Sets shared BioSTEAM/QSDsan electricity, natural-gas and service prices from
     ``_process_settings``. Electricity is 0.1429 USD/kWh; natural gas is
     converted from 4.58 USD/thousand standard cubic feet using ideal methane
     at 60 deg F and 14.73 psia. Both the dryer fuel price (USD/kg) and the
-    natural-gas heating-agent price (USD/kmol) are updated. These global
+    natural-gas heating-agent price (USD/kmol) are updated. Low-pressure steam
+    uses gas-based escalation; cooling and chilled water use electricity-based
+    escalation from assumed 2016 BioSTEAM baseline prices. These global
     settings also affect other systems in the same Python process.
+    All equipment correlations use the shared CEPCI, set before construction
+    to QSDsan's latest bundled annual index (currently 2023, not 2026).
 
     Parameters
     ----------
@@ -475,13 +498,20 @@ def create_system(product='ammonium_sulfate', flowsheet=None,
         ammonium fertilizer production rate. Used only for ammonium salt
         systems, not ``'anhydrous_ammonia'``.
     acid_prices : dict[str, float], optional
-        Dry-acid prices, [USD/kg pure acid]. Keys may be product IDs or acid
-        component IDs (e.g., ``'ammonium_sulfate'`` or ``'H2SO4'``). The
-        effective price assigned to each aqueous acid stream charges only its
-        pure-acid mass, not dilution water. If None, use the purity-adjusted
-        wholesale quote midpoints in ``_process_settings.acid_prices``.
-        An explicit dictionary replaces these defaults; missing entries then
-        have zero price. Pass an empty dictionary for zero acid costs.
+        Purchased-product prices, [USD/kg purchased product]. Keys may be
+        product IDs or acid component IDs (e.g., 'ammonium_sulfate' or 'H2SO4').
+        Defaults are the arithmetic mean prices stored in _process_settings,
+        calculated from TEA.xlsx with the lactic powder quote excluded. Stream cost is
+        required acid mass / purchased-product purity * purchased-product price.
+        An explicit dictionary replaces default prices; missing entries cost zero.
+        This changes the previous USD/kg pure-acid input convention. For a
+        pure-acid price override, also set the corresponding acid_purities to 1.
+    acid_purities : dict[str, float], optional
+        Purchased-product acid mass fractions, (0, 1]. Same keys as acid_prices.
+        Omitted entries use the approved per-acid defaults in _process_settings.
+        These purities affect purchase accounting, not the modeled 1 M makeup
+        stream composition. Supplier density was used only for volume quote
+        conversion when deriving the stored mean prices from TEA.xlsx.
     acid_solution_density_kg_per_L : float, optional
         Assumed density of the acid makeup solution, [kg/L]. This is used to
         convert its volumetric flow into acid and water mass flows. The acid
@@ -536,9 +566,21 @@ def create_system(product='ammonium_sulfate', flowsheet=None,
 
     '''
     product = _normalize_product(product)
+    # qs.CEPCI also sets bst.CE for inherited units and auxiliaries.
+    qs.CEPCI = equipment_cost_index
     qs.PowerUtility.price = electricity_price
     qs.settings.stream_prices['Natural gas'] = natural_gas_price
     qs.HeatUtility.get_agent('natural_gas').regeneration_price = natural_gas_price_per_kmol
+    # Assign from fixed baselines; do not multiply the current shared agent prices.
+    steam = qs.HeatUtility.get_agent('low_pressure_steam')
+    steam.regeneration_price = steam_regeneration_price
+    steam.heat_transfer_price = 0.
+    cooling_water = qs.HeatUtility.get_agent('cooling_water')
+    cooling_water.regeneration_price = cooling_water_regeneration_price
+    cooling_water.heat_transfer_price = 0.
+    chilled_water = qs.HeatUtility.get_agent('chilled_water')
+    chilled_water.heat_transfer_price = chilled_water_heat_transfer_price
+    chilled_water.regeneration_price = 0.
     if acid_prices is None:
         acid_prices = default_acid_prices
     flowsheet_ID = f'esap_{product}'
@@ -570,6 +612,7 @@ def create_system(product='ammonium_sulfate', flowsheet=None,
             acid_molarities,
             acid_prices,
             acid_solution_density_kg_per_L,
+            acid_purities,
             )
 
     if product == 'anhydrous_ammonia':

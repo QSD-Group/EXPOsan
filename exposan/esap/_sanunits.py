@@ -54,7 +54,16 @@ class ESAPBatchCrystallizer(BatchCrystallizer):
         cost correlation is from BioSTEAM's ``SolidsCentrifuge``: ``68040 *
         loading**0.5`` at CEPCI 567, with loading in short ton crystal/hr and a
         bare-module factor of 2.03. Its published range is 1--20 short ton/hr;
-        use below that range is an explicit extrapolation.
+        use below that range is an explicit extrapolation. Separator count is
+        ``N_sep = ceil(loading / separator_capacity)``,
+        with zero separators for zero loading. Separators share the loading
+        equally and are independent of the number of crystallizer vessels.
+        Total baseline purchase cost [USD] is
+        ``N_sep * 68040 * (loading / N_sep)**0.5 * bst.CE / 567``.
+        The bare-module factor is applied separately to obtain installed cost.
+        This is an average-throughput sizing assumption, not a check of peak
+        batch discharge capacity. Source: ``SolidsCentrifuge`` in BioSTEAM's
+        ``units/solids_separation.py``.
     heat_of_crystallization : float, optional
         Heat released per kg of salt crystallized, [kJ/kg]. Default is zero
         because product-specific values have not yet been selected. Positive
@@ -62,6 +71,13 @@ class ESAPBatchCrystallizer(BatchCrystallizer):
     separator_kWhr_per_m3 : float, optional
         Separator electricity intensity, [kWh/m3 feed]. Default is 1.40,
         matching BioSTEAM's ``SolidsCentrifuge`` default.
+    separator_capacity : float, optional
+        Maximum captured-crystal loading per separator, [short ton/hr]. Must
+        be positive. Default is 20, the upper loading bound of BioSTEAM's
+        reciprocating-pusher centrifuge cost correlation. The separator count
+        is the total captured-crystal loading divided by this capacity,
+        rounded up; zero loading requires zero separators. Values above 20
+        may extrapolate the cost correlation beyond its published range.
     tau : float, optional
         Crystallization residence time, [hr]. Passed to the parent class.
     N : int, optional
@@ -105,6 +121,7 @@ class ESAPBatchCrystallizer(BatchCrystallizer):
               crystal_capture_efficiency=0.98, wet_cake_moisture=0.20,
               separator_type='reciprocating_pusher',
               heat_of_crystallization=0, separator_kWhr_per_m3=1.40,
+              separator_capacity=20,
               **kwargs):
         super()._init(**kwargs)
         self.solute_ID = solute_ID
@@ -118,6 +135,7 @@ class ESAPBatchCrystallizer(BatchCrystallizer):
         if separator_kWhr_per_m3 < 0:
             raise ValueError('`separator_kWhr_per_m3` cannot be negative.')
         self.separator_kWhr_per_m3 = separator_kWhr_per_m3
+        self.separator_capacity = separator_capacity
         if separator_type != 'reciprocating_pusher':
             raise ValueError(
                 '`separator_type` must currently be "reciprocating_pusher".'
@@ -137,6 +155,17 @@ class ESAPBatchCrystallizer(BatchCrystallizer):
         if not valid:
             upper = 'less than 1' if upper_open else 'at most 1'
             raise ValueError(f'`{name}` must be nonnegative and {upper}.')
+
+    @property
+    def separator_capacity(self):
+        '''[float] Positive captured-crystal capacity per separator [short ton/hr].'''
+        return self._separator_capacity
+
+    @separator_capacity.setter
+    def separator_capacity(self, value):
+        if not 0 < value < float('inf'):
+            raise ValueError('`separator_capacity` must be positive and finite.')
+        self._separator_capacity = value
 
     @property
     def crystallization_recovery(self):
@@ -251,8 +280,12 @@ class ESAPBatchCrystallizer(BatchCrystallizer):
 
         loading = results['Captured crystals'] * _kg_to_short_ton
         results['Separator solids loading'] = loading
-        results['Number of separators'] = max(1, ceil(loading / 20)) if loading else 0
-
+        results['Number of separators'] = (
+            max(1, ceil(loading / self.separator_capacity)) if loading else 0
+            )
+        # Parallel machines share average captured-crystal loading,
+        # independently of vessel count.
+        
     def _cost(self):
         super()._cost()
         loading = self.design_results['Separator solids loading']
@@ -268,6 +301,10 @@ class ESAPBatchCrystallizer(BatchCrystallizer):
                 )
         N = self.design_results['Number of separators']
         loading_per_separator = loading / N
+        # BioSTEAM SolidsCentrifuge reciprocating-pusher purchase cost:
+        # 68040 * L**0.5 USD per machine at CEPCI 567, L in short ton solids/hr.
+        # Escalate to bst.CE and sum N equally loaded parallel machines.
+        # The 2.03 bare-module factor is applied separately by unit costing.
         self.baseline_purchase_costs['Crystal separator'] = (
             N * 68040 * loading_per_separator**0.5 * bst.CE / 567
             )
