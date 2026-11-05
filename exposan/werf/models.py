@@ -5,6 +5,7 @@ EXPOsan: Exposition of sanitation and resource recovery systems
 This module is developed by:
 
     Joy Zhang <joycheung1994@gmail.com>
+    Zixuan Wang <wyatt4428@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
@@ -16,7 +17,7 @@ import numpy as np, qsdsan as qs
 from qsdsan import WasteStream, unit_operations as su
 from qsdsan.utils import AttrGetter, auom, load_data, ospath, get_SRT
 from exposan.werf import data_path
-from exposan.werf._units import SelectiveRecovery
+from exposan.werf._units import SelectiveRecovery, TricklingFilter
 from exposan.werf.utils import plantwide_aeration_demand, plantwide_aeration_energy
 from chaospy import distributions as shape
 
@@ -25,6 +26,8 @@ __all__ = (
     'add_performance_metrics',
     'add_NH4_recovery_metric',
     'add_OPEX_metrics',
+    'get_trickling_filter_pumping_power',
+    'get_trickling_filter_rotating_arm_power',
     'get_AD_heat_demand',
     'get_CHP_outputs',
     'add_downstream_uncertainty'
@@ -67,7 +70,7 @@ def add_performance_metrics(model, effluent_quality=True, SRT=True, biogas=True,
         def get_srt():
             return get_SRT(
                 sys, ('X_H', 'X_PAO', 'X_AUT'), wastage=[s.WAS],
-                active_unit_IDs=('A1', 'A2', 'A3', 'A4', 'O5', 'O6', 'ASR', 'MBR')
+                active_unit_IDs=('A1', 'A2', 'A3', 'A4', 'O5', 'O6', 'ASR', 'MBR', 'TF')
                 )
 
     if biogas:
@@ -155,7 +158,44 @@ x_aer = 1
 x_pump = 1
 
 mixing_power = 3e-3     # 3W/m3 = 3e-3 kW/m3 mixing power requirement
+TF_rotating_arm_power = 3e-3     # kW/m3 media volume, Tarallo et al. 2015
+TF_distribution_headloss = 5.5   # ft, distribution arms, bottom collection, and flow split
 stablize_power = 4.85   # 4.4 kW/wet ton, Tarallo et al. 2015 --> makes more sense to be kWh/wet ton --> 4.85 kWh/wet tonne
+
+def get_trickling_filter_rotating_arm_power(unit):
+    """Return trickling-filter rotary distributor power in kW.
+
+    The WERF convention is 0.003 kW per m3 of filter-media volume.
+    """
+    if not isinstance(unit, TricklingFilter):
+        raise TypeError('unit must be a TricklingFilter')
+    media_volume = unit.filter_bed_surface * unit.filter_bed_depth
+    return media_volume * TF_rotating_arm_power
+
+
+def get_trickling_filter_pumping_power(unit):
+    """Return applied-flow pumping power in kW for one trickling filter.
+
+    Applied flow is raw influent plus internal recirculation. The pump head is
+    filter-bed depth plus 5.5 ft for distribution, collection, and flow split,
+    matching the convention used by :func:`add_OPEX_metrics`.
+    """
+    if not isinstance(unit, TricklingFilter):
+        raise TypeError('unit must be a TricklingFilter')
+    feed = unit.ins[0]
+    if feed.F_vol <= 0.:
+        return 0.
+    pumpin = WasteStream(None, T=feed.T, P=feed.P, thermo=feed.thermo)
+    pump = su.Pump(
+        None, ins=pumpin, ignore_NPSH=False,
+        init_with='WasteStream', isdynamic=False)
+    pumpin.copy_like(feed)
+    pumpin.scale(1. + unit.recirculation_ratio)
+    head_m = unit.filter_bed_depth + TF_distribution_headloss \
+        * auom('ft').conversion_factor('m')
+    pump.dP_design = 1000. * 9.81 * head_m
+    pump.simulate()
+    return pump.power_utility.consumption
 
 acetic_acid_price = 1.8 # 1.8 $/kg 100% acetic acid, GPS-X default
 lime_price = 0.124      # assume 90% purity, 124 USD/tonne https://www.imarcgroup.com/quicklime-pricing-report
@@ -245,6 +285,8 @@ def add_OPEX_metrics(model):
     sys = model.system
     s = sys.flowsheet.stream
     u = sys.flowsheet.unit
+    TF_units = tuple(unit for unit in u if isinstance(unit, TricklingFilter))
+    tf_rotating_arm_power = get_trickling_filter_rotating_arm_power
 
     _cached_aer = {}
     @metric(name='liquid aeration flowrate', units='m3/d', element='Aeration')
@@ -285,6 +327,10 @@ def add_OPEX_metrics(model):
     def get_dP(hydraulic_head, headloss, unit='ft'):
         H = (hydraulic_head + headloss) * ft2m
         if unit != 'ft': H *= auom(unit).conversion_factor('m')
+        return 1000 * 9.81 * H      # in Pa
+
+    def get_dP_m(hydraulic_head_m, headloss_ft=0.):
+        H = hydraulic_head_m + headloss_ft * ft2m
         return 1000 * 9.81 * H      # in Pa
 
     @metric(name='influent pumping energy', units='kW', element='Pumping')
@@ -381,6 +427,21 @@ def add_OPEX_metrics(model):
         else: power = 0
         pump_energy['AD'] = power
         return power
+
+    if TF_units:
+        @metric(name='rotating arm energy consumption', units='kW', element='Pumping')
+        def get_tf_rotating_arm_power():
+            power = sum(tf_rotating_arm_power(unit)
+                        for unit in TF_units)
+            pump_energy['TF rotating arm'] = power
+            return power
+
+        @metric(name='trickling filter pumping energy', units='kW', element='Pumping')
+        def get_tf_pump_power():
+            power = sum(get_trickling_filter_pumping_power(unit)
+                        for unit in TF_units)
+            pump_energy['TF pump'] = power
+            return power
 
     mixing_energy = {}
     @metric(name='ASR mixing energy', units='kW', element='Mixing')

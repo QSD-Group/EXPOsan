@@ -62,6 +62,7 @@ categories = [
 configs = (
     'B1', 'B1E', 'B2', 'B3',
     'C1', 'C1E', 'C2', 'C3',
+    'D1', 'D1E',
     'E2', 'E2P',
     'F1', 'F1E',
     'G1', 'G1E', 'G2', 'G3',
@@ -70,8 +71,8 @@ configs = (
     'N1', 'N1E', 'N2',
     )
 data_handles = {
-    'Baseline': ('_baseline_unopt_performance_w_chp', 0),   # file name, sheet
-    'Adjusted': ('_baseline_opt_performance_w_chp', 0),
+    'Baseline': ('_baseline_unopt_performance_extension', 0),   # file name, sheet
+    'Adjusted': ('_baseline_opt_performance_extension', 0),
     }
 
 MGD2cmd = 3785.412
@@ -101,7 +102,7 @@ def compile_opex(normalize_by_flow=True):
         file, sheet = v
         df = load_data(
             ospath.join(results_path, f'{file}.xlsx'), sheet=sheet,
-            header=[0,1], skiprows=[2,]
+            header=[0,1],
             )
         df = df.loc[:,['OPEX']]
         opex.append(df)
@@ -290,5 +291,5 @@ def horizontal_stacked_bar(opex=None, save_as=''):
 #%%
 if __name__ == '__main__':
     opex = compile_opex()
-    stacked_bar(opex, save_as='arpae_opex_w_chp.tif')
-    horizontal_stacked_bar(opex, save_as='arpae_opexh_w_chp.tif')
+    stacked_bar(opex, save_as='arpae_opex_27_confgs.jpg')
+    horizontal_stacked_bar(opex, save_as='arpae_opexh_27_confgs.jpg')

@@ -13,6 +13,7 @@ for license details.
 '''
 
 import numpy as np, os
+from warnings import warn
 from .. import results_path
 
 __all__ = ('cache_state', 'load_state')
@@ -24,38 +25,60 @@ def cache_state(sys, folder='', filename=''):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     np.save(path, sys._state)
 
-def load_state(sys, state_arr=None, folder='steady_states'):
-    """Load a previously saved state to a system object for faster model evaluation."""
+def load_state(sys, state_arr=None, folder='steady_states', *, strict=True):
+    """Load a dimension-compatible dynamic-state snapshot; return whether loaded.
+
+    Check a finite, one-dimensional vector against the current assembled system
+    before applying any cached values. With strict=True (default), missing or
+    incompatible caches raise an informative error. With strict=False, warn and
+    retain fresh initialization instead. Initialization/model errors still raise.
+
+    Prefer the exact system ID's file; E-suffix configurations may fall back to
+    their base ID when an exact file is absent. A matching shape is not proof of
+    matching component order or calibration: regenerate caches after structural
+    changes. Sludge-flow settings are not stored in the state vector.
+    Unit state views are preserved; instrumental flow states are refreshed
+    from the current connections by each unit's update routine.
+    """
+    problem = None
     if state_arr is None:
         filename = sys.ID
-        if filename.upper().endswith('E'):
-            filename = filename[:-1]
         path = os.path.join(results_path, f'{folder}/{filename}.npy')
-        state_arr = np.load(path)
-    nr = sys._n_rotate
-    units = sys.units[nr:] + sys.units[:nr]
+        if not os.path.isfile(path) and filename.upper().endswith('E'):
+            path = os.path.join(results_path, f'{folder}/{filename[:-1]}.npy')
+        if not os.path.isfile(path) and not strict:
+            problem = f'{sys.ID}: state cache not found: {path}.'
+        else:
+            state_arr = np.load(path)
+    if problem is None:
+        state_arr = np.asarray(state_arr, dtype=float)
+        if state_arr.ndim != 1 or not np.isfinite(state_arr).all():
+            problem = (f'{sys.ID}: cached state must be a finite one-dimensional vector; '
+                       f'got shape {state_arr.shape}.')
+            if strict:
+                raise ValueError(problem)
+
     sys.converge()
-    for unit in sys.units: 
+    for unit in sys.units:
         unit._init_dynamic()
-    for ws in sys.feeds:
-        if not ws.state.all(): ws._init_state()
-    if sys.recycle:
-        for ws in sys.recycle:
-            if not ws.state.all(): ws._init_state()
-    for inf in units[0].ins:
-        if not inf.state.all(): inf._init_state()
-        y = np.array([])
-        idx = {}
-        for unit in units: 
-            unit._init_state()
-            if unit.hasode:
-                start = len(y)
-                y = np.append(y, unit._state)
-                stop = len(y)
-                idx[unit._ID] = (start, stop)
-                unit._state = state_arr[start: stop]
-            unit._update_state()
-            unit._update_dstate()
-        assert len(y) == len(state_arr)
-        sys._state = state_arr
-        sys._state_idx = idx
+    sys._state = sys._state_idx = sys._DAE = None
+    current, idx, nr = sys._load_state()
+    if problem is None and state_arr.shape != current.shape:
+        sizes = ', '.join(f'{ID}={stop-start}' for ID, (start, stop) in idx.items())
+        problem = (
+            f'{sys.ID}: cached state has {state_arr.size} entries, but the current '
+            f'system requires {current.size} ({sizes}). Regenerate the cache with '
+            'the current unit types, component sets and discretization.')
+    if problem is not None:
+        if strict:
+            raise ValueError(problem)
+        warn(problem + ' Using fresh initialization.', RuntimeWarning, stacklevel=2)
+        return False
+
+    # Preserve the state views established by the engine's own assembly routine.
+    current[:] = state_arr
+    units = sys.units[nr:] + sys.units[:nr]
+    for unit in units:
+        unit._update_state()
+        unit._update_dstate()
+    return True
