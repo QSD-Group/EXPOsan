@@ -2,6 +2,13 @@
 """
 EXPOsan: Exposition of sanitation and resource recovery systems
 
+Select heat recovery or CHP without editing the plotting styles:
+
+    stacked_bar(configuration='heat_recovery')
+    horizontal_stacked_bar(configuration='CHP')
+
+For precompiled data, pass the same configuration to compile_opex and the plot.
+
 This module is developed by:
 
     Joy Zhang <joycheung1994@gmail.com>
@@ -34,10 +41,13 @@ plt.rcParams['font.sans-serif'] = 'Arial'
 plt.rcParams["figure.autolayout"] = False
 plt.rcParams['mathtext.fontset'] = 'custom'
 
-categories = ['Aeration', 'Pumping', 'Mechanical mixing', 
+# Change this one setting when running the script directly.
+RECOVERY_CONFIGURATION = 'heat_recovery'  # 'heat_recovery' or 'CHP'
+
+_BASE_CATEGORIES = ['Aeration', 'Pumping', 'Mechanical mixing',
               'External carbon', 'Coagulant', 'Lime stabilization', 
-              'Sludge disposal','Heating','Heat recovery','Electricity recovery']
-patch_dct = {
+              'Sludge disposal', 'Heating']
+_BASE_PATCH_DCT = {
     'Aeration energy': (b, ''),
     'Pumping energy': (p, '-----'),
     'Mixing energy': (y, r'\\\\\\'),
@@ -47,12 +57,29 @@ patch_dct = {
     # 'Sludge disposal': (db, ''),
     'Sludge disposal': (a, ''),
     'AD heating': (o,''),
-    # uncomment the following line for heat recovery confifuration:
-    'Heat recovery': (g,''),
-    # uncomment the following two lines for CHP confifuration:
-    # 'CHP heat recovery': (g,''), 
-    # 'CHP electricity recovery': (b,'/////'),
     }
+_RECOVERY_PROFILES = {
+    'heat_recovery': ({'Heat recovery': (g, '')}, ['Heat recovery']),
+    'chp': (
+        {'CHP heat recovery': (g, ''), 'CHP electricity recovery': (b, '/////')},
+        ['Heat recovery', 'Electricity recovery'],
+        ),
+    }
+
+
+def _recovery_settings(configuration):
+    """Return the selected recovery styles/labels without changing globals."""
+    if not isinstance(configuration, str) or configuration.lower() not in _RECOVERY_PROFILES:
+        raise ValueError("configuration must be 'heat_recovery' or 'CHP'")
+    configuration = configuration.lower()
+    recovery_styles, recovery_labels = _RECOVERY_PROFILES[configuration]
+    styles = {**_BASE_PATCH_DCT, **recovery_styles}
+    labels = _BASE_CATEGORIES + recovery_labels
+    return configuration, styles, labels
+
+
+# Retain the heat-only defaults used by single_scenario_stacked_bar and callers.
+_, patch_dct, categories = _recovery_settings('heat_recovery')
 
 configs=('B1', 'B2', 'B3', 'C1', 'C2', 'C3', 'E2', 'E2P', 'F1', 
         'G1', 'G2', 'G3', 'H1', 'I1', 'I2', 'I3', 'N1', 'N2')
@@ -62,14 +89,25 @@ data_handles = {
     'UD10': ('UD_opt_performance', '10'),
     # 'UD30': ('UD_opt_performance', '30'),
     'UD100': ('UD_opt_performance', '100'),
-    'HA': ('HA_opt_performance', 0),
-    'ECS': ('ECS_opt_performance', 0)
+    'MA': ('HA_opt_performance', 0),
+    'SS': ('ECS_opt_performance', 0)
     }
 
 MGD2cmd = 3785.412
 
 #%%
-def compile_opex(normalize_by_flow=True):
+def compile_opex(normalize_by_flow=True, configuration='heat_recovery'):
+    """Compile saved OPEX using heat-only or combined heat/power recovery.
+
+    Parameters
+    ----------
+    normalize_by_flow : bool, optional
+        Convert USD/d to USD/m3 using the existing 10-MGD reference flow.
+    configuration : {'heat_recovery', 'CHP'}, optional
+        Case-insensitive recovery profile. Heat recovery keeps only the
+        heat-recovery credit; CHP keeps both CHP heat and electricity credits.
+    """
+    configuration, _, _ = _recovery_settings(configuration)
     opex = []
     keys = []
     for k, v in data_handles.items():
@@ -85,10 +123,12 @@ def compile_opex(normalize_by_flow=True):
     opex = pd.concat(opex, keys=keys)
     opex.columns = [i[1].split(' cost')[0] for i in opex.columns]
     opex['Lime stabilization'] = opex.loc[:,['Lime', 'Lime stablization energy']].sum(axis=1)
-    # uncomment the following line for heat recovery confifuration:
-    opex.drop(columns=['Lime stablization energy', 'CHP heat recovery','CHP electricity recovery','Total OPEX [USD/d]','Total OPEX CHP [USD/d]'], inplace=True)
-    # uncomment the following line for CHP confifuration:
-    # opex.drop(columns=['Lime stablization energy', 'Heat recovery','Total OPEX [USD/d]','Total OPEX CHP [USD/d]'], inplace=True)
+    excluded = ['Lime stablization energy', 'Total OPEX [USD/d]', 'Total OPEX CHP [USD/d]']
+    if configuration == 'heat_recovery':
+        excluded += ['CHP heat recovery', 'CHP electricity recovery']
+    else:
+        excluded += ['Heat recovery']
+    opex.drop(columns=excluded, inplace=True)
     if normalize_by_flow:
         opex /= (10*MGD2cmd)
     return opex
@@ -140,11 +180,32 @@ def single_scenario_stacked_bar(opex=None, scenario='Baseline', save_as=''):
     else:
         return fig, ax
 #%%
-def stacked_bar(opex=None, save_as=''):
+def stacked_bar(opex=None, save_as='', configuration='heat_recovery'):
+    """Plot vertical stacked OPEX bars for the selected recovery configuration.
+
+    Parameters
+    ----------
+    opex : pandas.DataFrame, optional
+        Compiled costs containing the selected recovery columns. If omitted,
+        compile_opex is called with the same configuration.
+    save_as : str, optional
+        Output filename under figures_path; otherwise return the figure/axes.
+    configuration : {'heat_recovery', 'CHP'}, optional
+        Case-insensitive profile selecting cost credits, styles and legend.
+        CHP appends E to configuration titles ending in 1, as in the original
+        CHP plotting commands. Heat recovery is the default.
+    """
+    configuration, styles, labels = _recovery_settings(configuration)
     plt.rcParams['xtick.minor.visible'] = False
     plt.rcParams['ytick.minor.visible'] = True
     if opex is None:
-        opex = compile_opex()
+        opex = compile_opex(configuration=configuration)
+    missing = [column for column in styles if column not in opex.columns]
+    if missing:
+        raise ValueError(
+            f'OPEX for configuration={configuration!r} is missing {missing}. '
+            'Use compile_opex(configuration=...) with the same profile, '
+            'or omit opex to load it automatically.')
     fig, axes = plt.subplots(ncols=len(configs), sharey=True, figsize=(18, 5))
     # fig, axes = plt.subplots(ncols=len(configs), sharey=True, figsize=(12, 5))
     handles = []
@@ -162,7 +223,7 @@ def stacked_bar(opex=None, save_as=''):
         # y_offset = np.zeros(len(x))
         y_offset_pos = np.zeros(len(x), dtype=float)
         y_offset_neg = np.zeros(len(x), dtype=float)
-        for cat, style in patch_dct.items():
+        for cat, style in styles.items():
             c, hat = style
             y = df.loc[:,cat].to_numpy()
             y_pos = np.where(y >= 0, y, 0.0)
@@ -198,12 +259,11 @@ def stacked_bar(opex=None, save_as=''):
         # ax.bar(x, y_offset, width=0.65, ec='black', fc=(1,1,1,0), lw=0.25)
         xx = x[y_total == 0]
         # xx = x[y_offset == 0]
-        if xx: ax.scatter(xx, 0.01, s=12, c='black', marker='x', linewidths=0.75)
-        # uncomment the following line for heat recovery confifuration:
-        ax.set_title(ID, fontsize=14, fontweight='bold')
-        # uncomment the following three lines for CHP confifuration:
-        # ID_title = ID + 'E' if ID.endswith('1') else ID
-        # ax.set_title(ID_title, fontsize=14, fontweight='bold')
+        if xx.size:
+            ax.scatter(xx, np.full(xx.shape, 0.01), s=12, c='black',
+                       marker='x', linewidths=0.75)
+        ID_title = ID + 'E' if configuration == 'chp' and ID.endswith('1') else ID
+        ax.set_title(ID_title, fontsize=14, fontweight='bold')
         ax.set_xlim((-0.75, df.shape[0]-0.25))
         if ID == 'B1': 
             ax.set_ylabel('$\mathbf{OPEX}$ [USD·m$^{-3}$]', fontname='Arial', fontsize=14)
@@ -223,7 +283,7 @@ def stacked_bar(opex=None, save_as=''):
     for ax in axes:
         ax.set_ylim(global_min - pad, global_max + pad)
     
-    fig.legend(handles=handles, labels=categories, reverse=True,
+    fig.legend(handles=handles, labels=labels, reverse=True,
                bbox_to_anchor=(0.08, 0.9), loc='upper left', 
                framealpha=1, fontsize=12)
     fig.subplots_adjust(wspace=0, bottom=0.16, top=0.94, left=0.06, right=0.985)
@@ -234,11 +294,32 @@ def stacked_bar(opex=None, save_as=''):
         return fig, axes
 
 #%%
-def horizontal_stacked_bar(opex=None, save_as=''):
+def horizontal_stacked_bar(opex=None, save_as='', configuration='heat_recovery'):
+    """Plot horizontal OPEX bars using heat recovery or CHP credits.
+
+    Parameters
+    ----------
+    opex : pandas.DataFrame, optional
+        Compiled costs containing the selected recovery columns. If omitted,
+        compile_opex is called with the same configuration.
+    save_as : str, optional
+        Output filename under figures_path; otherwise return the figure/axes.
+    configuration : {'heat_recovery', 'CHP'}, optional
+        Case-insensitive profile selecting cost credits, styles and legend.
+        CHP appends E to configuration titles ending in 1, matching stacked_bar.
+        Heat recovery is the default.
+    """
+    configuration, styles, labels = _recovery_settings(configuration)
     plt.rcParams['ytick.minor.visible'] = False
     plt.rcParams['xtick.minor.visible'] = True
     if opex is None:
-        opex = compile_opex()
+        opex = compile_opex(configuration=configuration)
+    missing = [column for column in styles if column not in opex.columns]
+    if missing:
+        raise ValueError(
+            f'OPEX for configuration={configuration!r} is missing {missing}. '
+            'Use compile_opex(configuration=...) with the same profile, '
+            'or omit opex to load it automatically.')
     fig, axes = plt.subplots(nrows=len(configs), sharex=True, figsize=(6, 18))
     handles = []
     
@@ -256,7 +337,7 @@ def horizontal_stacked_bar(opex=None, save_as=''):
         # two separate offsets for stacking
         y_offset_pos = np.zeros(len(x), dtype=float)
         y_offset_neg = np.zeros(len(x), dtype=float)
-        for cat, style in patch_dct.items():
+        for cat, style in styles.items():
             c, hat = style
             y = df.loc[:,cat].to_numpy()
             # split positive and negative parts
@@ -293,14 +374,12 @@ def horizontal_stacked_bar(opex=None, save_as=''):
         # ax.barh(x, y_offset, height=0.65, ec='black', fc=(1,1,1,0), lw=0.25)
         xx = x[y_total == 0]
         # xx = x[y_offset == 0]
-        if len(xx): ax.scatter(0.01, xx, s=12, c='black', marker='x', linewidths=0.75)
-        # uncomment the following line for heat recovery confifuration:
-        ax.set_title(ID+'  ', fontsize=14, fontweight='bold',
+        if xx.size:
+            ax.scatter(np.full(xx.shape, 0.01), xx, s=12, c='black',
+                       marker='x', linewidths=0.75)
+        ID_title = ID + 'E' if configuration == 'chp' and ID.endswith('1') else ID
+        ax.set_title(ID_title+'  ', fontsize=14, fontweight='bold',
                      loc='right', y=0.4, pad=0)
-        # uncomment the following three lines for CHP confifuration:
-        # ID_title = ID + 'E' if ID.endswith('1') else ID
-        # ax.set_title(ID_title, fontsize=14, fontweight='bold',
-        #              loc='right', y=0.4, pad=0)    
         ax.set_ylim((-0.75, df.shape[0]-0.25))
         if ID == 'N2': 
             ax.set_xlabel('$\mathbf{OPEX}$ [USD·m${^{-3}}$]', fontname='Arial', fontsize=14)
@@ -320,7 +399,7 @@ def horizontal_stacked_bar(opex=None, save_as=''):
     for ax in axes:
         ax.set_xlim(global_min - pad, global_max + pad)
     
-    fig.legend(handles=handles, labels=categories, reverse=True,
+    fig.legend(handles=handles, labels=labels, reverse=True,
                bbox_to_anchor=(0.5, 0.965), 
                loc='upper left', framealpha=1, fontsize=12)
     fig.subplots_adjust(hspace=0, left=0.16, right=0.97, bottom=0.045, top=0.985)
@@ -399,9 +478,13 @@ def screen_chp_electricity_recovery(
 
 #%%
 if __name__ == '__main__':
-    opex = compile_opex()
-    stacked_bar(opex, save_as='opex_w_CHP_heat_recovery.tif')
-    # stacked_bar(opex, save_as='opex_wrrfs.png')
-    horizontal_stacked_bar(opex, save_as='opexh_w_CHP_heat_recovery.tif')
-    # single_scenario_stacked_bar(save_as='opex.tif')
-    hits = screen_chp_electricity_recovery(opex,energy_cols=("Aeration energy",), print_details=True)
+    configuration = RECOVERY_CONFIGURATION
+    suffix = 'CHP_heat_recovery' if configuration.lower() == 'chp' else 'heat_recovery'
+    opex = compile_opex(configuration=configuration)
+    stacked_bar(opex, save_as=f'opex_w_{suffix}.tif', configuration=configuration)
+    horizontal_stacked_bar(
+        opex, save_as=f'opexh_w_{suffix}.tif', configuration=configuration)
+    hits = None
+    if 'CHP electricity recovery' in opex.columns:
+        hits = screen_chp_electricity_recovery(
+            opex, energy_cols=("Aeration energy",), print_details=True)

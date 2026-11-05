@@ -22,6 +22,7 @@ from . import (
     C1, C2, C3, 
     C1E,
     E2, E2P, 
+    D1, D1E,
     F1, F1E,
     G1, G2, G3, 
     G1E,
@@ -40,6 +41,8 @@ from .C1 import *
 from .C1E import *
 from .C2 import *
 from .C3 import *
+from .D1 import *
+from .D1E import *
 from .E2 import *
 from .E2P import *
 from .F1 import *
@@ -67,6 +70,8 @@ SYSTEM_CREATORS = {
     'C1E': create_c1e_system,
     'C2': create_c2_system,
     'C3': create_c3_system,
+    'D1': create_d1_system,
+    'D1E': create_d1e_system,
     'E2': create_e2_system,
     'E2P': create_e2p_system,
     'F1': create_f1_system,

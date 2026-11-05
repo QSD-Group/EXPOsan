@@ -5,6 +5,7 @@ EXPOsan: Exposition of sanitation and resource recovery systems
 This module is developed by:
 
     Joy Zhang <joycheung1994@gmail.com>
+    Zixuan Wang <wyatt4428@gmail.com>
 
 This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
@@ -34,7 +35,7 @@ thresholds = pd.DataFrame.from_dict(
             'E2', 'E2P', 'F1', 
             'G1', 'G2', 'G3', 'H1', 'I1', 'I2', 'I3', 'N1', 'N2'))
 
-eff_vars = ['COD', 'BOD', 'TN', 'NH4 N', 'TP']
+eff_vars = ['COD', 'BOD', 'TN', 'NH4 N', 'TP', 'TSS']
 op_vars = ['CH4 production', 'CH4 content', 'Sludge production', 
            'Liquid aeration flowrate', 'Sludge aeration flowrate']
 
@@ -112,6 +113,7 @@ def heatmap(data, colorbar=True, cmap='viridis',
 
 #%%
 def plot_absolute(data=None, suffix='baseline_unopt'):
+    """Plot performance values with TSS as the final effluent heatmap row."""
     if data is None:
         data = load_data(
             ospath.join(results_path, 'baseline_unopt_performance.xlsx'), sheet=0,
@@ -147,7 +149,7 @@ def plot_absolute(data=None, suffix='baseline_unopt'):
 
     heatmap(fill.loc[eff_vars,:], annotate=vals.loc[eff_vars,:], valfmt=valfmtwnan, 
             txtcolors=txtcolors, save_as=f'eff_{suffix}.tif',
-            row_labels=['COD', 'BOD', 'TN', 'NH$_4^+$-N', 'TP'])
+            row_labels=['COD', 'BOD', 'TN', 'NH$_4^+$-N', 'TP', 'TSS'])
     heatmap(fill.loc[op_vars,:], 
             show_ticklabels=False, colorbar=False,
             annotate=vals.loc[op_vars,:], valfmt=valfmtwnan, 
@@ -181,7 +183,7 @@ def plot_diff(data, suffix=''):
     heatmap(fill.loc[eff_vars,:], cmap='bwr', vmin=-1, vmax=1,
             annotate=vals.loc[eff_vars,:], valfmt=valfmtpc, 
             txtcolors=txtcolors, annotate_kw=dict(size=10), 
-            row_labels=['COD', 'BOD', 'TN', 'NH$_4$-N', 'TP'],
+            row_labels=['COD', 'BOD', 'TN', 'NH$_4$-N', 'TP', 'TSS'],
             save_as=f'deff_{suffix}.png')
     heatmap(fill.loc[op_vars,:], cmap='bwr', vmin=-1, vmax=1,
             show_ticklabels=False, colorbar=False,
