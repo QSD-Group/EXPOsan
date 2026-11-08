@@ -61,29 +61,29 @@ Fig_1c_data = pd.read_excel(Fig_1_path, 'PO43-')
 Fig_1d_data = pd.read_excel(Fig_1_path, 'Fe2+')
 Fig_1e_data = pd.read_excel(Fig_1_path, 'FePmolar')
 
-Fig_2c_3ab_data = pd.read_excel(os.path.join(folder, 'results/sludge_management_cost_CI_baseline_2026-06-29.xlsx'), header=[1])
+Fig_2c_3ab_data = pd.read_excel(os.path.join(folder, 'results/sludge_management_cost_CI_baseline_2026-11-08.xlsx'), header=[1])
 Fig_2c_3ab_data = Fig_2c_3ab_data.drop(0)
-Fig_3c_data = pd.read_excel(os.path.join(folder, 'results/FePO4_result_cost_credit_2026-06-29.xlsx'))
-Fig_3d_data = pd.read_excel(os.path.join(folder, 'results/FePO4_result_CI_credit_2026-06-29.xlsx'))
+Fig_3c_data = pd.read_excel(os.path.join(folder, 'results/FePO4_result_cost_credit_2026-11-08.xlsx'))
+Fig_3d_data = pd.read_excel(os.path.join(folder, 'results/FePO4_result_CI_credit_2026-11-08.xlsx'))
 
-Fig_4ab_data = pd.read_excel(os.path.join(folder, 'results/decision_heatmap_FePO4_2026-06-29.xlsx'))
+Fig_4ab_data = pd.read_excel(os.path.join(folder, 'results/decision_heatmap_FePO4_2026-11-08.xlsx'))
 Fig_4ab_data = Fig_4ab_data[Fig_4ab_data['ratio']<=1]
 
-Fig_5a_data = pd.read_excel(os.path.join(folder, 'results/context_heatmap_2026-06-29.xlsx'))
+Fig_5a_data = pd.read_excel(os.path.join(folder, 'results/context_heatmap_2026-11-08.xlsx'))
 
 Fig_S2_data = pd.read_excel(os.path.join(folder, 'data/SI_NH4_data.xlsx'))
 
-Fig_S3_data = pd.read_excel(os.path.join(folder, 'results/decision_heatmap_sludge_2026-06-29.xlsx'))
+Fig_S3_data = pd.read_excel(os.path.join(folder, 'results/decision_heatmap_sludge_2026-11-08.xlsx'))
 Fig_S3_data = Fig_S3_data[Fig_S3_data['ratio']<=1]
 
-Fig_S4a_data = pd.read_excel(os.path.join(folder, 'results/sludge_cost_IRR_2026-06-29.xlsx'))
-Fig_S4b_data = pd.read_excel(os.path.join(folder, 'results/FePO4_cost_IRR_2026-06-29.xlsx'))
+Fig_S4a_data = pd.read_excel(os.path.join(folder, 'results/sludge_cost_IRR_2026-11-08.xlsx'))
+Fig_S4b_data = pd.read_excel(os.path.join(folder, 'results/FePO4_cost_IRR_2026-11-08.xlsx'))
 
-Fig_S5_data = pd.read_excel(os.path.join(folder, 'results/sludge_result_size_2026-06-29.xlsx'))
+Fig_S5_data = pd.read_excel(os.path.join(folder, 'results/sludge_result_size_2026-11-08.xlsx'))
 
-Fig_S6_data = pd.read_excel(os.path.join(folder, 'results/FePO4_result_size_2026-06-29.xlsx'))
+Fig_S6_data = pd.read_excel(os.path.join(folder, 'results/FePO4_result_size_2026-11-08.xlsx'))
 
-Fig_S7_data = pd.read_excel(os.path.join(folder, 'results/FePO4_VFA_CI_2026-06-29.xlsx'))
+Fig_S7_data = pd.read_excel(os.path.join(folder, 'results/FePO4_VFA_CI_2026-11-08.xlsx'))
 
 #%% Fig. 1a
 
@@ -764,7 +764,7 @@ plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 ax.set_xlim(0, 1000)
-ax.set_ylim(-15, 15)
+ax.set_ylim(-20, 30)
 
 ax.set_xlabel(r'$\mathbf{Avoided\ management\ cost}$'+'\n'r'[$\$·tonne^{-1}$]',
               fontname='Arial',
@@ -781,7 +781,7 @@ ax.tick_params(direction='inout', length=30, width=5,
                bottom=True, top=False, left=True, right=False)
 
 plt.xticks(np.arange(0, 1200, 200), fontname='Arial')
-plt.yticks(np.arange(-15, 20, 5), fontname='Arial')
+plt.yticks(np.arange(-20, 40, 10), fontname='Arial')
 
 ax_top = ax.twiny()
 ax_top.set_xlim(ax.get_xlim())
@@ -799,7 +799,7 @@ ax_right.tick_params(direction='in', length=15, width=5,
                      bottom=False, top=False, left=False, right=True,
                      labelright=False)
 
-plt.yticks(np.arange(-15, 20, 5), fontname='Arial')
+plt.yticks(np.arange(-20, 40, 10), fontname='Arial')
 
 x = Fig_3c_data['credit']
 low = Fig_3c_data['FePO4_MSP_5th']
@@ -814,7 +814,7 @@ ax.plot(x, mid, color=dp, linewidth=5)
 
 # conventional sludge management: 100 to 800 $·ton-1
 # Peccia, J. & Westerhoff, P. We Should Expect More out of Our Sewage Sludge. Environ. Sci. Technol. 49, 8271–8276 (2015).
-rectangle_fill = Rectangle((100/_ton_to_tonne, -15), (800-100)/_ton_to_tonne, 35, 
+rectangle_fill = Rectangle((100/_ton_to_tonne, -20), (800-100)/_ton_to_tonne, 50, 
                            fc=a, alpha=0.5, zorder=0)
 ax.add_patch(rectangle_fill)
 
@@ -845,7 +845,7 @@ plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 ax.set_xlim(0, 4000)
-ax.set_ylim(-50, 50)
+ax.set_ylim(-100, 75)
 
 ax.set_xlabel(r'$\mathbf{Avoided\ management\ CI}$'+'\n'+r' [$kg\ CO_2e·tonne^{-1}$]',
               fontname='Arial',
@@ -862,7 +862,7 @@ ax.tick_params(direction='inout', length=30, width=5,
                bottom=True, top=False, left=True, right=False)
 
 plt.xticks(np.arange(0, 5000, 1000), fontname='Arial')
-plt.yticks(np.arange(-50, 75, 25), fontname='Arial')
+plt.yticks(np.arange(-100, 100, 25), fontname='Arial')
 
 ax_top = ax.twiny()
 ax_top.set_xlim(ax.get_xlim())
@@ -880,7 +880,7 @@ ax_right.tick_params(direction='in', length=15, width=5,
                      bottom=False, top=False, left=False, right=True,
                      labelright=False)
 
-plt.yticks(np.arange(-50, 75, 25), fontname='Arial')
+plt.yticks(np.arange(-100, 100, 25), fontname='Arial')
 
 x = Fig_3d_data['credit']
 low = Fig_3d_data['FePO4_GWP_5th']
@@ -893,7 +893,7 @@ ax.plot(x, low, color=dp, linestyle='--', linewidth=5)
 ax.plot(x, high, color=dp, linestyle='--', linewidth=5)
 ax.plot(x, mid, color=dp, linewidth=5)
 
-rectangle_fill = Rectangle((414, -50), 3618-414, 100,
+rectangle_fill = Rectangle((414, -100), 3618-414, 175,
                            fc=a, alpha=0.5, zorder=0)
 ax.add_patch(rectangle_fill)
 

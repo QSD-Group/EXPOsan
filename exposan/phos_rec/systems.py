@@ -59,12 +59,29 @@ def create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentatio
     
     _load_components()
     
-    conversion_factor = dry_solids_tonne_per_day/6730
+    sludge_composition = {
+        'Fe3': 300,
+        'Org': 5000,
+        'PO4': 180/31*95,
+        'Ca2': 150,
+        'Mg2': 100,
+        'Inert': 1000                          
+    }
+    
+    conversion_factor = dry_solids_tonne_per_day/sum(sludge_composition.values())
     
     # Inert represents other inorganics; now VSS/TSS = 0.74, which is reasonable
-    fe_sludge = qs.WasteStream(ID='fe_sludge', Fe3=180*conversion_factor, Org=5000*conversion_factor,
-                               PO4=300*conversion_factor, Water=1000000*conversion_factor, Ca2=150*conversion_factor,
-                               Mg2=100*conversion_factor, Inert=1000*conversion_factor, units='tonne/d')
+    fe_sludge = qs.WasteStream(
+        ID='fe_sludge',
+        Fe3=sludge_composition['Fe3']*conversion_factor,
+        Org=sludge_composition['Org']*conversion_factor,
+        PO4=sludge_composition['PO4']**conversion_factor,
+        Ca2=sludge_composition['Ca2']*conversion_factor,
+        Mg2=sludge_composition['Mg2']*conversion_factor,
+        Inert=sludge_composition['Inert']*conversion_factor,
+        Water=1000000*conversion_factor,
+        units='tonne/d'
+    )
     
     P1 = qsu.SludgePump(ID='P1', ins=fe_sludge, outs='sludge_to_AF')
     
