@@ -61,29 +61,29 @@ Fig_1c_data = pd.read_excel(Fig_1_path, 'PO43-')
 Fig_1d_data = pd.read_excel(Fig_1_path, 'Fe2+')
 Fig_1e_data = pd.read_excel(Fig_1_path, 'FePmolar')
 
-Fig_2c_3ab_data = pd.read_excel(os.path.join(folder, 'results/sludge_management_cost_CI_baseline_2026-11-08.xlsx'), header=[1])
+Fig_2c_3ab_data = pd.read_excel(os.path.join(folder, 'results/sludge_management_cost_CI_baseline_2026-11-09.xlsx'), header=[1])
 Fig_2c_3ab_data = Fig_2c_3ab_data.drop(0)
-Fig_3c_data = pd.read_excel(os.path.join(folder, 'results/FePO4_result_cost_credit_2026-11-08.xlsx'))
-Fig_3d_data = pd.read_excel(os.path.join(folder, 'results/FePO4_result_CI_credit_2026-11-08.xlsx'))
+Fig_3c_data = pd.read_excel(os.path.join(folder, 'results/FePO4_result_cost_credit_2026-11-09.xlsx'))
+Fig_3d_data = pd.read_excel(os.path.join(folder, 'results/FePO4_result_CI_credit_2026-11-09.xlsx'))
 
-Fig_4ab_data = pd.read_excel(os.path.join(folder, 'results/decision_heatmap_FePO4_2026-11-08.xlsx'))
+Fig_4ab_data = pd.read_excel(os.path.join(folder, 'results/decision_heatmap_FePO4_2026-11-09.xlsx'))
 Fig_4ab_data = Fig_4ab_data[Fig_4ab_data['ratio']<=1]
 
-Fig_5a_data = pd.read_excel(os.path.join(folder, 'results/context_heatmap_2026-11-08.xlsx'))
+Fig_5a_data = pd.read_excel(os.path.join(folder, 'results/context_heatmap_2026-11-09.xlsx'))
 
 Fig_S2_data = pd.read_excel(os.path.join(folder, 'data/SI_NH4_data.xlsx'))
 
-Fig_S3_data = pd.read_excel(os.path.join(folder, 'results/decision_heatmap_sludge_2026-11-08.xlsx'))
+Fig_S3_data = pd.read_excel(os.path.join(folder, 'results/decision_heatmap_sludge_2026-11-09.xlsx'))
 Fig_S3_data = Fig_S3_data[Fig_S3_data['ratio']<=1]
 
-Fig_S4a_data = pd.read_excel(os.path.join(folder, 'results/sludge_cost_IRR_2026-11-08.xlsx'))
-Fig_S4b_data = pd.read_excel(os.path.join(folder, 'results/FePO4_cost_IRR_2026-11-08.xlsx'))
+Fig_S4a_data = pd.read_excel(os.path.join(folder, 'results/sludge_cost_IRR_2026-11-09.xlsx'))
+Fig_S4b_data = pd.read_excel(os.path.join(folder, 'results/FePO4_cost_IRR_2026-11-09.xlsx'))
 
-Fig_S5_data = pd.read_excel(os.path.join(folder, 'results/sludge_result_size_2026-11-08.xlsx'))
+Fig_S5_data = pd.read_excel(os.path.join(folder, 'results/sludge_result_size_2026-11-09.xlsx'))
 
-Fig_S6_data = pd.read_excel(os.path.join(folder, 'results/FePO4_result_size_2026-11-08.xlsx'))
+Fig_S6_data = pd.read_excel(os.path.join(folder, 'results/FePO4_result_size_2026-11-09.xlsx'))
 
-Fig_S7_data = pd.read_excel(os.path.join(folder, 'results/FePO4_VFA_CI_2026-11-08.xlsx'))
+Fig_S7_data = pd.read_excel(os.path.join(folder, 'results/FePO4_VFA_CI_2026-11-09.xlsx'))
 
 #%% Fig. 1a
 
@@ -764,7 +764,7 @@ plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 ax.set_xlim(0, 1000)
-ax.set_ylim(-15, 15)
+ax.set_ylim(-10, 10)
 
 ax.set_xlabel(r'$\mathbf{Avoided\ management\ cost}$'+'\n'r'[$\$·tonne^{-1}$]',
               fontname='Arial',
@@ -781,7 +781,7 @@ ax.tick_params(direction='inout', length=30, width=5,
                bottom=True, top=False, left=True, right=False)
 
 plt.xticks(np.arange(0, 1200, 200), fontname='Arial')
-plt.yticks(np.arange(-15, 20, 5), fontname='Arial')
+plt.yticks(np.arange(-10, 15, 5), fontname='Arial')
 
 ax_top = ax.twiny()
 ax_top.set_xlim(ax.get_xlim())
@@ -799,7 +799,7 @@ ax_right.tick_params(direction='in', length=15, width=5,
                      bottom=False, top=False, left=False, right=True,
                      labelright=False)
 
-plt.yticks(np.arange(-15, 20, 5), fontname='Arial')
+plt.yticks(np.arange(-10, 15, 5), fontname='Arial')
 
 x = Fig_3c_data['credit']
 low = Fig_3c_data['FePO4_MSP_5th']
@@ -1076,7 +1076,7 @@ plt.rcParams.update({'mathtext.fontset':'custom'})
 plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
-ax.set_xlim(0, 120)
+ax.set_xlim(0, 200)
 ax.set_ylim(0, 3)
 
 ax.set_xlabel(r'$\mathbf{Landfill\ disposal\ cost}$'+'\n'+r'[$\$·tonne^{-1}$]',
@@ -1096,7 +1096,7 @@ ax.yaxis.set_label_coords(-0.155, 0.48)
 ax.tick_params(direction='inout', length=30, width=5,
                bottom=True, top=False, left=True, right=False)
 
-plt.xticks(np.arange(0, 140, 20),  fontname='Arial')
+plt.xticks(np.arange(0, 240, 40),  fontname='Arial')
 plt.yticks(np.arange(0, 3.5, 0.5), fontname='Arial')
 
 ax_top = ax.twiny()
@@ -1106,7 +1106,7 @@ ax_top.tick_params(direction='in', length=15, width=5,
                    bottom=False, top=True, left=False, right=False,
                    labeltop=False)
 
-plt.xticks(np.arange(0, 140, 20),  fontname='Arial')
+plt.xticks(np.arange(0, 240, 40),  fontname='Arial')
 
 ax_right = ax.twinx()
 ax_right.set_ylim(ax.get_ylim())
@@ -1681,7 +1681,7 @@ ax.add_patch(rectangle_fill)
 
 plt.savefig(os.path.join(folder, 'figures/Fig_S5b.pdf'), transparent=True, bbox_inches='tight')
 
-#%% Fig. S6a FePO4 MSP size
+#%% Fig. S5c FePO4 MSP size
 
 fig, ax = plt.subplots(figsize=(10, 10))
 
@@ -1698,7 +1698,7 @@ plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 ax.set_xlim(1, 256)
-ax.set_ylim(0, 18)
+ax.set_ylim(0, 12)
 
 ax.set_xlabel(r'$\mathbf{Sludge\ throughput}$'+'\n'+r'[$dry\ tonne·day^{-1}$]',
               fontname='Arial',
@@ -1715,7 +1715,7 @@ ax.tick_params(direction='inout', length=30, width=5,
                bottom=True, top=False, left=True, right=False)
 
 plt.xticks(fontname='Arial')
-plt.yticks(np.arange(0, 21, 3), fontname='Arial')
+plt.yticks(np.arange(0, 15, 3), fontname='Arial')
 
 plt.xscale('log')
 
@@ -1735,7 +1735,7 @@ ax_right.tick_params(direction='in', length=15, width=5,
                      bottom=False, top=False, left=False, right=True,
                      labelright=False)
 
-plt.yticks(np.arange(0, 21, 3), fontname='Arial')
+plt.yticks(np.arange(0, 15, 3), fontname='Arial')
 
 x = Fig_S6_data['size']
 low = Fig_S6_data['FePO4_MSP_5th']
@@ -1756,9 +1756,9 @@ rectangle_fill = Rectangle((1, 4.55), 255, 6.97-4.55,
                            fc=dg, alpha=0.8, zorder=0)
 ax.add_patch(rectangle_fill)
 
-plt.savefig(os.path.join(folder, 'figures/Fig_S6a.pdf'), transparent=True, bbox_inches='tight')
+plt.savefig(os.path.join(folder, 'figures/Fig_S5c.pdf'), transparent=True, bbox_inches='tight')
 
-#%% Fig. S6b FePO4 CI size
+#%% Fig. S5d FePO4 CI size
 
 fig, ax = plt.subplots(figsize=(10, 10))
 
@@ -1775,7 +1775,7 @@ plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 ax.set_xlim(1, 256)
-ax.set_ylim(13, 25)
+ax.set_ylim(9, 25)
 
 ax.set_xlabel(r'$\mathbf{Sludge\ throughput}$'+'\n'+r'[$dry\ tonne·day^{-1}$]',
               fontname='Arial',
@@ -1792,7 +1792,7 @@ ax.tick_params(direction='inout', length=30, width=5,
                bottom=True, top=False, left=True, right=False)
 
 plt.xticks(fontname='Arial')
-plt.yticks(np.arange(13, 28, 3), fontname='Arial')
+plt.yticks(np.arange(9, 29, 4), fontname='Arial')
 
 plt.xscale('log')
 
@@ -1812,7 +1812,7 @@ ax_right.tick_params(direction='in', length=15, width=5,
                      bottom=False, top=False, left=False, right=True,
                      labelright=False)
 
-plt.yticks(np.arange(13, 28, 3), fontname='Arial')
+plt.yticks(np.arange(9, 29, 4), fontname='Arial')
 
 x = Fig_S6_data['size']
 low = Fig_S6_data['FePO4_GWP_5th']
@@ -1829,7 +1829,7 @@ ax.plot((1, 256), (16.6, 16.6), color=g, alpha=0.5, linewidth=5)
 
 ax.plot((1, 256), (22.7, 22.7), color=dg, alpha=0.8, linewidth=5)
 
-plt.savefig(os.path.join(folder, 'figures/Fig_S6b.pdf'), transparent=True, bbox_inches='tight')
+plt.savefig(os.path.join(folder, 'figures/Fig_S5d.pdf'), transparent=True, bbox_inches='tight')
 
 #%% optional FePO4 CI VFA
 
@@ -1848,7 +1848,7 @@ plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 ax.set_xlim(0, 10)
-ax.set_ylim(-20, 30)
+ax.set_ylim(-10, 30)
 
 ax.set_xlabel(r'$\mathbf{VFA\ CI}$ [$kg\ CO_2e·m^{-3}$]',
               fontname='Arial',
@@ -1865,7 +1865,7 @@ ax.tick_params(direction='inout', length=30, width=5,
                bottom=True, top=False, left=True, right=False)
 
 plt.xticks(fontname='Arial')
-plt.yticks(np.arange(-20, 40, 10), fontname='Arial')
+plt.yticks(np.arange(-10, 40, 10), fontname='Arial')
 
 ax_top = ax.twiny()
 ax_top.set_xlim(ax.get_xlim())
@@ -1899,3 +1899,5 @@ ax.plot(x, mid, color=dp, linewidth=5)
 ax.plot((0, 256), (16.6, 16.6), color=g, alpha=0.5, linewidth=5)
 
 ax.plot((0, 256), (22.7, 22.7), color=dg, alpha=0.8, linewidth=5)
+
+plt.savefig(os.path.join(folder, 'figures/Fig_optional.pdf'), transparent=True, bbox_inches='tight')

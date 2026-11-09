@@ -287,7 +287,7 @@ VFA_price_list = []
 residue_cost_list = []
 
 for VFA_price in np.linspace(0, 3/1000, 10):
-    for residue_cost in np.linspace(0, 120/1000, 10):
+    for residue_cost in np.linspace(0, 200/1000, 10):
         sys = create_system(dry_solids_tonne_per_day=100, food_sludge_ratio=1, fermentation_time=132, perspective='FePO4')
         sys.flowsheet.stream.precipitation_supernatant.price = VFA_price
         sys.flowsheet.stream.residue.price = -residue_cost
