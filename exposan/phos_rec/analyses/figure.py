@@ -764,7 +764,7 @@ plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 ax.set_xlim(0, 1000)
-ax.set_ylim(-20, 30)
+ax.set_ylim(-15, 15)
 
 ax.set_xlabel(r'$\mathbf{Avoided\ management\ cost}$'+'\n'r'[$\$·tonne^{-1}$]',
               fontname='Arial',
@@ -781,7 +781,7 @@ ax.tick_params(direction='inout', length=30, width=5,
                bottom=True, top=False, left=True, right=False)
 
 plt.xticks(np.arange(0, 1200, 200), fontname='Arial')
-plt.yticks(np.arange(-20, 40, 10), fontname='Arial')
+plt.yticks(np.arange(-15, 20, 5), fontname='Arial')
 
 ax_top = ax.twiny()
 ax_top.set_xlim(ax.get_xlim())
@@ -799,7 +799,7 @@ ax_right.tick_params(direction='in', length=15, width=5,
                      bottom=False, top=False, left=False, right=True,
                      labelright=False)
 
-plt.yticks(np.arange(-20, 40, 10), fontname='Arial')
+plt.yticks(np.arange(-15, 20, 5), fontname='Arial')
 
 x = Fig_3c_data['credit']
 low = Fig_3c_data['FePO4_MSP_5th']
@@ -814,7 +814,7 @@ ax.plot(x, mid, color=dp, linewidth=5)
 
 # conventional sludge management: 100 to 800 $·ton-1
 # Peccia, J. & Westerhoff, P. We Should Expect More out of Our Sewage Sludge. Environ. Sci. Technol. 49, 8271–8276 (2015).
-rectangle_fill = Rectangle((100/_ton_to_tonne, -20), (800-100)/_ton_to_tonne, 50, 
+rectangle_fill = Rectangle((100/_ton_to_tonne, -15), (800-100)/_ton_to_tonne, 35, 
                            fc=a, alpha=0.5, zorder=0)
 ax.add_patch(rectangle_fill)
 
@@ -845,7 +845,7 @@ plt.rcParams.update({'mathtext.default':'regular'})
 plt.rcParams.update({'mathtext.bf':'Arial: bold'})
 
 ax.set_xlim(0, 4000)
-ax.set_ylim(-100, 75)
+ax.set_ylim(-50, 50)
 
 ax.set_xlabel(r'$\mathbf{Avoided\ management\ CI}$'+'\n'+r' [$kg\ CO_2e·tonne^{-1}$]',
               fontname='Arial',
@@ -862,7 +862,7 @@ ax.tick_params(direction='inout', length=30, width=5,
                bottom=True, top=False, left=True, right=False)
 
 plt.xticks(np.arange(0, 5000, 1000), fontname='Arial')
-plt.yticks(np.arange(-100, 100, 25), fontname='Arial')
+plt.yticks(np.arange(-50, 75, 25), fontname='Arial')
 
 ax_top = ax.twiny()
 ax_top.set_xlim(ax.get_xlim())
@@ -880,7 +880,7 @@ ax_right.tick_params(direction='in', length=15, width=5,
                      bottom=False, top=False, left=False, right=True,
                      labelright=False)
 
-plt.yticks(np.arange(-100, 100, 25), fontname='Arial')
+plt.yticks(np.arange(-50, 75, 25), fontname='Arial')
 
 x = Fig_3d_data['credit']
 low = Fig_3d_data['FePO4_GWP_5th']
@@ -893,7 +893,7 @@ ax.plot(x, low, color=dp, linestyle='--', linewidth=5)
 ax.plot(x, high, color=dp, linestyle='--', linewidth=5)
 ax.plot(x, mid, color=dp, linewidth=5)
 
-rectangle_fill = Rectangle((414, -100), 3618-414, 175,
+rectangle_fill = Rectangle((414, -50), 3618-414, 100,
                            fc=a, alpha=0.5, zorder=0)
 ax.add_patch(rectangle_fill)
 
