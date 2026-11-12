@@ -30,6 +30,9 @@ INCLUDE_STRUVITE = False
 ## True  = 100% wind/solar, 0% grid -- no grid electricity cost in OPEX
 ## False = PV+grid hybrid, 80% wind/solar / 20% grid (Overstrand Municipality
 ##         tariffs) -- grid electricity cost added to OPEX
+
+INCLUDE_SRD = True
+
 PV_ONLY = False
 
 el_path = os.path.dirname(__file__)
@@ -76,6 +79,8 @@ const_person_days = 100
 # The following factors refer to  Reclaimer and Biogenic Refinery
 EcosystemQuality_factor = 29320 * (2.8e-09 + 7.65e-14)   # (pt/species.yr) * (species.yr/kgCO2eq)
 HumanHealth_factor = 436000 * 9.28e-07   # (pt/DALY) * (DALY/kgCO2eq)
+# kg Al(OH)3 per kg PAC product: assumed solid PAC, 28% Al2O3 (2 Al(OH)3 per Al2O3)
+PAC_AlOH_PER_KG = 0.28 * 2 * 78.0 / 101.96   # = 0.4284
 
 # Ignore the nutrients loss during application
 
@@ -98,13 +103,13 @@ def update_resource_recovery_settings():
         'P': 3.983 * price_factor * RR_factor, # $/kg, P fertilizer price if resource recovery is considered
         'K': 1.333 * price_factor * RR_factor, # $/kg, K fertilizer price if resource recovery is considered
         'ammonium': 0.8 * (14/18) * price_factor * RR_factor, # $/kg, ammonium fertilizer price if resource recovery is considered
-        'struvite':3.983 * (31/245) * price_factor * RR_factor, # $/kg, as alternative P fertilizer 
+        'struvite': 0.30 * RR_factor,   # USD/kg, Nine Springs minimum buyback ($300/ton)
                                                           #if resource recovery is considered, cited from biogenic refinery
         'NaOH': 1.2 * price_ratio, # $/kg, used for membrane cleanup
         'NaClO': 1.8 * price_ratio, # $/kg, used for membrane cleanup
         'O3': 0.9 * price_ratio, # $/kg, used for clear water tank disinfection
         'HDPE': 0.5 * price_ratio, # $/kg, used for 200M ozone connection
-        'PAC': 0 / 0.2886 * price_ratio, #$/kg, kg AlOH/kg PAC conversion
+        'PAC': 0 / PAC_AlOH_PER_KG * price_ratio, #$/kg, kg AlOH/kg PAC conversion
         'Glucose': 0 / 1.067 * price_ratio, # $/kg, used in anoxic tank, kg COD/kg glucose conversion
         'MgCl2': 0.50 * price_ratio, # $/kg, used in struvite reactor for upstream P removal; South Africa-specific range $0.19-$1.50/kg, see _EL_SR.tsv
         'air': 0,
@@ -119,11 +124,11 @@ def update_resource_recovery_settings():
         'P': -4.9 * RR_factor, # kg CO2-eq/kg P recovered, if resource recovery is considered
         'K': -1.5 * RR_factor, # kg CO2-eq/kg K recovered, if resource recovery is considered
         'ammonium': -5.4 * (14/18) * RR_factor, # kg CO2-eq/kg ammonium recovered, if resource recovery is considered
-        'struvite': -4.9 * (31/245) * RR_factor, # kg CO2-eq/kg, need to make sense, if resource recovery is considered
+        'struvite': (-4.9*(31/245) - 5.4*(14/245)) * RR_factor, # kg CO2-eq/kg, need to make sense, if resource recovery is considered
         'NaOH': 0.050981804, 
         'NaClO': 0.10287725,
         'O3': 0.39586718,
-        'PAC': 0.394959 / 0.2886, #kg AlOH/kg PAC
+        'PAC': 0.394959 / PAC_AlOH_PER_KG , #kg AlOH/kg PAC
         'Glucose': 0.033883 / 1.067, #kg COD/kg glucose conversion
         'MgCl2': 0.023, # kg CO2-eq/kg MgCl2, Sena et al., 2021; uncertainty range +/-20%
         'air': 0,
@@ -138,11 +143,11 @@ def update_resource_recovery_settings():
         'P': -0.093269908 * RR_factor, #if resource recovery is considered
         'K': -0.01895794 * RR_factor, #if resource recovery is considered
         'ammonium': -0.0461961 * (14/18) * RR_factor, #if resource recovery is considered
-        'struvite': -0.093269908 * (31/245) * RR_factor, #if resource recovery is considered
+        'struvite': (-0.093269908*(31/245) - 0.0461961*(14/245)) * RR_factor, #if resource recovery is considered
         'NaOH': 0.025732326,
         'NaClO': 0.051394080,
         'O3':0.21786132,
-        'PAC': 0.1938478 / 0.2886, #kg AlOH/kg PAC
+        'PAC': 0.1938478 / PAC_AlOH_PER_KG, #kg AlOH/kg PAC
         'Glucose': 0.035664 / 1.067, #kg COD/kg glucose conversion
         'MgCl2': 0, # points/kg MgCl2, not yet characterized -- only GWP available from Sena et al. 2021
         'air': 0,
@@ -157,11 +162,11 @@ def update_resource_recovery_settings():
         'P': -1.774294425 * RR_factor, #if resource recovery is considered
         'K': -0.116067637 * RR_factor, #if resource recovery is considered
         'ammonium': -0.637826734 * (14/18) * RR_factor, #if resource recovery is considered
-        'struvite': -1.774294425 * (31/245) * RR_factor, #if resource recovery is considered        
+        'struvite': (-1.774294425*(31/245) - 0.637826734*(14/245)) * RR_factor, #if resource recovery is considered        
         'NaOH': 0.061256093,
         'NaClO': 0.12191047,
         'O3': 0.51710284,
-        'PAC': 0.0173485 / 0.2886, #kg AlOH/kg PAC
+        'PAC': 0.0173485 / PAC_AlOH_PER_KG, #kg AlOH/kg PAC
         'Glucose': 0.011324 / 1.067, #kg COD/kg glucose conversion
         'MgCl2': 0, # points/kg MgCl2, not yet characterized -- only GWP available from Sena et al. 2021
         'air': 0,
@@ -176,11 +181,11 @@ def update_resource_recovery_settings():
         'P': -1.084191599 * RR_factor, #if resource recovery is considered
         'K': -0.054033438 * RR_factor, #if resource recovery is considered
         'ammonium': -0.259196888 * (14/18) * RR_factor, #if resource recovery is considered
-        'struvite': -1.084191599 * (31/245) * RR_factor, #if resource recovery is considered
+        'struvite': (-1.084191599*(31/245) - 0.259196888*(14/245)) * RR_factor, #if resource recovery is considered
         'NaOH': 0.050981804,
         'NaClO': 0.10287725,
         'O3': 0.39586718,
-        'PAC': 0.28485795 / 0.2886, #kg AlOH/kg PAC
+        'PAC': 0.28485795 / PAC_AlOH_PER_KG, #kg AlOH/kg PAC
         'Glucose': 0.02425 / 1.067, #kg COD/kg glucose conversion
         'MgCl2': 0, # points/kg MgCl2, not yet characterized -- only GWP available from Sena et al. 2021
         'air': 0,
@@ -243,6 +248,7 @@ def _load_lca_data(reload=False):
         create_stream_impact_item(item_ID='PAC_item')
         create_stream_impact_item(item_ID='Glucose_item')
         create_stream_impact_item(item_ID='MgCl2_item') # used in struvite reactor; GWP from Sena et al. 2021, see _EL_SR.tsv for price
+        create_stream_impact_item(item_ID='struvite_item')
         create_stream_impact_item(item_ID='air_item')
         ImpactItem(ID = 'e_item', functional_unit = 'kWh', 
                    GWP = GWP_dct['Electricity'],

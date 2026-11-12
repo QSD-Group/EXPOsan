@@ -57,6 +57,7 @@ __all__ = (
     'EL_System', # System-level summary
     'StruviteReactor', # Struvite precipitation reactor (upstream P removal)
     'StruviteRedissolution', # Struvite redissolution (unsettled fines)
+    
     )
 el_path = os.path.dirname(__file__)
 module = os.path.split(el_path)[-1]
@@ -536,27 +537,10 @@ class EL_Anoxic(CSTR):
     def _run(self):
         glucose = self.ins[2]
         
-        # Baseline O1 effluent S_NO3 by population (mg/L)
-        # Measured from no-SR baseline simulation runs at each population density
-        # Used only when el.INCLUDE_STRUVITE=True to scale Glucose dose
-        # proportionally to actual denitrification demand reduction
-        # Reference: field-derived from mASM2d steady-state runs, this study
-        _BASELINE_NO3 = {
-            448:  5.951,
-            1500: 5.678,
-            2500: 5.586,
-            3000: 5.540,
-        }
+        gluc_scale = getattr(self, 'gluc_ratio_scale', 1.0)
+        gluc_ratio = self.chemical_glucose_mixing_ratio * gluc_scale
         
-        if el.INCLUDE_STRUVITE:
-            ref_NO3  = _BASELINE_NO3.get(int(el.ppl), 5.951)
-            live_NO3 = max(float(self.ins[0].iconc['S_NO3']), 1e-12)
-            scale_N  = live_NO3 / ref_NO3
-            gluc_ratio = self.chemical_glucose_mixing_ratio * scale_N
-        else:
-            gluc_ratio = self.chemical_glucose_mixing_ratio
-        
-        self.gluc_ratio = gluc_ratio    # <-- ADD THIS LINE
+        self.gluc_ratio = gluc_ratio
         
         glucose.imass['S_F'] = gluc_ratio * self.dosing_flow * self.scale_factor * 1.067
         super()._run()
@@ -589,9 +573,9 @@ class EL_Anoxic(CSTR):
         for equipment, cost in C.items():
             C[equipment] = cost * ratio
         
-        self.add_OPEX = (self._calc_replacement_cost() + 
-            getattr(self, 'gluc_ratio', self.chemical_glucose_mixing_ratio) * self.dosing_flow * self.scale_factor *
-            self.chemical_glucose_price)
+        self.add_OPEX = (self._calc_replacement_cost() +
+            self.chemical_glucose_mixing_ratio * getattr(self, 'gluc_ratio_scale', 1.0) *
+            self.dosing_flow * self.scale_factor * self.chemical_glucose_price)
         
         power_demand = self.power_demand_AnoxicTank
         self.power_utility(power_demand)
@@ -718,31 +702,12 @@ class EL_Aerobic(CSTR):
         ############################################### 
         
     def _run(self):
-        PAC = self.ins[1]
-        
-        # Baseline O1 influent S_PO4 by population (mg/L)
-        # Measured from no-SR baseline simulation runs at each population density
-        # Used only when el.INCLUDE_STRUVITE=True to scale PAC dose
-        # proportionally to actual upstream P removal by struvite reactor
-        # Reference: field-derived from mASM2d steady-state runs, this study
-        _BASELINE_PO4 = {
-            448:  29.451,
-            1500: 41.982,
-            2500: 41.726,
-            3000: 41.568,
-        }
-        
-        if el.INCLUDE_STRUVITE:
-            ref_PO4 = _BASELINE_PO4.get(int(el.ppl), 29.451)
-            live_PO4 = max(float(self.ins[0].iconc['S_PO4']), 1e-12)
-            scale_P  = live_PO4 / ref_PO4
-            pac_ratio = self.chemical_PAC_mixing_ratio * scale_P
-        else:
-            pac_ratio = self.chemical_PAC_mixing_ratio
-        
-        self.pac_ratio = pac_ratio    # <-- ADD THIS LINE
-        
-        PAC.imass['X_AlOH'] = pac_ratio * self.dosing_flow * self.scale_factor * 0.2886
+        pac_scale = getattr(self, 'pac_ratio_scale', 1.0)
+        self.pac_ratio = self.chemical_PAC_mixing_ratio * pac_scale
+        if len(self.ins) > 1:
+            self.ins[1].imass['X_AlOH'] = (
+                self.pac_ratio * self.dosing_flow * self.scale_factor * el.PAC_AlOH_PER_KG
+            )
         super()._run()
         
     def _init_lca(self):
@@ -775,9 +740,9 @@ class EL_Aerobic(CSTR):
         for equipment, cost in C.items():
             C[equipment] = cost * ratio
             
-        self.add_OPEX = (self._calc_replacement_cost() + 
-                         getattr(self, 'pac_ratio', self.chemical_PAC_mixing_ratio) * self.dosing_flow * self.scale_factor *
-                         self.chemical_PAC_price / 24)
+        self.add_OPEX = (self._calc_replacement_cost() +
+            self.chemical_PAC_mixing_ratio * getattr(self, 'pac_ratio_scale', 1.0) *
+            self.dosing_flow * self.scale_factor * self.chemical_PAC_price)
         
         # self.add_OPEX = (self._calc_replacement_cost() + 
         #                  self.chemical_PAC_mixing_ratio * self.PAC_pump_flow * 
@@ -787,7 +752,7 @@ class EL_Aerobic(CSTR):
         self.power_utility(power_demand) # kWh
     
     def _calc_replacement_cost(self):
-        scale = (self.ppl / self.baseline_ppl) * self.exponent_scale
+        scale = (self.ppl / self.baseline_ppl) ** self.exponent_scale
         Aerobic_tank_replacement_cost = (self.aerobic_tank_cost / self.aerobic_tank_lifetime +
                                         self.weld_female_adapter_fittings / self.weld_female_adapter_fittings_lifetime +
                                         self.pipeline_connectors / self.pipeline_connectors_lifetime + 
@@ -1458,6 +1423,16 @@ class StruviteReactor(SanUnit):
         d['Struvite_recovered_kg_d'] = (
             mol_form * MW_STR / 1000.0
         ) * float(np.clip(self.precip_yield, 0.0, 1.0))
+        
+        # put recovered struvite on the product stream so TEA sales and LCA see it
+        rec = self.outs[0]
+        rec.mass[:] = 0.0
+        rec.imass['X_struv'] = d['Struvite_recovered_kg_d'] / 24.0   # kg/hr
+        
+        # LCA quantities (TSV loads after _init_lca runs, so set them here)
+        self.construction[0].quantity = d['Tank_volume_m3'] * 950.0 * 0.01   # plastic tank, kg
+        self.construction[1].quantity = self.blower_steel_weight             # blower steel, kg
+        self.add_construction(add_cost=False)
 
     # -------------------------------------------------------------------------
     # Cost — all values loaded from _EL_SR.tsv via __init__
@@ -1526,7 +1501,7 @@ class StruviteReactor(SanUnit):
                          quantity=vol * 950.0 * 0.01),
             Construction(item='Steel',        linked_unit=self,
                          quantity_unit='kg',
-                         quantity=24.0),   # blower steel weight from _EL_blower.tsv
+                         quantity=0.0),   # set in _design from blower_steel_weight (_EL_SR.tsv)
         ]
 
     # -------------------------------------------------------------------------

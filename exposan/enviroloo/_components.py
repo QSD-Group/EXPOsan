@@ -45,7 +45,7 @@ def create_components(set_thermo = True
     # cmps.set_alias('H2O', 'Water')
     # #cmps.set_alias('CO2', 'Carbon Dioxide')
     # cmps.set_alias('CH4', 'Methane')
-    cmps.compile(skip_checks=True)
+    cmps.compile(skip_checks=True, ignore_inaccurate_molar_weight=True)
     if set_thermo: qs_set_thermo(cmps)
 
     return cmps

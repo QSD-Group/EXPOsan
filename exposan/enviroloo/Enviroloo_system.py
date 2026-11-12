@@ -99,9 +99,17 @@ Temp = 273.15 + 20   # temperature [K]
 # Hydraulic flows
 Q_w   = 4.48 * scale_factor    # m3/day -- total wastewater flow
 Q_ras = 2.24 * scale_factor    # m3/day -- nitrate return flow
-Q_was = 1.5            # m3/day -- waste activated sludge flow
+Q_was = 0.8  # m3/day -- waste activated sludge flow
 
 biomass_IDs = ('X_H', 'X_AUT', 'X_PAO')
+
+
+
+GLUC_SCALE_OVERRIDE = None
+PAC_SCALE_OVERRIDE = None
+SR_EFF_PO4_MGL  = 6.55
+SR_PRECIP_YIELD = 0.7
+
 
 # =============================================================================
 # Field-measured/design-basis toilet waste concentrations
@@ -240,6 +248,31 @@ def _compute_MgCl2_dose(urine_waste):
     return Mg_add_kg_hr, MgCl2_kg_d, MW_P, MW_Mg
 
 
+def _P_load_fraction():
+    """Fraction of baseline feed P (soluble) still reaching the biology."""
+    f_diss = 1.0 if getattr(el, 'INCLUDE_SRD', False) else 0.0
+    M_tot = toilet_waste['S_PO4'] * Q_total                    # g/d
+    C_urine, _ = _split_concentration('S_PO4')
+    removed  = max(C_urine - SR_EFF_PO4_MGL, 0.0) * Q_urine    # g/d precipitated
+    returned = removed * (1 - SR_PRECIP_YIELD) * f_diss        # fines that redissolve
+    return 1.0 - (removed - returned) / M_tot
+
+def _get_dose_scales():
+    pac  = 1.0 if PAC_SCALE_OVERRIDE  is None else PAC_SCALE_OVERRIDE
+    gluc = 1.0 if GLUC_SCALE_OVERRIDE is None else GLUC_SCALE_OVERRIDE
+    return pac, gluc
+
+
+def _report_ratios(pac, gluc):
+    """Print total COD:P and X_AlOH:P seen by the biology, so every run is verifiable."""
+    P_in = toilet_waste['S_PO4'] * Q_total                    # g/d
+    if el.INCLUDE_STRUVITE:
+        P_in *= _P_load_fraction()
+    G0    = 0.035 * el.dosing_flow * scale_factor * 24 * 1.067 * 1000   # g S_F/d
+    A0    = 0.035 * el.dosing_flow * scale_factor * 24 * el.PAC_AlOH_PER_KG * 1000  # g X_AlOH/d
+    C_inf = (toilet_waste['S_F'] + toilet_waste['X_S']) * Q_total
+    print(f'Total COD:P = {(C_inf + gluc*G0)/P_in:.2f} g/g | X_AlOH:P = {A0*pac/P_in:.2f} g/g')
+
 # %% Create Universal Units and Functions
 def batch_init(sys, path, sheet):
     df = load_data(path, sheet)
@@ -254,7 +287,7 @@ def batch_init(sys, path, sheet):
 def create_components(set_thermo=True):
     masm2d_cmps = pc.create_masm2d_cmps(set_thermo=False)
     cmps = Components([*masm2d_cmps])
-    # cmps.compile(ignore_inaccurate_molar_weight=True)
+    cmps.compile(ignore_inaccurate_molar_weight=True)
     cmps.compile(skip_checks=True)
     
     if set_thermo:
@@ -286,6 +319,17 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     toilet waste stream directly, with no urine diversion or SR/SRD:
 
         toilet_ins ---> CT --> PC -> A1 -> O1 -> B1 -> ... -> ELH
+
+        PAC enters O1 as X_AlOH; the Al-P chemistry runs inside mASM2d.
+
+        PAC_P_MODE None          : PAC stream goes into O1 (legacy, no Al chemistry)
+        PAC_P_MODE not None, PR1_LOC 'after_aerobic'  (default, all results so far):
+                                   A1 -> O1 -> PR1 -> B1
+        PAC_P_MODE not None, PR1_LOC 'before_aerobic' (placement test):
+                                   A1 -> PR1 -> O1 -> B1
+
+    In both PR1 modes the PAC stream is fed into PR1 (PR1.ins[1]), and PR1
+    reads the dose from O1 through PR1.dose_source.
     """
 
     _load_lca_data()
@@ -316,6 +360,9 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
         Mg_dose = qs.WasteStream('Mg_dose', T=Temp)
         Mg_dose.imass['S_Mg'] = Mg_add_kg_hr   # kg/hr
         item = ImpactItem.get_item('MgCl2_item').copy('Mg_dose_item', set_as_source=True)
+        mg_basis = MgCl2_kg_d / (Mg_add_kg_hr * 24.0)   # kg MgCl2 per kg Mg = 3.917
+        for ind in list(item.CFs.keys()):
+            item.CFs[ind] = item.CFs[ind] * mg_basis
         Mg_dose.stream_impact_item = item
 
         # ---- 3. Mixer: urine + MgCl2 dose, before SR ----
@@ -330,7 +377,7 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
         remaining_ins.set_flow_by_concentration(
             Q_remaining, concentrations=remaining_waste, units=('m3/d', 'mg/L'))
 
-        # ---- 6. Struvite Reactor (SR) ----
+        # ---- 5. Struvite Reactor (SR) ----
         # eff_PO4_mgL = 6.55 mg/L expected (90% removal, Etter et al. 2011/
         # Maurer et al. 2006), applied to corrected influent ~65.5 mg/L.
         # precip_yield = 0.70 expected (EnviroLoo field reactor, 68.7%
@@ -344,37 +391,46 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
                 qs.WasteStream('effluent_SR',         T=Temp),
             ),
             isdynamic=True,
-            eff_PO4_mgL=6.55,
-            precip_yield=0.70,
+            eff_PO4_mgL=SR_EFF_PO4_MGL,
+            precip_yield=SR_PRECIP_YIELD,
             dose_MgCl2_kg_d=MgCl2_kg_d,
         )
+        
+        item = ImpactItem.get_item('struvite_item').copy('SR_struvite_item', set_as_source=True)
+        SR.outs[0].stream_impact_item = item
+        SR.outs[0].price = el.price_dct['struvite']   # USD/kg struvite
 
-        # ---- 7. Struvite Redissolution (SRD) ----
-        # SRD = elu.StruviteRedissolution(
-        #     'SRD',
-        #     ins=SR-2,
-        #     outs=qs.WasteStream('effluent_SRD', T=Temp),
-        #     isdynamic=True,
-        #     k_max=2.61,
-        #     d_p=0.3,
-        #     HRT_min=5.0,
-        # )
+        # ---- 6. Struvite Redissolution (SRD) ----
+        # Toggle: el.INCLUDE_SRD (set in exposan/enviroloo/__init__.py)
+        if el.INCLUDE_SRD:
+            SRD = elu.StruviteRedissolution(
+                'SRD',
+                ins=SR-2,
+                outs=qs.WasteStream('effluent_SRD', T=Temp),
+                isdynamic=True,
+                k_max=2.61,
+                d_p=0.3,
+                HRT_min=5.0,
+            )
+            CT_second_inlet = SRD-0
+            upstream_units = (M_MgCl2, SR, SRD)
+        else:
+            CT_second_inlet = SR-2
+            upstream_units = (M_MgCl2, SR)
 
-        # ---- 8. Collection Tank (CT): remaining_ins + SRD effluent ----
+        # ---- 7. Collection Tank (CT): remaining_ins + (SRD or SR) effluent ----
         effluent_CT = qs.WasteStream('effluent_CT', T=Temp)
         effluent_CT.set_flow_by_concentration(
             Q_w * 0.9, concentrations=toilet_waste, units=('m3/d', 'mg/L'))
 
         CT = elu.EL_CT(
             'CT',
-            ins=(remaining_ins, SR-2),
+            ins=(remaining_ins, CT_second_inlet),
             outs=effluent_CT,
             isdynamic=True, V_max=10, aeration=None,
             suspended_growth_model=None,
             ppl=ppl, baseline_ppl=baseline_ppl,
         )
-
-        upstream_units = (M_MgCl2, SR)
 
     else:
         # =====================================================================
@@ -410,26 +466,33 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
         sludge_flow_rate=Q_w * 0.01,
     )
 
+    pac_scale, gluc_scale = _get_dose_scales()
+    print(f'Dose scales -> PAC {pac_scale:.4f}, glucose {gluc_scale:.4f}')
+    _report_ratios(pac_scale, gluc_scale)
+
     Glucose = qs.WasteStream('Glucose_Dose', T=Temp)
 
     A1 = elu.EL_Anoxic(
         'A1', ins=(PC-0, 'RAS_A1', Glucose), outs=('effluent_AnoxT',),
-        isdynamic=True, ppl=ppl, baseline_ppl=baseline_ppl, **kwargs_1,
+        isdynamic=True, ppl=ppl, baseline_ppl=baseline_ppl,
+        gluc_ratio_scale=gluc_scale, **kwargs_1,
     )
     item = ImpactItem.get_item('Glucose_item').copy('A1_glucose_item', set_as_source=True)
     A1.ins[2].stream_impact_item = item
 
+    # ---- PAC dosing: X_AlOH enters O1; Al-P chemistry is in mASM2d (k_PRE, k_RED) ----
     PAC = qs.WasteStream('PAC_Dose', T=Temp)
-
     O1 = elu.EL_Aerobic(
         'O1', ins=(A1-0, PAC), outs=('effluent_AeroT',),
-        isdynamic=True, ppl=ppl, baseline_ppl=baseline_ppl, **kwargs_O,
+        isdynamic=True, ppl=ppl, baseline_ppl=baseline_ppl,
+        pac_ratio_scale=pac_scale, **kwargs_O,
     )
     item = ImpactItem.get_item('PAC_item').copy('O1_PAC_item', set_as_source=True)
     O1.ins[1].stream_impact_item = item
-
+    
     B1 = elu.EL_CMMBR(
-        'B1', ins=O1-0, outs=('effluent_MembT', 'sludge_MembT'),
+        'B1', ins=(O1-0,),
+        outs=('effluent_MembT', 'sludge_MembT'),
         isdynamic=True, ppl=ppl, baseline_ppl=baseline_ppl,
         pumped_flow=(Q_ras * 2 + Q_was),
         **kwargs_2,
@@ -464,6 +527,8 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
     batch_init(
         sys, ospath.join(data_path, "units_data/bsm2p_init.xlsx"), sheet='el')
 
+    print('Unit order:', [u.ID for u in sys.path])
+
     GWP        = qs.ImpactIndicator('GlobalWarming', alias='GWP', unit='kg CO2-eq')
     Ecosystems = qs.ImpactIndicator('H_Ecosystems',  alias='Ecosystems', unit='points')
     Health     = qs.ImpactIndicator('H_Health',       alias='Health', unit='points')
@@ -474,7 +539,6 @@ def create_systemEL(flowsheet=None, inf_kwargs={}, masm_kwargs={}, init_conds={}
                  indicators=(GWP, Ecosystems, Health, Resources), simulate_system=False)
 
     return sys
-
 
 # %%
 
@@ -539,10 +603,10 @@ if __name__ == '__main__':
         print(f"S_NH4 : {fs.effluent_SR.iconc['S_NH4']:.3f} mg/L")
         print(f"S_Mg  : {fs.effluent_SR.iconc['S_Mg']:.3f}  mg/L")
 
-        # print('\n--- SRD Effluent (after redissolution) ---')
-        # print(f"S_PO4 : {fs.effluent_SRD.iconc['S_PO4']:.3f} mg/L")
-        # print(f"S_NH4 : {fs.effluent_SRD.iconc['S_NH4']:.3f} mg/L")
-        # print(f"S_Mg  : {fs.effluent_SRD.iconc['S_Mg']:.3f}  mg/L")
+        print('\n--- SRD Effluent (after redissolution) ---')
+        print(f"S_PO4 : {fs.effluent_SRD.iconc['S_PO4']:.3f} mg/L")
+        print(f"S_NH4 : {fs.effluent_SRD.iconc['S_NH4']:.3f} mg/L")
+        print(f"S_Mg  : {fs.effluent_SRD.iconc['S_Mg']:.3f}  mg/L")
 
     print('\n--- MBR Effluent ---')
     print(f"S_PO4 : {fs.effluent_MembT.iconc['S_PO4']:.3f} mg/L")

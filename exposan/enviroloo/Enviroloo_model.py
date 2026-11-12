@@ -187,6 +187,17 @@ def add_metrics(model):
             Metric('SR struvite recovered',
                    lambda: SR_unit.design_results.get('Struvite_recovered_kg_d', 0.0),
                    'kg/d', 'Struvite reactor'),
+    
+            Metric('Struvite revenue',
+                   lambda: SR_unit.outs[0].F_mass * SR_unit.outs[0].price
+                           * system.operating_hours / el.ppl,
+                   f'{qs.currency}/cap/yr', 'Struvite reactor'),
+            Metric('Struvite GWP credit',
+                   lambda: SR_unit.outs[0].F_mass
+                           * SR_unit.outs[0].stream_impact_item.CFs['GlobalWarming']
+                           * system.operating_hours / el.ppl,
+                   'kg CO2-eq/cap/yr', 'Struvite reactor'),
+            # -----------------------------------
         ])
 
     # === PAC / Glucose dosing cost metrics ===
@@ -201,8 +212,8 @@ def add_metrics(model):
     metrics.extend([
         Metric('PAC dosing cost',
                lambda: (getattr(O1_unit, 'pac_ratio', O1_unit.chemical_PAC_mixing_ratio)
-                        * O1_unit.dosing_flow * O1_unit.scale_factor
-                        * O1_unit.chemical_PAC_price / 24) * 24 * 365 / el.ppl,
+         * O1_unit.dosing_flow * O1_unit.scale_factor
+         * O1_unit.chemical_PAC_price) * 24 * 365 / el.ppl,
                f'{qs.currency}/cap/yr', 'Chemical dosing'),
         Metric('Glucose dosing cost',
                lambda: (getattr(A1_unit, 'gluc_ratio', A1_unit.chemical_glucose_mixing_ratio)
@@ -255,48 +266,67 @@ def add_parameters(model, unit_dct, country_specific=False):
             baseline = b, distribution = D)
         def set_operator_daily_wage(i):
             sys._TEA.annual_labor = i * 3 * 365 # need change TODO
+            
+        if el.INCLUDED_RESOURCE_RECOVERY and el.INCLUDE_STRUVITE:
+            struv_stream = sys_stream.struvite_recovered
+    
+            b = 0.30   # USD/kg struvite, Table B-2 minimum buyback, read as metric ton
+            D = shape.Uniform(lower=0.126, upper=0.504)
+            @param(name='Struvite price', element='TEA', kind='isolated',
+                   units='USD/kg struvite', baseline=b, distribution=D)
+            def set_struvite_price(i):
+                struv_stream.price = i
+    
+            b = -el.GWP_dct['struvite']   # 0.9286
+            D = shape.Triangle(lower=0.745, midpoint=b, upper=b*1.1)
+            @param(name='Struvite fertilizer CF', element='LCA', kind='isolated',
+                   units='kg CO2-eq/kg struvite', baseline=b, distribution=D)
+            def set_struvite_CF(i):
+                el.GWP_dct['struvite'] = -i
+                item = struv_stream.stream_impact_item
+                (item.source or item).add_indicator('GlobalWarming', -i)
 
 
-        if el.INCLUDED_RESOURCE_RECOVERY:
-            # N fertilizer price
-            b = 1.507
-            D = shape.Uniform(lower = b * 0.8, upper = b * 1.2)
-            @param(name = 'N fertilizer price', element = 'TEA', kind = 'isolated', units = 'USD/kg N',
-                   baseline = b, distribution = D)
-            def set_N_fert_price(i):
-                price_dct['N'] = sys_stream.liq_N.price = sys_stream.sol_N.price = i * el.price_factor
+        # if el.INCLUDED_RESOURCE_RECOVERY:
+        #     # N fertilizer price
+        #     b = 1.507
+        #     D = shape.Uniform(lower = b * 0.8, upper = b * 1.2)
+        #     @param(name = 'N fertilizer price', element = 'TEA', kind = 'isolated', units = 'USD/kg N',
+        #            baseline = b, distribution = D)
+        #     def set_N_fert_price(i):
+        #         price_dct['N'] = sys_stream.liq_N.price = sys_stream.sol_N.price = i * el.price_factor
             
-            # P fertilizer price
-            b = 3.983
-            D = shape.Uniform(lower = b * 0.8, upper = b * 1.2)
-            @param(name = 'P fertilizer price', element = 'TEA', kind = 'isolated', units = 'USD/kg P',
-                   baseline = b, distribution = D)
-            def set_P_fert_price(i):
-                price_dct['P'] = sys_stream.liq_P.price = sys_stream.sol_P.price = i * el.price_factor
+        #     # P fertilizer price
+        #     b = 3.983
+        #     D = shape.Uniform(lower = b * 0.8, upper = b * 1.2)
+        #     @param(name = 'P fertilizer price', element = 'TEA', kind = 'isolated', units = 'USD/kg P',
+        #            baseline = b, distribution = D)
+        #     def set_P_fert_price(i):
+        #         price_dct['P'] = sys_stream.liq_P.price = sys_stream.sol_P.price = i * el.price_factor
             
-            # K fertilizer price
-            b = 1.333
-            D = shape.Uniform(lower = b * 0.8, upper = b * 1.2)
-            @param(name = 'K fertilizer price', element = 'TEA', kind = 'isolated', units = 'USD/kg K',
-                   baseline = b, distribution = D)
-            def set_K_fert_price(i):
-                price_dct['K'] = sys_stream.liq_K.price = sys_stream.sol_K.price = i * el.price_factor
+        #     # K fertilizer price
+        #     b = 1.333
+        #     D = shape.Uniform(lower = b * 0.8, upper = b * 1.2)
+        #     @param(name = 'K fertilizer price', element = 'TEA', kind = 'isolated', units = 'USD/kg K',
+        #            baseline = b, distribution = D)
+        #     def set_K_fert_price(i):
+        #         price_dct['K'] = sys_stream.liq_K.price = sys_stream.sol_K.price = i * el.price_factor
             
-            # Ammonium fertilizer price
-            b = 1.507 * (14/18)
-            D = shape.Uniform(lower = b * 0.8, upper = b * 1.2)
-            @param(name = 'Ammonium fertilizer price', element = 'TEA', kind = 'isolated', units = 'USD/kg N',
-                   baseline = b, distribution = D)
-            def set_NH4_fert_price(i):
-                price_dct['ammonium'] = sys_stream.liq_NH4.price = sys_stream.sol_NH4.price = i * el.price_factor
+        #     # Ammonium fertilizer price
+        #     b = 1.507 * (14/18)
+        #     D = shape.Uniform(lower = b * 0.8, upper = b * 1.2)
+        #     @param(name = 'Ammonium fertilizer price', element = 'TEA', kind = 'isolated', units = 'USD/kg N',
+        #            baseline = b, distribution = D)
+        #     def set_NH4_fert_price(i):
+        #         price_dct['ammonium'] = sys_stream.liq_NH4.price = sys_stream.sol_NH4.price = i * el.price_factor
             
-            # Struvite fertilizer price
-            b = 3.983 * (31 / 245) # need check up to now
-            D = shape.Uniform(lower = b * 0.8, upper = b * 1.2)
-            @param(name = 'Struvite fertilizer price', element = 'TEA', kind = 'isolated', units = 'USD/kg P',
-                   baseline = b, distribution = D)
-            def set_struvite_fert_price(i):
-                price_dct['struvite'] = sys_stream.liq_struvite.price = sys_stream.sol_struvite.price = i * el.price_factor
+        #     # Struvite fertilizer price
+        #     b = 3.983 * (31 / 245) # need check up to now
+        #     D = shape.Uniform(lower = b * 0.8, upper = b * 1.2)
+        #     @param(name = 'Struvite fertilizer price', element = 'TEA', kind = 'isolated', units = 'USD/kg P',
+        #            baseline = b, distribution = D)
+        #     def set_struvite_fert_price(i):
+        #         price_dct['struvite'] = sys_stream.liq_struvite.price = sys_stream.sol_struvite.price = i * el.price_factor
         
         # # Electricity price, set to zero as renewable assumption.
         # b = price_dct['Electricity']
