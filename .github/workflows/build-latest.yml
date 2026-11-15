@@ -174,6 +174,9 @@ jobs:
         pip install git+https://github.com/QSD-Group/QSDsan.git
         pip install --no-deps --force-reinstall git+https://github.com/BioSTEAMDevelopmentGroup/thermosteam.git@master
         pip install --no-deps --force-reinstall git+https://github.com/BioSTEAMDevelopmentGroup/biosteam.git@master
+        # biosteam >= 2.54 moved heat exchanger network synthesis into hensmith (a hard
+        # biosteam dependency); --no-deps above skips it and PyPI's 0.1.2 breaks on biosteam master.
+        pip install --no-deps --force-reinstall git+https://github.com/BioSTEAMDevelopmentGroup/hensmith.git@master
     - name: Test doc examples
       run: |
         pytest exposan --doctest-modules
