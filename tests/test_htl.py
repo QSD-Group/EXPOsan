@@ -33,20 +33,22 @@ def test_htl():
         include_check=False,
         )
 
-    # Baselines are for BioSTEAM with flue-gas heat recovery for fuel-fired
-    # heat utilities (air and fuel preheating, BioSTEAM commit 2dd9b4dc) and
-    # thermo >= 0.6.1.
-    m1 = htl.create_model('baseline', **kwargs)
-    assert_allclose(m1.metrics_at_baseline().values,
-                    [2.562068, -35.081915, 15.158588, 25.269086], rtol=rtol)
-
-    m2 = htl.create_model('no_P', **kwargs)
-    assert_allclose(m2.metrics_at_baseline().values,
-                    [3.121138, -0.613885, 2.497389, -83.068385], rtol=rtol)
-
-    m3 = htl.create_model('PSA', **kwargs)
-    assert_allclose(m3.metrics_at_baseline().values,
-                    [1.924005, -74.420137, 36.251841, 205.756707], rtol=rtol)
+    # Two sets of baselines: the released stack (biosteam 2.54.0, thermosteam
+    # 0.54.2, hensmith 0.1.2) and BioSTEAM master (biosteam/thermosteam/hensmith
+    # master.
+    import thermosteam as tmo
+    upstream = not hasattr(tmo, 'Network')
+    baselines = {
+        'baseline': ([2.593938, -33.117093, 21.147712, 76.515933] if upstream else
+                     [2.683049, -27.623159, 24.137262, 102.096472]),
+        'no_P': ([3.156198, 1.547675, 8.955719, -27.806706] if upstream else
+                 [3.235468, 6.434865, 10.982505, -10.464207]),
+        'PSA': ([1.956248, -72.432254, 42.311472, 257.606858] if upstream else
+                [2.044986, -66.961316, 45.230593, 282.584762]),
+        }
+    for ID, expected in baselines.items():
+        m = htl.create_model(ID, **kwargs)
+        assert_allclose(m.metrics_at_baseline().values, expected, rtol=rtol)
 
 
 def test_htl_reversed_splitter_recycle():
