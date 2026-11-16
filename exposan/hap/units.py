@@ -18,11 +18,32 @@ References
 
 '''
 import numpy as np
+from inspect import signature, Parameter
 from qsdsan import SanUnit
 from biosteam import Stream, Facility
 from biosteam.units import BatchBioreactor
 from biosteam.units.decorators import cost
 from exposan.hap import SimpleBlower, Locations, SimpleCVRP
+
+
+def _init_batch_bioreactor(unit, **given):
+    """
+    Initialize the batch bioreactor part of a unit that does not call
+    `BatchBioreactor.__init__`, with BioSTEAM before and after `design_input`
+    (the latter no longer takes `tau`, `N`, `T`, `P` in `_init`).
+    """
+    if 'tau' in signature(unit._init).parameters:
+        unit._init(**given)
+        return
+    unit._init()
+    for name in unit._design_inputs:
+        if name in given:
+            value = given[name]
+        else:
+            value = getattr(getattr(type(unit), name), 'default', Parameter.empty)
+            if value is Parameter.empty: continue
+        setattr(unit, name, value)
+
 # from math import ceil
 
 __all__ = ('HApFermenter', 
@@ -59,7 +80,7 @@ class HApFermenter(SanUnit, BatchBioreactor):
                  ):
 
         SanUnit.__init__(self, ID, ins, outs, thermo, init_with)
-        self._init(tau=tau, N=2, T=T, P=P)
+        _init_batch_bioreactor(self, tau=tau, N=2, T=T, P=P)
         self.N_parallel_HApFermenter = N_parallel_HApFermenter
         self.f_maximum_hap_yield=f_maximum_hap_yield
         self.precipitate_moisture=precipitate_moisture
@@ -246,7 +267,7 @@ class YeastProduction(Facility, SanUnit, BatchBioreactor):
         SanUnit.__init__(self, ID, ins=None, outs=['vent', 'yeast'], thermo=None, init_with='WasteStream')
         self._system = None
         self._other_units = None
-        self._init(tau=tau, N=2, T=T, P=P)
+        _init_batch_bioreactor(self, tau=tau, N=2, T=T, P=P)
         self.N_parallel_HApFermenter = N_parallel_HApFermenter
         self.blower = SimpleBlower(self.ID+'_blower', 
                                    ins=Stream(self.ID+'_blower_in', phase='g'),

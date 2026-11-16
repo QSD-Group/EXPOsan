@@ -376,10 +376,9 @@ class BiocrudeTank(Tank, BSTStorageTank):
         Design['Wall thickness'] = VWT # in
         return Design
     
-    @property
-    def vessel_material(self):
-        return self._vessel_material
-    @vessel_material.setter
+    # Copies the parent's design input (or property, with older BioSTEAM)
+    # with this setter, so the validation and cost factor update are kept
+    @BSTStorageTank.vessel_material.setter
     def vessel_material(self, i):
         exist_material = getattr(self, '_vessel_material', None)
         BSTStorageTank.vessel_material.fset(self, i)
@@ -829,7 +828,9 @@ class KnockOutDrum(Reactor):
         Reactor._cost(self)
 
         purchase_costs = self.baseline_purchase_costs
-        purchase_costs['Vertical pressure vessel'] *= self.drum_steel_cost_factor
+        # Newer BioSTEAM names this item 'Pressure vessel' regardless of vessel type
+        key = 'Pressure vessel' if 'Pressure vessel' in purchase_costs else 'Vertical pressure vessel'
+        purchase_costs[key] *= self.drum_steel_cost_factor
 
 
 @cost(basis='Treatment capacity', ID='Solids filter oil/water separator', units='lb/h',
@@ -1233,7 +1234,9 @@ class HydrothermalLiquefaction(Reactor):
         for item in purchase_costs.keys():
             purchase_costs[item] *= self.CAPEX_factor
 
-        purchase_costs['Horizontal pressure vessel'] *= self.HTL_steel_cost_factor
+        # Newer BioSTEAM names this item 'Pressure vessel' regardless of vessel type
+        key = 'Pressure vessel' if 'Pressure vessel' in purchase_costs else 'Horizontal pressure vessel'
+        purchase_costs[key] *= self.HTL_steel_cost_factor
 
         for aux_unit in self.auxiliary_units:
             purchase_costs = aux_unit.baseline_purchase_costs
