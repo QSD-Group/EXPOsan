@@ -420,10 +420,7 @@ class AerobicDigestion(SanUnit):
                     'Pump building': F_BM_pump,
                     'Wall concrete': 2.3,
                     'Slab concrete': 2.3,
-                    'Excavation': 2.3,
-                    'Blower air piping': 1,
-                    'Blowers': 2.22,
-                    'Blower building': 1.11}
+                    'Excavation': 2.3}
     
     _units = {'HRT':'d',
               'SRT':'d',
@@ -460,7 +457,7 @@ class AerobicDigestion(SanUnit):
         self.sludge_pump = SludgePump(f'.{ID}_eff_pump', ins=eff, init_with=init_with)
         self.blower = blower = Blower('blower', linked_unit=self, N_reactor=1)
         self.air_piping = air_piping = GasPiping('air_piping', linked_unit=self, N_reactor=1)
-        self.equipments = (blower, air_piping)
+        self.equipment = [blower, air_piping]
     
     def _run(self):
         input_sludge, air = self.ins
@@ -512,13 +509,10 @@ class AerobicDigestion(SanUnit):
         # the blower here does not include electricity
         # blower and gas piping
         air_cfm = auom('m3/h').convert(self.ins[1].F_vol, 'cfm')
-        blower, piping = self.equipments
+        blower, piping = self.equipment
         blower.N_reactor = piping.N_reactor = 1
         blower.gas_demand_per_reactor = piping.gas_demand_per_reactor = air_cfm
         self.add_equipment_design()
-        
-        D.update(blower.design_results)
-        D.update(piping.design_results)
         
         # kW
         self.electricity_requirement = V*self.unit_electricity
@@ -529,15 +523,14 @@ class AerobicDigestion(SanUnit):
     def _cost(self):
         
         D, C = self.design_results, self.baseline_purchase_costs
-        blower, piping = self.equipments
         
         C['Wall concrete'] = D['Wall concrete']*self.wall_concrete_unit_cost
         C['Slab concrete'] = D['Slab concrete']*self.slab_concrete_unit_cost
         C['Excavation'] = D['Excavation']*self.excavation_unit_cost
         
-        # note blower._cost() includes piping
-        C.update(blower._cost())
-        # C.update(piping._cost())
+        # blower and gas piping, their bare-module factors and lifetime
+        # are from the `Blower` and `GasPiping` equipment
+        self.add_equipment_cost()
         
         self.sludge_pump.simulate()
         self.sludge_pump.power_utility.empty()
