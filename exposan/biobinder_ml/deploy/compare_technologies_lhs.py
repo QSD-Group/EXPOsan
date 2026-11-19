@@ -9,7 +9,7 @@ This module is under the University of Illinois/NCSA Open Source License.
 Please refer to https://github.com/QSD-Group/EXPOsan/blob/main/LICENSE.txt
 for license details.
 '''
-"""Paired HTL/AD/composting LHS simulations, checkpointed under deploy/results.
+"""Paired waste-treatment LHS simulations, checkpointed under deploy/results.
 
 Run directly with --help. Composition draws are shared across technologies;
 each recipe component keeps its wet blending weight and inherent moisture.
@@ -39,8 +39,20 @@ sys.dont_write_bytecode = True
 DEPLOY = Path(__file__).resolve().parent
 RESULTS = DEPLOY/'results'
 DRY_COMPONENTS = ('Carbohydrates','Proteins','Ash','Lipids')
-TECHNOLOGIES = ('htl','ad','ad_rng','composting')
+TECHNOLOGIES = ('htl','ad','ad_rng','composting','htg_methane','htg_hydrogen','htc','fast_pyrolysis')
+DEFAULT_TECHNOLOGIES = ('htl','ad','ad_rng','composting')
+THERMAL_TECHNOLOGIES = ('htg_methane','htg_hydrogen','htc','fast_pyrolysis')
 _MODULES = {}
+
+
+def selected_technologies(config):
+    """Return the explicitly ordered routes, preserving legacy configurations."""
+    values = tuple(config.get('technologies',DEFAULT_TECHNOLOGIES))
+    if not values or len(set(values))!=len(values) or set(values)-set(TECHNOLOGIES):
+        raise ValueError(f'technologies must be unique members of {TECHNOLOGIES}')
+    if 'htl' not in values:
+        raise ValueError('The paired study requires the HTL financial/capacity basis')
+    return values
 
 
 class LiveLog:
@@ -109,6 +121,38 @@ def write_json(path, value):
     temporary.replace(path)
 
 
+def product_stream_observations(streams):
+    """Observe native component lumps without asserting experimental speciation."""
+    observations = {}
+    for stream in streams:
+        record = dict(mass_kg_h=float(stream.F_mass),phase=str(stream.phase),
+            component_kg_h={},chemical_identities={},water_kg_h=0.,
+            composition_basis='Native stream component masses and database/surrogate identities; '
+                'formulas do not establish measured molecular speciation or fuel qualification',
+            reporting_errors=[])
+        for chemical in stream.chemicals:
+            mass = float(stream.imass[chemical.ID])
+            if not mass:
+                continue
+            record['component_kg_h'][chemical.ID] = mass
+            record['chemical_identities'][chemical.ID] = dict(
+                formula=chemical.formula,CAS=chemical.CAS,
+                common_name=getattr(chemical,'common_name',None))
+            if chemical.ID in ('Water','H2O'):
+                record['water_kg_h'] += mass
+        record['negative_components'] = [key for key,value in record['component_kg_h'].items() if value<0]
+        try:
+            record['hhv_mj_kg'] = float(stream.HHV)/1000/stream.F_mass if stream.F_mass else None
+        except Exception as error:
+            record['hhv_mj_kg'] = None
+            record['reporting_errors'].append(f'HHV: {type(error).__name__}: {error}')
+        dry_mass = record['mass_kg_h']-record['water_kg_h']
+        if 'Ash' in record['component_kg_h'] and dry_mass>0:
+            record['ash_dry_wt'] = record['component_kg_h']['Ash']/dry_mass
+        observations[stream.ID] = record
+    return observations
+
+
 def fingerprint(config):
     basis = {k:v for k,v in config.items() if k not in ('workers','python_paths')}
     return hashlib.sha256(json.dumps(basis,sort_keys=True).encode()).hexdigest()
@@ -142,6 +186,7 @@ def capacity_basis(config,composition):
 
 
 def validate(config):
+    technologies = selected_technologies(config)
     recipe = config['recipe_wet_mass']
     if (not recipe or any(not isfinite(v) or v < 0 for v in recipe.values()) or
         abs(sum(recipe.values())-1)>1e-9):
@@ -173,7 +218,9 @@ def validate(config):
                    'depreciation','construction_schedule','working_capital_fraction',
                    'finance_interest','finance_years','finance_fraction','startup_months',
                    'startup_FOCfrac','startup_VOCfrac','startup_salesfrac'}
-    for technology in TECHNOLOGIES[1:]:
+    for technology in technologies:
+        if technology=='htl':
+            continue
         if forbidden.intersection(config[technology].get('system_kwargs',{})):
             raise ValueError(f'{technology}.system_kwargs overrides the paired comparison basis')
         if finance_keys.intersection(config[technology].get('economics',{})):
@@ -262,7 +309,9 @@ def shared_basis(config):
               'startup_salesfrac','working_capital_fraction','finance_interest','finance_years',
               'finance_fraction','insurance_fraction','labor_burden','maintenance_fraction')
     finance = {k:getattr(e,k) for k in fields}
-    electricity_price = config['htl'].get('system_kwargs',{}).get('electricity_price')
+    electricity_price = config.get('electricity_price_usd_kwh')
+    if electricity_price is None:
+        electricity_price = config['htl'].get('system_kwargs',{}).get('EC_config',{}).get('electricity_price')
     if electricity_price is None:
         electricity_price = bst.PowerUtility.price
     finance.update(target_cepci=float(bst.CE),electricity_buy_usd_kwh=electricity_price,
@@ -368,6 +417,11 @@ def htl_case(config,sample):
     setup_seconds = time.monotonic()-timing_started
     build_started = time.monotonic()
     system = factory(**kwargs)
+    if config.get('electricity_price_usd_kwh') is not None:
+        import biosteam as bst
+        # https://www.energy.gov/sites/default/files/2024-12/hydrogen-shot-water-electrolysis-technology-assessment.pdf
+        # Constructed HTL uses 0.074 USD/kWh (2020 USD); apply the explicit common tariff.
+        bst.PowerUtility.price = config['electricity_price_usd_kwh']
     build_seconds = time.monotonic()-build_started
     tea = system.TEA
     system.operating_hours = tea.operating_days*24
@@ -419,6 +473,7 @@ def htl_case(config,sample):
         net_electricity_kw=float(system.power_utility.rate),
         product_kg_h={s.ID:float(s.F_mass) for s in system.products},
         product_prices_usd_kg={s.ID:float(s.price) for s in system.products},
+        product_stream_observations=product_stream_observations(system.products),
         HTL_yields=dict(system.flowsheet.unit.HTL.dw_yields))
     metrics.update(htl_equipment_snapshot(system))
     metrics.update(snapshot['metrics'])
@@ -507,7 +562,7 @@ def alternative_case(technology,config,sample,finance,feed_price):
         cfg['route'] = 'rng' if technology == 'ad_rng' else 'chp'
         result = tools.create_ad_system(wet_tpd,feedstock=feed,
                     config=tools.ADConfig(**cfg),economics=economics,**kwargs)
-    else:
+    elif technology=='composting':
         if isinstance(cfg.get('pactea'),dict):
             cfg['pactea'] = tools.PaCTEAConfig(**cfg['pactea'])
         bulking = settings.get('bulking_composition')
@@ -516,15 +571,32 @@ def alternative_case(technology,config,sample,finance,feed_price):
         result = tools.create_composting_system(wet_tpd,feedstock=feed,
                     config=tools.CompostConfig(**cfg),economics=economics,
                     bulking_composition=bulking,**kwargs)
+    elif technology in THERMAL_TECHNOLOGIES:
+        factories = dict(htc=tools.create_htc_system,fast_pyrolysis=tools.create_fast_pyrolysis_system,
+                         htg_methane=tools.create_htg_system,htg_hydrogen=tools.create_htg_system)
+        configs = dict(htc=tools.HTCConfig,fast_pyrolysis=tools.FastPyrolysisConfig,
+                       htg_methane=tools.HTGConfig,htg_hydrogen=tools.HTGConfig)
+        if technology.startswith('htg_'):
+            route = technology.removeprefix('htg_')
+            if cfg.get('route',route)!=route:
+                raise ValueError('Configured HTG route differs from the selected technology')
+            cfg['route'] = route
+        result = factories[technology](wet_tpd,feedstock=feed,
+            config=configs[technology](**cfg),economics=economics,
+            markets=settings.get('markets'),**kwargs)
+    else:
+        raise ValueError(f'Unsupported alternative {technology}')
     factors,missing,excluded,unresolved,audit = alternative_lca_factors(technology,config,result.inventory_annual)
     # Missing/excluded activities use zero only inside the native adapter.
     # Export a partial total only when every active omission is explicitly excluded.
     diagnostic_factors = {k:factors.get(k,0.) for k in result.inventory_annual}
     native,lca,streams = result.to_qsdsan(diagnostic_factors,
         avoided_disposal_kg_co2e_t=config['lca']['avoided_disposal_kg_co2e_t'])
-    native.simulate()
+    if technology not in THERMAL_TECHNOLOGIES:
+        native.simulate()
     analysis,tea = result.tea(native_system=native,return_tea=True)
-    equipment_audit = [item for unit in native.units for item in getattr(unit,'cost_basis_audit',[])]
+    equipment_audit = (result.equipment if technology in THERMAL_TECHNOLOGIES else
+        [item for unit in native.units for item in getattr(unit,'cost_basis_audit',[])])
     irr,reason = native_irr(tea)
     metrics = dict(NPV_usd=analysis['NPV'],IRR_percent=irr,IRR_status=reason,
         FCI_usd=analysis['fixed_capital'],TCI_usd=analysis['total_investment'],
@@ -534,19 +606,49 @@ def alternative_case(technology,config,sample,finance,feed_price):
         land_area_acres=result.land_acres,land_area_ha=result.land_acres*0.40468564224,
         net_electricity_kw=float(native.power_utility.rate),
         product_kg_h={s.ID:float(s.F_mass) for s in native.products},
+        product_stream_observations=product_stream_observations(native.products),
+        process_streams_kg_h=result.streams_kg_h,
         annual_inventory=result.inventory_annual,design=result.design,
         equipment_audit=equipment_audit,
-        native_conventions=dict(unit_classes=[type(u).__mro__[1].__name__ for u in native.units],
+        native_conventions=dict(unit_classes=[type(u).__name__ for u in native.units],
             installed_equipment_cost_usd=float(native.installed_equipment_cost),
-            target_cepci=economics.target_cepci,purchase_cost_split_available=False,
+            target_cepci=economics.target_cepci,
+            purchase_cost_split_available=(all(i.get('purchase_usd') is not None for i in result.equipment)
+                if technology in THERMAL_TECHNOLOGIES else False),
             mass_balance_error_kg_h=sum(float(u.mass_balance_error()) for u in native.units),
             net_heat_utility_kj_h=sum(float(hu.duty) for u in native.units for hu in u.heat_utilities),
-            process_basis='composition-dependent aggregate correlation; rebuild for changed feed'),
+            process_basis=('native equipment network; conversion/property scenarios; rebuild for changed feed'
+                if technology in THERMAL_TECHNOLOGIES else 'composition-dependent aggregate correlation; rebuild for changed feed')),
         financial_basis=analysis['financial_assumptions'],feedstock_price_usd_t=feed_price,
         annual_costs=analysis['annual_costs'],annual_revenues=analysis['annual_revenues'],
         LCA_missing_factors=missing,LCA_excluded_activities=excluded,LCA_factor_audit=audit,notes=result.notes,
         cashflow_usd=analysis['cashflows'],discount_periods=analysis['discount_periods'],
         GWP_kgCO2e_year=None,GWP_kgCO2e_t_wet=None)
+    if technology == 'ad_rng':
+        methane = result.streams_kg_h['rng']['CH4']
+        metrics.update(saleable_methane_kg_h=methane,
+            saleable_methane_t_per_operating_day=methane*24/1000,
+            saleable_methane_kg_year=methane*result.hours)
+    elif technology=='composting':
+        compost = result.streams_kg_h['compost']
+        wet_mass = sum(compost.values())
+        fraction = result.feedstock.marketable_fraction
+        saleable = wet_mass*fraction
+        metrics.update(compost_wet_kg_h=wet_mass,
+            compost_marketable_fraction=fraction,
+            compost_moisture_wet_mass_fraction=compost['Water']/wet_mass if wet_mass else None,
+            marketable_compost_wet_kg_h=saleable,
+            marketable_compost_wet_t_per_operating_day=saleable*24/1000,
+            marketable_compost_wet_kg_year=saleable*result.hours,
+            marketable_compost_dry_t_per_operating_day=(wet_mass-compost['Water'])*fraction*24/1000)
+    elif technology in THERMAL_TECHNOLOGIES:
+        metrics.update(product_quality=result.design['product_quality'],
+            product_markets=result.design['product_markets'],
+            product_prices_usd_kg={name:market['revenue_usd_year']/market['marketed_kg_year']
+                if market['marketed_kg_year'] else None
+                for name,market in result.design['product_markets'].items()},
+            product_kg_h={name:quality['mass_kg_h'] for name,quality in result.design['product_quality'].items()},
+            energy_audit_kj_h=result.design['energy_audit_kj_h'])
     if unresolved or (excluded and config['lca'].get('require_complete_factors')):
         metrics['LCA_status'] = 'MISSING_FACTORS'
         if config['lca'].get('require_complete_factors'):
@@ -674,6 +776,11 @@ def comparison_gaps(row):
             ratio = item['size']/item.get('reference_size',item['size'])
             if not .1<=ratio<=10:
                 add('Cost extrapolation',f'{item["name"]}: {ratio:g} times reference size; obtain an applicable cost correlation.')
+    elif tech in THERMAL_TECHNOLOGIES:
+        for detail in m.get('notes',[]):
+            add('Thermochemical model basis',str(detail))
+        add('Capital scope','Native equipment and HTL indirect factors differ from bundled AD/composting plant anchors; retain scope gaps.')
+        add('Product market','HHV/literature proxies and assumed saleable fractions do not establish product qualification or a contracted outlet.')
     else:
         add('HTL scenario','Review RF applicability, cut fractions, surrogate composition, product outlets and convergence for this blend.')
     for activity in m.get('LCA_missing_factors',[]):
@@ -755,7 +862,8 @@ def export_results(run_dir,rows,config):
         ).to_csv(run_dir/'native_conventions.csv',index=False)
     paired['comparison_status'] = 'NOT_READY: inspect comparison_gaps.csv'
     summary = []
-    for technology in TECHNOLOGIES:
+    technologies = selected_technologies(config)
+    for technology in technologies:
         selected = [row for row in rows if row['technology']==technology]
         summary.append(dict(technology=technology,attempted=len(selected),
                             succeeded=sum(row['status']=='OK' for row in selected),
@@ -768,7 +876,7 @@ def export_results(run_dir,rows,config):
                 summary.append(dict(technology=technology,metric=metric,count=len(finite),
                     mean=float(finite.mean()),p05=float(np.quantile(finite,.05)),
                     median=float(np.median(finite)),p95=float(np.quantile(finite,.95))))
-    for first,second in combinations(TECHNOLOGIES,2):
+    for first,second in combinations(technologies,2):
         for metric in ('NPV_usd','GWP_kgCO2e_t_wet'):
             if gap_rows and not config.get('comparison',{}).get('allow_screening_differences',False):
                 continue
@@ -779,7 +887,7 @@ def export_results(run_dir,rows,config):
     pd.DataFrame(summary).to_csv(run_dir/'summary.csv',index=False)
     inventories = []
     factor_audit = []
-    templates = {key:{} for key in TECHNOLOGIES[1:]}
+    templates = {key:{} for key in technologies if key!='htl'}
     for row in rows:
         metrics_dict = row.get('metrics',{})
         factor_audit.extend(dict(sample_id=row['sample_id'],technology=row['technology'],**entry)
@@ -800,8 +908,9 @@ def completed_samples(config,pending,run_dir):
     if not pending:
         return
     context = multiprocessing.get_context('spawn')
-    tasks = iter((sample,technology) for sample in pending for technology in TECHNOLOGIES)
-    slots = [None]*min(config['workers'],len(pending)*len(TECHNOLOGIES))
+    technologies = selected_technologies(config)
+    tasks = iter((sample,technology) for sample in pending for technology in technologies)
+    slots = [None]*min(config['workers'],len(pending)*len(technologies))
     finished = {}
     exhausted = False
     timeout = config.get('max_technology_seconds',300)
@@ -841,7 +950,6 @@ def completed_samples(config,pending,run_dir):
                         except (PermissionError, FileNotFoundError):
                         # Temporary Windows access conflict; retry next scheduler pass.
                             row = None
-                            row = json.loads(slot['result_path'].read_text())
                     expired = time.monotonic()-slot['started']>timeout
                     dead = not slot['process'].is_alive()
                     if row is None and (expired or dead):
@@ -865,9 +973,9 @@ def completed_samples(config,pending,run_dir):
                             stop(slot)
                             slots[index] = slot = None
                         write_json(Path(run_dir)/'logs'/f'{sample["sample_id"]:05d}_{technology}.result.json',row)
-                        if len(finished[sample['sample_id']])==len(TECHNOLOGIES):
+                        if len(finished[sample['sample_id']])==len(technologies):
                             records = finished.pop(sample['sample_id'])
-                            yield sample,[records[t] for t in TECHNOLOGIES]
+                            yield sample,[records[t] for t in technologies]
                 if slot is None or slot['task'] is None:
                     if not exhausted:
                         task = next(tasks,None)
@@ -920,6 +1028,7 @@ def main(argv=None):
             config['n_samples' if key=='samples' else key] = value
     bootstrap(config.get('python_paths',()))
     validate(config)
+    technologies = selected_technologies(config)
     stamp = datetime.now(ZoneInfo('America/New_York')).strftime('%Y%m%d_%H%M%S_%f')
     run_dir = (args.resume if args.resume else RESULTS/f'lhs_comparison_{stamp}').resolve()
     if not run_dir.is_relative_to(RESULTS.resolve()):
@@ -991,7 +1100,7 @@ def main(argv=None):
     latest = {(r['sample_id'],r['technology']):r for r in history}
     rows = list(latest.values())
     complete = {sample['sample_id'] for sample in samples if
-                all(any(r['sample_id']==sample['sample_id'] and r['technology']==t for r in rows) for t in TECHNOLOGIES)}
+                all(any(r['sample_id']==sample['sample_id'] and r['technology']==t for r in rows) for t in technologies)}
     selected = samples[:args.limit] if args.limit is not None else samples
     pending = [s for s in selected if s['sample_id'] not in complete]
     write_json(run_dir/'run_status.json',dict(status='RUNNING',planned_samples=len(samples),selected_samples=len(selected)))

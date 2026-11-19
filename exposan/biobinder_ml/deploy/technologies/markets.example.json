@@ -1,0 +1,15 @@
+{
+  "methane": {
+    "price": 0.0019240686,
+    "unit": "USD/MJ-HHV",
+    "currency": "USD",
+    "price_year": 2020,
+    "target_year": 2020,
+    "source": "https://www.eia.gov/dnav/ng/hist/rngwhhda.htm",
+    "outlet": "Henry Hub fossil natural-gas commodity benchmark, 2.03 USD/MMBtu divided by 1055.05585262 MJ/MMBtu; illustrative plant-gate energy benchmark only, excluding grid connection, delivery and renewable-credit premiums",
+    "basis": "energy_proxy",
+    "qualified": false,
+    "qualification_source": "",
+    "saleable_fraction": 1.0
+  }
+}
